@@ -154,7 +154,6 @@ components/
   internal/screens/      Organiser workspace screens (by area)
   internal/shared/       Shared screen kit (headers, tables, stats, dialogs)
   portal/                Attendee-facing members portal
-  ui/                    shadcn primitives
 lib/
   supabase/              Data-access layer (one module per area)
   portal/                Portal domain logic
