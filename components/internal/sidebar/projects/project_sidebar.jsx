@@ -30,7 +30,7 @@ function MobileSidebarHeader() {
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded flex items-center justify-center shrink-0">
             <img
-              src="/logo1.svg"
+              src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo1.svg`}
               alt=""
               className="w-5 h-5"
               onError={(e) => {

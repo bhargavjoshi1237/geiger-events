@@ -20,7 +20,7 @@ export function Topbar() {
         <SidebarTrigger className="md:hidden -ml-2 text-white" />
         <div className="hidden w-8 h-8 rounded items-center justify-center shrink-0 md:flex md:-ml-1.5">
           <img
-            src="/logo1.svg"
+            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo1.svg`}
             alt=""
             className="w-5 h-5 -mr-0.5"
             onError={(e) => {
@@ -37,7 +37,7 @@ export function Topbar() {
 
       <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 md:hidden">
         <img
-          src="/logo1.svg"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo1.svg`}
           alt=""
           className="h-5 w-5"
           onError={(e) => {
