@@ -1,38 +1,27 @@
 "use client";
 
-import React, { Suspense, useCallback } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { ProjectSidebar } from "@/components/internal/sidebar/projects/project_sidebar";
-import { ProjectTopbar } from "@/components/internal/topbar/projects/topbar";
+import React, { useState } from "react";
+import { AppSidebar } from "@/components/internal/sidebar/sidebar";
+import { Topbar } from "@/components/internal/topbar/topbar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { PlaceholderScreen } from "@/components/internal/screens/placeholder_screen";
-import { projectNav, settingsNav } from "@/components/internal/sidebar/projects/sidebar_data";
+import { EventsOverviewScreen } from "@/components/internal/screens/overview/events_overview";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
 
-function HomeLayoutContent() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+export default function Home() {
+  const [currentTab, setCurrentTab] = useState("Overview");
 
-  const screenParamKeys = [];
-  searchParams.forEach((_, key) => {
-    screenParamKeys.push(key);
-  });
-  const currentTab = screenParamKeys[0] || "Overview";
+  const findActiveItem = () => {
+    for (const item of workspaceNav) {
+      if (item.title === currentTab) return item;
+      const sub = item.subItems?.find((s) => s.title === currentTab);
+      if (sub) return sub;
+    }
+    return workspaceNav[0] || { title: "Overview" };
+  };
 
-  const setCurrentTab = useCallback(
-    (tab) => {
-      if (tab === "Overview") {
-        router.push(pathname, { scroll: false });
-      } else {
-        router.push(`${pathname}?${encodeURIComponent(tab)}`, { scroll: false });
-      }
-    },
-    [router, pathname],
-  );
-
-  const activeItem =
-    [...projectNav, ...settingsNav].find((item) => item.title === currentTab) ||
-    projectNav[0];
+  const activeItem = findActiveItem();
 
   return (
     <div className="flex-col h-[100dvh] w-full bg-[#161616] text-[#ededed] font-sans overflow-hidden selection:bg-[#333333] flex">
@@ -40,32 +29,23 @@ function HomeLayoutContent() {
         className="flex-col !flex h-full min-w-0"
         style={{ flexDirection: "column" }}
       >
-        <ProjectTopbar />
+        <Topbar />
         <div className="flex flex-1 overflow-hidden relative">
-          <ProjectSidebar activeTab={currentTab} onTabChange={setCurrentTab} />
+          <AppSidebar activeTab={currentTab} onTabChange={setCurrentTab} />
           <SidebarInset className="flex-1 flex flex-col h-full bg-transparent overflow-hidden relative border-none">
             <div className="absolute top-0 right-0 w-[500px] h-[300px] bg-white/[0.02] blur-[120px] pointer-events-none rounded-full"></div>
             <main className="flex-1 overflow-y-auto p-4 md:p-8 relative z-10 w-full min-w-0">
-              <PlaceholderScreen title={activeItem.title} icon={activeItem.icon} />
+              {currentTab === "Overview" ? (
+                <EventsOverviewScreen />
+              ) : (
+                <MainScreenWrapper>
+                  <PlaceholderScreen title={activeItem.title} icon={activeItem.icon} />
+                </MainScreenWrapper>
+              )}
             </main>
           </SidebarInset>
         </div>
       </SidebarProvider>
     </div>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex flex-col h-[100dvh] w-full bg-[#161616] items-center justify-center gap-3">
-          <div className="w-5 h-5 rounded-full border-2 border-[#474747] border-t-[#e7e7e7] animate-spin" />
-          <span className="text-[#525252] text-sm">Loading...</span>
-        </div>
-      }
-    >
-      <HomeLayoutContent />
-    </Suspense>
   );
 }

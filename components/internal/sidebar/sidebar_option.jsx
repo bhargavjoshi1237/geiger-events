@@ -44,9 +44,11 @@ export function SidebarOption({
         tooltip={title}
         className={cn(
           "transition-all text-sm h-9 group-data-[collapsible=icon]:justify-center",
-          isExpanded || (isActive && !subItems)
+          isActive && !subItems
             ? "bg-sidebar-accent text-white"
-            : "text-sidebar-foreground",
+            : isExpanded
+              ? "bg-sidebar-accent/40 text-sidebar-foreground"
+              : "text-sidebar-foreground",
           className,
         )}
       >
@@ -54,7 +56,7 @@ export function SidebarOption({
           <Icon
             className={cn(
               "w-4 h-4 shrink-0 transition-colors",
-              isExpanded || isActive
+              isActive
                 ? activeIconColor
                 : inactiveIconColor,
             )}
@@ -77,17 +79,18 @@ export function SidebarOption({
       </SidebarMenuButton>
 
       {subItems && isExpanded && !isCollapsed && (
-        <ul className="flex flex-col gap-0.5 pt-2">
+        <ul className="ml-[1px] mt-1 mb-1 flex flex-col gap-0.5 pl-2">
           {subItems.map((sub) => (
             <li key={sub.title}>
               <Button
                 type="button"
+                variant="ghost"
                 onClick={(e) => {
                   e.preventDefault();
                   onClick(sub.title);
                 }}
                 className={cn(
-                  "relative w-full flex items-center px-2 h-[35px] rounded-md text-sm leading-none transition-colors gap-2",
+                  "relative w-full flex items-center justify-start px-2 h-[35px] rounded-md text-sm leading-none transition-colors gap-2",
                   activeSubTab === sub.title
                     ? "bg-sidebar-accent text-white font-medium"
                     : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/50",
@@ -118,6 +121,7 @@ export function SidebarOption({
                 <TooltipTrigger asChild>
                   <Button
                     type="button"
+                    variant="ghost"
                     onClick={(e) => {
                       e.preventDefault();
                       onClick(sub.title);

@@ -57,9 +57,18 @@ export function AppSidebar({
   roles = [],
 }) {
   const { toggleSidebar } = useSidebar();
+  const [expandedItems, setExpandedItems] = React.useState({});
+
   const visibleNav = workspaceNav.filter((item) =>
     roleHasPermission(roles, roleId, tabPermissionKey(item.title)),
   );
+
+  const toggleExpand = (title) => {
+    setExpandedItems((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
+  };
 
   return (
     <Sidebar
@@ -77,8 +86,20 @@ export function AppSidebar({
                   title={item.title}
                   icon={item.icon}
                   isActive={activeTab === item.title}
-                  onClick={() => onTabChange(item.title)}
                   badge={item.badge}
+                  subItems={item.subItems || null}
+                  isExpanded={
+                    expandedItems[item.title] !== undefined
+                      ? expandedItems[item.title]
+                      : !!item.subItems?.some((sub) => sub.title === activeTab)
+                  }
+                  onToggle={() => toggleExpand(item.title)}
+                  activeSubTab={activeTab}
+                  onClick={(subTitle) =>
+                    onTabChange(
+                      typeof subTitle === "string" ? subTitle : item.title,
+                    )
+                  }
                 />
               ))}
             </SidebarMenu>
@@ -88,6 +109,7 @@ export function AppSidebar({
       <SidebarFooter className="p-2 border-t border-sidebar-border mt-auto">
         <Button
           type="button"
+          variant="ghost"
           onClick={toggleSidebar}
           className="flex items-center gap-3 p-2 w-full rounded-lg hover:bg-sidebar-accent transition-all text-sidebar-foreground hover:text-white group-data-[collapsible=icon]:justify-center"
         >
