@@ -4,11 +4,16 @@ import React, { useState } from "react";
 import { AppSidebar } from "@/components/internal/sidebar/sidebar";
 import { Topbar } from "@/components/internal/topbar/topbar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { ComingSoonScreen } from "@/components/internal/screens/coming_soon";
-import { getScreen } from "@/components/internal/screens/registry";
+import { PlaceholderScreen } from "@/components/internal/screens/placeholder_screen";
+import { EventsOverviewScreen } from "@/components/internal/screens/overview/events_overview";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
 
-export default function Home() {
+// Live, embeddable copy of the Events dashboard used on the landing page.
+// Mirrors app/home/page.js but fills its container (h-full) instead of the
+// viewport so it can be mounted inside the playground showcase. No save, no
+// load — it's a throwaway, fully interactive instance of the real interface.
+export function EventsPlayground() {
   const [currentTab, setCurrentTab] = useState("Overview");
 
   const findActiveItem = () => {
@@ -21,10 +26,9 @@ export default function Home() {
   };
 
   const activeItem = findActiveItem();
-  const Screen = getScreen(currentTab);
 
   return (
-    <div className="flex-col h-[100dvh] w-full bg-[#161616] text-[#ededed] font-sans overflow-hidden selection:bg-[#333333] flex">
+    <div className="flex-col h-full w-full bg-[#161616] text-[#ededed] font-sans overflow-hidden selection:bg-[#333333] flex">
       <SidebarProvider
         className="flex-col !flex h-full min-w-0"
         style={{ flexDirection: "column" }}
@@ -34,14 +38,13 @@ export default function Home() {
           <AppSidebar activeTab={currentTab} onTabChange={setCurrentTab} />
           <SidebarInset className="flex-1 flex flex-col h-full bg-transparent overflow-hidden relative border-none">
             <div className="absolute top-0 right-0 w-[500px] h-[300px] bg-white/[0.02] blur-[120px] pointer-events-none rounded-full"></div>
-            <main className="flex-1 overflow-y-auto p-4 md:p-8 relative z-10 w-full min-w-0">
-              {Screen ? (
-                <Screen />
+            <main className="flex-1 overflow-y-auto p-4 md:p-8 relative z-10 w-full min-w-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {currentTab === "Overview" ? (
+                <EventsOverviewScreen />
               ) : (
-                <ComingSoonScreen
-                  title={activeItem.title}
-                  icon={activeItem.icon}
-                />
+                <MainScreenWrapper>
+                  <PlaceholderScreen title={activeItem.title} icon={activeItem.icon} />
+                </MainScreenWrapper>
               )}
             </main>
           </SidebarInset>
@@ -50,3 +53,5 @@ export default function Home() {
     </div>
   );
 }
+
+export default EventsPlayground;

@@ -37,7 +37,7 @@ export default function RootLayout({ children }) {
               <GlobalBanner />
               {children}
             </div>
-            <Toaster richColors closeButton />
+            <Toaster />
           </BannerProvider>
         </ThemeProvider>
       </body>

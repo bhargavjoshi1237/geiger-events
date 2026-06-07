@@ -119,12 +119,9 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        <div className="mx-auto my-10 w-[94%] sm:my-20 md:w-[80%]">
-          <EventsPlaygroundShowcase
-            ctaHref={dashboardHref}
-            ctaLabel="Open the dashboard"
-          />
-        </div>
+        <section className="mx-auto my-10 w-[100%] sm:my-20 md:w-[100%]">
+          <EventsPlaygroundShowcase />
+        </section>
 
         <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-3">
           {utilityCards.map(({ title, description, icon: Icon }) => (

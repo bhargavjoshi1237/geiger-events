@@ -135,30 +135,15 @@ export const workspaceNav = [
   },
 
   {
+    // Per-event features (cover media, tickets, visibility, sharing, etc.) live
+    // as tabs inside the Event editor — opened by selecting an event in
+    // All Events — so only workspace-level destinations appear here.
     title: "Events",
     icon: CalendarDays,
     subItems: [
       { title: "All Events", icon: CalendarDays },
       { title: "Templates", icon: LayoutTemplate },
-      { title: "Event Builder", icon: CalendarPlus },
-      { title: "Cover Media", icon: ImageIcon },
-      { title: "Rich Descriptions", icon: FileText },
-      { title: "Location & Time", icon: MapPin },
-      { title: "Visibility", icon: Eye },
-      { title: "Recurring Events", icon: Repeat },
-      { title: "Clone Event", icon: Copy },
-      { title: "Custom URL", icon: Link2 },
-      { title: "Custom Questions", icon: ClipboardList },
-      { title: "Co-hosts & Admins", icon: UserCog },
-      { title: "Time-zone Support", icon: Globe },
-      { title: "Draft & Preview", icon: SquarePen },
-      { title: "Hybrid Mode", icon: Video },
-      { title: "Add to Calendar", icon: CalendarCheck },
-      { title: "Embeddable Widget", icon: Code },
       { title: "Event Series", icon: Layers },
-      { title: "Map & Directions", icon: Map },
-      { title: "SEO & Sharing", icon: Share2 },
-      { title: "Localization", icon: Languages },
     ],
   },
 
