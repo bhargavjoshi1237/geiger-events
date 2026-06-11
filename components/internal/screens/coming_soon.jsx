@@ -22,21 +22,21 @@ export function ComingSoonScreen({ title = "Screen", description, icon }) {
         }
       />
 
-      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-[#2a2a2a] bg-[#161616] px-6 py-20 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] text-[#a3a3a3]">
+      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-background px-6 py-20 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-surface-subtle text-muted-foreground">
           <Hammer className="h-6 w-6" />
         </div>
         <div className="space-y-1.5">
-          <p className="text-base font-semibold text-[#ededed]">
+          <p className="text-base font-semibold text-foreground">
             {title} is on the way
           </p>
-          <p className="mx-auto max-w-md text-sm text-[#737373]">
+          <p className="mx-auto max-w-md text-sm text-text-secondary">
             This area is scaffolded into the navigation. Its dedicated tools,
             tables, and dialogs are being implemented one area at a time to keep
             the experience consistent across the suite.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-1 text-xs font-medium text-[#a3a3a3]">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-subtle px-3 py-1 text-xs font-medium text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5" />
           Coming soon
         </span>

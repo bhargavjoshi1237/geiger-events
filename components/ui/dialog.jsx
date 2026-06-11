@@ -42,14 +42,14 @@ function DialogContent({ className, children, showClose = true, ...props }) {
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-5 rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 text-[#e7e7e7] shadow-2xl shadow-black/40 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-5 rounded-2xl border border-border bg-surface-subtle p-6 text-foreground shadow-2xl shadow-black/40 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className,
         )}
         {...props}
       >
         {children}
         {showClose ? (
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md p-1 text-[#737373] opacity-80 transition-colors hover:bg-[#252525] hover:text-white focus:outline-none disabled:pointer-events-none">
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md p-1 text-text-secondary opacity-80 transition-colors hover:bg-surface-active hover:text-foreground focus:outline-none disabled:pointer-events-none">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
@@ -96,7 +96,7 @@ function DialogDescription({ className, ...props }) {
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-[#a3a3a3]", className)}
+      className={cn("text-sm text-muted-foreground", className)}
       {...props}
     />
   );

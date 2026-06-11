@@ -67,18 +67,18 @@ export function VisibilitySection({ event }) {
                 className={cn(
                   "flex items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors",
                   active
-                    ? "border-[#3a3a3a] bg-[#202020]"
-                    : "border-[#2a2a2a] bg-transparent hover:bg-[#1f1f1f]",
+                    ? "border-border-strong bg-surface-card"
+                    : "border-border bg-transparent hover:bg-surface-card",
                 )}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-[#d4d4d4]">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-[#ededed]">
+                  <p className="text-sm font-medium text-foreground">
                     {opt.label}
                   </p>
-                  <p className="text-xs text-[#737373]">{opt.description}</p>
+                  <p className="text-xs text-text-secondary">{opt.description}</p>
                 </div>
                 <span
                   className={cn(
@@ -124,7 +124,7 @@ export function VisibilitySection({ event }) {
         </SettingsList>
         <div className="mt-5 flex justify-end">
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => toast.success("Visibility settings saved.")}
           >
             Save changes
@@ -151,7 +151,7 @@ export function CustomUrlSection({ event }) {
       key: "from",
       header: "Redirect from",
       render: (r) => (
-        <code className="rounded bg-[#202020] px-1.5 py-0.5 text-xs text-[#d4d4d4]">
+        <code className="rounded bg-surface-card px-1.5 py-0.5 text-xs text-muted-foreground">
           geiger.events{r.from}
         </code>
       ),
@@ -160,7 +160,7 @@ export function CustomUrlSection({ event }) {
       key: "to",
       header: "To",
       render: (r) => (
-        <code className="rounded bg-[#202020] px-1.5 py-0.5 text-xs text-[#a3a3a3]">
+        <code className="rounded bg-surface-card px-1.5 py-0.5 text-xs text-muted-foreground">
           {r.to}
         </code>
       ),
@@ -176,8 +176,8 @@ export function CustomUrlSection({ event }) {
     <div className="space-y-6">
       <SectionCard title="Event link">
         <Field label="URL slug" hint="Lowercase letters, numbers, and hyphens.">
-          <div className="flex items-center overflow-hidden rounded-md border border-[#2a2a2a] bg-[#202020]">
-            <span className="border-r border-[#2a2a2a] px-3 py-2.5 text-sm text-[#737373]">
+          <div className="flex items-center overflow-hidden rounded-md border border-border bg-surface-card">
+            <span className="border-r border-border px-3 py-2.5 text-sm text-text-secondary">
               geiger.events/
             </span>
             <input
@@ -187,7 +187,7 @@ export function CustomUrlSection({ event }) {
                   e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
                 )
               }
-              className="flex-1 bg-transparent px-3 py-2.5 text-sm text-[#ededed] outline-none"
+              className="flex-1 bg-transparent px-3 py-2.5 text-sm text-foreground outline-none"
             />
             <span
               className={cn(
@@ -205,7 +205,7 @@ export function CustomUrlSection({ event }) {
 
         <div className="mt-5 flex justify-end">
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => toast.success("URL saved.")}
           >
             Save URL
@@ -223,7 +223,7 @@ export function CustomUrlSection({ event }) {
           </Field>
           <Button
             variant="outline"
-            className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
             Verify domain
           </Button>

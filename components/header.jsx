@@ -22,7 +22,7 @@ export function Header({ dashboardHref = "/home" }) {
   }, []);
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-zinc-800 bg-zinc-950 md:border-zinc-800/50 md:bg-zinc-950/85 md:backdrop-blur-md">
+    <header className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background md:border-border/50 md:bg-background/85 md:backdrop-blur-md">
       <div className="relative mx-auto flex h-12 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center">
@@ -46,12 +46,12 @@ export function Header({ dashboardHref = "/home" }) {
           ) : resolved ? (
             <a
               href="/login"
-              className="text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-100"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Sign In
             </a>
           ) : (
-            <div className="h-8 w-8 rounded-full border border-zinc-800 bg-zinc-900" />
+            <div className="h-8 w-8 rounded-full border border-border bg-surface-subtle" />
           )}
         </div>
       </div>

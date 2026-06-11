@@ -26,6 +26,9 @@ import {
   Radio,
   Link2,
   ExternalLink,
+  FileText,
+  FolderOpen,
+  Clock,
 } from "lucide-react";
 
 export const projectNav = [
@@ -41,6 +44,15 @@ export const projectNav = [
   { title: "Reporting", icon: BarChart3 },
   { title: "Objectives", icon: Database },
   { title: "Assets", icon: LucideFileImage },
+  {
+    title: "Office",
+    icon: FileText,
+    subItems: [
+      { title: "Recent Files", icon: Clock },
+      { title: "Folders", icon: FolderOpen },
+      { title: "Shared with Project", icon: Users },
+    ],
+  },
   { title: "Logs", icon: Activity },
   { title: "Team", icon: Users, badge: "7" },
   { title: "Resource Allocation", icon: UsersRound },

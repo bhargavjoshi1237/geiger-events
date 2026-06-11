@@ -109,14 +109,14 @@ export function CoHostsAdminsSection({ event }) {
       header: "Member",
       render: (m) => (
         <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8 border border-[#2a2a2a]">
-            <AvatarFallback className="bg-[#202020] text-xs text-[#d4d4d4]">
+          <Avatar className="h-8 w-8 border border-border">
+            <AvatarFallback className="bg-surface-card text-xs text-muted-foreground">
               {initials(m.name)}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-medium text-[#ededed]">{m.name}</p>
-            <p className="text-xs text-[#737373]">{m.email}</p>
+            <p className="text-sm font-medium text-foreground">{m.name}</p>
+            <p className="text-xs text-text-secondary">{m.email}</p>
           </div>
         </div>
       ),
@@ -143,27 +143,27 @@ export function CoHostsAdminsSection({ event }) {
               variant="ghost"
               size="icon-sm"
               disabled={m.role === "Owner"}
-              className="text-[#a3a3a3] hover:bg-[#252525] hover:text-white disabled:opacity-30"
+              className="text-muted-foreground hover:bg-surface-active hover:text-foreground disabled:opacity-30"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="border-[#2a2a2a] bg-[#1a1a1a] text-[#ededed]"
+            className="border-border bg-surface-subtle text-foreground"
           >
             {ROLES.filter((r) => r.value !== "Owner" && r.value !== m.role).map(
               (r) => (
                 <DropdownMenuItem
                   key={r.value}
-                  className="focus:bg-[#2a2a2a]"
+                  className="focus:bg-surface-hover"
                   onClick={() => changeRole(m.id, r.value)}
                 >
                   Make {r.value}
                 </DropdownMenuItem>
               ),
             )}
-            <DropdownMenuSeparator className="bg-[#2a2a2a]" />
+            <DropdownMenuSeparator className="bg-surface-hover" />
             <DropdownMenuItem
               variant="destructive"
               className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
@@ -185,7 +185,7 @@ export function CoHostsAdminsSection({ event }) {
         bodyPadding={false}
         action={
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setOpen(true)}
           >
             <Plus className="h-4 w-4" /> Invite member
@@ -206,16 +206,16 @@ export function CoHostsAdminsSection({ event }) {
             {pending.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center gap-3 rounded-lg border border-[#2a2a2a] bg-[#202020] px-3 py-3"
+                className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-3"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] bg-[#1a1a1a] text-[#a3a3a3]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface-subtle text-muted-foreground">
                   <Mail className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[#ededed]">
+                  <p className="truncate text-sm font-medium text-foreground">
                     {p.email}
                   </p>
-                  <p className="text-xs text-[#737373]">Invited {p.sent}</p>
+                  <p className="text-xs text-text-secondary">Invited {p.sent}</p>
                 </div>
                 <Badge variant={ROLE_VARIANT[p.role] || "neutral"}>
                   {p.role}
@@ -223,7 +223,7 @@ export function CoHostsAdminsSection({ event }) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-[#737373] hover:bg-red-500/10 hover:text-red-400"
+                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                   onClick={() => {
                     setPending((prev) => prev.filter((x) => x.id !== p.id));
                     toast.success("Invitation revoked.");
@@ -273,20 +273,20 @@ export function CoHostsAdminsSection({ event }) {
                 </SelectContent>
               </Select>
             </Field>
-            <p className="rounded-lg border border-[#2a2a2a] bg-[#202020] px-3 py-2 text-xs text-[#737373]">
+            <p className="rounded-lg border border-border bg-surface-card px-3 py-2 text-xs text-text-secondary">
               {ROLES.find((r) => r.value === invite.role)?.description}
             </p>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => setOpen(false)}
             >
               Cancel
             </Button>
             <Button
-              className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={sendInvite}
             >
               Send invite

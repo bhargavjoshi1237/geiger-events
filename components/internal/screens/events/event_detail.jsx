@@ -268,7 +268,7 @@ function OverviewSection({ event, onPreview }) {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
         <SectionCard title="Event page preview" bodyPadding={false}>
           <div className="p-4">
-            <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-[#2a2a2a] bg-[#202020] text-[#525252]">
+            <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-border bg-surface-card text-text-tertiary">
               <ImageIcon className="h-8 w-8" />
             </div>
             <div className="mt-4 space-y-2">
@@ -279,13 +279,13 @@ function OverviewSection({ event, onPreview }) {
                 <StatusPill status={event.status} map={EVENT_STATUS_MAP} />
               </div>
               <h3 className="text-lg font-semibold text-white">{event.name}</h3>
-              <div className="space-y-1.5 pt-1 text-sm text-[#d4d4d4]">
+              <div className="space-y-1.5 pt-1 text-sm text-muted-foreground">
                 <p className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-[#737373]" />
+                  <Clock className="h-4 w-4 text-text-secondary" />
                   {formatDate(event.date)} · {event.time}
                 </p>
                 <p className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-[#737373]" />
+                  <MapPin className="h-4 w-4 text-text-secondary" />
                   {event.venue}
                   {event.city && event.city !== "Remote" ? `, ${event.city}` : ""}
                 </p>
@@ -295,21 +295,21 @@ function OverviewSection({ event, onPreview }) {
         </SectionCard>
 
         <SectionCard title="Publish">
-          <p className="text-sm text-[#737373]">
+          <p className="text-sm text-text-secondary">
             {event.status === "Draft"
               ? "This event is a draft. Publish it to start selling tickets."
               : "This event is live. Changes save instantly."}
           </p>
           <div className="mt-4 space-y-2">
             <Button
-              className="w-full bg-white text-[#161616] hover:bg-[#e7e7e7]"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => toast.success(`"${event.name}" published.`)}
             >
               <Rocket className="h-4 w-4" /> Publish event
             </Button>
             <Button
               variant="outline"
-              className="w-full border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+              className="w-full border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={onPreview}
             >
               <Eye className="h-4 w-4" /> Preview page
@@ -362,24 +362,24 @@ export function EventDetailScreen({ event, onBack }) {
   return (
     <MainScreenWrapper>
       {/* Editor header */}
-      <div className="flex flex-col gap-4 border-b border-[#2a2a2a] pb-6 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-start gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={onBack}
-            className="mt-0.5 shrink-0 text-[#a3a3a3] hover:bg-[#252525] hover:text-white"
+            className="mt-0.5 shrink-0 text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-semibold tracking-tight text-[#e7e7e7] md:text-3xl">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
                 {event.name}
               </h1>
               <StatusPill status={event.status} map={EVENT_STATUS_MAP} />
             </div>
-            <p className="mt-1 text-sm font-medium text-[#a3a3a3]">
+            <p className="mt-1 text-sm font-medium text-muted-foreground">
               {formatDate(event.date)} · {event.time} · {event.venue}
             </p>
           </div>
@@ -387,13 +387,13 @@ export function EventDetailScreen({ event, onBack }) {
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Button
             variant="outline"
-            className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={() => setPreviewOpen(true)}
           >
             <Eye className="h-4 w-4" /> Preview
           </Button>
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => toast.success("Changes saved.")}
           >
             Save changes
@@ -408,7 +408,7 @@ export function EventDetailScreen({ event, onBack }) {
             <h2 className="text-lg font-semibold text-white">
               {activeItem.label}
             </h2>
-            <p className="mt-0.5 text-sm text-[#737373]">{activeItem.desc}</p>
+            <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
           </div>
           {active === "design" ? (
             <PageDesignSection
@@ -429,7 +429,7 @@ export function EventDetailScreen({ event, onBack }) {
             {NAV_GROUPS.map((group, gi) => (
               <div key={group.group || `g${gi}`}>
                 {group.group ? (
-                  <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-[#525252]">
+                  <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
                     {group.group}
                   </p>
                 ) : null}
@@ -445,14 +445,14 @@ export function EventDetailScreen({ event, onBack }) {
                         className={cn(
                           "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                           isActive
-                            ? "bg-[#202020] font-medium text-white"
-                            : "text-[#a3a3a3] hover:bg-[#1a1a1a] hover:text-[#e7e7e7]",
+                            ? "bg-surface-card font-medium text-white"
+                            : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
                         )}
                       >
                         <Icon
                           className={cn(
                             "h-4 w-4 shrink-0",
-                            isActive ? "text-white" : "text-[#737373]",
+                            isActive ? "text-white" : "text-text-secondary",
                           )}
                         />
                         <span className="truncate">{item.label}</span>

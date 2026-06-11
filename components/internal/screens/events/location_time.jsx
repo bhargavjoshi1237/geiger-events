@@ -45,13 +45,13 @@ function MapPlaceholder({ className }) {
   return (
     <div
       className={
-        "relative flex items-center justify-center overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#202020] " +
+        "relative flex items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-card " +
         (className || "")
       }
     >
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#2a2a2a_1px,transparent_1px),linear-gradient(to_bottom,#2a2a2a_1px,transparent_1px)] bg-[size:32px_32px] opacity-50" />
-      <div className="relative flex flex-col items-center gap-1 text-[#737373]">
-        <MapPin className="h-7 w-7 text-[#a3a3a3]" />
+      <div className="relative flex flex-col items-center gap-1 text-text-secondary">
+        <MapPin className="h-7 w-7 text-muted-foreground" />
         <span className="text-xs">Map preview</span>
       </div>
     </div>
@@ -115,7 +115,7 @@ export function LocationTimeSection({ event }) {
         </div>
         <div className="mt-4 flex justify-end">
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => toast.success("Location & time saved.")}
           >
             Save
@@ -141,7 +141,7 @@ export function MapDirectionsSection({ event }) {
         <div className="p-4">
           <MapPlaceholder className="aspect-[21/9]" />
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-[#737373]">Open in:</span>
+            <span className="text-sm text-text-secondary">Open in:</span>
             {DIRECTION_PROVIDERS.map((p) => {
               const Icon = p.icon;
               return (
@@ -149,7 +149,7 @@ export function MapDirectionsSection({ event }) {
                   key={p.name}
                   variant="outline"
                   size="sm"
-                  className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
                 >
                   <Icon className="h-4 w-4" /> {p.name}
                 </Button>
@@ -215,13 +215,13 @@ export function TimezoneSupportSection({ event }) {
       key: "name",
       header: "Event",
       render: (e) => (
-        <span className="font-medium text-[#ededed]">{e.name}</span>
+        <span className="font-medium text-foreground">{e.name}</span>
       ),
     },
     {
       key: "city",
       header: "Location",
-      render: (e) => <span className="text-sm text-[#d4d4d4]">{e.city}</span>,
+      render: (e) => <span className="text-sm text-muted-foreground">{e.city}</span>,
     },
     {
       key: "tz",

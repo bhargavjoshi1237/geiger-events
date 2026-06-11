@@ -79,11 +79,11 @@ export function EventPublicPage({ event, onClose, design }) {
   const hosts = [event.organizer, ...CO_HOSTS];
 
   // Cover surface honors the chosen cover style.
-  let coverClass = "bg-gradient-to-br from-[#242424] to-[#1a1a1a]";
+  let coverClass = "bg-gradient-to-br from-surface-active to-surface-subtle";
   let coverStyle;
   if (effective.cover === "solid") {
     coverClass = "";
-    coverStyle = { backgroundColor: "#202020" };
+    coverStyle = { backgroundColor: "var(--surface-dialog)" };
   } else if (effective.cover === "accent") {
     coverClass = "";
     coverStyle = {
@@ -96,24 +96,24 @@ export function EventPublicPage({ event, onClose, design }) {
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 overflow-y-auto bg-[#161616] text-[#ededed]",
+        "fixed inset-0 z-50 overflow-y-auto bg-background text-foreground",
         fontClass,
       )}
     >
       {/* Preview chrome */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-[#2a2a2a] bg-[#161616]/80 px-4 py-3 backdrop-blur sm:px-6">
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur sm:px-6">
         <Button
           variant="ghost"
           size="sm"
           onClick={onClose}
-          className="text-[#a3a3a3] hover:bg-[#252525] hover:text-white"
+          className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-1 text-xs font-medium text-[#a3a3a3]">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-subtle px-3 py-1 text-xs font-medium text-muted-foreground">
           <Eye className="h-3.5 w-3.5" /> Public page preview
           {effective.mode !== "standard" ? (
-            <span className="capitalize text-[#525252]">· {cfg.mode}</span>
+            <span className="capitalize text-text-tertiary">· {cfg.mode}</span>
           ) : null}
         </span>
       </div>
@@ -126,7 +126,7 @@ export function EventPublicPage({ event, onClose, design }) {
             <div className="space-y-3">
               <div
                 className={cn(
-                  "relative flex aspect-[16/9] items-center justify-center overflow-hidden rounded-2xl border border-[#2a2a2a] text-[#3a3a3a]",
+                  "relative flex aspect-[16/9] items-center justify-center overflow-hidden rounded-2xl border border-border text-[#3a3a3a]",
                   coverClass,
                 )}
                 style={coverStyle}
@@ -144,7 +144,7 @@ export function EventPublicPage({ event, onClose, design }) {
                   {[1, 2, 3, 4].map((n) => (
                     <div
                       key={n}
-                      className="flex aspect-[4/3] items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#202020] text-[#3a3a3a]"
+                      className="flex aspect-[4/3] items-center justify-center rounded-lg border border-border bg-surface-card text-[#3a3a3a]"
                     >
                       <ImgIcon className="h-5 w-5" />
                     </div>
@@ -165,13 +165,13 @@ export function EventPublicPage({ event, onClose, design }) {
               <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
                 {event.name}
               </h1>
-              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#d4d4d4]">
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
                 <span className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-[#737373]" />
+                  <Clock className="h-4 w-4 text-text-secondary" />
                   {formatDate(event.date)} · {event.time}
                 </span>
                 <span className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-[#737373]" />
+                  <MapPin className="h-4 w-4 text-text-secondary" />
                   {event.venue}
                   {event.city && event.city !== "Remote" ? `, ${event.city}` : ""}
                 </span>
@@ -179,26 +179,26 @@ export function EventPublicPage({ event, onClose, design }) {
             </div>
 
             {/* Hosts (core) */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-y border-[#2a2a2a] py-5">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-y border-border py-5">
               {hosts.map((h, i) => (
                 <div key={h} className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 border border-[#2a2a2a]">
-                    <AvatarFallback className="bg-[#202020] text-sm text-[#d4d4d4]">
+                  <Avatar className="h-10 w-10 border border-border">
+                    <AvatarFallback className="bg-surface-card text-sm text-muted-foreground">
                       {initials(h)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-xs text-[#737373]">
+                    <p className="text-xs text-text-secondary">
                       {i === 0 ? "Hosted by" : "Co-host"}
                     </p>
-                    <p className="text-sm font-medium text-[#ededed]">{h}</p>
+                    <p className="text-sm font-medium text-foreground">{h}</p>
                   </div>
                 </div>
               ))}
               <Button
                 variant="outline"
                 size="sm"
-                className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white sm:ml-auto"
+                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground sm:ml-auto"
                 onClick={() => toast.success(`Following ${event.organizer}.`)}
               >
                 Follow
@@ -213,10 +213,10 @@ export function EventPublicPage({ event, onClose, design }) {
 
           {/* Registration sidebar */}
           <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-            <div className="overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a]">
-              <div className="flex items-center gap-3 border-b border-[#2a2a2a] p-4">
-                <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#202020]">
-                  <span className="text-[10px] font-semibold text-[#a3a3a3]">
+            <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
+              <div className="flex items-center gap-3 border-b border-border p-4">
+                <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg border border-border bg-surface-card">
+                  <span className="text-[10px] font-semibold text-muted-foreground">
                     {MONTHS[m - 1]}
                   </span>
                   <span className="text-lg font-bold leading-none text-white">
@@ -224,17 +224,17 @@ export function EventPublicPage({ event, onClose, design }) {
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-[#ededed]">
+                  <p className="text-sm font-semibold text-foreground">
                     {formatDate(event.date)}
                   </p>
-                  <p className="text-xs text-[#737373]">
+                  <p className="text-xs text-text-secondary">
                     {event.time} · {y}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-2 p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-[#737373]">
+                <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
                   Select ticket
                 </p>
                 {tickets.map((t, i) => {
@@ -248,8 +248,8 @@ export function EventPublicPage({ event, onClose, design }) {
                       className={cn(
                         "flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
                         isActive
-                          ? "bg-[#202020]"
-                          : "border-[#2a2a2a] bg-transparent hover:bg-[#1f1f1f]",
+                          ? "bg-surface-card"
+                          : "border-border bg-transparent hover:bg-surface-card",
                       )}
                     >
                       <span
@@ -268,11 +268,11 @@ export function EventPublicPage({ event, onClose, design }) {
                         ) : null}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium text-[#ededed]">
+                        <span className="block text-sm font-medium text-foreground">
                           {t.name}
                         </span>
                         {t.note ? (
-                          <span className="block text-xs text-[#737373]">
+                          <span className="block text-xs text-text-secondary">
                             {t.note}
                           </span>
                         ) : null}
@@ -285,7 +285,7 @@ export function EventPublicPage({ event, onClose, design }) {
                 })}
               </div>
 
-              <div className="space-y-3 border-t border-[#2a2a2a] p-4">
+              <div className="space-y-3 border-t border-border p-4">
                 <Button
                   style={accentStyle}
                   className="w-full hover:opacity-90"
@@ -296,7 +296,7 @@ export function EventPublicPage({ event, onClose, design }) {
                   {tickets[selected].price === 0 ? "Register" : "Get tickets"}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <p className="flex items-center justify-center gap-1.5 text-xs text-[#737373]">
+                <p className="flex items-center justify-center gap-1.5 text-xs text-text-secondary">
                   <Ticket className="h-3.5 w-3.5" />
                   {remaining > 0
                     ? `${remaining.toLocaleString()} tickets remaining`
@@ -306,7 +306,7 @@ export function EventPublicPage({ event, onClose, design }) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+                    className="flex-1 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
                     onClick={() => toast.success("Added to calendar.")}
                   >
                     <CalendarCheck className="h-4 w-4" /> Add
@@ -314,7 +314,7 @@ export function EventPublicPage({ event, onClose, design }) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+                    className="flex-1 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
                     onClick={() => toast.success("Share link copied.")}
                   >
                     <Share2 className="h-4 w-4" /> Share
@@ -324,44 +324,44 @@ export function EventPublicPage({ event, onClose, design }) {
             </div>
 
             {/* Good to know */}
-            <div className="rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-4">
-              <p className="mb-3 text-sm font-semibold text-[#ededed]">
+            <div className="rounded-2xl border border-border bg-surface-subtle p-4">
+              <p className="mb-3 text-sm font-semibold text-foreground">
                 Good to know
               </p>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-[#737373]">
+                  <span className="flex items-center gap-2 text-text-secondary">
                     <TypeIcon className="h-4 w-4" /> Format
                   </span>
-                  <span className="text-[#d4d4d4]">{event.type}</span>
+                  <span className="text-muted-foreground">{event.type}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-[#737373]">
+                  <span className="flex items-center gap-2 text-text-secondary">
                     <Gauge className="h-4 w-4" /> Capacity
                   </span>
-                  <span className="text-[#d4d4d4]">
+                  <span className="text-muted-foreground">
                     {event.capacity.toLocaleString()}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-[#737373]">
+                  <span className="flex items-center gap-2 text-text-secondary">
                     <Languages className="h-4 w-4" /> Language
                   </span>
-                  <span className="text-[#d4d4d4]">English</span>
+                  <span className="text-muted-foreground">English</span>
                 </div>
               </div>
             </div>
 
             {/* What you'll be asked */}
-            <div className="rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-4">
-              <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#ededed]">
-                <ClipboardList className="h-4 w-4 text-[#a3a3a3]" /> At registration
+            <div className="rounded-2xl border border-border bg-surface-subtle p-4">
+              <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                <ClipboardList className="h-4 w-4 text-muted-foreground" /> At registration
               </p>
               <ul className="space-y-2">
                 {REG_QUESTIONS.map((q) => (
                   <li
                     key={q}
-                    className="flex items-center gap-2 text-sm text-[#a3a3a3]"
+                    className="flex items-center gap-2 text-sm text-muted-foreground"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-[#525252]" />
                     {q}
@@ -370,7 +370,7 @@ export function EventPublicPage({ event, onClose, design }) {
               </ul>
             </div>
 
-            <p className="flex items-center justify-center gap-1.5 text-center text-xs text-[#525252]">
+            <p className="flex items-center justify-center gap-1.5 text-center text-xs text-text-tertiary">
               <Users className="h-3.5 w-3.5" />
               Powered by Geiger Events
             </p>

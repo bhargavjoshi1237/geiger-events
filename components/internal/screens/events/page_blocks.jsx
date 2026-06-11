@@ -59,7 +59,7 @@ const ATTENDEE_NAMES = [
 function SectionTitle({ icon: Icon, children }) {
   return (
     <h2 className="flex items-center gap-2 text-xl font-semibold text-white">
-      {Icon ? <Icon className="h-5 w-5 text-[#737373]" /> : null}
+      {Icon ? <Icon className="h-5 w-5 text-text-secondary" /> : null}
       {children}
     </h2>
   );
@@ -71,7 +71,7 @@ function AboutBlock({ event }) {
   return (
     <section className="space-y-4">
       <SectionTitle>About this event</SectionTitle>
-      <div className="space-y-3 text-sm leading-relaxed text-[#a3a3a3]">
+      <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
         <p>
           Join us for {event.name} — a {event.type.toLowerCase()} event bringing
           the community together for an unforgettable evening of ideas,
@@ -89,13 +89,13 @@ function AboutBlock({ event }) {
 
 function ExpectBlock() {
   return (
-    <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5">
-      <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#ededed]">
-        <Sparkles className="h-4 w-4 text-[#a3a3a3]" /> What to expect
+    <div className="rounded-xl border border-border bg-surface-subtle p-5">
+      <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+        <Sparkles className="h-4 w-4 text-muted-foreground" /> What to expect
       </p>
       <ul className="grid gap-2.5 sm:grid-cols-2">
         {WHAT_TO_EXPECT.map((item) => (
-          <li key={item} className="flex items-start gap-2 text-sm text-[#a3a3a3]">
+          <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
             {item}
           </li>
@@ -109,22 +109,22 @@ function ScheduleBlock() {
   return (
     <section className="space-y-4">
       <SectionTitle icon={Clock}>Schedule</SectionTitle>
-      <div className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a]">
+      <div className="overflow-hidden rounded-xl border border-border bg-surface-subtle">
         {AGENDA.map((slot, i) => (
           <div
             key={slot.title}
             className={cn(
               "flex gap-4 p-4",
-              i !== AGENDA.length - 1 && "border-b border-[#2a2a2a]",
+              i !== AGENDA.length - 1 && "border-b border-border",
             )}
           >
-            <span className="w-16 shrink-0 text-sm font-medium tabular-nums text-[#737373]">
+            <span className="w-16 shrink-0 text-sm font-medium tabular-nums text-text-secondary">
               {slot.time}
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-[#ededed]">{slot.title}</p>
+              <p className="text-sm font-medium text-foreground">{slot.title}</p>
               {slot.by ? (
-                <p className="text-xs text-[#737373]">{slot.by}</p>
+                <p className="text-xs text-text-secondary">{slot.by}</p>
               ) : null}
             </div>
           </div>
@@ -139,36 +139,36 @@ function LocationBlock({ event }) {
     <section className="space-y-4">
       <SectionTitle icon={MapPin}>Location</SectionTitle>
       <div>
-        <p className="text-sm font-medium text-[#ededed]">{event.venue}</p>
+        <p className="text-sm font-medium text-foreground">{event.venue}</p>
         {event.city && event.city !== "Remote" ? (
-          <p className="text-sm text-[#737373]">
+          <p className="text-sm text-text-secondary">
             61 Southwark Street, {event.city}
           </p>
         ) : (
-          <p className="text-sm text-[#737373]">
+          <p className="text-sm text-text-secondary">
             Online — link sent after registration
           </p>
         )}
       </div>
-      <div className="relative flex aspect-[21/9] items-center justify-center overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#202020]">
+      <div className="relative flex aspect-[21/9] items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-card">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#2a2a2a_1px,transparent_1px),linear-gradient(to_bottom,#2a2a2a_1px,transparent_1px)] bg-[size:32px_32px] opacity-50" />
-        <MapPin className="relative h-7 w-7 text-[#a3a3a3]" />
+        <MapPin className="relative h-7 w-7 text-muted-foreground" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex items-start gap-3 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-3">
-          <Train className="mt-0.5 h-4 w-4 shrink-0 text-[#a3a3a3]" />
+        <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
+          <Train className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <div>
-            <p className="text-sm font-medium text-[#ededed]">Public transport</p>
-            <p className="text-xs text-[#737373]">
+            <p className="text-sm font-medium text-foreground">Public transport</p>
+            <p className="text-xs text-text-secondary">
               2 min from Southwark (Jubilee line)
             </p>
           </div>
         </div>
-        <div className="flex items-start gap-3 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-3">
-          <Car className="mt-0.5 h-4 w-4 shrink-0 text-[#a3a3a3]" />
+        <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
+          <Car className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <div>
-            <p className="text-sm font-medium text-[#ededed]">Parking</p>
-            <p className="text-xs text-[#737373]">
+            <p className="text-sm font-medium text-foreground">Parking</p>
+            <p className="text-xs text-text-secondary">
               NCP Great Suffolk Street, 5 min walk
             </p>
           </div>
@@ -188,15 +188,15 @@ function WhosGoingBlock({ event }) {
       <div className="flex items-center gap-3">
         <div className="flex -space-x-2">
           {avatars.map((n) => (
-            <Avatar key={n} className="h-9 w-9 border-2 border-[#161616]">
-              <AvatarFallback className="bg-[#242424] text-xs text-[#d4d4d4]">
+            <Avatar key={n} className="h-9 w-9 border-2 border-background">
+              <AvatarFallback className="bg-surface-active text-xs text-muted-foreground">
                 {initials(n)}
               </AvatarFallback>
             </Avatar>
           ))}
         </div>
-        <span className="text-sm text-[#a3a3a3]">
-          <span className="font-medium text-[#ededed]">
+        <span className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">
             {goingCount.toLocaleString()}
           </span>{" "}
           going
@@ -212,11 +212,11 @@ function FaqBlock() {
       <SectionTitle icon={HelpCircle}>Frequently asked questions</SectionTitle>
       <Accordion type="single" collapsible className="w-full">
         {FAQ.map((f, i) => (
-          <AccordionItem key={f.q} value={`faq-${i}`} className="border-[#2a2a2a]">
-            <AccordionTrigger className="text-left text-sm text-[#ededed] hover:text-white hover:no-underline">
+          <AccordionItem key={f.q} value={`faq-${i}`} className="border-border">
+            <AccordionTrigger className="text-left text-sm text-foreground hover:text-foreground hover:no-underline">
               {f.q}
             </AccordionTrigger>
-            <AccordionContent className="text-sm text-[#a3a3a3]">
+            <AccordionContent className="text-sm text-muted-foreground">
               {f.a}
             </AccordionContent>
           </AccordionItem>
@@ -239,11 +239,11 @@ function HeadingBlock({ props }) {
 function TextBlock({ props }) {
   const paragraphs = (props.text || "").split("\n").filter(Boolean);
   return (
-    <div className="space-y-3 text-sm leading-relaxed text-[#a3a3a3]">
+    <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
       {paragraphs.length ? (
         paragraphs.map((p, i) => <p key={i}>{p}</p>)
       ) : (
-        <p className="text-[#525252]">Empty text block</p>
+        <p className="text-text-tertiary">Empty text block</p>
       )}
     </div>
   );
@@ -257,15 +257,15 @@ function ImageBlock({ props }) {
         <img
           src={props.url}
           alt={props.caption || ""}
-          className="w-full rounded-xl border border-[#2a2a2a] object-cover"
+          className="w-full rounded-xl border border-border object-cover"
         />
       ) : (
-        <div className="flex aspect-[16/9] items-center justify-center rounded-xl border border-dashed border-[#2a2a2a] bg-[#202020] text-[#3a3a3a]">
+        <div className="flex aspect-[16/9] items-center justify-center rounded-xl border border-dashed border-border bg-surface-card text-[#3a3a3a]">
           <ImgIcon className="h-10 w-10" />
         </div>
       )}
       {props.caption ? (
-        <figcaption className="text-center text-xs text-[#737373]">
+        <figcaption className="text-center text-xs text-text-secondary">
           {props.caption}
         </figcaption>
       ) : null}
@@ -275,12 +275,12 @@ function ImageBlock({ props }) {
 
 function VideoBlock({ props }) {
   return (
-    <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#202020]">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#2a2a2a] bg-[#1a1a1a] text-[#a3a3a3]">
+    <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-card">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-surface-subtle text-muted-foreground">
         <Play className="h-6 w-6" />
       </div>
       {props.url ? (
-        <span className="absolute bottom-3 left-3 max-w-[80%] truncate rounded bg-black/50 px-2 py-1 text-xs text-[#a3a3a3]">
+        <span className="absolute bottom-3 left-3 max-w-[80%] truncate rounded bg-black/50 px-2 py-1 text-xs text-muted-foreground">
           {props.url}
         </span>
       ) : null}
@@ -290,8 +290,8 @@ function VideoBlock({ props }) {
 
 function EmbedBlock({ props }) {
   return (
-    <div className="flex min-h-[120px] flex-col justify-center gap-2 rounded-xl border border-dashed border-[#2a2a2a] bg-[#202020] p-5 text-[#737373]">
-      <span className="flex items-center gap-2 text-sm font-medium text-[#a3a3a3]">
+    <div className="flex min-h-[120px] flex-col justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card p-5 text-text-secondary">
+      <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <CodeIcon className="h-4 w-4" /> Embedded content
       </span>
       <code className="block truncate text-xs">
@@ -303,7 +303,7 @@ function EmbedBlock({ props }) {
 
 function CtaBlock({ props, accent }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-8 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface-subtle p-8 text-center">
       <p className="text-lg font-semibold text-white">
         {props.title || "Ready to join us?"}
       </p>
@@ -319,7 +319,7 @@ function CtaBlock({ props, accent }) {
 }
 
 function DividerBlock() {
-  return <hr className="border-[#2a2a2a]" />;
+  return <hr className="border-border" />;
 }
 
 const BLOCK_RENDERERS = {

@@ -32,7 +32,7 @@ export function SidebarOption({
   const { state, isMobile } = useSidebar();
   const isCollapsed = state === "collapsed" && !isMobile;
 
-  const activeIconColor = iconColor || "text-white";
+  const activeIconColor = iconColor || "text-foreground";
   const inactiveIconColor = iconColor || "text-sidebar-foreground/70";
 
   return (
@@ -45,7 +45,7 @@ export function SidebarOption({
         className={cn(
           "transition-all text-sm h-9 group-data-[collapsible=icon]:justify-center",
           isActive && !subItems
-            ? "bg-sidebar-accent text-white"
+            ? "bg-sidebar-accent text-foreground"
             : isExpanded
               ? "bg-sidebar-accent/40 text-sidebar-foreground"
               : "text-sidebar-foreground",
@@ -72,7 +72,7 @@ export function SidebarOption({
           />
         )}
         {badge && !subItems && !isCollapsed && (
-          <SidebarMenuBadge className="mr-2 text-[#a3a3a3] text-[10px] px-1.5 py-0.5 rounded border border-[#333333] ml-auto">
+          <SidebarMenuBadge className="mr-2 text-muted-foreground text-[10px] px-1.5 py-0.5 rounded border border-border ml-auto">
             {badge}
           </SidebarMenuBadge>
         )}
@@ -92,8 +92,8 @@ export function SidebarOption({
                 className={cn(
                   "relative w-full flex items-center justify-start px-2 h-[35px] rounded-md text-sm leading-none transition-colors gap-2",
                   activeSubTab === sub.title
-                    ? "bg-sidebar-accent text-white font-medium"
-                    : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/50",
+                    ? "bg-sidebar-accent text-foreground font-medium"
+                    : "text-sidebar-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
                 )}
               >
                 {sub.icon && (
@@ -101,7 +101,7 @@ export function SidebarOption({
                     className={cn(
                       "w-4 h-4 shrink-0 transition-colors",
                       activeSubTab === sub.title
-                        ? iconColor || "text-white"
+                        ? iconColor || "text-foreground"
                         : iconColor || "text-sidebar-foreground/70",
                     )}
                   />
@@ -129,8 +129,8 @@ export function SidebarOption({
                     className={cn(
                       "relative w-full flex items-center justify-center px-2 h-[35px] rounded-md text-sm leading-none transition-colors",
                       activeSubTab === sub.title
-                        ? "bg-sidebar-accent text-white font-medium"
-                        : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/50",
+                        ? "bg-sidebar-accent text-foreground font-medium"
+                        : "text-sidebar-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
                     )}
                   >
                     {sub.icon && (
@@ -138,7 +138,7 @@ export function SidebarOption({
                         className={cn(
                           "w-4 h-4 shrink-0 transition-colors",
                           activeSubTab === sub.title
-                            ? iconColor || "text-white"
+                            ? iconColor || "text-foreground"
                             : iconColor || "text-sidebar-foreground/70",
                         )}
                       />

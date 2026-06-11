@@ -123,7 +123,7 @@ const MOMENTUM_META = {
 const EVENT_STATUS_META = {
   "On sale": "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
   "Sold out": "border-sky-500/20 bg-sky-500/10 text-sky-400",
-  Draft: "border-[#333333] bg-[#202020] text-[#a3a3a3]",
+  Draft: "border-border bg-surface-card text-muted-foreground",
 };
 
 // Operational tasks waiting on the organizer — the reason to open this screen.
@@ -147,7 +147,7 @@ function WidgetShell({ children, className, contentClassName }) {
   return (
     <Card
       className={cn(
-        "bg-[#1a1a1a] border-[#2a2a2a] text-[#e7e7e7] rounded-xl py-0 gap-0 overflow-hidden h-full",
+        "bg-surface-subtle border-border text-foreground rounded-xl py-0 gap-0 overflow-hidden h-full",
         className,
       )}
     >
@@ -160,8 +160,8 @@ function WidgetHeader({ title, subtitle, action }) {
   return (
     <div className="flex w-full items-start justify-between gap-3">
       <div className="flex min-w-0 flex-1 flex-col">
-        <h3 className="text-base font-semibold text-[#ededed]">{title}</h3>
-        <p className="text-sm text-[#a3a3a3]">{subtitle}</p>
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
       {action}
     </div>
@@ -224,7 +224,7 @@ function RegistrationsTrendWidget() {
                   indicator="line"
                   hideLabel
                   formatter={(value) => (
-                    <span className="font-medium tabular-nums text-[#ededed]">
+                    <span className="font-medium tabular-nums text-foreground">
                       {formatValue(value)}
                     </span>
                   )}
@@ -320,11 +320,11 @@ function TicketMixWidget() {
           </PieChart>
         </ChartContainer>
         <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-          <span className="text-3xl font-bold leading-none text-[#ffffff]">{selectedItem?.value}</span>
-          <span className="mt-1 text-xs font-medium text-[#a3a3a3]">{selectedItem?.label}</span>
+          <span className="text-3xl font-bold leading-none text-foreground">{selectedItem?.value}</span>
+          <span className="mt-1 text-xs font-medium text-muted-foreground">{selectedItem?.label}</span>
         </div>
       </div>
-      <p className="mt-2 text-center text-xs text-[#737373]">
+      <p className="mt-2 text-center text-xs text-text-secondary">
         {selectedItem?.label} is {Math.round((selectedItem.value / total) * 100)}% of {total.toLocaleString()} tickets
       </p>
     </WidgetShell>
@@ -357,7 +357,7 @@ function ConversionFunnelWidget() {
         action={
           <div className="flex shrink-0 flex-col items-end">
             <span className="text-3xl font-bold leading-none text-white">{overall}%</span>
-            <span className="mt-1 text-[11px] text-[#737373]">view → ticket</span>
+            <span className="mt-1 text-[11px] text-text-secondary">view → ticket</span>
           </div>
         }
       />
@@ -372,8 +372,8 @@ function ConversionFunnelWidget() {
                   nameKey="key"
                   formatter={(value, name, item) => (
                     <span className="flex w-full items-center justify-between gap-3">
-                      <span className="text-[#a3a3a3]">{item.payload.label}</span>
-                      <span className="font-medium tabular-nums text-[#ededed]">
+                      <span className="text-muted-foreground">{item.payload.label}</span>
+                      <span className="font-medium tabular-nums text-foreground">
                         {item.payload.value.toLocaleString()} · {item.payload.share}%
                       </span>
                     </span>
@@ -458,7 +458,7 @@ function GaugeWidget({ title, subtitle, value, caption, footnote }) {
                         <tspan
                           x={viewBox.cx}
                           y={(viewBox.cy || 0) + 22}
-                          className="fill-[#a3a3a3] text-xs font-medium"
+                          className="fill-muted-foreground text-xs font-medium"
                         >
                           {caption}
                         </tspan>
@@ -472,7 +472,7 @@ function GaugeWidget({ title, subtitle, value, caption, footnote }) {
         </ChartContainer>
       </div>
       {footnote ? (
-        <p className="mt-1 text-center text-xs text-[#737373]">{footnote}</p>
+        <p className="mt-1 text-center text-xs text-text-secondary">{footnote}</p>
       ) : null}
     </WidgetShell>
   );
@@ -508,10 +508,10 @@ function TopEventsTable() {
         />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#202020]">
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface-card">
         <Table>
           <TableHeader>
-            <TableRow className="border-[#2a2a2a]">
+            <TableRow className="border-border">
               <TableHead>Event</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[180px]">Sell-through</TableHead>
@@ -526,11 +526,11 @@ function TopEventsTable() {
               const meta = MOMENTUM_META[event.momentum] || MOMENTUM_META.track;
               const MomentumIcon = meta.icon;
               return (
-                <TableRow key={event.name} className="border-[#2a2a2a]">
+                <TableRow key={event.name} className="border-border">
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                      <span className="font-medium text-[#ededed]">{event.name}</span>
-                      <p className="text-xs text-[#737373]">
+                      <span className="font-medium text-foreground">{event.name}</span>
+                      <p className="text-xs text-text-secondary">
                         {event.sold.toLocaleString()} / {event.capacity.toLocaleString()} seats
                       </p>
                     </div>
@@ -547,13 +547,13 @@ function TopEventsTable() {
                   </TableCell>
                   <TableCell>
                     <div className="w-[140px] space-y-1.5">
-                      <div className="h-1.5 overflow-hidden rounded-full bg-[#2a2a2a]">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-surface-hover">
                         <div
                           className="h-full rounded-full bg-[#ededed]"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <p className="text-xs text-[#737373]">{pct}%</p>
+                      <p className="text-xs text-text-secondary">{pct}%</p>
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-semibold tabular-nums text-white">
@@ -570,7 +570,7 @@ function TopEventsTable() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="text-[#a3a3a3] hover:bg-[#252525] hover:text-white"
+                      className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
                     >
                       <ArrowUpRight className="h-4 w-4" />
                     </Button>
@@ -599,7 +599,7 @@ function GeneralStatsCard() {
         title="Overall Stats"
         subtitle="A quick snapshot of key numbers across your events."
         action={
-          <span className="shrink-0 rounded-md border border-[#2a2a2a] bg-[#202020] px-2 py-0.5 text-[10px] font-medium text-[#a3a3a3]">
+          <span className="shrink-0 rounded-md border border-border bg-surface-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
             {total} Legends
           </span>
         }
@@ -612,22 +612,22 @@ function GeneralStatsCard() {
             <button
               key={item.key}
               type="button"
-              className="group flex items-center gap-3.5 rounded-xl p-3.5 text-left transition-colors hover:bg-[#1c1c1c]"
+              className="group flex items-center gap-3.5 rounded-xl p-3.5 text-left transition-colors hover:bg-surface-card"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#202020] text-[#a3a3a3]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
                 <Icon className="h-[18px] w-[18px]" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-[#ededed]">{item.label}</span>
-                  <span className="shrink-0 rounded-md border border-[#2a2a2a] bg-[#202020] px-1.5 py-0.5 text-[10px] font-medium text-[#737373]">
+                  <span className="truncate text-sm font-semibold text-foreground">{item.label}</span>
+                  <span className="shrink-0 rounded-md border border-border bg-surface-card px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
                     {URGENCY_LABELS[item.urgency]}
                   </span>
                 </div>
-                <p className="mt-0.5 truncate text-xs text-[#737373]">{item.hint}</p>
+                <p className="mt-0.5 truncate text-xs text-text-secondary">{item.hint}</p>
               </div>
               <span className="shrink-0 text-xl font-bold tabular-nums text-white">{item.value}</span>
-              <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-medium text-[#737373] transition-colors group-hover:text-[#e7e7e7]">
+              <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-medium text-text-secondary transition-colors group-hover:text-foreground">
                 <ChevronRight className="h-3 w-3" />
               </span>
             </button>
@@ -649,11 +649,11 @@ export function EventsOverviewScreen() {
           <div>
             <div className="flex w-full items-center justify-center gap-3 text-center md:w-auto md:justify-start md:text-left">
               <h1 className="text-2xl font-bold text-white tracking-tight">Events Overview</h1>
-              <span className="bg-[#1a1a1a] text-[#737373] text-[9px] px-1.5 py-0.5 rounded border border-[#2a2a2a] font-mono tracking-widest shrink-0">
+              <span className="bg-surface-subtle text-text-secondary text-[9px] px-1.5 py-0.5 rounded border border-border font-mono tracking-widest shrink-0">
                 WORKSPACE
               </span>
             </div>
-            <p className="mt-1 text-center text-sm text-zinc-500 md:text-left">
+            <p className="mt-1 text-center text-sm text-foreground0 md:text-left">
               Track registrations, ticket sales, check-ins, and revenue across all your events.
             </p>
           </div>
@@ -667,12 +667,12 @@ export function EventsOverviewScreen() {
                     className={cn(
                       "flex flex-1 flex-col items-center md:flex-none",
                       i === 0 && "md:pr-8",
-                      i > 0 && "border-l border-[#2a2a2a]",
+                      i > 0 && "border-l border-border",
                       i > 0 && !last && "md:px-8",
                       last && i > 0 && "md:pl-8",
                     )}
                   >
-                    <span className="text-[#737373] text-[11px] uppercase tracking-wider font-medium">
+                    <span className="text-text-secondary text-[11px] uppercase tracking-wider font-medium">
                       {stat.label}
                     </span>
 

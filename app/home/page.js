@@ -24,7 +24,7 @@ export default function Home() {
   const Screen = getScreen(currentTab);
 
   return (
-    <div className="flex-col h-[100dvh] w-full bg-[#161616] text-[#ededed] font-sans overflow-hidden selection:bg-[#333333] flex">
+    <div className="flex-col h-[100dvh] w-full bg-background text-foreground font-sans overflow-hidden selection:bg-surface-strong flex">
       <SidebarProvider
         className="flex-col !flex h-full min-w-0"
         style={{ flexDirection: "column" }}

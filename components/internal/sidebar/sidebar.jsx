@@ -39,11 +39,11 @@ function MobileSidebarHeader() {
               onError={(e) => {
                 e.currentTarget.style.display = "none";
                 e.currentTarget.parentElement.innerHTML =
-                  '<div class="w-2 h-2 bg-white rounded-full"></div>';
+                  '<div class="w-2 h-2 bg-foreground rounded-full"></div>';
               }}
             />
           </div>
-          <span className="text-white font-semibold text-sm">Events</span>
+          <span className="text-foreground font-semibold text-sm">Events</span>
         </div>
       </div>
     </SidebarHeader>
@@ -111,7 +111,7 @@ export function AppSidebar({
           type="button"
           variant="ghost"
           onClick={toggleSidebar}
-          className="flex items-center gap-3 p-2 w-full rounded-lg hover:bg-sidebar-accent transition-all text-sidebar-foreground hover:text-white group-data-[collapsible=icon]:justify-center"
+          className="flex items-center gap-3 p-2 w-full rounded-lg hover:bg-sidebar-accent transition-all text-sidebar-foreground hover:text-foreground group-data-[collapsible=icon]:justify-center"
         >
           <PanelLeft className="w-5 h-5 shrink-0" />
         </Button>

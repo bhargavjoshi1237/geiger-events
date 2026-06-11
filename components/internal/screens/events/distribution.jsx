@@ -62,14 +62,14 @@ function CodeBlock({ code }) {
   };
   return (
     <div className="relative">
-      <pre className="overflow-x-auto rounded-lg border border-[#2a2a2a] bg-[#161616] p-4 pr-12 text-xs leading-relaxed text-[#a3a3a3]">
+      <pre className="overflow-x-auto rounded-lg border border-border bg-background p-4 pr-12 text-xs leading-relaxed text-muted-foreground">
         <code>{code}</code>
       </pre>
       <Button
         variant="ghost"
         size="icon-sm"
         onClick={copy}
-        className="absolute right-2 top-2 text-[#737373] hover:bg-[#252525] hover:text-white"
+        className="absolute right-2 top-2 text-text-secondary hover:bg-surface-active hover:text-foreground"
       >
         <Copy className="h-3.5 w-3.5" />
       </Button>
@@ -114,8 +114,8 @@ export function AddToCalendarSection({ event }) {
         </SectionCard>
 
         <SectionCard title="Button preview">
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-[#2a2a2a] bg-[#161616] p-8">
-            <Button className="bg-white text-[#161616] hover:bg-[#e7e7e7]">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-background p-8">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <CalendarCheck className="h-4 w-4" /> Add to calendar
             </Button>
             <div className="flex flex-wrap justify-center gap-2">
@@ -128,7 +128,7 @@ export function AddToCalendarSection({ event }) {
           </div>
           <Button
             variant="outline"
-            className="mt-4 w-full border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+            className="mt-4 w-full border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={() => toast.success("Downloading event.ics…")}
           >
             <Download className="h-4 w-4" /> Download .ics
@@ -196,19 +196,19 @@ export function EmbeddableWidgetSection({ event }) {
 
         <div className="space-y-6">
           <SectionCard title="Preview">
-            <div className="flex items-center justify-center rounded-xl border border-dashed border-[#2a2a2a] bg-[#161616] p-10">
+            <div className="flex items-center justify-center rounded-xl border border-dashed border-border bg-background p-10">
               {type === "button" ? (
-                <Button className="bg-white text-[#161616] hover:bg-[#e7e7e7]">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
                   Get tickets
                 </Button>
               ) : (
-                <div className="w-64 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-4">
-                  <div className="mb-3 aspect-video rounded-lg bg-[#202020]" />
-                  <p className="text-sm font-semibold text-[#ededed]">
+                <div className="w-64 rounded-xl border border-border bg-surface-subtle p-4">
+                  <div className="mb-3 aspect-video rounded-lg bg-surface-card" />
+                  <p className="text-sm font-semibold text-foreground">
                     Summer Product Launch
                   </p>
-                  <p className="text-xs text-[#737373]">Jun 18 · London</p>
-                  <Button className="mt-3 w-full bg-white text-[#161616] hover:bg-[#e7e7e7]">
+                  <p className="text-xs text-text-secondary">Jun 18 · London</p>
+                  <Button className="mt-3 w-full bg-primary text-primary-foreground hover:bg-primary/90">
                     Register
                   </Button>
                 </div>
@@ -270,18 +270,18 @@ export function SeoSharingSection({ event }) {
         </SectionCard>
 
         <SectionCard title="Social preview">
-          <div className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#161616]">
-            <div className="flex aspect-[1.91/1] items-center justify-center bg-[#202020] text-[#525252]">
+          <div className="overflow-hidden rounded-xl border border-border bg-background">
+            <div className="flex aspect-[1.91/1] items-center justify-center bg-surface-card text-text-tertiary">
               <MapPin className="h-7 w-7" />
             </div>
             <div className="space-y-1 p-4">
-              <p className="text-[11px] uppercase tracking-wide text-[#525252]">
+              <p className="text-[11px] uppercase tracking-wide text-text-tertiary">
                 geiger.events
               </p>
-              <p className="line-clamp-1 text-sm font-semibold text-[#ededed]">
+              <p className="line-clamp-1 text-sm font-semibold text-foreground">
                 {title}
               </p>
-              <p className="line-clamp-2 text-xs text-[#737373]">
+              <p className="line-clamp-2 text-xs text-text-secondary">
                 {description}
               </p>
             </div>
@@ -301,7 +301,7 @@ export function SeoSharingSection({ event }) {
                 key={n.key}
                 variant="outline"
                 size="sm"
-                className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
                 onClick={() => toast.success(`Shared via ${n.title}.`)}
               >
                 <Icon className="h-4 w-4" /> {n.title}
@@ -333,7 +333,7 @@ export function LocalizationSection({ event }) {
       header: "Language",
       render: (l) => (
         <div className="flex items-center gap-2">
-          <span className="font-medium text-[#ededed]">{l.name}</span>
+          <span className="font-medium text-foreground">{l.name}</span>
           {l.isDefault ? <Badge variant="info">Default</Badge> : null}
         </div>
       ),
@@ -342,7 +342,7 @@ export function LocalizationSection({ event }) {
       key: "locale",
       header: "Locale",
       render: (l) => (
-        <code className="rounded bg-[#202020] px-1.5 py-0.5 text-xs text-[#a3a3a3]">
+        <code className="rounded bg-surface-card px-1.5 py-0.5 text-xs text-muted-foreground">
           {l.locale}
         </code>
       ),
@@ -352,13 +352,13 @@ export function LocalizationSection({ event }) {
       header: "Translated",
       render: (l) => (
         <div className="w-[140px] space-y-1.5">
-          <div className="h-1.5 overflow-hidden rounded-full bg-[#2a2a2a]">
+          <div className="h-1.5 overflow-hidden rounded-full bg-surface-hover">
             <div
               className="h-full rounded-full bg-[#ededed]"
               style={{ width: `${l.progress}%` }}
             />
           </div>
-          <p className="text-xs text-[#737373]">{l.progress}%</p>
+          <p className="text-xs text-text-secondary">{l.progress}%</p>
         </div>
       ),
     },
@@ -371,7 +371,7 @@ export function LocalizationSection({ event }) {
         <Button
           size="sm"
           variant="ghost"
-          className="text-[#a3a3a3] hover:bg-[#252525] hover:text-white"
+          className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
         >
           Edit
         </Button>
@@ -385,7 +385,7 @@ export function LocalizationSection({ event }) {
         title="Languages"
         action={
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setOpen(true)}
           >
             <Plus className="h-4 w-4" /> Add language
@@ -425,13 +425,13 @@ export function LocalizationSection({ event }) {
           <DialogFooter>
             <Button
               variant="outline"
-              className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => setOpen(false)}
             >
               Cancel
             </Button>
             <Button
-              className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 setLangs((prev) => [
                   ...prev,
@@ -482,12 +482,12 @@ export function HybridModeSection({ event }) {
                 className={cn(
                   "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors",
                   active
-                    ? "border-[#3a3a3a] bg-[#202020]"
-                    : "border-[#2a2a2a] bg-transparent hover:bg-[#1f1f1f]",
+                    ? "border-border-strong bg-surface-card"
+                    : "border-border bg-transparent hover:bg-surface-card",
                 )}
               >
                 <div className="flex w-full items-center justify-between">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-[#d4d4d4]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
                     <Icon className="h-4 w-4" />
                   </div>
                   {active ? (
@@ -496,8 +496,8 @@ export function HybridModeSection({ event }) {
                     </span>
                   ) : null}
                 </div>
-                <p className="text-sm font-medium text-[#ededed]">{f.label}</p>
-                <p className="text-xs text-[#737373]">{f.description}</p>
+                <p className="text-sm font-medium text-foreground">{f.label}</p>
+                <p className="text-xs text-text-secondary">{f.description}</p>
               </button>
             );
           })}
@@ -545,7 +545,7 @@ export function HybridModeSection({ event }) {
 
       <div className="flex justify-end">
         <Button
-          className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => toast.success("Format settings saved.")}
         >
           Save settings

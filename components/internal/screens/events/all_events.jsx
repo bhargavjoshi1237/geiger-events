@@ -198,13 +198,13 @@ function CreateEventDialog({ open, onOpenChange, onCreate }) {
         <DialogFooter>
           <Button
             variant="outline"
-            className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={() => onOpenChange(false)}
           >
             Cancel
           </Button>
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={submit}
           >
             Create event
@@ -298,8 +298,8 @@ export function AllEventsScreen() {
       header: "Event",
       render: (e) => (
         <div className="flex flex-col gap-1">
-          <span className="font-medium text-[#ededed]">{e.name}</span>
-          <span className="text-xs text-[#737373]">
+          <span className="font-medium text-foreground">{e.name}</span>
+          <span className="text-xs text-text-secondary">
             {formatDate(e.date)} · {e.time} · {e.venue}
             {e.city && e.city !== "Remote" ? `, ${e.city}` : ""}
           </span>
@@ -329,13 +329,13 @@ export function AllEventsScreen() {
           : 0;
         return (
           <div className="w-[150px] space-y-1.5">
-            <div className="h-1.5 overflow-hidden rounded-full bg-[#2a2a2a]">
+            <div className="h-1.5 overflow-hidden rounded-full bg-surface-hover">
               <div
                 className="h-full rounded-full bg-[#ededed]"
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="text-xs text-[#737373]">
+            <p className="text-xs text-text-secondary">
               {e.sold.toLocaleString()} / {e.capacity.toLocaleString()} · {pct}%
             </p>
           </div>
@@ -361,31 +361,31 @@ export function AllEventsScreen() {
             <Button
               variant="ghost"
               size="icon-sm"
-              className="text-[#a3a3a3] hover:bg-[#252525] hover:text-white"
+              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="border-[#2a2a2a] bg-[#1a1a1a] text-[#ededed]"
+            className="border-border bg-surface-subtle text-foreground"
           >
             <DropdownMenuItem
-              className="focus:bg-[#2a2a2a]"
+              className="focus:bg-surface-hover"
               onClick={() => setSelectedEvent(e)}
             >
               <Pencil className="h-4 w-4" /> Edit
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="focus:bg-[#2a2a2a]"
+              className="focus:bg-surface-hover"
               onClick={() => handleDuplicate(e)}
             >
               <Copy className="h-4 w-4" /> Duplicate
             </DropdownMenuItem>
-            <DropdownMenuItem className="focus:bg-[#2a2a2a]">
+            <DropdownMenuItem className="focus:bg-surface-hover">
               <ExternalLink className="h-4 w-4" /> View page
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-[#2a2a2a]" />
+            <DropdownMenuSeparator className="bg-surface-hover" />
             <DropdownMenuItem
               variant="destructive"
               className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
@@ -416,7 +416,7 @@ export function AllEventsScreen() {
         description="Every event in your workspace — drafts, on sale, and past. Search, filter, and manage them all from here."
         actions={
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="h-4 w-4" /> Create event
@@ -455,14 +455,14 @@ export function AllEventsScreen() {
         getRowKey={(e) => e.id}
         onRowClick={(e) => setSelectedEvent(e)}
         empty={
-          <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a]">
+          <div className="rounded-xl border border-border bg-surface-subtle">
             <EmptyState
               icon={CalendarPlus}
               title="No events match your filters"
               description="Try clearing the search or filters, or create a new event to get started."
               action={
                 <Button
-                  className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={() => setCreateOpen(true)}
                 >
                   <Plus className="h-4 w-4" /> Create event

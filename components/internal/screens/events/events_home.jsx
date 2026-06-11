@@ -56,8 +56,8 @@ export function EventsHomeScreen() {
       header: "Event",
       render: (e) => (
         <div className="flex flex-col gap-1">
-          <span className="font-medium text-[#ededed]">{e.name}</span>
-          <span className="text-xs text-[#737373]">
+          <span className="font-medium text-foreground">{e.name}</span>
+          <span className="text-xs text-text-secondary">
             {formatDate(e.date)} · {e.venue}
           </span>
         </div>
@@ -92,7 +92,7 @@ export function EventsHomeScreen() {
         title="Events"
         description="Your event command center — create, organize, and keep momentum across everything you're running."
         actions={
-          <Button className="bg-white text-[#161616] hover:bg-[#e7e7e7]">
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
             <CalendarPlus className="h-4 w-4" /> Create event
           </Button>
         }
@@ -107,18 +107,18 @@ export function EventsHomeScreen() {
             <button
               key={action.label}
               type="button"
-              className="group flex items-center gap-3 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-4 text-left transition-colors hover:bg-[#202020]"
+              className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:bg-surface-card"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#202020] text-[#d4d4d4]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
                 <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#ededed]">
+                <p className="text-sm font-semibold text-foreground">
                   {action.label}
                 </p>
-                <p className="truncate text-xs text-[#737373]">{action.hint}</p>
+                <p className="truncate text-xs text-text-secondary">{action.hint}</p>
               </div>
-              <ArrowUpRight className="ml-auto h-4 w-4 text-[#525252] transition-colors group-hover:text-[#a3a3a3]" />
+              <ArrowUpRight className="ml-auto h-4 w-4 text-text-tertiary transition-colors group-hover:text-muted-foreground" />
             </button>
           );
         })}
@@ -131,7 +131,7 @@ export function EventsHomeScreen() {
           <Button
             variant="outline"
             size="sm"
-            className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
             View all
           </Button>

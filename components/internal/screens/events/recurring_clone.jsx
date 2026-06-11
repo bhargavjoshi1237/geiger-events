@@ -59,13 +59,13 @@ export function RecurringEventsSection({ event }) {
     {
       key: "n",
       header: "#",
-      render: (o) => <span className="text-[#737373]">{o.id + 1}</span>,
+      render: (o) => <span className="text-text-secondary">{o.id + 1}</span>,
     },
     {
       key: "date",
       header: "Date",
       render: (o) => (
-        <span className="font-medium text-[#ededed]">{formatDate(o.date)}</span>
+        <span className="font-medium text-foreground">{formatDate(o.date)}</span>
       ),
     },
     {
@@ -117,7 +117,7 @@ export function RecurringEventsSection({ event }) {
                           "h-9 w-12 rounded-md border text-sm font-medium transition-colors",
                           active
                             ? "border-white bg-white text-[#161616]"
-                            : "border-[#2a2a2a] bg-[#202020] text-[#a3a3a3] hover:bg-[#252525]",
+                            : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                         )}
                       >
                         {d}
@@ -142,8 +142,8 @@ export function RecurringEventsSection({ event }) {
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                       ends === opt.value
-                        ? "border-[#3a3a3a] bg-[#202020] text-[#ededed]"
-                        : "border-[#2a2a2a] bg-transparent text-[#a3a3a3] hover:bg-[#1f1f1f]",
+                        ? "border-border-strong bg-surface-card text-foreground"
+                        : "border-border bg-transparent text-muted-foreground hover:bg-surface-card",
                     )}
                   >
                     <span
@@ -178,12 +178,12 @@ export function RecurringEventsSection({ event }) {
 
         <div className="space-y-6">
           <SectionCard title="Summary">
-            <div className="flex items-start gap-3 rounded-lg border border-[#2a2a2a] bg-[#202020] p-3">
-              <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-[#a3a3a3]" />
-              <p className="text-sm text-[#ededed]">{summary}</p>
+            <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-card p-3">
+              <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="text-sm text-foreground">{summary}</p>
             </div>
             <Button
-              className="mt-4 w-full bg-white text-[#161616] hover:bg-[#e7e7e7]"
+              className="mt-4 w-full bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => toast.success("Recurrence rule saved.")}
             >
               Generate occurrences

@@ -63,7 +63,7 @@ export const PAGE_MODES = [
 ];
 
 export const ACCENTS = [
-  { key: "white", label: "Classic", color: "#ffffff", text: "#161616" },
+  { key: "white", label: "Classic", color: "var(--foreground)", text: "#161616" },
   { key: "violet", label: "Violet", color: "#8b5cf6", text: "#ffffff" },
   { key: "emerald", label: "Emerald", color: "#10b981", text: "#06281d" },
   { key: "sky", label: "Sky", color: "#0ea5e9", text: "#06212e" },
@@ -233,12 +233,12 @@ function AddBlockDialog({ open, onOpenChange, existingTypes, onAdd }) {
                   onAdd(b.type);
                   onOpenChange(false);
                 }}
-                className="flex flex-col items-start gap-2 rounded-xl border border-[#2a2a2a] bg-[#202020] p-3 text-left transition-colors hover:border-[#3a3a3a] hover:bg-[#252525]"
+                className="flex flex-col items-start gap-2 rounded-xl border border-border bg-surface-card p-3 text-left transition-colors hover:border-border-strong hover:bg-surface-active"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-[#d4d4d4]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
                   <Icon className="h-4 w-4" />
                 </div>
-                <span className="text-sm font-medium text-[#ededed]">
+                <span className="text-sm font-medium text-foreground">
                   {b.label}
                 </span>
               </button>
@@ -297,13 +297,13 @@ function BlockEditorDialog({ block, onOpenChange, onSave }) {
         <DialogFooter>
           <Button
             variant="outline"
-            className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={() => onOpenChange(false)}
           >
             Cancel
           </Button>
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => onSave(draft)}
           >
             Save block
@@ -351,7 +351,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
           <Button
             size="sm"
             variant="outline"
-            className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={onPreview}
           >
             <Eye className="h-4 w-4" /> Preview
@@ -369,12 +369,12 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                 className={cn(
                   "flex flex-col gap-1.5 rounded-xl border p-4 text-left transition-colors",
                   active
-                    ? "border-[#3a3a3a] bg-[#202020]"
-                    : "border-[#2a2a2a] bg-transparent hover:bg-[#1f1f1f]",
+                    ? "border-border-strong bg-surface-card"
+                    : "border-border bg-transparent hover:bg-surface-card",
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-[#ededed]">
+                  <span className="text-sm font-semibold text-foreground">
                     {mode.label}
                   </span>
                   {active ? (
@@ -383,7 +383,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                     </span>
                   ) : null}
                 </div>
-                <span className="text-xs text-[#737373]">{mode.desc}</span>
+                <span className="text-xs text-text-secondary">{mode.desc}</span>
               </button>
             );
           })}
@@ -393,14 +393,14 @@ export function PageDesignSection({ design, onChange, onPreview }) {
       {!customizable ? (
         <SectionCard>
           <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#202020] text-[#a3a3a3]">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
               <Palette className="h-4 w-4" />
             </div>
-            <p className="text-sm text-[#a3a3a3]">
+            <p className="text-sm text-muted-foreground">
               Standard mode uses Geiger&apos;s tuned, mobile-optimized layout —
               nothing to configure. Switch to{" "}
-              <span className="text-[#ededed]">Themed</span> to set your brand
-              colors, or <span className="text-[#ededed]">Custom</span> to build
+              <span className="text-foreground">Themed</span> to set your brand
+              colors, or <span className="text-foreground">Custom</span> to build
               the page block by block.
             </p>
           </div>
@@ -448,7 +448,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                           "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
                           design.cover === c.key
                             ? "border-white bg-white text-[#161616]"
-                            : "border-[#2a2a2a] bg-[#202020] text-[#a3a3a3] hover:bg-[#252525]",
+                            : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                         )}
                       >
                         {c.label}
@@ -469,7 +469,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                           f.className,
                           design.font === f.key
                             ? "border-white bg-white text-[#161616]"
-                            : "border-[#2a2a2a] bg-[#202020] text-[#a3a3a3] hover:bg-[#252525]",
+                            : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                         )}
                       >
                         {f.label}
@@ -493,7 +493,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
                   onClick={() => setAddOpen(true)}
                 >
                   <Plus className="h-4 w-4" /> Add block
@@ -519,21 +519,21 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                 return (
                   <div
                     key={b.id}
-                    className="flex items-center gap-2 rounded-lg border border-[#2a2a2a] bg-[#202020] px-3 py-2.5"
+                    className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2.5"
                   >
-                    <GripVertical className="h-4 w-4 shrink-0 text-[#525252]" />
+                    <GripVertical className="h-4 w-4 shrink-0 text-text-tertiary" />
                     {Icon ? (
-                      <Icon className="h-4 w-4 shrink-0 text-[#737373]" />
+                      <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
                     ) : null}
                     <span
                       className={cn(
                         "min-w-0 flex-1 truncate text-sm",
-                        b.visible ? "text-[#ededed]" : "text-[#5c5c5c]",
+                        b.visible ? "text-foreground" : "text-text-tertiary",
                       )}
                     >
                       {meta?.label || b.type}
                       {meta?.category === "content" ? (
-                        <span className="ml-2 text-xs text-[#525252]">
+                        <span className="ml-2 text-xs text-text-tertiary">
                           {(b.props?.text || b.props?.title || "").slice(0, 28)}
                         </span>
                       ) : null}
@@ -544,7 +544,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                         size="icon-sm"
                         disabled={i === 0}
                         onClick={() => moveBlock(i, -1)}
-                        className="text-[#737373] hover:bg-[#252525] hover:text-white disabled:opacity-30"
+                        className="text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
                       >
                         <ArrowUp className="h-4 w-4" />
                       </Button>
@@ -553,7 +553,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                         size="icon-sm"
                         disabled={i === design.blocks.length - 1}
                         onClick={() => moveBlock(i, 1)}
-                        className="text-[#737373] hover:bg-[#252525] hover:text-white disabled:opacity-30"
+                        className="text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
                       >
                         <ArrowDown className="h-4 w-4" />
                       </Button>
@@ -562,7 +562,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => setEditing(b)}
-                          className="text-[#737373] hover:bg-[#252525] hover:text-white"
+                          className="text-text-secondary hover:bg-surface-active hover:text-foreground"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -571,7 +571,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => toggleBlock(b.id)}
-                        className="text-[#737373] hover:bg-[#252525] hover:text-white"
+                        className="text-text-secondary hover:bg-surface-active hover:text-foreground"
                         title={b.visible ? "Hide" : "Show"}
                       >
                         <Eye className="h-4 w-4" />
@@ -581,7 +581,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => removeBlock(b.id)}
-                          className="text-[#737373] hover:bg-red-500/10 hover:text-red-400"
+                          className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

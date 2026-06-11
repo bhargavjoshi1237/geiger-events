@@ -32,16 +32,16 @@ export function ScreenHeader({ title, description, actions, className }) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 border-b border-[#2a2a2a] pb-6 md:flex-row md:items-center md:justify-between",
+        "flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between",
         className,
       )}
     >
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight text-[#e7e7e7] md:text-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
           {title}
         </h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm font-medium text-[#a3a3a3]">
+          <p className="mt-1 max-w-2xl text-sm font-medium text-muted-foreground">
             {description}
           </p>
         ) : null}
@@ -79,16 +79,16 @@ export function StatTile({ label, value, delta, trend, hint, icon: Icon }) {
       ? "text-emerald-400"
       : trend === "down"
         ? "text-red-400"
-        : "text-[#737373]";
+        : "text-text-secondary";
 
   return (
-    <Card className="rounded-xl border-[#2a2a2a] bg-[#1a1a1a] py-0 text-[#e7e7e7]">
+    <Card className="rounded-xl border-border bg-surface-subtle py-0 text-foreground">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-[#737373]">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">
             {label}
           </span>
-          {Icon ? <Icon className="h-4 w-4 text-[#525252]" /> : null}
+          {Icon ? <Icon className="h-4 w-4 text-text-tertiary" /> : null}
         </div>
         <div className="mt-2 flex items-end gap-2">
           <span className="text-2xl font-bold leading-none text-white tabular-nums">
@@ -101,7 +101,7 @@ export function StatTile({ label, value, delta, trend, hint, icon: Icon }) {
           ) : null}
         </div>
         {hint ? (
-          <span className="mt-1.5 block text-[11px] text-[#525252]">{hint}</span>
+          <span className="mt-1.5 block text-[11px] text-text-tertiary">{hint}</span>
         ) : null}
       </CardContent>
     </Card>
@@ -181,7 +181,7 @@ export function StatsBar({ stats, columns = 4, className }) {
   return (
     <Card
       className={cn(
-        "gap-0 overflow-hidden rounded-xl border-[#2a2a2a] bg-[#1a1a1a] py-0 text-[#e7e7e7]",
+        "gap-0 overflow-hidden rounded-xl border-border bg-surface-subtle py-0 text-foreground",
         className,
       )}
     >
@@ -195,13 +195,13 @@ export function StatsBar({ stats, columns = 4, className }) {
                 key={stat.label}
                 className={cn(
                   "p-4",
-                  i % 2 !== 0 && "border-l border-[#2a2a2a]",
-                  i >= 2 && "border-t border-[#2a2a2a]",
-                  "md:border-t-0 md:border-l md:border-[#2a2a2a]",
+                  i % 2 !== 0 && "border-l border-border",
+                  i >= 2 && "border-t border-border",
+                  "md:border-t-0 md:border-l md:border-border",
                   i === 0 && "md:border-l-0",
                 )}
               >
-                <span className="text-[11px] font-medium uppercase tracking-wider text-[#737373]">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">
                   {stat.label}
                 </span>
                 <div className="mt-1 flex items-end gap-2">
@@ -222,7 +222,7 @@ export function StatsBar({ stats, columns = 4, className }) {
                   ) : null}
                 </div>
                 {stat.footer ? (
-                  <span className="mt-1 block text-[11px] text-[#525252]">
+                  <span className="mt-1 block text-[11px] text-text-tertiary">
                     {stat.footer}
                   </span>
                 ) : null}
@@ -249,18 +249,18 @@ export function SectionCard({
   return (
     <Card
       className={cn(
-        "gap-0 overflow-hidden rounded-xl border-[#2a2a2a] bg-[#1a1a1a] py-0 text-[#e7e7e7]",
+        "gap-0 overflow-hidden rounded-xl border-border bg-surface-subtle py-0 text-foreground",
         className,
       )}
     >
       {title || action ? (
-        <div className="flex items-start justify-between gap-3 border-b border-[#2a2a2a] px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
           <div className="min-w-0">
             {title ? (
-              <h3 className="text-base font-semibold text-[#ededed]">{title}</h3>
+              <h3 className="text-base font-semibold text-foreground">{title}</h3>
             ) : null}
             {description ? (
-              <p className="mt-0.5 text-sm text-[#737373]">{description}</p>
+              <p className="mt-0.5 text-sm text-text-secondary">{description}</p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
@@ -283,13 +283,13 @@ export function SearchInput({
 }) {
   return (
     <div className={cn("relative", className)}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#737373]" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         placeholder={placeholder}
-        className="h-9 w-full rounded-md border border-[#2a2a2a] bg-[#202020] pl-8 pr-3 text-sm text-[#ededed] placeholder:text-[#5c5c5c] outline-none transition-colors focus-visible:border-[#474747] focus-visible:ring-2 focus-visible:ring-[#333333]"
+        className="h-9 w-full rounded-md border border-border bg-surface-card pl-8 pr-3 text-sm text-foreground placeholder:text-text-tertiary outline-none transition-colors focus-visible:border-border-strong focus-visible:ring-2 focus-visible:ring-border"
       />
     </div>
   );
@@ -344,14 +344,14 @@ export function EmptyState({
       )}
     >
       {Icon ? (
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#2a2a2a] bg-[#202020] text-[#737373]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface-card text-text-secondary">
           <Icon className="h-6 w-6" />
         </div>
       ) : null}
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-[#ededed]">{title}</p>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
         {description ? (
-          <p className="mx-auto max-w-sm text-sm text-[#737373]">{description}</p>
+          <p className="mx-auto max-w-sm text-sm text-text-secondary">{description}</p>
         ) : null}
       </div>
       {action ? <div className="mt-1">{action}</div> : null}
@@ -386,13 +386,13 @@ export function DataTable({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a]",
+        "overflow-hidden rounded-xl border border-border bg-surface-subtle",
         className,
       )}
     >
       <Table>
         <TableHeader>
-          <TableRow className="border-[#2a2a2a] hover:bg-transparent">
+          <TableRow className="border-border hover:bg-transparent">
             {columns.map((col) => (
               <TableHead
                 key={col.key}
@@ -408,7 +408,7 @@ export function DataTable({
             <TableRow
               key={getRowKey ? getRowKey(row, i) : i}
               className={cn(
-                "border-[#2a2a2a]",
+                "border-border",
                 onRowClick && "cursor-pointer",
               )}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -433,7 +433,7 @@ export function DataTable({
 
 export function SettingsList({ children, className }) {
   return (
-    <div className={cn("divide-y divide-[#2a2a2a]", className)}>{children}</div>
+    <div className={cn("divide-y divide-border", className)}>{children}</div>
   );
 }
 
@@ -459,14 +459,14 @@ export function SettingRow({
     >
       <div className="flex min-w-0 items-start gap-3">
         {Icon ? (
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#202020] text-[#a3a3a3]">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
             <Icon className="h-4 w-4" />
           </div>
         ) : null}
         <div className="min-w-0">
-          <p className="text-sm font-medium text-[#ededed]">{title}</p>
+          <p className="text-sm font-medium text-foreground">{title}</p>
           {description ? (
-            <p className="text-xs text-[#737373]">{description}</p>
+            <p className="text-xs text-text-secondary">{description}</p>
           ) : null}
         </div>
       </div>
@@ -489,13 +489,13 @@ export function Field({ label, hint, htmlFor, children, className }) {
       {label ? (
         <label
           htmlFor={htmlFor}
-          className="text-sm font-medium text-[#d4d4d4]"
+          className="text-sm font-medium text-muted-foreground"
         >
           {label}
         </label>
       ) : null}
       {children}
-      {hint ? <p className="text-xs text-[#737373]">{hint}</p> : null}
+      {hint ? <p className="text-xs text-text-secondary">{hint}</p> : null}
     </div>
   );
 }

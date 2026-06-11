@@ -98,7 +98,7 @@ export function TicketsSection({ event }) {
           <Button
             size="sm"
             variant="outline"
-            className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={addTicket}
           >
             <Plus className="h-4 w-4" /> Add ticket
@@ -109,7 +109,7 @@ export function TicketsSection({ event }) {
           {tickets.map((t) => (
             <div
               key={t.id}
-              className="flex items-end gap-3 rounded-lg border border-[#2a2a2a] bg-[#202020] p-3"
+              className="flex items-end gap-3 rounded-lg border border-border bg-surface-card p-3"
             >
               <Field label="Name" className="flex-1">
                 <Input
@@ -138,7 +138,7 @@ export function TicketsSection({ event }) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="mb-0.5 text-[#737373] hover:bg-red-500/10 hover:text-red-400"
+                className="mb-0.5 text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                 onClick={() => removeTicket(t.id)}
               >
                 <Trash2 className="h-4 w-4" />

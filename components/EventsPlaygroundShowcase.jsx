@@ -21,7 +21,7 @@ export default function EventsPlaygroundShowcase({
   ctaLabel = "Open the workspace",
 }) {
   return (
-    <section className="rounded-2xl border mx-auto w-[80%] border-zinc-800 bg-[url('https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-00a586c62c8782e65c0a.jpg')] bg-cover bg-center p-3 sm:rounded-3xl sm:p-6 md:p-8 xl:p-10">
+    <section className="rounded-2xl border mx-auto w-[80%] border-border bg-[url('https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-00a586c62c8782e65c0a.jpg')] bg-cover bg-center p-3 sm:rounded-3xl sm:p-6 md:p-8 xl:p-10">
       <div className="flex flex-col gap-6 sm:gap-10">
         <div className="space-y-5">
           <div className="mx-auto mb-4 mt-4 flex w-[92%] flex-col items-start gap-4 sm:mb-6 sm:mt-6 sm:w-[90%]">
@@ -29,7 +29,7 @@ export default function EventsPlaygroundShowcase({
               Try the full Events workspace in real time.
             </h3>
 
-            <p className="max-w-lg text-zinc-300">
+            <p className="max-w-lg text-muted-foreground">
               This playground runs live on the page with the complete workspace —
               sidebar navigation, the events overview, and every screen. No save
               and no load, just pure exploration.
@@ -46,7 +46,7 @@ export default function EventsPlaygroundShowcase({
         </div>
 
         <div className=" ">
-          <div className="h-[720px] overflow-hidden rounded-lg border border-zinc-800 bg-[#161616] sm:h-[700px] lg:h-[900px]">
+          <div className="h-[720px] overflow-hidden rounded-lg border border-border bg-background sm:h-[700px] lg:h-[900px]">
             <EventsPlayground />
           </div>
         </div>

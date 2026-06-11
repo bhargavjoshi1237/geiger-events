@@ -86,7 +86,7 @@ export function TemplatesScreen() {
         description="Reusable event setups — page layout, ticket types, questions, and reminders — so you launch a new event in minutes."
         actions={
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setOpen(true)}
           >
             <Plus className="h-4 w-4" /> New template
@@ -121,28 +121,28 @@ export function TemplatesScreen() {
           return (
             <div
               key={t.id}
-              className="group flex flex-col rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 transition-colors hover:border-[#3a3a3a]"
+              className="group flex flex-col rounded-xl border border-border bg-surface-subtle p-5 transition-colors hover:border-border-strong"
             >
               <div className="flex items-center justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#202020] text-[#d4d4d4]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
                   <Icon className="h-5 w-5" />
                 </div>
                 <Badge variant="neutral">{t.category}</Badge>
               </div>
-              <h3 className="mt-4 text-base font-semibold text-[#ededed]">
+              <h3 className="mt-4 text-base font-semibold text-foreground">
                 {t.name}
               </h3>
-              <p className="mt-1 flex-1 text-sm text-[#737373]">
+              <p className="mt-1 flex-1 text-sm text-text-secondary">
                 {t.description}
               </p>
-              <div className="mt-4 flex items-center justify-between border-t border-[#2a2a2a] pt-3">
-                <span className="text-xs text-[#525252]">
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                <span className="text-xs text-text-tertiary">
                   Used by {t.uses} events
                 </span>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-[#a3a3a3] hover:bg-[#252525] hover:text-white"
+                  className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
                   onClick={() => toast.success(`Creating event from "${t.name}"…`)}
                 >
                   Use <ArrowUpRight className="h-3.5 w-3.5" />
@@ -186,13 +186,13 @@ export function TemplatesScreen() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => setOpen(false)}
             >
               Cancel
             </Button>
             <Button
-              className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 setOpen(false);
                 toast.success("Template saved.");
@@ -225,8 +225,8 @@ export function EventSeriesScreen() {
       header: "Series",
       render: (s) => (
         <div className="flex flex-col gap-1">
-          <span className="font-medium text-[#ededed]">{s.name}</span>
-          <span className="text-xs text-[#737373]">{s.events} events</span>
+          <span className="font-medium text-foreground">{s.name}</span>
+          <span className="text-xs text-text-secondary">{s.events} events</span>
         </div>
       ),
     },
@@ -235,7 +235,7 @@ export function EventSeriesScreen() {
       key: "next",
       header: "Next event",
       render: (s) => (
-        <span className="text-sm text-[#d4d4d4]">{formatDate(s.nextDate)}</span>
+        <span className="text-sm text-muted-foreground">{formatDate(s.nextDate)}</span>
       ),
     },
     {
@@ -252,7 +252,7 @@ export function EventSeriesScreen() {
         <Button
           size="sm"
           variant="ghost"
-          className="text-[#a3a3a3] hover:bg-[#252525] hover:text-white"
+          className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
         >
           Manage <ArrowUpRight className="h-3.5 w-3.5" />
         </Button>
@@ -267,7 +267,7 @@ export function EventSeriesScreen() {
         description="Group related events under one series. Attendees can follow the whole run, and you manage shared settings in one place."
         actions={
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setOpen(true)}
           >
             <Plus className="h-4 w-4" /> New series
@@ -307,13 +307,13 @@ export function EventSeriesScreen() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => setOpen(false)}
             >
               Cancel
             </Button>
             <Button
-              className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 setOpen(false);
                 toast.success("Series created.");

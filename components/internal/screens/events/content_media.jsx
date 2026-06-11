@@ -59,11 +59,11 @@ export function CoverMediaSection({ event }) {
         <button
           type="button"
           onClick={() => toast.success("Choose a file to upload.")}
-          className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[#2a2a2a] bg-[#202020] text-[#737373] transition-colors hover:border-[#3a3a3a] hover:text-[#a3a3a3]"
+          className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-surface-card text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
         >
           <UploadCloud className="h-8 w-8" />
           <div className="text-center">
-            <p className="text-sm font-medium text-[#d4d4d4]">
+            <p className="text-sm font-medium text-muted-foreground">
               Drag & drop, or click to upload
             </p>
             <p className="text-xs">16:9 · up to 5 MB</p>
@@ -78,7 +78,7 @@ export function CoverMediaSection({ event }) {
           <Button
             size="sm"
             variant="outline"
-            className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
             <Plus className="h-4 w-4" /> Add photos
           </Button>
@@ -88,7 +88,7 @@ export function CoverMediaSection({ event }) {
           {GALLERY.map((n) => (
             <div
               key={n}
-              className="group relative flex aspect-square items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#202020] text-[#525252]"
+              className="group relative flex aspect-square items-center justify-center rounded-lg border border-border bg-surface-card text-text-tertiary"
             >
               <ImgIcon className="h-6 w-6" />
               {n === 1 ? (
@@ -98,7 +98,7 @@ export function CoverMediaSection({ event }) {
               ) : null}
               <button
                 type="button"
-                className="absolute right-2 top-2 rounded-md bg-black/60 p-1 text-[#a3a3a3] opacity-0 transition-opacity hover:text-white group-hover:opacity-100"
+                className="absolute right-2 top-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -137,7 +137,7 @@ export function RichDescriptionsSection({ event }) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
         <SectionCard title="Description" bodyPadding={false}>
-          <div className="flex items-center gap-1 border-b border-[#2a2a2a] px-3 py-2">
+          <div className="flex items-center gap-1 border-b border-border px-3 py-2">
             {TOOLBAR.map((t) => {
               const Icon = t.icon;
               return (
@@ -146,7 +146,7 @@ export function RichDescriptionsSection({ event }) {
                   variant="ghost"
                   size="icon-sm"
                   title={t.label}
-                  className="text-[#a3a3a3] hover:bg-[#252525] hover:text-white"
+                  className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
                 >
                   <Icon className="h-4 w-4" />
                 </Button>
@@ -161,13 +161,13 @@ export function RichDescriptionsSection({ event }) {
               className="border-0 bg-transparent px-0 focus-visible:ring-0"
             />
           </div>
-          <div className="flex items-center justify-between border-t border-[#2a2a2a] px-4 py-3">
-            <span className="text-xs text-[#525252]">
+          <div className="flex items-center justify-between border-t border-border px-4 py-3">
+            <span className="text-xs text-text-tertiary">
               {text.length} characters
             </span>
             <Button
               size="sm"
-              className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => toast.success("Description saved.")}
             >
               Save
@@ -185,10 +185,10 @@ export function RichDescriptionsSection({ event }) {
                 key={s}
                 type="button"
                 onClick={() => toast.success(`Inserted "${s}" block.`)}
-                className="flex w-full items-center justify-between rounded-lg border border-[#2a2a2a] bg-[#202020] px-3 py-2.5 text-left text-sm text-[#d4d4d4] transition-colors hover:bg-[#252525]"
+                className="flex w-full items-center justify-between rounded-lg border border-border bg-surface-card px-3 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-active"
               >
                 {s}
-                <Plus className="h-4 w-4 text-[#737373]" />
+                <Plus className="h-4 w-4 text-text-secondary" />
               </button>
             ))}
           </div>
@@ -248,7 +248,7 @@ export function CustomQuestionsSection({ event }) {
         description="Questions appear in this order on the registration page."
         action={
           <Button
-            className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setOpen(true)}
           >
             <Plus className="h-4 w-4" /> Add question
@@ -259,16 +259,16 @@ export function CustomQuestionsSection({ event }) {
           {questions.map((q) => (
             <div
               key={q.id}
-              className="flex items-center gap-3 rounded-lg border border-[#2a2a2a] bg-[#202020] px-3 py-3"
+              className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-3"
             >
-              <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-[#525252]" />
+              <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-text-tertiary" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-[#ededed]">
+                <p className="truncate text-sm font-medium text-foreground">
                   {q.label}
                 </p>
-                <p className="text-xs text-[#737373]">{typeLabel(q.type)}</p>
+                <p className="text-xs text-text-secondary">{typeLabel(q.type)}</p>
               </div>
-              <label className="flex items-center gap-2 text-xs text-[#a3a3a3]">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 Required
                 <Switch
                   checked={q.required}
@@ -278,7 +278,7 @@ export function CustomQuestionsSection({ event }) {
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="text-[#737373] hover:bg-red-500/10 hover:text-red-400"
+                className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                 onClick={() => remove(q.id)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -323,7 +323,7 @@ export function CustomQuestionsSection({ event }) {
                 </SelectContent>
               </Select>
             </Field>
-            <label className="flex items-center justify-between rounded-lg border border-[#2a2a2a] bg-[#202020] px-3 py-2.5 text-sm text-[#d4d4d4]">
+            <label className="flex items-center justify-between rounded-lg border border-border bg-surface-card px-3 py-2.5 text-sm text-muted-foreground">
               Required question
               <Switch
                 checked={draft.required}
@@ -336,13 +336,13 @@ export function CustomQuestionsSection({ event }) {
           <DialogFooter>
             <Button
               variant="outline"
-              className="border-[#2a2a2a] bg-transparent text-[#d4d4d4] hover:bg-[#252525] hover:text-white"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => setOpen(false)}
             >
               Cancel
             </Button>
             <Button
-              className="bg-white text-[#161616] hover:bg-[#e7e7e7]"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={addQuestion}
             >
               Add question
