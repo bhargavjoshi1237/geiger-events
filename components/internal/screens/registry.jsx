@@ -1,7 +1,8 @@
 import { EventsOverviewScreen } from "./overview/events_overview";
 import { EventsHomeScreen } from "./events/events_home";
 import { AllEventsScreen } from "./events/all_events";
-import { TemplatesScreen, EventSeriesScreen } from "./events/templates_series";
+import { TemplatesScreen } from "./events/templates";
+import { EventSeriesScreen } from "./events/event_series";
 
 /**
  * Maps a sidebar nav title to its screen component. Titles must exactly match

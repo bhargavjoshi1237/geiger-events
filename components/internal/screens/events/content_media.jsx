@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ImageIcon,
@@ -17,11 +17,16 @@ import {
   Heading,
   Image as ImgIcon,
   Star,
+  Loader2,
+  Crown,
+  Lock,
+  X,
 } from "lucide-react";
 
 import {
   Field,
   SectionCard,
+  EditorSectionHeader,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +34,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { getUser } from "@/lib/supabase/user";
+import {
+  uploadEventImage,
+  removeEventImage,
+  pathFromPublicUrl,
+} from "@/lib/supabase/storage";
+import { useEventConfig } from "@/lib/events/use-event-config";
 import {
   Dialog,
   DialogContent,
@@ -45,31 +57,209 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// --- Cover Media -------------------------------------------------------------
+export function CoverMediaSection({ event, onCommit }) {
+  const commit = onCommit || (() => {});
+  const cover = event.coverUrl || "";
+  const gallery = Array.isArray(event.gallery) ? event.gallery : [];
 
-const GALLERY = [1, 2, 3, 4, 5];
+  const [me, setMe] = useState(null);
+  const [meResolved, setMeResolved] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [galleryBusy, setGalleryBusy] = useState(false);
+  const [compress, setCompress] = useState(true); // Pro placeholder — locked on
+  const coverInput = useRef(null);
+  const galleryInput = useRef(null);
 
-export function CoverMediaSection({ event }) {
+  useEffect(() => {
+    let alive = true;
+    getUser().then((u) => {
+      if (!alive) return;
+      setMe(u?.id || null);
+      setMeResolved(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const isOwner = Boolean(me && event.createdBy && me === event.createdBy);
+
+  const onCoverFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    setCoverBusy(true);
+    const res = await uploadEventImage(event.id, file, { compress });
+    setCoverBusy(false);
+    if (!res?.url) {
+      toast.error("Upload failed — only the event's creator can add images.");
+      return;
+    }
+    const old = cover;
+    commit({ coverUrl: res.url });
+    toast.success("Cover image updated.");
+    const oldPath = pathFromPublicUrl(old);
+    if (oldPath) removeEventImage(oldPath);
+  };
+
+  const removeCover = () => {
+    const path = pathFromPublicUrl(cover);
+    commit({ coverUrl: "" });
+    toast.success("Cover image removed.");
+    if (path) removeEventImage(path);
+  };
+
+  const onGalleryFiles = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    setGalleryBusy(true);
+    const urls = [];
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      const res = await uploadEventImage(event.id, file, { compress });
+      if (res?.url) urls.push(res.url);
+    }
+    setGalleryBusy(false);
+    if (!urls.length) {
+      toast.error("Upload failed — only the event's creator can add images.");
+      return;
+    }
+    commit({ gallery: [...gallery, ...urls] });
+    toast.success(`${urls.length} photo${urls.length > 1 ? "s" : ""} added.`);
+  };
+
+  const removeGalleryImage = (url) => {
+    const path = pathFromPublicUrl(url);
+    commit({ gallery: gallery.filter((g) => g !== url) });
+    if (path) removeEventImage(path);
+  };
+
+  const setAsCover = (url) => {
+    commit({ coverUrl: url });
+    toast.success("Cover image updated.");
+  };
+
+  // Read-only view: not the creator (or a seeded event with no owner).
+  if (meResolved && !isOwner) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+          <p className="text-sm text-amber-200/90">
+            Only the event&apos;s creator can upload or change its images.
+            {me ? "" : " Sign in as the creator to manage media."}
+          </p>
+        </div>
+        <SectionCard title="Cover image">
+          {cover ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={cover}
+              alt="Event cover"
+              className="aspect-[16/9] w-full rounded-xl border border-border object-cover"
+            />
+          ) : (
+            <div className="flex aspect-[16/9] w-full items-center justify-center rounded-xl border border-dashed border-border bg-surface-card text-text-tertiary">
+              <ImageIcon className="h-8 w-8" />
+            </div>
+          )}
+        </SectionCard>
+        {gallery.length ? (
+          <SectionCard title="Gallery">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {gallery.map((url) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={url}
+                  src={url}
+                  alt=""
+                  className="aspect-square w-full rounded-lg border border-border object-cover"
+                />
+              ))}
+            </div>
+          </SectionCard>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <SectionCard
-        title="Cover image"
-        description="Recommended 1600×900 (16:9), JPG or PNG, under 5 MB."
-      >
-        <button
-          type="button"
-          onClick={() => toast.success("Choose a file to upload.")}
-          className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-surface-card text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
-        >
-          <UploadCloud className="h-8 w-8" />
-          <div className="text-center">
-            <p className="text-sm font-medium text-muted-foreground">
-              Drag & drop, or click to upload
-            </p>
-            <p className="text-xs">16:9 · up to 5 MB</p>
+      <input
+        ref={coverInput}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onCoverFile}
+      />
+      <input
+        ref={galleryInput}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={onGalleryFiles}
+      />
+
+        {cover ? (
+          <div className="group relative overflow-hidden rounded-xl border border-border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={cover}
+              alt="Event cover"
+              className="aspect-[16/9] w-full object-cover"
+            />
+            <div className="absolute inset-x-0 bottom-0 flex justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-3">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={coverBusy}
+                onClick={() => coverInput.current?.click()}
+                className="border-border bg-black/40 text-white hover:bg-black/60"
+              >
+                {coverBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <UploadCloud className="h-4 w-4" />
+                )}
+                Replace
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={coverBusy}
+                onClick={removeCover}
+                className="border-border bg-black/40 text-white hover:bg-red-500/30"
+              >
+                <Trash2 className="h-4 w-4" /> Remove
+              </Button>
+            </div>
           </div>
-        </button>
-      </SectionCard>
+        ) : (
+          <button
+            type="button"
+            disabled={coverBusy}
+            onClick={() => coverInput.current?.click()}
+            className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-surface-card text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground disabled:opacity-60"
+          >
+            {coverBusy ? (
+              <Loader2 className="h-8 w-8 animate-spin" />
+            ) : (
+              <UploadCloud className="h-8 w-8" />
+            )}
+            <div className="text-center">
+              <p className="text-sm font-medium text-muted-foreground">
+                {coverBusy ? "Uploading…" : "Click to upload a cover image"}
+              </p>
+              <p className="text-xs">16:9 · optimized automatically</p>
+            </div>
+          </button>
+        )}
 
       <SectionCard
         title="Gallery"
@@ -78,33 +268,68 @@ export function CoverMediaSection({ event }) {
           <Button
             size="sm"
             variant="outline"
+            disabled={galleryBusy}
+            onClick={() => galleryInput.current?.click()}
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
-            <Plus className="h-4 w-4" /> Add photos
+            {galleryBusy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Add photos
           </Button>
         }
       >
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {GALLERY.map((n) => (
-            <div
-              key={n}
-              className="group relative flex aspect-square items-center justify-center rounded-lg border border-border bg-surface-card text-text-tertiary"
-            >
-              <ImgIcon className="h-6 w-6" />
-              {n === 1 ? (
-                <Badge variant="info" className="absolute left-2 top-2">
-                  <Star className="h-3 w-3" /> Cover
-                </Badge>
-              ) : null}
-              <button
-                type="button"
-                className="absolute right-2 top-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+        {gallery.length === 0 && !galleryBusy ? (
+          <button
+            type="button"
+            onClick={() => galleryInput.current?.click()}
+            className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card py-10 text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
+          >
+            <ImgIcon className="h-6 w-6" />
+            <p className="text-sm">Add photos to your event page</p>
+          </button>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {gallery.map((url) => (
+              <div
+                key={url}
+                className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-surface-card"
               >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" className="h-full w-full object-cover" />
+                {cover === url ? (
+                  <Badge variant="info" className="absolute left-2 top-2">
+                    <Star className="h-3 w-3" /> Cover
+                  </Badge>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAsCover(url)}
+                    title="Set as cover"
+                    className="absolute left-2 top-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                  >
+                    <Star className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeGalleryImage(url)}
+                  title="Remove"
+                  className="absolute right-2 top-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            {galleryBusy ? (
+              <div className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-border bg-surface-card text-text-tertiary">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : null}
+          </div>
+        )}
       </SectionCard>
     </div>
   );
@@ -129,7 +354,9 @@ const SNIPPETS = [
 ];
 
 export function RichDescriptionsSection({ event }) {
-  const [text, setText] = useState(
+  const [text, setText, saveText, saving] = useEventConfig(
+    event,
+    "description",
     "Join us for an evening of talks and networking.\n\nDoors open at 6:30pm. Drinks and snacks provided. Bring a friend!",
   );
 
@@ -167,9 +394,11 @@ export function RichDescriptionsSection({ event }) {
             </span>
             <Button
               size="sm"
+              disabled={saving}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => toast.success("Description saved.")}
+              onClick={() => saveText(text, { successMsg: "Description saved." })}
             >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Save
             </Button>
           </div>
@@ -215,8 +444,12 @@ const INITIAL_QUESTIONS = [
   { id: 4, label: "How did you hear about us?", type: "long", required: false },
 ];
 
-export function CustomQuestionsSection({ event }) {
-  const [questions, setQuestions] = useState(INITIAL_QUESTIONS);
+export function CustomQuestionsSection({ event, headerItem }) {
+  const [questions, , saveQuestions] = useEventConfig(
+    event,
+    "questions",
+    INITIAL_QUESTIONS,
+  );
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState({ label: "", type: "short", required: false });
 
@@ -228,24 +461,27 @@ export function CustomQuestionsSection({ event }) {
       toast.error("Add a question label.");
       return;
     }
-    setQuestions((q) => [...q, { ...draft, id: Date.now() }]);
+    saveQuestions([...questions, { ...draft, id: Date.now() }], {
+      successMsg: "Question added.",
+    });
     setDraft({ label: "", type: "short", required: false });
     setOpen(false);
-    toast.success("Question added.");
   };
 
-  const remove = (id) =>
-    setQuestions((q) => q.filter((x) => x.id !== id));
+  const remove = (id) => saveQuestions(questions.filter((x) => x.id !== id));
   const toggleRequired = (id) =>
-    setQuestions((q) =>
-      q.map((x) => (x.id === id ? { ...x, required: !x.required } : x)),
+    saveQuestions(
+      questions.map((x) => (x.id === id ? { ...x, required: !x.required } : x)),
     );
 
   return (
     <div className="space-y-6">
-      <SectionCard
-        title="Registration form"
-        description="Questions appear in this order on the registration page."
+      <EditorSectionHeader
+        title={headerItem?.label || "Custom Questions"}
+        description={
+          headerItem?.desc ||
+          "Questions appear in this order on the registration page."
+        }
         action={
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -254,39 +490,38 @@ export function CustomQuestionsSection({ event }) {
             <Plus className="h-4 w-4" /> Add question
           </Button>
         }
-      >
-        <div className="space-y-2">
-          {questions.map((q) => (
-            <div
-              key={q.id}
-              className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-3"
-            >
-              <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-text-tertiary" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {q.label}
-                </p>
-                <p className="text-xs text-text-secondary">{typeLabel(q.type)}</p>
-              </div>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                Required
-                <Switch
-                  checked={q.required}
-                  onCheckedChange={() => toggleRequired(q.id)}
-                />
-              </label>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
-                onClick={() => remove(q.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+      />
+      <div className="space-y-2">
+        {questions.map((q) => (
+          <div
+            key={q.id}
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-3"
+          >
+            <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-text-tertiary" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">
+                {q.label}
+              </p>
+              <p className="text-xs text-text-secondary">{typeLabel(q.type)}</p>
             </div>
-          ))}
-        </div>
-      </SectionCard>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              Required
+              <Switch
+                checked={q.required}
+                onCheckedChange={() => toggleRequired(q.id)}
+              />
+            </label>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+              onClick={() => remove(q.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

@@ -53,6 +53,33 @@ export function ScreenHeader({ title, description, actions, className }) {
   );
 }
 
+// --- Editor section header ---------------------------------------------------
+
+// Header for an in-editor section that opts out of the event editor's default
+// title block (`ownHeader: true`). Title + description on the left, the
+// section's primary action(s) pinned to the far right of the title row — the
+// rhythm used by Ticket Types, Location & Time and Map & Directions.
+export function EditorSectionHeader({ title, description, action, className }) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
+        className,
+      )}
+    >
+      <div className="min-w-0">
+        <h2 className="text-lg font-semibold capitalize text-white">{title}</h2>
+        {description ? (
+          <p className="mt-0.5 text-sm text-text-secondary">{description}</p>
+        ) : null}
+      </div>
+      {action ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>
+      ) : null}
+    </div>
+  );
+}
+
 // --- KPI tiles ---------------------------------------------------------------
 
 export function StatGrid({ stats, columns = 4, className }) {
@@ -82,7 +109,7 @@ export function StatTile({ label, value, delta, trend, hint, icon: Icon }) {
         : "text-text-secondary";
 
   return (
-    <Card className="rounded-xl border-border bg-surface-subtle py-0 text-foreground">
+    <Card className="rounded-xl border-border bg-surface-subtle py-0 text-foreground capitalize">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">

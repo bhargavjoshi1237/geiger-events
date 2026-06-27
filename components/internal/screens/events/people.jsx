@@ -8,6 +8,7 @@ import {
   DataTable,
   Field,
   SectionCard,
+  EditorSectionHeader,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useEventConfig } from "@/lib/events/use-event-config";
 
 const ROLES = [
   { value: "Owner", description: "Full access, including billing and deletion." },
@@ -73,9 +75,13 @@ function initials(name) {
     .toUpperCase();
 }
 
-export function CoHostsAdminsSection({ event }) {
-  const [members, setMembers] = useState(INITIAL_MEMBERS);
-  const [pending, setPending] = useState(PENDING);
+export function CoHostsAdminsSection({ event, headerItem }) {
+  const [members, , saveMembers] = useEventConfig(event, "team", INITIAL_MEMBERS);
+  const [pending, , savePending] = useEventConfig(
+    event,
+    "pendingInvites",
+    PENDING,
+  );
   const [open, setOpen] = useState(false);
   const [invite, setInvite] = useState({ email: "", role: "Co-host" });
 
@@ -84,23 +90,28 @@ export function CoHostsAdminsSection({ event }) {
       toast.error("Enter a valid email address.");
       return;
     }
-    setPending((p) => [
-      { id: `p${Date.now()}`, email: invite.email, role: invite.role, sent: "Just now" },
-      ...p,
-    ]);
+    savePending(
+      [
+        { id: `p${Date.now()}`, email: invite.email, role: invite.role, sent: "Just now" },
+        ...pending,
+      ],
+      { successMsg: "Invitation sent." },
+    );
     setInvite({ email: "", role: "Co-host" });
     setOpen(false);
-    toast.success("Invitation sent.");
   };
 
   const changeRole = (id, role) => {
-    setMembers((m) => m.map((x) => (x.id === id ? { ...x, role } : x)));
-    toast.success("Role updated.");
+    saveMembers(
+      members.map((x) => (x.id === id ? { ...x, role } : x)),
+      { successMsg: "Role updated." },
+    );
   };
 
   const removeMember = (id) => {
-    setMembers((m) => m.filter((x) => x.id !== id));
-    toast.success("Member removed.");
+    saveMembers(members.filter((x) => x.id !== id), {
+      successMsg: "Member removed.",
+    });
   };
 
   const columns = [
@@ -179,10 +190,9 @@ export function CoHostsAdminsSection({ event }) {
 
   return (
     <div className="space-y-6">
-      <SectionCard
-        title="Team members"
+      <EditorSectionHeader
+        title={headerItem?.label || "Co-hosts & Admins"}
         description={`${members.length} people have access to this workspace.`}
-        bodyPadding={false}
         action={
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -191,14 +201,12 @@ export function CoHostsAdminsSection({ event }) {
             <Plus className="h-4 w-4" /> Invite member
           </Button>
         }
-      >
-        <DataTable
-          columns={columns}
-          data={members}
-          getRowKey={(m) => m.id}
-          className="rounded-none border-0"
-        />
-      </SectionCard>
+      />
+      <DataTable
+        columns={columns}
+        data={members}
+        getRowKey={(m) => m.id}
+      />
 
       {pending.length ? (
         <SectionCard title="Pending invitations">
@@ -224,10 +232,12 @@ export function CoHostsAdminsSection({ event }) {
                   size="sm"
                   variant="ghost"
                   className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
-                  onClick={() => {
-                    setPending((prev) => prev.filter((x) => x.id !== p.id));
-                    toast.success("Invitation revoked.");
-                  }}
+                  onClick={() =>
+                    savePending(
+                      pending.filter((x) => x.id !== p.id),
+                      { successMsg: "Invitation revoked." },
+                    )
+                  }
                 >
                   Revoke
                 </Button>

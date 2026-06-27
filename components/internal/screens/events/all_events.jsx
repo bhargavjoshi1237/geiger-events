@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   CalendarPlus,
   Copy,
   ExternalLink,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -56,7 +57,16 @@ import {
   VENUES,
   currency,
   formatDate,
+  newEventId,
 } from "./sample_data";
+import {
+  listEvents,
+  createEvent,
+  updateEvent,
+  softDeleteEvent,
+} from "@/lib/supabase/events";
+import { getUser } from "@/lib/supabase/user";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { EventDetailScreen } from "./event_detail";
 
 const STATUS_FILTER_OPTIONS = [
@@ -105,7 +115,7 @@ function CreateEventDialog({ open, onOpenChange, onCreate }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl bg-background">
         <DialogHeader>
           <DialogTitle>Create event</DialogTitle>
           <DialogDescription>
@@ -216,12 +226,45 @@ function CreateEventDialog({ open, onOpenChange, onCreate }) {
 }
 
 export function AllEventsScreen() {
+  // Seed from bundled sample data for an instant first paint, then replace with
+  // the live table once it loads. `source` decides whether mutations persist.
   const [events, setEvents] = useState(EVENTS);
+  const [source, setSource] = useState("sample");
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  // The open event lives in the URL (?event=<id>) so a refresh stays on it.
+  const { eventId, openEvent, closeEvent } = useWorkspaceUrl();
+  // Signed-in user — new events are stamped with created_by so only they can
+  // upload that event's images (enforced by storage RLS).
+  const [userId, setUserId] = useState(null);
+
+  const usingDb = source === "db";
+
+  // Resolve the open event from local state. Sample data resolves instantly;
+  // a db-only id resolves once the live table loads. Unknown id ⇒ list view.
+  const selectedEvent = useMemo(
+    () => (eventId ? events.find((e) => e.id === eventId) || null : null),
+    [eventId, events],
+  );
+
+  useEffect(() => {
+    let alive = true;
+    listEvents().then((rows) => {
+      if (!alive) return;
+      if (rows) {
+        setEvents(rows);
+        setSource("db");
+      }
+      setLoading(false);
+    });
+    getUser().then((u) => alive && setUserId(u?.id || null));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     return events.filter((e) => {
@@ -248,48 +291,94 @@ export function AllEventsScreen() {
       { label: "Total events", value: String(events.length), footer: `${live} on sale now` },
       { label: "Tickets sold", value: sold.toLocaleString(), footer: "Across all events" },
       { label: "Revenue", value: currency(revenue), footer: "Gross, before fees" },
-      { label: "Avg. capacity", value: `${Math.round(events.reduce((s, e) => s + (e.capacity ? e.sold / e.capacity : 0), 0) / events.length * 100)}%`, footer: "Sell-through" },
+      { label: "Avg. capacity", value: `${events.length ? Math.round(events.reduce((s, e) => s + (e.capacity ? e.sold / e.capacity : 0), 0) / events.length * 100) : 0}%`, footer: "Sell-through" },
     ];
   }, [events]);
 
+  // Mutations update local state optimistically (instant UI) and, when backed
+  // by the live table, persist through the data layer — surfacing a toast only
+  // if the write fails. Local-only mode keeps working with no DB.
+  const persistCreate = (event) => {
+    if (!usingDb) return;
+    createEvent(event).then((saved) => {
+      if (!saved) {
+        toast.error("Couldn't save the event to the server.");
+      } else {
+        setEvents((prev) => prev.map((e) => (e.id === saved.id ? saved : e)));
+      }
+    });
+  };
+
   const handleCreate = (draft) => {
+    const name = draft.name.trim();
     const newEvent = {
-      id: `evt_${Date.now()}`,
-      name: draft.name.trim(),
+      id: newEventId(),
+      name,
       status: "Draft",
       type: draft.type,
       date: draft.date || "2026-07-15",
       time: draft.time || "18:00",
       venue: draft.venue || "TBD",
+      address: "",
       city: "London",
+      timezone: "Europe/London",
       capacity: draft.capacity,
       sold: 0,
       revenue: 0,
       visibility: draft.visibility,
       organizer: "Ava Mitchell",
+      summary: "",
+      coverUrl: "",
+      gallery: [],
+      createdBy: userId,
     };
     setEvents((prev) => [newEvent, ...prev]);
     toast.success(`"${newEvent.name}" created as a draft.`);
+    persistCreate(newEvent);
+  };
+
+  const handleUpdate = (updated) => {
+    setEvents((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+    if (usingDb) {
+      updateEvent(updated.id, updated).then((saved) => {
+        if (!saved) toast.error("Couldn't save your changes to the server.");
+      });
+    }
   };
 
   const handleDelete = (event) => {
     setEvents((prev) => prev.filter((e) => e.id !== event.id));
     toast.success(`Deleted "${event.name}".`);
+    if (usingDb) {
+      softDeleteEvent(event.id).then((ok) => {
+        if (!ok) toast.error("Couldn't delete the event on the server.");
+      });
+    }
   };
 
   const handleDuplicate = (event) => {
-    setEvents((prev) => [
-      {
-        ...event,
-        id: `evt_${Date.now()}`,
-        name: `${event.name} (copy)`,
-        status: "Draft",
-        sold: 0,
-        revenue: 0,
-      },
-      ...prev,
-    ]);
+    const copy = {
+      ...event,
+      id: newEventId(),
+      name: `${event.name} (copy)`,
+      status: "Draft",
+      sold: 0,
+      revenue: 0,
+      // The copy is owned by whoever duplicated it, and starts with no images
+      // (they live under the original event's folder).
+      createdBy: userId,
+      coverUrl: "",
+      gallery: [],
+    };
+    setEvents((prev) => [copy, ...prev]);
     toast.success(`Duplicated "${event.name}".`);
+    persistCreate(copy);
+  };
+
+  const handleViewPage = (event) => {
+    if (typeof window !== "undefined") {
+      window.open(`/e/${event.id}`, "_blank", "noopener,noreferrer");
+    }
   };
 
   const columns = [
@@ -372,7 +461,7 @@ export function AllEventsScreen() {
           >
             <DropdownMenuItem
               className="focus:bg-surface-hover"
-              onClick={() => setSelectedEvent(e)}
+              onClick={() => openEvent(e.id)}
             >
               <Pencil className="h-4 w-4" /> Edit
             </DropdownMenuItem>
@@ -382,7 +471,10 @@ export function AllEventsScreen() {
             >
               <Copy className="h-4 w-4" /> Duplicate
             </DropdownMenuItem>
-            <DropdownMenuItem className="focus:bg-surface-hover">
+            <DropdownMenuItem
+              className="focus:bg-surface-hover"
+              onClick={() => handleViewPage(e)}
+            >
               <ExternalLink className="h-4 w-4" /> View page
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-surface-hover" />
@@ -404,7 +496,12 @@ export function AllEventsScreen() {
     return (
       <EventDetailScreen
         event={selectedEvent}
-        onBack={() => setSelectedEvent(null)}
+        onBack={closeEvent}
+        onUpdate={handleUpdate}
+        onDelete={(ev) => {
+          handleDelete(ev);
+          closeEvent();
+        }}
       />
     );
   }
@@ -449,29 +546,44 @@ export function AllEventsScreen() {
         />
       </Toolbar>
 
-      <DataTable
-        columns={columns}
-        data={filtered}
-        getRowKey={(e) => e.id}
-        onRowClick={(e) => setSelectedEvent(e)}
-        empty={
-          <div className="rounded-xl border border-border bg-surface-subtle">
-            <EmptyState
-              icon={CalendarPlus}
-              title="No events match your filters"
-              description="Try clearing the search or filters, or create a new event to get started."
-              action={
-                <Button
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <Plus className="h-4 w-4" /> Create event
-                </Button>
-              }
-            />
-          </div>
-        }
-      />
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading events…
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filtered}
+          getRowKey={(e) => e.id}
+          onRowClick={(e) => openEvent(e.id)}
+          empty={
+            <div className="rounded-xl border border-border bg-surface-subtle">
+              <EmptyState
+                icon={CalendarPlus}
+                title={
+                  events.length
+                    ? "No events match your filters"
+                    : "No events yet"
+                }
+                description={
+                  events.length
+                    ? "Try clearing the search or filters, or create a new event to get started."
+                    : "Create your first event to start selling tickets and collecting RSVPs."
+                }
+                action={
+                  <Button
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    <Plus className="h-4 w-4" /> Create event
+                  </Button>
+                }
+              />
+            </div>
+          }
+        />
+      )}
 
       <CreateEventDialog
         open={createOpen}

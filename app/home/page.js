@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense } from "react";
 import { AppSidebar } from "@/components/internal/sidebar/sidebar";
 import { Topbar } from "@/components/internal/topbar/topbar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ComingSoonScreen } from "@/components/internal/screens/coming_soon";
 import { getScreen } from "@/components/internal/screens/registry";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 
-export default function Home() {
-  const [currentTab, setCurrentTab] = useState("Overview");
+function WorkspaceContent() {
+  // The active tab lives in the URL so a refresh keeps the user in place.
+  const { tab: currentTab, setTab: setCurrentTab } = useWorkspaceUrl();
 
   const findActiveItem = () => {
     for (const item of workspaceNav) {
@@ -48,5 +50,18 @@ export default function Home() {
         </div>
       </SidebarProvider>
     </div>
+  );
+}
+
+export default function Home() {
+  // useSearchParams (via useWorkspaceUrl) needs a Suspense boundary.
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-[100dvh] w-full items-center justify-center bg-background" />
+      }
+    >
+      <WorkspaceContent />
+    </Suspense>
   );
 }

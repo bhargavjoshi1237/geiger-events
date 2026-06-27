@@ -45,6 +45,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  resolveTheme,
+  THEME_PRESETS,
+  FONT_OPTIONS,
+  FONT_SCALES,
+  HEADING_WEIGHTS,
+  RADIUS_OPTIONS,
+  WIDTHS,
+  COVER_OPTIONS,
+  BASES,
+  BASE_PALETTES,
+} from "@/lib/events/theme";
 
 // ---------------------------------------------------------------------------
 // Shared page-design model
@@ -58,8 +70,7 @@ import { cn } from "@/lib/utils";
 
 export const PAGE_MODES = [
   { key: "standard", label: "Standard", desc: "Geiger's optimized, ready-to-go layout. No setup needed." },
-  { key: "themed", label: "Themed", desc: "Your colors, cover, font, and section order." },
-  { key: "custom", label: "Custom", desc: "Add and arrange your own content blocks." },
+  { key: "themed", label: "Themed", desc: "Your brand — colors, fonts, cover, header, footer, and sections." },
 ];
 
 export const ACCENTS = [
@@ -92,6 +103,7 @@ export const BLOCK_LIBRARY = [
   { type: "schedule", label: "Schedule", icon: Clock, category: "event", singleton: true },
   { type: "location", label: "Location & directions", icon: MapPin, category: "event", singleton: true },
   { type: "whosgoing", label: "Who's going", icon: Users, category: "event", singleton: true },
+  { type: "guests", label: "Guests", icon: Users, category: "event", singleton: true },
   { type: "faq", label: "FAQ", icon: HelpCircle, category: "event", singleton: true },
   {
     type: "heading",
@@ -157,6 +169,7 @@ const DEFAULT_BLOCK_TYPES = [
   "schedule",
   "location",
   "whosgoing",
+  "guests",
   "faq",
 ];
 
@@ -258,10 +271,13 @@ function BlockEditorDialog({ block, onOpenChange, onSave }) {
   const meta = block ? getBlockMeta(block.type) : null;
   const [draft, setDraft] = useState(block?.props || {});
 
-  // Re-seed the draft whenever a different block is opened.
-  React.useEffect(() => {
+  // Re-seed the draft whenever a different block is opened (render-phase reset —
+  // React's recommended alternative to a setState-in-effect).
+  const [seedId, setSeedId] = useState(block?.id);
+  if (block?.id !== seedId) {
+    setSeedId(block?.id);
     setDraft(block?.props || {});
-  }, [block]);
+  }
 
   if (!block || !meta?.fields?.length) return null;
 
@@ -318,6 +334,57 @@ function BlockEditorDialog({ block, onOpenChange, onSave }) {
 // Editor section (right-nav "Page design")
 // ---------------------------------------------------------------------------
 
+// Segmented control — even buttons over a row, one selected. `options` are
+// `{ key|value, label }`; the resolved key is passed to `onChange`.
+function Segmented({ value, onChange, options }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => {
+        const key = o.key ?? o.value;
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            className={cn(
+              "min-w-[72px] flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+              value === key
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
+            )}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Color picker — a native swatch plus an editable hex field.
+function ColorField({ label, value, onChange }) {
+  return (
+    <Field label={label}>
+      <div className="flex items-center gap-2">
+        <span className="relative h-9 w-10 shrink-0 overflow-hidden rounded-md border border-border">
+          <input
+            type="color"
+            aria-label={label}
+            value={value || "#000000"}
+            onChange={(e) => onChange(e.target.value)}
+            className="absolute -left-1 -top-1 h-[calc(100%+8px)] w-[calc(100%+8px)] cursor-pointer border-0 bg-transparent p-0"
+          />
+        </span>
+        <Input
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 font-mono text-xs"
+        />
+      </div>
+    </Field>
+  );
+}
+
 export function PageDesignSection({ design, onChange, onPreview }) {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -325,6 +392,16 @@ export function PageDesignSection({ design, onChange, onPreview }) {
   const set = (patch) => onChange({ ...design, ...patch });
   const customizable = design.mode !== "standard";
   const isCustom = design.mode === "custom";
+
+  // Brand theme (Themed mode). Reads the resolved theme (explicit, or legacy
+  // back-compat, or defaults) and writes an explicit `design.theme`.
+  const theme = resolveTheme(design);
+  const setTheme = (patch) => set({ theme: { ...theme, ...patch } });
+  const setColors = (patch) => setTheme({ colors: { ...theme.colors, ...patch } });
+  const setFont = (patch) => setTheme({ font: { ...theme.font, ...patch } });
+  const onBase = (base) =>
+    setTheme({ base, colors: { ...theme.colors, ...BASE_PALETTES[base] } });
+  const applyPreset = (preset) => set({ theme: preset.theme });
 
   const setBlocks = (blocks) => set({ blocks });
   const toggleBlock = (id) =>
@@ -344,20 +421,9 @@ export function PageDesignSection({ design, onChange, onPreview }) {
 
   return (
     <div className="space-y-6">
-      <SectionCard
-        title="Page mode"
-        description="Choose how much control you want over the public event page."
-        action={
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={onPreview}
-          >
-            <Eye className="h-4 w-4" /> Preview
-          </Button>
-        }
-      >
+      <div className="space-y-3">
+        {/* Page mode — shown without a card wrapper, the selector sits directly
+            on the section surface. */}
         <div className="grid gap-3 sm:grid-cols-3">
           {PAGE_MODES.map((mode) => {
             const active = design.mode === mode.key;
@@ -367,6 +433,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                 type="button"
                 onClick={() => set({ mode: mode.key })}
                 className={cn(
+
                   "flex flex-col gap-1.5 rounded-xl border p-4 text-left transition-colors",
                   active
                     ? "border-border-strong bg-surface-card"
@@ -388,7 +455,7 @@ export function PageDesignSection({ design, onChange, onPreview }) {
             );
           })}
         </div>
-      </SectionCard>
+      </div>
 
       {!customizable ? (
         <SectionCard>
@@ -401,83 +468,150 @@ export function PageDesignSection({ design, onChange, onPreview }) {
               nothing to configure. Switch to{" "}
               <span className="text-foreground">Themed</span> to set your brand
               colors, or <span className="text-foreground">Custom</span> to build
-              the page block by block.
+              your own freeform page on a canvas.
             </p>
           </div>
         </SectionCard>
       ) : (
         <>
-          <SectionCard title="Theme">
+          <SectionCard
+            title="Brand presets"
+            description="Start from a look, then fine-tune everything below."
+          >
+            <div className="flex flex-wrap gap-2">
+              {THEME_PRESETS.map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => applyPreset(p)}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-border-strong hover:bg-surface-active hover:text-foreground"
+                >
+                  <span
+                    className="h-3.5 w-3.5 rounded-full border border-border"
+                    style={{ backgroundColor: p.theme.colors.brand }}
+                  />
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Brand colors"
+            description="Your palette. Surfaces, borders, and buttons adapt automatically."
+          >
             <div className="space-y-5">
-              <Field label="Accent color">
-                <div className="flex flex-wrap gap-2.5">
-                  {ACCENTS.map((a) => {
-                    const active = design.accent === a.key;
-                    return (
-                      <button
-                        key={a.key}
-                        type="button"
-                        title={a.label}
-                        onClick={() => set({ accent: a.key })}
-                        className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-transform",
-                          active
-                            ? "scale-110 border-white"
-                            : "border-transparent hover:scale-105",
-                        )}
-                        style={{ backgroundColor: a.color }}
-                      >
-                        {active ? (
-                          <Check className="h-4 w-4" style={{ color: a.text }} />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
+              <Field label="Base">
+                <Segmented value={theme.base} onChange={onBase} options={BASES} />
               </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorField
+                  label="Brand / accent"
+                  value={theme.colors.brand}
+                  onChange={(v) => setColors({ brand: v })}
+                />
+                <ColorField
+                  label="Brand text"
+                  value={theme.colors.brandText}
+                  onChange={(v) => setColors({ brandText: v })}
+                />
+                <ColorField
+                  label="Page background"
+                  value={theme.colors.bg}
+                  onChange={(v) => setColors({ bg: v })}
+                />
+                <ColorField
+                  label="Surface / cards"
+                  value={theme.colors.surface}
+                  onChange={(v) => setColors({ surface: v })}
+                />
+                <ColorField
+                  label="Text"
+                  value={theme.colors.text}
+                  onChange={(v) => setColors({ text: v })}
+                />
+                <ColorField
+                  label="Muted text"
+                  value={theme.colors.muted}
+                  onChange={(v) => setColors({ muted: v })}
+                />
+                <ColorField
+                  label="Border"
+                  value={theme.colors.border}
+                  onChange={(v) => setColors({ border: v })}
+                />
+              </div>
+            </div>
+          </SectionCard>
 
+          <SectionCard title="Typography">
+            <div className="space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Cover style">
-                  <div className="flex gap-2">
-                    {COVER_STYLES.map((c) => (
-                      <button
-                        key={c.key}
-                        type="button"
-                        onClick={() => set({ cover: c.key })}
-                        className={cn(
-                          "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
-                          design.cover === c.key
-                            ? "border-white bg-white text-[#161616]"
-                            : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
-                        )}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
-                  </div>
+                <Field label="Heading font">
+                  <Segmented
+                    value={theme.font.heading}
+                    onChange={(v) => setFont({ heading: v })}
+                    options={FONT_OPTIONS}
+                  />
                 </Field>
-
-                <Field label="Font">
-                  <div className="flex gap-2">
-                    {FONTS.map((f) => (
-                      <button
-                        key={f.key}
-                        type="button"
-                        onClick={() => set({ font: f.key })}
-                        className={cn(
-                          "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
-                          f.className,
-                          design.font === f.key
-                            ? "border-white bg-white text-[#161616]"
-                            : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
-                        )}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
+                <Field label="Body font">
+                  <Segmented
+                    value={theme.font.body}
+                    onChange={(v) => setFont({ body: v })}
+                    options={FONT_OPTIONS}
+                  />
                 </Field>
               </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Text size">
+                  <Segmented
+                    value={theme.font.scale}
+                    onChange={(v) => setFont({ scale: v })}
+                    options={FONT_SCALES}
+                  />
+                </Field>
+                <Field label="Heading weight">
+                  <Segmented
+                    value={theme.headingWeight}
+                    onChange={(v) => setTheme({ headingWeight: v })}
+                    options={HEADING_WEIGHTS}
+                  />
+                </Field>
+              </div>
+              <SettingsList>
+                <SettingRow
+                  title="Uppercase headings"
+                  description="Render section headings in all caps."
+                  checked={theme.headingUpper}
+                  onCheckedChange={(v) => setTheme({ headingUpper: v })}
+                />
+              </SettingsList>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Shape & style">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Corner radius">
+                <Segmented
+                  value={theme.radius}
+                  onChange={(v) => setTheme({ radius: v })}
+                  options={RADIUS_OPTIONS}
+                />
+              </Field>
+              <Field label="Cover style">
+                <Segmented
+                  value={theme.cover}
+                  onChange={(v) => setTheme({ cover: v })}
+                  options={COVER_OPTIONS}
+                />
+              </Field>
+              <Field label="Content width">
+                <Segmented
+                  value={theme.width}
+                  onChange={(v) => setTheme({ width: v })}
+                  options={WIDTHS}
+                />
+              </Field>
             </div>
           </SectionCard>
 

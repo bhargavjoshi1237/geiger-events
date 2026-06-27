@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getUser } from "@/lib/supabase/user";
 import { ProfileDropdown } from "@/components/internal/topbar/dialogue/profile_dropdown";
-import { MegaMenu } from "@/components/mega-menu";
+import { SuiteMegaMenu } from "@/components/landing/suite-mega-menu";
 
 export function Header({ dashboardHref = "/home" }) {
   const [user, setUser] = useState(null);
@@ -38,7 +38,7 @@ export function Header({ dashboardHref = "/home" }) {
           </span>
         </Link>
 
-        <MegaMenu dashboardHref={dashboardHref} />
+        <SuiteMegaMenu />
 
         <div className="hidden items-center gap-4 md:flex">
           {user ? (

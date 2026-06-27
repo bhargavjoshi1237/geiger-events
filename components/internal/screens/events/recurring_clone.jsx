@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import { toast } from "sonner";
+import React from "react";
 import { CalendarClock, Check } from "lucide-react";
 
 import {
@@ -21,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EVENT_STATUS_MAP, formatDate } from "./sample_data";
+import { useEventConfig } from "@/lib/events/use-event-config";
 
 // --- Recurring Events --------------------------------------------------------
 
@@ -33,16 +33,25 @@ const FREQ_LABEL = {
 };
 
 export function RecurringEventsSection({ event }) {
-  const [freq, setFreq] = useState("weekly");
-  const [interval, setInterval] = useState(1);
-  const [days, setDays] = useState(["Tue"]);
-  const [ends, setEnds] = useState("after");
-  const [count, setCount] = useState(8);
+  const [rule, setRule, saveRule, saving] = useEventConfig(event, "recurring", {
+    freq: "weekly",
+    interval: 1,
+    days: ["Tue"],
+    ends: "after",
+    count: 8,
+  });
+  const { freq, interval, days, ends, count } = rule;
+  const setField = (key) => (value) => setRule({ ...rule, [key]: value });
+  const setFreq = setField("freq");
+  const setInterval = setField("interval");
+  const setEnds = setField("ends");
+  const setCount = setField("count");
 
   const toggleDay = (d) =>
-    setDays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d],
-    );
+    setRule({
+      ...rule,
+      days: days.includes(d) ? days.filter((x) => x !== d) : [...days, d],
+    });
 
   const summary = `Every ${interval > 1 ? `${interval} ` : ""}${FREQ_LABEL[freq]}${interval > 1 ? "s" : ""}${
     freq === "weekly" && days.length ? ` on ${days.join(", ")}` : ""
@@ -184,7 +193,10 @@ export function RecurringEventsSection({ event }) {
             </div>
             <Button
               className="mt-4 w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => toast.success("Recurrence rule saved.")}
+              disabled={saving}
+              onClick={() =>
+                saveRule(rule, { successMsg: "Recurrence rule saved." })
+              }
             >
               Generate occurrences
             </Button>

@@ -25,6 +25,7 @@ import {
 
 import {
   DataTable,
+  EditorSectionHeader,
   Field,
   SectionCard,
   SettingsList,
@@ -50,6 +51,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { eventSlug, formatDate } from "./sample_data";
+import { useEventConfig } from "@/lib/events/use-event-config";
 
 function CodeBlock({ code }) {
   const copy = () => {
@@ -87,7 +90,7 @@ const CAL_PROVIDERS = [
 ];
 
 export function AddToCalendarSection({ event }) {
-  const [enabled, setEnabled] = useState({
+  const [enabled, , saveEnabled] = useEventConfig(event, "calendar", {
     google: true,
     apple: true,
     outlook: true,
@@ -105,9 +108,7 @@ export function AddToCalendarSection({ event }) {
                 icon={p.icon}
                 title={p.title}
                 checked={enabled[p.key]}
-                onCheckedChange={(v) =>
-                  setEnabled((prev) => ({ ...prev, [p.key]: v }))
-                }
+                onCheckedChange={(v) => saveEnabled({ ...enabled, [p.key]: v })}
               />
             ))}
           </SettingsList>
@@ -140,7 +141,7 @@ export function AddToCalendarSection({ event }) {
         title="Subscribe link"
         description="Add an organizer-wide calendar feed so followers get every new event."
       >
-        <CodeBlock code={`https://geiger.events/cal/ava-mitchell.ics`} />
+        <CodeBlock code={`https://geiger.events/e/${event?.id || ""}.ics`} />
       </SectionCard>
     </div>
   );
@@ -149,11 +150,19 @@ export function AddToCalendarSection({ event }) {
 // --- Embeddable Widget -------------------------------------------------------
 
 export function EmbeddableWidgetSection({ event }) {
-  const [type, setType] = useState("button");
-  const [theme, setTheme] = useState("dark");
+  const [cfg, , saveCfg] = useEventConfig(event, "embed", {
+    type: "button",
+    theme: "dark",
+    width: "100%",
+  });
+  const type = cfg.type;
+  const theme = cfg.theme;
+  const setType = (v) => saveCfg({ ...cfg, type: v });
+  const setTheme = (v) => saveCfg({ ...cfg, theme: v });
+  const slug = eventSlug(event);
 
   const code = `<script src="https://geiger.events/embed.js"
-  data-event="summer-product-launch"
+  data-event="${slug}"
   data-type="${type}"
   data-theme="${theme}">
 </script>`;
@@ -189,7 +198,10 @@ export function EmbeddableWidgetSection({ event }) {
               </Select>
             </Field>
             <Field label="Width">
-              <Input defaultValue="100%" />
+              <Input
+                value={cfg.width || ""}
+                onChange={(e) => saveCfg({ ...cfg, width: e.target.value })}
+              />
             </Field>
           </div>
         </SectionCard>
@@ -205,9 +217,11 @@ export function EmbeddableWidgetSection({ event }) {
                 <div className="w-64 rounded-xl border border-border bg-surface-subtle p-4">
                   <div className="mb-3 aspect-video rounded-lg bg-surface-card" />
                   <p className="text-sm font-semibold text-foreground">
-                    Summer Product Launch
+                    {event?.name || "Your event"}
                   </p>
-                  <p className="text-xs text-text-secondary">Jun 18 · London</p>
+                  <p className="text-xs text-text-secondary">
+                    {event ? `${formatDate(event.date)} · ${event.city}` : ""}
+                  </p>
                   <Button className="mt-3 w-full bg-primary text-primary-foreground hover:bg-primary/90">
                     Register
                   </Button>
@@ -235,13 +249,22 @@ const SHARE_NETWORKS = [
 ];
 
 export function SeoSharingSection({ event }) {
-  const [title, setTitle] = useState("Summer Product Launch — Geiger Events");
-  const [description, setDescription] = useState(
-    "Join us for the unveiling of our biggest release yet. Talks, demos, and drinks at The Glasshouse, London.",
-  );
+  const slug = eventSlug(event);
+  const [seo, setSeo, saveSeo, saving] = useEventConfig(event, "seo", {
+    title: `${event?.name || "Event"} — Geiger Events`,
+    description:
+      event?.summary ||
+      `Join us for ${event?.name || "this event"} at ${event?.venue || "the venue"}${
+        event?.city && event.city !== "Remote" ? `, ${event.city}` : ""
+      }.`,
+  });
+  const title = seo.title || "";
+  const description = seo.description || "";
+  const setTitle = (v) => setSeo({ ...seo, title: v });
+  const setDescription = (v) => setSeo({ ...seo, description: v });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Search & social metadata">
           <div className="grid gap-4">
@@ -262,10 +285,19 @@ export function SeoSharingSection({ event }) {
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={3}
+                className="min-h-[200px]"
                 maxLength={200}
               />
             </Field>
+            <div className="flex justify-end">
+              <Button
+                disabled={saving}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => saveSeo(seo, { successMsg: "SEO settings saved." })}
+              >
+                Save
+              </Button>
+            </div>
           </div>
         </SectionCard>
 
@@ -276,7 +308,7 @@ export function SeoSharingSection({ event }) {
             </div>
             <div className="space-y-1 p-4">
               <p className="text-[11px] uppercase tracking-wide text-text-tertiary">
-                geiger.events
+                geiger.events/{slug}
               </p>
               <p className="line-clamp-1 text-sm font-semibold text-foreground">
                 {title}
@@ -289,10 +321,13 @@ export function SeoSharingSection({ event }) {
         </SectionCard>
       </div>
 
-      <SectionCard
-        title="Sharing"
-        description="Quick-share buttons shown on the event page."
-      >
+      <div>
+        <div className="mb-4">
+          <h3 className="text-base font-semibold text-foreground">Sharing</h3>
+          <p className="mt-0.5 text-sm text-text-secondary">
+            Quick-share buttons shown on the event page.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           {SHARE_NETWORKS.map((n) => {
             const Icon = n.icon;
@@ -309,7 +344,7 @@ export function SeoSharingSection({ event }) {
             );
           })}
         </div>
-      </SectionCard>
+      </div>
     </div>
   );
 }
@@ -323,8 +358,8 @@ const LANGUAGES = [
   { id: "es", name: "Spanish", locale: "es-ES", progress: 40, isDefault: false },
 ];
 
-export function LocalizationSection({ event }) {
-  const [langs, setLangs] = useState(LANGUAGES);
+export function LocalizationSection({ event, headerItem }) {
+  const [langs, , saveLangs] = useEventConfig(event, "languages", LANGUAGES);
   const [open, setOpen] = useState(false);
 
   const columns = [
@@ -381,8 +416,9 @@ export function LocalizationSection({ event }) {
 
   return (
     <div className="space-y-6">
-      <SectionCard
-        title="Languages"
+      <EditorSectionHeader
+        title={headerItem?.label || "Localization"}
+        description={headerItem?.desc}
         action={
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -391,15 +427,12 @@ export function LocalizationSection({ event }) {
             <Plus className="h-4 w-4" /> Add language
           </Button>
         }
-        bodyPadding={false}
-      >
-        <DataTable
-          columns={columns}
-          data={langs}
-          getRowKey={(l) => l.id}
-          className="rounded-none border-0"
-        />
-      </SectionCard>
+      />
+      <DataTable
+        columns={columns}
+        data={langs}
+        getRowKey={(l) => l.id}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -433,18 +466,20 @@ export function LocalizationSection({ event }) {
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
-                setLangs((prev) => [
-                  ...prev,
-                  {
-                    id: `l${Date.now()}`,
-                    name: "Italian",
-                    locale: "it-IT",
-                    progress: 0,
-                    isDefault: false,
-                  },
-                ]);
+                saveLangs(
+                  [
+                    ...langs,
+                    {
+                      id: `l${Date.now()}`,
+                      name: "Italian",
+                      locale: "it-IT",
+                      progress: 0,
+                      isDefault: false,
+                    },
+                  ],
+                  { successMsg: "Language added." },
+                );
                 setOpen(false);
-                toast.success("Language added.");
               }}
             >
               Add language
@@ -464,51 +499,85 @@ const FORMATS = [
   { value: "hybrid", label: "Hybrid", icon: Video, description: "Both a venue and a livestream." },
 ];
 
-export function HybridModeSection({ event }) {
-  const [format, setFormat] = useState("hybrid");
+const TYPE_TO_FORMAT = {
+  "In-person": "in-person",
+  Online: "online",
+  Hybrid: "hybrid",
+};
+
+export function HybridModeSection({ event, headerItem, onPatch, onCommit }) {
+  const [format, setFormat] = useState(
+    TYPE_TO_FORMAT[event?.type] || "hybrid",
+  );
+  const slug = eventSlug(event);
+  const [hybrid, setHybrid, saveHybrid, saving] = useEventConfig(
+    event,
+    "hybrid",
+    {
+      provider: "geiger",
+      joinLink: `https://geiger.events/live/${slug}`,
+      inPerson: 400,
+      online: 2000,
+    },
+  );
+  const setHybridField = (key) => (value) => setHybrid({ ...hybrid, [key]: value });
+
+  // Keep the event's headline format (a column) in sync with the choice here.
+  const choose = (value) => {
+    setFormat(value);
+    const type = Object.keys(TYPE_TO_FORMAT).find(
+      (k) => TYPE_TO_FORMAT[k] === value,
+    );
+    if (type) (onCommit || onPatch)?.({ type });
+  };
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Event format">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {FORMATS.map((f) => {
-            const Icon = f.icon;
-            const active = format === f.value;
-            return (
-              <button
-                key={f.value}
-                type="button"
-                onClick={() => setFormat(f.value)}
-                className={cn(
-                  "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors",
-                  active
-                    ? "border-border-strong bg-surface-card"
-                    : "border-border bg-transparent hover:bg-surface-card",
-                )}
-              >
-                <div className="flex w-full items-center justify-between">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  {active ? (
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white">
-                      <Check className="h-3 w-3 text-[#161616]" />
-                    </span>
-                  ) : null}
+      <EditorSectionHeader
+        title={headerItem?.label || "Hybrid Mode"}
+        description={headerItem?.desc}
+      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {FORMATS.map((f) => {
+          const Icon = f.icon;
+          const active = format === f.value;
+          return (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => choose(f.value)}
+              className={cn(
+                "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors",
+                active
+                  ? "border-border-strong bg-surface-card"
+                  : "border-border bg-transparent hover:bg-surface-card",
+              )}
+            >
+              <div className="flex w-full items-center justify-between">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
+                  <Icon className="h-4 w-4" />
                 </div>
-                <p className="text-sm font-medium text-foreground">{f.label}</p>
-                <p className="text-xs text-text-secondary">{f.description}</p>
-              </button>
-            );
-          })}
-        </div>
-      </SectionCard>
+                {active ? (
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white">
+                    <Check className="h-3 w-3 text-[#161616]" />
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-sm font-medium text-foreground">{f.label}</p>
+              <p className="text-xs text-text-secondary">{f.description}</p>
+            </button>
+          );
+        })}
+      </div>
 
       {format !== "in-person" ? (
         <SectionCard title="Streaming">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Stream provider">
-              <Select defaultValue="geiger">
+              <Select
+                value={hybrid.provider}
+                onValueChange={setHybridField("provider")}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -521,7 +590,10 @@ export function HybridModeSection({ event }) {
               </Select>
             </Field>
             <Field label="Join link" hint="Shared with online attendees only.">
-              <Input defaultValue="https://geiger.events/live/summer-launch" />
+              <Input
+                value={hybrid.joinLink || ""}
+                onChange={(e) => setHybridField("joinLink")(e.target.value)}
+              />
             </Field>
           </div>
         </SectionCard>
@@ -534,10 +606,22 @@ export function HybridModeSection({ event }) {
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="In-person capacity">
-              <Input type="number" defaultValue={400} />
+              <Input
+                type="number"
+                value={hybrid.inPerson ?? 0}
+                onChange={(e) =>
+                  setHybridField("inPerson")(Number(e.target.value) || 0)
+                }
+              />
             </Field>
             <Field label="Online capacity">
-              <Input type="number" defaultValue={2000} />
+              <Input
+                type="number"
+                value={hybrid.online ?? 0}
+                onChange={(e) =>
+                  setHybridField("online")(Number(e.target.value) || 0)
+                }
+              />
             </Field>
           </div>
         </SectionCard>
@@ -546,7 +630,8 @@ export function HybridModeSection({ event }) {
       <div className="flex justify-end">
         <Button
           className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => toast.success("Format settings saved.")}
+          disabled={saving}
+          onClick={() => saveHybrid(hybrid, { successMsg: "Format settings saved." })}
         >
           Save settings
         </Button>

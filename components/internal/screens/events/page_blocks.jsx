@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Clock,
   MapPin,
@@ -26,6 +26,16 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { initials } from "./sample_data";
+import {
+  EventMap,
+  NearbyList,
+  WeatherCard,
+  nearbyGroups,
+  flattenPlaces,
+  GETTING_THERE_GROUPS,
+  AROUND_VENUE_GROUPS,
+} from "./event_map";
+import { geocodeAddress } from "@/lib/map/geo";
 
 // Sample content for the "smart" event blocks. Stands in for real per-event
 // data until the backend is connected.
@@ -34,14 +44,6 @@ const WHAT_TO_EXPECT = [
   "Three lightning talks from the community",
   "Plenty of time to network and meet people",
   "An open Q&A with the host",
-];
-
-const AGENDA = [
-  { time: "6:00", title: "Doors open & welcome drinks", by: null },
-  { time: "6:30", title: "Opening remarks", by: "Ava Mitchell" },
-  { time: "7:00", title: "Lightning talks", by: "Invited speakers" },
-  { time: "8:00", title: "Networking & refreshments", by: null },
-  { time: "9:00", title: "Wrap up", by: null },
 ];
 
 const FAQ = [
@@ -105,26 +107,44 @@ function ExpectBlock() {
   );
 }
 
-function ScheduleBlock() {
+function ScheduleBlock({ event }) {
+  // Real, organizer-authored timeline only (stored on the event's metadata bag
+  // and edited in the Schedule section). No static fallback — render nothing
+  // until the organizer adds items, so the page never shows placeholder data.
+  const items = Array.isArray(event.schedule) ? event.schedule : [];
+  if (!items.length) return null;
   return (
     <section className="space-y-4">
       <SectionTitle icon={Clock}>Schedule</SectionTitle>
       <div className="overflow-hidden rounded-xl border border-border bg-surface-subtle">
-        {AGENDA.map((slot, i) => (
+        {items.map((slot, i) => (
           <div
-            key={slot.title}
+            key={slot.id || slot.title}
             className={cn(
               "flex gap-4 p-4",
-              i !== AGENDA.length - 1 && "border-b border-border",
+              i !== items.length - 1 && "border-b border-border",
             )}
           >
             <span className="w-16 shrink-0 text-sm font-medium tabular-nums text-text-secondary">
               {slot.time}
             </span>
-            <div className="min-w-0">
+            {slot.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={slot.image}
+                alt=""
+                className="h-16 w-24 shrink-0 rounded-lg border border-border object-cover"
+              />
+            ) : null}
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-foreground">{slot.title}</p>
+              {slot.description ? (
+                <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                  {slot.description}
+                </p>
+              ) : null}
               {slot.by ? (
-                <p className="text-xs text-text-secondary">{slot.by}</p>
+                <p className="mt-0.5 text-xs text-text-secondary">{slot.by}</p>
               ) : null}
             </div>
           </div>
@@ -134,15 +154,52 @@ function ScheduleBlock() {
   );
 }
 
+function NoteCard({ icon: Icon, title, text }) {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="text-xs text-text-secondary">{text}</p>
+      </div>
+    </div>
+  );
+}
+
 function LocationBlock({ event }) {
+  const m = event.map || {};
+  const coords = m.coords;
+  const isRemote = event.city === "Remote";
+  const address = event.address || event.city || "";
+  const gettingThere = nearbyGroups(m, GETTING_THERE_GROUPS);
+  const aroundVenue = nearbyGroups(m, AROUND_VENUE_GROUPS);
+  const mapPlaces = useMemo(() => flattenPlaces(event.map), [event.map]);
+
+  // When the event has no saved pin, lightly geocode the address so the map
+  // still centres on the right area (centre-only — no pin).
+  const [autoCenter, setAutoCenter] = useState(null);
+  const geocodedFor = useRef("");
+  useEffect(() => {
+    if (coords || isRemote || !address || geocodedFor.current === address)
+      return undefined;
+    geocodedFor.current = address;
+    let alive = true;
+    geocodeAddress(address).then((g) => {
+      if (alive && g) setAutoCenter({ lat: g.lat, lng: g.lng });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [address, coords, isRemote]);
+
   return (
     <section className="space-y-4">
       <SectionTitle icon={MapPin}>Location</SectionTitle>
       <div>
         <p className="text-sm font-medium text-foreground">{event.venue}</p>
-        {event.city && event.city !== "Remote" ? (
+        {!isRemote ? (
           <p className="text-sm text-text-secondary">
-            61 Southwark Street, {event.city}
+            {event.address || event.city}
           </p>
         ) : (
           <p className="text-sm text-text-secondary">
@@ -150,30 +207,35 @@ function LocationBlock({ event }) {
           </p>
         )}
       </div>
-      <div className="relative flex aspect-[21/9] items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-card">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#2a2a2a_1px,transparent_1px),linear-gradient(to_bottom,#2a2a2a_1px,transparent_1px)] bg-[size:32px_32px] opacity-50" />
-        <MapPin className="relative h-7 w-7 text-muted-foreground" />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
-          <Train className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Public transport</p>
-            <p className="text-xs text-text-secondary">
-              2 min from Southwark (Jubilee line)
-            </p>
-          </div>
+
+      {!isRemote ? (
+        <EventMap
+          coords={coords}
+          places={mapPlaces}
+          fallbackCenter={autoCenter}
+          label={event.venue || event.name || "Venue"}
+          address={address}
+          className="aspect-[21/9] w-full"
+        />
+      ) : null}
+
+      {!isRemote ? (
+        <WeatherCard coords={coords || autoCenter} date={event.date} />
+      ) : null}
+
+      <NearbyList groups={gettingThere} collapse />
+      <NearbyList groups={aroundVenue} collapse />
+
+      {m.transport || m.parking ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {m.transport ? (
+            <NoteCard icon={Train} title="Getting there" text={m.transport} />
+          ) : null}
+          {m.parking ? (
+            <NoteCard icon={Car} title="Parking" text={m.parking} />
+          ) : null}
         </div>
-        <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
-          <Car className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Parking</p>
-            <p className="text-xs text-text-secondary">
-              NCP Great Suffolk Street, 5 min walk
-            </p>
-          </div>
-        </div>
-      </div>
+      ) : null}
     </section>
   );
 }
@@ -201,6 +263,50 @@ function WhosGoingBlock({ event }) {
           </span>{" "}
           going
         </span>
+      </div>
+    </section>
+  );
+}
+
+function GuestsBlock({ event }) {
+  const guests = Array.isArray(event.guests) ? event.guests : [];
+  if (!guests.length) return null;
+  return (
+    <section className="space-y-4">
+      <SectionTitle icon={Users}>Guests</SectionTitle>
+      <div className="gap-4 flex flex-col">
+        {guests.map((g, i) => (
+          <div
+            key={g.id || i}
+            className="flex items-start gap-3 rounded-xl border border-border bg-surface-subtle p-4"
+          >
+            {g.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={g.image}
+                alt=""
+                className="h-14 w-14 shrink-0 rounded-full border border-border object-cover"
+              />
+            ) : (
+              <Avatar className="h-14 w-14 shrink-0 border border-border">
+                <AvatarFallback className="bg-surface-card text-sm text-muted-foreground">
+                  {initials(g.name || "?")}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">{g.name}</p>
+              {g.role ? (
+                <p className="text-xs font-medium text-text-secondary">{g.role}</p>
+              ) : null}
+              {g.bio ? (
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {g.bio}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -328,6 +434,7 @@ const BLOCK_RENDERERS = {
   schedule: ScheduleBlock,
   location: LocationBlock,
   whosgoing: WhosGoingBlock,
+  guests: GuestsBlock,
   faq: FaqBlock,
   heading: HeadingBlock,
   text: TextBlock,

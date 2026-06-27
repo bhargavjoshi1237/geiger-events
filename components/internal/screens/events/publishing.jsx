@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { toast } from "sonner";
 import { Globe, Link2, Lock, EyeOff, Check } from "lucide-react";
 
 import {
   DataTable,
+  EditorSectionHeader,
   Field,
   SectionCard,
   SettingsList,
@@ -23,7 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EVENT_STATUS_MAP } from "./sample_data";
+import { EVENT_STATUS_MAP, eventSlug } from "./sample_data";
+import { useEventConfig } from "@/lib/events/use-event-config";
+
+// UI radio values are lowercase; the event model stores capitalised labels.
+const VISIBILITY_TO_LABEL = {
+  public: "Public",
+  unlisted: "Unlisted",
+  private: "Private",
+};
 
 // --- Visibility --------------------------------------------------------------
 
@@ -48,51 +56,68 @@ const VISIBILITY_OPTIONS = [
   },
 ];
 
-export function VisibilitySection({ event }) {
-  const [visibility, setVisibility] = useState("public");
-  const [password, setPassword] = useState(false);
+export function VisibilitySection({ event, headerItem, onPatch, onCommit }) {
+  const [visibility, setVisibility] = useState(
+    (event?.visibility || "Public").toLowerCase(),
+  );
+  const [access, setAccess, saveAccess, saving] = useEventConfig(
+    event,
+    "access",
+    { password: false, passwordValue: "", indexing: true, requireSignin: false },
+  );
+  const setAccessField = (key) => (value) =>
+    setAccess({ ...access, [key]: value });
+
+  const choose = (value) => {
+    setVisibility(value);
+    const label = VISIBILITY_TO_LABEL[value] || "Public";
+    // Visibility is a column — persist immediately.
+    (onCommit || onPatch)?.({ visibility: label });
+  };
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Who can see this event">
-        <div className="grid gap-3">
-          {VISIBILITY_OPTIONS.map((opt) => {
-            const Icon = opt.icon;
-            const active = visibility === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setVisibility(opt.value)}
+      <EditorSectionHeader
+        title={headerItem?.label || "Visibility"}
+        description={headerItem?.desc}
+      />
+      <div className="grid gap-3">
+        {VISIBILITY_OPTIONS.map((opt) => {
+          const Icon = opt.icon;
+          const active = visibility === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => choose(opt.value)}
+              className={cn(
+                "flex items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors",
+                active
+                  ? "border-border-strong bg-surface-card"
+                  : "border-border bg-transparent hover:bg-surface-card",
+              )}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  {opt.label}
+                </p>
+                <p className="text-xs text-text-secondary">{opt.description}</p>
+              </div>
+              <span
                 className={cn(
-                  "flex items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors",
-                  active
-                    ? "border-border-strong bg-surface-card"
-                    : "border-border bg-transparent hover:bg-surface-card",
+                  "mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border",
+                  active ? "border-white bg-white" : "border-[#444]",
                 )}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">
-                    {opt.label}
-                  </p>
-                  <p className="text-xs text-text-secondary">{opt.description}</p>
-                </div>
-                <span
-                  className={cn(
-                    "mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border",
-                    active ? "border-white bg-white" : "border-[#444]",
-                  )}
-                >
-                  {active ? <Check className="h-3 w-3 text-[#161616]" /> : null}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </SectionCard>
+                {active ? <Check className="h-3 w-3 text-[#161616]" /> : null}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       <SectionCard title="Access & indexing">
         <SettingsList>
@@ -100,13 +125,20 @@ export function VisibilitySection({ event }) {
             icon={Lock}
             title="Password protect"
             description="Require a password before the page loads."
-            checked={password}
-            onCheckedChange={setPassword}
+            checked={access.password}
+            onCheckedChange={setAccessField("password")}
           />
-          {password ? (
+          {access.password ? (
             <div className="py-3">
               <Field label="Event password">
-                <Input placeholder="Set a password" className="max-w-xs" />
+                <Input
+                  placeholder="Set a password"
+                  className="max-w-xs"
+                  value={access.passwordValue || ""}
+                  onChange={(e) =>
+                    setAccessField("passwordValue")(e.target.value)
+                  }
+                />
               </Field>
             </div>
           ) : null}
@@ -114,23 +146,29 @@ export function VisibilitySection({ event }) {
             icon={Globe}
             title="Allow search engine indexing"
             description="Let Google and others list this event in results."
-            checked
+            checked={access.indexing}
+            onCheckedChange={setAccessField("indexing")}
           />
           <SettingRow
             icon={EyeOff}
             title="Require sign-in to register"
             description="Attendees must have a Geiger account."
+            checked={access.requireSignin}
+            onCheckedChange={setAccessField("requireSignin")}
           />
         </SettingsList>
-        <div className="mt-5 flex justify-end">
-          <Button
+      </SectionCard>
+      <div className="mt-5 flex justify-end">
+            <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => toast.success("Visibility settings saved.")}
+            disabled={saving}
+            onClick={() =>
+              saveAccess(access, { successMsg: "Visibility settings saved." })
+            }
           >
             Save changes
           </Button>
         </div>
-      </SectionCard>
     </div>
   );
 }
@@ -142,8 +180,13 @@ const REDIRECTS = [
   { id: "r2", from: "/ama", to: "/founder-ama-live", status: "On sale" },
 ];
 
-export function CustomUrlSection({ event }) {
-  const [slug, setSlug] = useState("summer-product-launch");
+export function CustomUrlSection({ event, headerItem }) {
+  const [url, setUrl, saveUrl, saving] = useEventConfig(event, "url", {
+    slug: eventSlug(event),
+    domain: "",
+  });
+  const slug = url.slug || "";
+  const setSlug = (next) => setUrl({ ...url, slug: next });
   const available = slug.length > 3;
 
   const columns = [
@@ -174,44 +217,47 @@ export function CustomUrlSection({ event }) {
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Event link">
-        <Field label="URL slug" hint="Lowercase letters, numbers, and hyphens.">
-          <div className="flex items-center overflow-hidden rounded-md border border-border bg-surface-card">
-            <span className="border-r border-border px-3 py-2.5 text-sm text-text-secondary">
-              geiger.events/
-            </span>
-            <input
-              value={slug}
-              onChange={(e) =>
-                setSlug(
-                  e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
-                )
-              }
-              className="flex-1 bg-transparent px-3 py-2.5 text-sm text-foreground outline-none"
-            />
-            <span
-              className={cn(
-                "mr-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium",
-                available
-                  ? "bg-emerald-500/10 text-emerald-400"
-                  : "bg-amber-500/10 text-amber-400",
-              )}
-            >
-              {available ? <Check className="h-3 w-3" /> : null}
-              {available ? "Available" : "Too short"}
-            </span>
-          </div>
-        </Field>
-
-        <div className="mt-5 flex justify-end">
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => toast.success("URL saved.")}
+      <EditorSectionHeader
+        title={headerItem?.label || "Custom URL"}
+        description={headerItem?.desc}
+      />
+      <Field label="URL slug" hint="Lowercase letters, numbers, and hyphens.">
+        <div className="flex items-center overflow-hidden rounded-md border border-border bg-surface-card">
+          <span className="border-r border-border px-3 py-2.5 text-sm text-text-secondary">
+            geiger.events/
+          </span>
+          <input
+            value={slug}
+            onChange={(e) =>
+              setSlug(
+                e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+              )
+            }
+            className="flex-1 bg-transparent px-3 py-2.5 text-sm text-foreground outline-none"
+          />
+          <span
+            className={cn(
+              "mr-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium",
+              available
+                ? "bg-emerald-500/10 text-emerald-400"
+                : "bg-amber-500/10 text-amber-400",
+            )}
           >
-            Save URL
-          </Button>
+            {available ? <Check className="h-3 w-3" /> : null}
+            {available ? "Available" : "Too short"}
+          </span>
         </div>
-      </SectionCard>
+      </Field>
+
+      <div className="mt-5 flex justify-end">
+        <Button
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={saving}
+          onClick={() => saveUrl(url, { successMsg: "URL saved." })}
+        >
+          Save URL
+        </Button>
+      </div>
 
       <SectionCard
         title="Custom domain"
@@ -219,7 +265,11 @@ export function CustomUrlSection({ event }) {
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <Field label="Domain" className="flex-1">
-            <Input placeholder="events.yourbrand.com" />
+            <Input
+              placeholder="events.yourbrand.com"
+              value={url.domain || ""}
+              onChange={(e) => setUrl({ ...url, domain: e.target.value })}
+            />
           </Field>
           <Button
             variant="outline"

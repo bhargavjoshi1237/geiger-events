@@ -2,351 +2,39 @@
 
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Eye,
-  Rocket,
-  Ticket,
-  Wallet,
-  Users,
-  Clock,
-  MapPin,
-  Map as MapIcon,
-  ImageIcon,
-  FileText,
-  ClipboardList,
-  SlidersHorizontal,
-  Link2,
-  Share2,
-  CalendarCheck,
-  Code,
-  Languages,
-  UserCog,
-  Globe,
-  Video,
-  Repeat,
-  LayoutDashboard,
-  SquarePen,
-  Palette,
-} from "lucide-react";
+import { ArrowLeft, Eye, ExternalLink } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import {
-  SectionCard,
-  StatGrid,
-  StatusPill,
-} from "@/components/internal/shared/screen_kit";
+import { StatusPill } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 
-import {
-  EVENT_STATUS_MAP,
-  EVENT_TYPE_MAP,
-  currency,
-  formatDate,
-} from "./sample_data";
-import {
-  BasicsSection,
-  TicketsSection,
-  RegistrationSettingsSection,
-} from "./event_builder";
-import {
-  CoverMediaSection,
-  RichDescriptionsSection,
-  CustomQuestionsSection,
-} from "./content_media";
-import {
-  LocationTimeSection,
-  MapDirectionsSection,
-  TimezoneSupportSection,
-} from "./location_time";
-import { VisibilitySection, CustomUrlSection } from "./publishing";
-import {
-  AddToCalendarSection,
-  EmbeddableWidgetSection,
-  SeoSharingSection,
-  LocalizationSection,
-  HybridModeSection,
-} from "./distribution";
-import { RecurringEventsSection } from "./recurring_clone";
-import { CoHostsAdminsSection } from "./people";
+import { EVENT_STATUS_MAP, formatDate } from "./sample_data";
 import { EventPublicPage } from "./event_public_page";
 import { PageDesignSection, defaultPageDesign } from "./page_design";
+import { NAV_GROUPS, SECTIONS } from "./event_sections";
+import { updateEventMeta } from "@/lib/supabase/events";
 
-// Right-hand editor navigation — every per-event topic is its own entry,
-// grouped the way the original sidebar grouped them.
-const NAV_GROUPS = [
-  {
-    group: null,
-    items: [
-      {
-        key: "overview",
-        label: "Overview",
-        icon: LayoutDashboard,
-        desc: "A snapshot of this event — sales, preview, and publish controls.",
-      },
-    ],
-  },
-  {
-    group: "General",
-    items: [
-      {
-        key: "basics",
-        label: "Event details",
-        icon: SquarePen,
-        desc: "Name, summary, and format for this event.",
-      },
-    ],
-  },
-  {
-    group: "Design",
-    items: [
-      {
-        key: "design",
-        label: "Page design",
-        icon: Palette,
-        desc: "Choose how your public page looks — standard, themed, or custom.",
-      },
-    ],
-  },
-  {
-    group: "Page",
-    items: [
-      {
-        key: "cover",
-        label: "Cover Media",
-        icon: ImageIcon,
-        desc: "The hero image and gallery shown on your event page and in social shares.",
-      },
-      {
-        key: "description",
-        label: "Rich Description",
-        icon: FileText,
-        desc: "Tell attendees what to expect. Format with headings, lists, and links.",
-      },
-    ],
-  },
-  {
-    group: "Location",
-    items: [
-      {
-        key: "location",
-        label: "Location & Time",
-        icon: MapPin,
-        desc: "Where and when your event happens — venue, doors, and start/end times.",
-      },
-      {
-        key: "map",
-        label: "Map & Directions",
-        icon: MapIcon,
-        desc: "Help attendees arrive — a pinned map, getting-there notes, and directions.",
-      },
-    ],
-  },
-  {
-    group: "Tickets",
-    items: [
-      {
-        key: "tickets",
-        label: "Ticket Types",
-        icon: Ticket,
-        desc: "The ticket tiers attendees can buy.",
-      },
-    ],
-  },
-  {
-    group: "Registration",
-    items: [
-      {
-        key: "questions",
-        label: "Custom Questions",
-        icon: ClipboardList,
-        desc: "Collect exactly what you need at registration.",
-      },
-      {
-        key: "regsettings",
-        label: "Registration Settings",
-        icon: SlidersHorizontal,
-        desc: "Approval, waitlist, and what attendees see while registering.",
-      },
-    ],
-  },
-  {
-    group: "Sharing",
-    items: [
-      {
-        key: "url",
-        label: "Custom URL",
-        icon: Link2,
-        desc: "Give your event a clean, memorable link.",
-      },
-      {
-        key: "seo",
-        label: "SEO & Sharing",
-        icon: Share2,
-        desc: "How your event looks in search results and social shares.",
-      },
-      {
-        key: "calendar",
-        label: "Add to Calendar",
-        icon: CalendarCheck,
-        desc: "Let attendees save your event to their calendar with one tap.",
-      },
-      {
-        key: "embed",
-        label: "Embeddable Widget",
-        icon: Code,
-        desc: "Sell tickets and collect RSVPs from your own website.",
-      },
-      {
-        key: "localization",
-        label: "Localization",
-        icon: Languages,
-        desc: "Translate your event page and emails for a wider audience.",
-      },
-    ],
-  },
-  {
-    group: "Team",
-    items: [
-      {
-        key: "team",
-        label: "Co-hosts & Admins",
-        icon: UserCog,
-        desc: "Invite teammates and assign roles to help run this event.",
-      },
-    ],
-  },
-  {
-    group: "Settings",
-    items: [
-      {
-        key: "visibility",
-        label: "Visibility",
-        icon: Eye,
-        desc: "Control who can find and access your event.",
-      },
-      {
-        key: "timezone",
-        label: "Time-zone",
-        icon: Globe,
-        desc: "Show every attendee the right time.",
-      },
-      {
-        key: "hybrid",
-        label: "Hybrid Mode",
-        icon: Video,
-        desc: "Run in-person and online at once.",
-      },
-      {
-        key: "recurring",
-        label: "Recurring Events",
-        icon: Repeat,
-        desc: "Repeat this event on a schedule.",
-      },
-    ],
-  },
-];
-
-function OverviewSection({ event, onPreview }) {
-  const pct = event.capacity
-    ? Math.min(100, Math.round((event.sold / event.capacity) * 100))
-    : 0;
-
-  const stats = [
-    { label: "Tickets sold", value: event.sold.toLocaleString(), icon: Ticket, hint: `of ${event.capacity.toLocaleString()} capacity` },
-    { label: "Revenue", value: currency(event.revenue), icon: Wallet, hint: "Gross, before fees" },
-    { label: "Sell-through", value: `${pct}%`, icon: Users, hint: "Seats filled" },
-    { label: "Visibility", value: event.visibility, icon: Eye, hint: "Who can find it" },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <StatGrid stats={stats} />
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
-        <SectionCard title="Event page preview" bodyPadding={false}>
-          <div className="p-4">
-            <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-border bg-surface-card text-text-tertiary">
-              <ImageIcon className="h-8 w-8" />
-            </div>
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}>
-                  {event.type}
-                </Badge>
-                <StatusPill status={event.status} map={EVENT_STATUS_MAP} />
-              </div>
-              <h3 className="text-lg font-semibold text-white">{event.name}</h3>
-              <div className="space-y-1.5 pt-1 text-sm text-muted-foreground">
-                <p className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-text-secondary" />
-                  {formatDate(event.date)} · {event.time}
-                </p>
-                <p className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-text-secondary" />
-                  {event.venue}
-                  {event.city && event.city !== "Remote" ? `, ${event.city}` : ""}
-                </p>
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Publish">
-          <p className="text-sm text-text-secondary">
-            {event.status === "Draft"
-              ? "This event is a draft. Publish it to start selling tickets."
-              : "This event is live. Changes save instantly."}
-          </p>
-          <div className="mt-4 space-y-2">
-            <Button
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => toast.success(`"${event.name}" published.`)}
-            >
-              <Rocket className="h-4 w-4" /> Publish event
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              onClick={onPreview}
-            >
-              <Eye className="h-4 w-4" /> Preview page
-            </Button>
-          </div>
-        </SectionCard>
-      </div>
-    </div>
-  );
-}
-
-const SECTIONS = {
-  overview: OverviewSection,
-  basics: BasicsSection,
-  cover: CoverMediaSection,
-  description: RichDescriptionsSection,
-  location: LocationTimeSection,
-  map: MapDirectionsSection,
-  tickets: TicketsSection,
-  questions: CustomQuestionsSection,
-  regsettings: RegistrationSettingsSection,
-  url: CustomUrlSection,
-  seo: SeoSharingSection,
-  calendar: AddToCalendarSection,
-  embed: EmbeddableWidgetSection,
-  localization: LocalizationSection,
-  team: CoHostsAdminsSection,
-  visibility: VisibilitySection,
-  timezone: TimezoneSupportSection,
-  hybrid: HybridModeSection,
-  recurring: RecurringEventsSection,
-};
-
-export function EventDetailScreen({ event, onBack }) {
-  const [active, setActive] = useState("overview");
+export function EventDetailScreen({ event, onBack, onUpdate }) {
+  // The active editor section lives in the URL (?section=<key>) so a refresh
+  // keeps the user on the same tab inside the event.
+  const { section: active, setSection: setActive } = useWorkspaceUrl();
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [design, setDesign] = useState(defaultPageDesign);
+  const [design, setDesign] = useState(
+    () => event?.pageDesign || defaultPageDesign(),
+  );
+  // Editable working copy of the event. Sections read from and patch this; the
+  // header and preview reflect edits live, and Save lifts it back to the list.
+  const [form, setForm] = useState(event);
+  // Re-seed when a different event is opened (render-phase reset — React's
+  // recommended alternative to a setState-in-effect).
+  const [seedId, setSeedId] = useState(event?.id);
+  if (event && event.id !== seedId) {
+    setSeedId(event.id);
+    setForm(event);
+    setDesign(event?.pageDesign || defaultPageDesign());
+  }
 
   const activeItem = useMemo(
     () =>
@@ -357,34 +45,65 @@ export function EventDetailScreen({ event, onBack }) {
 
   if (!event) return null;
 
-  const ActiveSection = SECTIONS[active] || OverviewSection;
+  const patch = (partial) => setForm((f) => ({ ...f, ...partial }));
+
+  // Commit = patch + persist immediately. Used by the Overview dashboard so its
+  // controls (status, visibility, publish) take effect without a separate Save.
+  const commit = (partial) => {
+    const next = { ...form, ...partial };
+    setForm(next);
+    onUpdate?.(next);
+  };
+
+  const save = () => {
+    const next = { ...form, pageDesign: design };
+    onUpdate?.(next);
+    // Page design lives in the metadata bag, not a column — persist it there.
+    updateEventMeta(form.id, { pageDesign: design });
+    toast.success("Changes saved.");
+  };
+
+  const viewLive = () => {
+    if (typeof window !== "undefined") {
+      window.open(`/e/${form.id}`, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const ActiveSection = SECTIONS[active] || SECTIONS.overview;
 
   return (
     <MainScreenWrapper>
       {/* Editor header */}
       <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-start gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
+        <div className="min-w-0">
+          {/* Breadcrumb back — reads as part of the page rather than a stray
+              icon button, matching the suite's text-link navigation. */}
+          <button
+            type="button"
             onClick={onBack}
-            className="mt-0.5 shrink-0 text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                {event.name}
-              </h1>
-              <StatusPill status={event.status} map={EVENT_STATUS_MAP} />
-            </div>
-            <p className="mt-1 text-sm font-medium text-muted-foreground">
-              {formatDate(event.date)} · {event.time} · {event.venue}
-            </p>
+            <ArrowLeft className="h-3.5 w-3.5" />
+            All events
+          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+              {form.name}
+            </h1>
+            <StatusPill status={form.status} map={EVENT_STATUS_MAP} />
           </div>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">
+            {formatDate(form.date)} · {form.time} · {form.venue}
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={viewLive}
+          >
+            <ExternalLink className="h-4 w-4" /> 
+          </Button>
           <Button
             variant="outline"
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
@@ -394,7 +113,7 @@ export function EventDetailScreen({ event, onBack }) {
           </Button>
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => toast.success("Changes saved.")}
+            onClick={save}
           >
             Save changes
           </Button>
@@ -404,12 +123,31 @@ export function EventDetailScreen({ event, onBack }) {
       {/* Content (left) + section nav (right) */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px]">
         <div className="order-2 min-w-0 lg:order-1">
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-white">
-              {activeItem.label}
-            </h2>
-            <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
-          </div>
+          {/* Sections flagged `ownHeader` render their own title row (e.g. so
+              summary stats can sit beside it); everything else gets the
+              standard label + description block. */}
+          {activeItem.ownHeader ? null : (
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold capitalize text-white">
+                  {activeItem.label}
+                </h2>
+                <p className="mt-0.5 text-sm text-text-secondary">
+                  {activeItem.desc}
+                </p>
+              </div>
+              {active === "design" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                  onClick={() => setPreviewOpen(true)}
+                >
+                  <Eye className="h-4 w-4" /> Preview
+                </Button>
+              ) : null}
+            </div>
+          )}
           {active === "design" ? (
             <PageDesignSection
               design={design}
@@ -418,15 +156,26 @@ export function EventDetailScreen({ event, onBack }) {
             />
           ) : (
             <ActiveSection
-              event={event}
+              event={form}
+              headerItem={activeItem}
+              onPatch={patch}
+              onCommit={commit}
+              onNavigate={setActive}
               onPreview={() => setPreviewOpen(true)}
+              onViewLive={viewLive}
             />
           )}
         </div>
 
         <aside className="order-1 lg:order-2">
-          <nav className="space-y-5 lg:sticky lg:top-4">
-            {NAV_GROUPS.map((group, gi) => (
+          {/* Pinned to the viewport at a fixed screen height so the nav always
+              spans the full viewport — even when the section content on the left
+              is shorter — and scrolls inside its own area rather than the whole
+              page. Offset = topbar (3.5rem) + main top/bottom padding (2rem
+              each). The thin scrollbar is hidden to match the suite's chrome-free
+              scroll surfaces. */}
+          <nav className="space-y-5 lg:sticky lg:top-0 lg:h-[calc(100dvh-7.5rem)] lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {NAV_GROUPS.map((group, gi) => (
               <div key={group.group || `g${gi}`}>
                 {group.group ? (
                   <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
@@ -455,20 +204,20 @@ export function EventDetailScreen({ event, onBack }) {
                             isActive ? "text-white" : "text-text-secondary",
                           )}
                         />
-                        <span className="truncate">{item.label}</span>
+                        <span className="truncate capitalize">{item.label}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
-            ))}
+              ))}
           </nav>
         </aside>
       </div>
 
       {previewOpen ? (
         <EventPublicPage
-          event={event}
+          event={form}
           design={design}
           onClose={() => setPreviewOpen(false)}
         />
