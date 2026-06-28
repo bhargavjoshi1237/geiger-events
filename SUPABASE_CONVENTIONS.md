@@ -35,13 +35,14 @@ Same principles, different layout — keep these straight when reading flow's
 | Schema | dedicated `flow` schema (`flow.issues`) | **`public`** schema, table prefix `flow_events` |
 | Client wrapper | `flowClient()` = `createClient().schema("flow")` | plain `createClient()` (no `.schema()` needed) |
 | Data layer | `features/<module>/actions.js` | `lib/supabase/<area>.js` |
-| Config guard | (always configured) | **`isSupabaseConfigured()`** — DB is optional; calls degrade to sample data |
+| Config guard | (always configured) | **`isSupabaseConfigured()`** — guards against a missing env so calls return `null`/`[]`/`false` instead of crashing; the screen then renders an empty state (it does **not** fall back to static sample data) |
 | SQL | `supabase/migrations/NNNN_*.sql` | `supabase/sqls/*.sql` (idempotent), run via `npm run db:push` |
 
-The headline difference: this app **renders before the table exists** and falls
-back to bundled `sample_data.js` when Supabase isn't configured, so every action
-is guarded by `isSupabaseConfigured()` and returns `null`/`[]`/`false` when the DB
-is absent — the screen then keeps its local state.
+The headline difference: the **data layer is the source of truth** — screens fetch
+their rows from it, they do **not** seed from a static in-file array. Every action
+is still guarded by `isSupabaseConfigured()` and returns `null`/`[]`/`false` when
+the DB is absent, but that is a no-crash guard: the screen renders its **loading**
+then **empty** state, never bundled sample data.
 
 ---
 
@@ -88,8 +89,9 @@ not another feature:
 // supabase/components/events-client.js  (recommended)
 import { createClient } from "@/lib/supabase/client";
 
-// True only when both Supabase env vars are present. The app renders against
-// bundled sample data when this is false, so guard every DB call with it.
+// True only when both Supabase env vars are present. Guard every DB call with it
+// so a missing env returns null/[]/false (the screen shows an empty state) rather
+// than crashing — there is no static sample-data fallback.
 export function isSupabaseConfigured() {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -258,23 +260,33 @@ its own RLS (see `supabase/sqls/events.sql`).
 
 ## 7. The screen's half of the contract
 
-Actions never toast. The **screen** calls an action and decides UX from the
-return value, keeping its local sample-data state when the DB is absent:
+Actions never toast. The **screen** fetches from the data layer (no static seed),
+calls an action, and decides UX from the return value:
 
 ```js
-const created = await createEvent(draft);   // null when DB unconfigured
+// Load: start empty + loading, fetch on mount.
+const [events, setEvents] = useState([]);
+const [loading, setLoading] = useState(true);
+useEffect(() => {
+  listEvents().then((rows) => { setEvents(rows ?? []); setLoading(false); });
+}, []);
+
+// Mutate: optimistic, then persist and reconcile.
+const optimistic = { ...draft, id: crypto.randomUUID() };
+setEvents((prev) => [optimistic, ...prev]);          // instant UI
+const created = await createEvent(optimistic);        // null on failure/no-DB
 if (created) {
-  setEvents((prev) => [created, ...prev]);
+  setEvents((prev) => prev.map((e) => (e.id === created.id ? created : e)));
   toast.success("Event created");
 } else {
-  setEvents((prev) => [draft, ...prev]);     // optimistic, local-only
-  // toast.error(...) only if you expected the DB to be live
+  setEvents((prev) => prev.filter((e) => e.id !== optimistic.id)); // roll back
+  toast.error("Couldn't save the event.");
 }
 ```
 
-Loading + empty states on every list; mutate state optimistically; map a
-`null`/`false` return to a `toast.error` (or a silent local fallback when the DB
-is intentionally absent).
+Loading + empty states on every list; mutate optimistically; map a `null`/`false`
+return to a `toast.error` and reconcile (re-fetch or roll back). There is no
+sample-data fallback — an unconfigured/empty DB renders the empty state.
 
 ---
 
@@ -287,6 +299,7 @@ is intentionally absent).
 3. **Data layer:** `lib/supabase/<area>.js` — guarded `createClient()` access,
    `normalize*`/`toRow`, `list/get/create/update/softDelete`, return
    `null`/`false`/`[]`, `console.error` on failure, `isSupabaseConfigured()` guard.
-4. **Screen:** import the actions, render camelCase view models, own all toasts and
-   optimistic state; degrade to sample data when the DB is absent. `npx eslint`
-   clean before you call it done.
+4. **Screen:** import the actions, **fetch on mount** (start empty + loading; no
+   static seed), render camelCase view models, own all toasts and optimistic
+   state, and reconcile failed writes. An unconfigured/empty DB renders the empty
+   state — never static sample data. `npx eslint` clean before you call it done.

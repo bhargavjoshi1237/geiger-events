@@ -235,6 +235,7 @@ export function AllEventsScreen() {
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   // The open event lives in the URL (?event=<id>) so a refresh stays on it.
   const { eventId, openEvent, closeEvent } = useWorkspaceUrl();
   // Signed-in user — new events are stamped with created_by so only they can
@@ -347,6 +348,7 @@ export function AllEventsScreen() {
   };
 
   const handleDelete = (event) => {
+    setDeleteTarget(null);
     setEvents((prev) => prev.filter((e) => e.id !== event.id));
     toast.success(`Deleted "${event.name}".`);
     if (usingDb) {
@@ -457,33 +459,32 @@ export function AllEventsScreen() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="border-border bg-surface-subtle text-foreground"
+            className="w-44 border-border bg-surface-card shadow-xl"
           >
             <DropdownMenuItem
-              className="focus:bg-surface-hover"
+              className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
               onClick={() => openEvent(e.id)}
             >
               <Pencil className="h-4 w-4" /> Edit
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="focus:bg-surface-hover"
+              className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
               onClick={() => handleDuplicate(e)}
             >
               <Copy className="h-4 w-4" /> Duplicate
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="focus:bg-surface-hover"
+              className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
               onClick={() => handleViewPage(e)}
             >
               <ExternalLink className="h-4 w-4" /> View page
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-surface-hover" />
+            <DropdownMenuSeparator className="bg-surface-strong" />
             <DropdownMenuItem
-              variant="destructive"
-              className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-              onClick={() => handleDelete(e)}
+              className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
+              onClick={() => setDeleteTarget(e)}
             >
-              <Trash2 className="h-4 w-4" /> Delete
+              <Trash2 className="h-4 w-4 text-red-300" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -590,6 +591,35 @@ export function AllEventsScreen() {
         onOpenChange={setCreateOpen}
         onCreate={handleCreate}
       />
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete event</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name}
+              </span>
+              ? This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => handleDelete(deleteTarget)}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

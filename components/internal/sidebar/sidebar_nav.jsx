@@ -52,11 +52,8 @@ import {
   UserPlus,
   Accessibility,
   KeyRound,
-  GitBranch,
   CalendarClock,
   Sparkles,
-  Gift,
-  ArrowUp,
   BadgeCheck,
   Download,
   BookUser,
@@ -150,23 +147,16 @@ export const workspaceNav = [
   {
     title: "Registrations",
     icon: ClipboardList,
+    // Workspace-level surfaces only. Per-event config (plus-ones, token/member
+    // gating, conditional questions, deadlines, confirmation page…) lives inside
+    // these screens and the event editor — not as separate nav destinations.
     subItems: [
       { title: "RSVPs", icon: UserCheck },
       { title: "Registration Forms", icon: FileText },
       { title: "Waitlist", icon: Clock },
       { title: "Approval Gates", icon: ShieldCheck },
       { title: "Capacity Limits", icon: Gauge },
-      { title: "Plus-ones", icon: UserPlus },
       { title: "Dietary & Accessibility", icon: Accessibility },
-      { title: "Token-gated", icon: Lock },
-      { title: "Member-only", icon: KeyRound },
-      { title: "Conditional Questions", icon: GitBranch },
-      { title: "Group Registration", icon: Users },
-      { title: "Registration Deadlines", icon: CalendarClock },
-      { title: "Autofill Returning", icon: Sparkles },
-      { title: "Register on Behalf", icon: Gift },
-      { title: "Waitlist Auto-promotion", icon: ArrowUp },
-      { title: "Confirmation Page", icon: BadgeCheck },
     ],
   },
 

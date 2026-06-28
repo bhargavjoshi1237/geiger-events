@@ -507,7 +507,6 @@ export function EventSeriesScreen() {
         }
       />
 
-      <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
         <FilterDropdown

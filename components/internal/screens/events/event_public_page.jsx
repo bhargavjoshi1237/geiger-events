@@ -32,6 +32,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -51,6 +53,7 @@ import {
 } from "@/lib/events/theme";
 import { PageBlock } from "./page_blocks";
 import { buyTicket } from "@/lib/supabase/orders";
+import { registerForEvent } from "@/lib/supabase/registrations";
 import { getUser } from "@/lib/supabase/user";
 
 const MONTHS = [
@@ -227,6 +230,11 @@ function TicketCheckout({
   const [order, setOrder] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [selections, setSelections] = useState({});
+  // Answers to the event's registration questions, keyed by question id. The
+  // resulting registration status (Confirmed / Pending / Waitlisted) is kept so
+  // the confirmation step can tailor its copy.
+  const [answers, setAnswers] = useState({});
+  const [regStatus, setRegStatus] = useState(null);
 
   // Prefill the buyer details from the signed-in user when the sheet opens,
   // without clobbering anything they've already typed.
@@ -329,13 +337,65 @@ function TicketCheckout({
       setErrorMsg("");
       setBusy(false);
       setSelections({});
+      setAnswers({});
+      setRegStatus(null);
     }
   }
+
+  // Registration policy comes from the event's RSVP config (per-event editor).
+  const rsvpCfg = event.rsvp || {};
+  const requiresApproval = !!rsvpCfg.requireApproval;
+  const allowWaitlist = rsvpCfg.waitlist !== false;
+  // The event's custom questions, minus the name/email we already collect.
+  const regQuestions = (Array.isArray(event.questions) ? event.questions : [])
+    .filter((q) => q && q.label)
+    .filter((q) => !/^(full\s*)?name$|^e-?mail$/i.test(q.label.trim()));
+  const setAnswer = (id) => (value) =>
+    setAnswers((a) => ({ ...a, [id]: value }));
+  // Pull dietary / accessibility answers into their own columns; the rest go in
+  // the answers bag keyed by readable label.
+  const buildRegistration = () => {
+    let dietary = "";
+    let accessibility = "";
+    const bag = {};
+    for (const q of regQuestions) {
+      const val = answers[q.id];
+      if (val === undefined || val === "" || val === false) continue;
+      if (/diet|allerg/i.test(q.label)) dietary = String(val);
+      else if (/accessib|mobility|disab/i.test(q.label)) accessibility = String(val);
+      else bag[q.label] = val;
+    }
+    return {
+      eventId: event.id,
+      formId: event.formId || null,
+      name,
+      email,
+      partySize: qty,
+      dietary,
+      accessibility,
+      answers: bag,
+      requireApproval: requiresApproval,
+      allowWaitlist,
+      source: "Online",
+    };
+  };
+
+  // Create the registration record (live only). Sets regStatus for the
+  // confirmation copy; in preview we just simulate the status.
+  const doRegister = async () => {
+    if (!live) {
+      setRegStatus(requiresApproval ? "Pending" : "Confirmed");
+      return;
+    }
+    const res = await registerForEvent(buildRegistration());
+    setRegStatus(res.ok ? res.status : requiresApproval ? "Pending" : "Confirmed");
+  };
 
   const finalize = async () => {
     setBusy(true);
     if (!live) {
       // Preview — demonstrate the flow without writing to the database.
+      await doRegister();
       setOrder({ orderId: null, preview: true });
       setStep("done");
       setBusy(false);
@@ -351,18 +411,33 @@ function TicketCheckout({
       addons: addonUnit,
       selections: buildSelections(),
     });
-    setBusy(false);
     if (res.ok) {
+      // The order is recorded; also write the person-coming record so they
+      // appear in the RSVPs / Waitlist / Approval screens.
+      await doRegister();
+      setBusy(false);
       setOrder(res);
       setStep("done");
       onPurchased?.(res);
     } else if (res.soldOut) {
+      setBusy(false);
       setErrorMsg("Sorry — these tickets just sold out.");
       setStep("error");
     } else {
+      setBusy(false);
       setErrorMsg("Something went wrong processing your order. Please try again.");
       setStep("error");
     }
+  };
+
+  // Approval-required events skip payment entirely — the registration is a
+  // request that lands in Approval Gates as Pending.
+  const requestApproval = async () => {
+    setBusy(true);
+    await doRegister();
+    setBusy(false);
+    setOrder({ orderId: null, pending: true });
+    setStep("done");
   };
 
   const submitDetails = () => {
@@ -381,7 +456,19 @@ function TicketCheckout({
       toast.error(`Please choose an option for ${missing.name}.`);
       return;
     }
-    if (isFree) {
+    const missingQ = regQuestions.find((q) => {
+      if (!q.required) return false;
+      const v = answers[q.id];
+      return v === undefined || v === "" || v === false;
+    });
+    if (missingQ) {
+      toast.error(`Please answer "${missingQ.label}".`);
+      return;
+    }
+    if (requiresApproval) {
+      // Request to register — no payment, lands as Pending for approval.
+      requestApproval();
+    } else if (isFree) {
       finalize();
     } else {
       setStep("payment");
@@ -390,7 +477,11 @@ function TicketCheckout({
 
   const headerLabel =
     step === "done"
-      ? "Order confirmed"
+      ? regStatus === "Pending"
+        ? "Registration received"
+        : regStatus === "Waitlisted"
+          ? "You're on the waitlist"
+          : "Order confirmed"
       : step === "error"
         ? "Checkout"
         : step === "payment"
@@ -544,6 +635,51 @@ function TicketCheckout({
                   placeholder="you@example.com"
                 />
               </div>
+
+              {/* Event's registration questions (custom questions tab). */}
+              {regQuestions.map((q) => {
+                const val = answers[q.id];
+                if (q.type === "checkbox") {
+                  return (
+                    <label
+                      key={q.id}
+                      className="flex items-center gap-2.5 text-sm text-muted-foreground"
+                    >
+                      <Checkbox
+                        checked={!!val}
+                        onCheckedChange={(v) => setAnswer(q.id)(!!v)}
+                      />
+                      {q.label}
+                      {q.required ? (
+                        <span className="text-red-400">*</span>
+                      ) : null}
+                    </label>
+                  );
+                }
+                return (
+                  <div key={q.id} className="space-y-1.5">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      {q.label}
+                      {q.required ? (
+                        <span className="ml-1 text-red-400">*</span>
+                      ) : null}
+                    </label>
+                    {q.type === "long" ? (
+                      <Textarea
+                        rows={2}
+                        value={val || ""}
+                        onChange={(e) => setAnswer(q.id)(e.target.value)}
+                      />
+                    ) : (
+                      <Input
+                        type={q.type === "number" ? "number" : "text"}
+                        value={val || ""}
+                        onChange={(e) => setAnswer(q.id)(e.target.value)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="border-t border-border pt-4">
@@ -578,6 +714,8 @@ function TicketCheckout({
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : requiresApproval ? (
+                "Request to register"
               ) : isFree ? (
                 "Complete registration"
               ) : (
@@ -695,21 +833,49 @@ function TicketCheckout({
           </div>
         ) : null}
 
-        {/* Step: done */}
+        {/* Step: done — copy adapts to the resulting registration status. */}
         {step === "done" ? (
           <div className="flex flex-col items-center gap-4 py-2 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
-              <CheckCircle2 className="h-8 w-8" />
+            <div
+              className={cn(
+                "flex h-14 w-14 items-center justify-center rounded-full",
+                regStatus === "Pending"
+                  ? "bg-amber-500/10 text-amber-400"
+                  : regStatus === "Waitlisted"
+                    ? "bg-violet-500/10 text-violet-300"
+                    : "bg-emerald-500/10 text-emerald-400",
+              )}
+            >
+              {regStatus === "Pending" ? (
+                <Clock className="h-8 w-8" />
+              ) : regStatus === "Waitlisted" ? (
+                <ClipboardList className="h-8 w-8" />
+              ) : (
+                <CheckCircle2 className="h-8 w-8" />
+              )}
             </div>
             <div className="space-y-1">
-              <p className="text-lg font-semibold text-white">You&apos;re going!</p>
+              <p className="text-lg font-semibold text-white">
+                {regStatus === "Pending"
+                  ? "Registration received"
+                  : regStatus === "Waitlisted"
+                    ? "You're on the waitlist"
+                    : "You're going!"}
+              </p>
               <p className="text-sm text-text-secondary">
-                {qty} × {ticket?.name} for {event.name}.
-                {email ? ` A confirmation is on its way to ${email}.` : ""}
+                {regStatus === "Pending"
+                  ? `Your registration for ${event.name} is pending approval.${email ? ` We'll email ${email} once it's reviewed.` : ""}`
+                  : regStatus === "Waitlisted"
+                    ? `${event.name} is full — we've added you to the waitlist${email ? ` and will email ${email} if a spot opens` : ""}.`
+                    : `${qty} × ${ticket?.name} for ${event.name}.${email ? ` A confirmation is on its way to ${email}.` : ""}`}
               </p>
             </div>
             {order?.preview ? (
-              <Badge variant="neutral">Preview — no ticket issued</Badge>
+              <Badge variant="neutral">Preview — nothing saved</Badge>
+            ) : regStatus === "Pending" ? (
+              <Badge variant="warning">Pending review</Badge>
+            ) : regStatus === "Waitlisted" ? (
+              <Badge variant="purple">Waitlisted</Badge>
             ) : order?.orderId ? (
               <span className="rounded-md border border-border bg-surface-card px-2.5 py-1 font-mono text-xs text-text-secondary">
                 Order #{String(order.orderId).slice(0, 8)}

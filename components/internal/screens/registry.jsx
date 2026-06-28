@@ -3,6 +3,24 @@ import { EventsHomeScreen } from "./events/events_home";
 import { AllEventsScreen } from "./events/all_events";
 import { TemplatesScreen } from "./events/templates";
 import { EventSeriesScreen } from "./events/event_series";
+import { RegistrationsScreen } from "./registrations/registrations";
+import { RegistrationFormsScreen } from "./registrations/registration_forms";
+import { WaitlistScreen } from "./registrations/waitlist";
+import { ApprovalGatesScreen } from "./registrations/approval_gates";
+import { CapacityLimitsScreen } from "./registrations/capacity_limits";
+import { DietaryAccessibilityScreen } from "./registrations/dietary_accessibility";
+import {
+  RegisterOnBehalfScreen,
+  PlusOnesScreen,
+  ConditionalQuestionsScreen,
+  GroupRegistrationScreen,
+  TokenGatedScreen,
+  MemberOnlyScreen,
+  RegistrationDeadlinesScreen,
+  AutofillReturningScreen,
+  ConfirmationPageScreen,
+  WaitlistAutoPromotionScreen,
+} from "./registrations/folded_redirect";
 
 /**
  * Maps a sidebar nav title to its screen component. Titles must exactly match
@@ -23,6 +41,27 @@ export const SCREEN_REGISTRY = {
   "All Events": AllEventsScreen,
   Templates: TemplatesScreen,
   "Event Series": EventSeriesScreen,
+
+  // Registrations area. Six substantive screens; the remaining sub-items are
+  // per-entity config/behaviours that fold onto a host screen with a context
+  // banner (see registrations/folded_redirect.jsx) — never ComingSoon.
+  RSVPs: RegistrationsScreen,
+  "Registration Forms": RegistrationFormsScreen,
+  Waitlist: WaitlistScreen,
+  "Approval Gates": ApprovalGatesScreen,
+  "Capacity Limits": CapacityLimitsScreen,
+  "Dietary & Accessibility": DietaryAccessibilityScreen,
+  // Folded → host screen + banner.
+  "Plus-ones": PlusOnesScreen,
+  "Token-gated": TokenGatedScreen,
+  "Member-only": MemberOnlyScreen,
+  "Conditional Questions": ConditionalQuestionsScreen,
+  "Group Registration": GroupRegistrationScreen,
+  "Registration Deadlines": RegistrationDeadlinesScreen,
+  "Autofill Returning": AutofillReturningScreen,
+  "Register on Behalf": RegisterOnBehalfScreen,
+  "Waitlist Auto-promotion": WaitlistAutoPromotionScreen,
+  "Confirmation Page": ConfirmationPageScreen,
 };
 
 export function getScreen(title) {
