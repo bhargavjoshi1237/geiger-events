@@ -278,6 +278,19 @@ export const workspaceNav = [
   },
 
   {
+    // Automation engine. The builder (linear step list + drag-drop node canvas)
+    // opens by selecting a workflow in All Workflows — so only workspace-level
+    // destinations appear here. Templates / Run History are placeholders for now.
+    title: "Workflows",
+    icon: Workflow,
+    subItems: [
+      { title: "All Workflows", icon: Workflow },
+      { title: "Workflow Templates", icon: LayoutTemplate },
+      { title: "Run History", icon: History },
+    ],
+  },
+
+  {
     title: "Discovery",
     icon: Compass,
     subItems: [

@@ -21,6 +21,7 @@ import {
   ConfirmationPageScreen,
   WaitlistAutoPromotionScreen,
 } from "./registrations/folded_redirect";
+import { AllWorkflowsScreen } from "./workflows/all_workflows";
 
 /**
  * Maps a sidebar nav title to its screen component. Titles must exactly match
@@ -62,6 +63,12 @@ export const SCREEN_REGISTRY = {
   "Register on Behalf": RegisterOnBehalfScreen,
   "Waitlist Auto-promotion": WaitlistAutoPromotionScreen,
   "Confirmation Page": ConfirmationPageScreen,
+
+  // Workflows area (automation engine). The dual-view builder (list + canvas)
+  // opens from a row in All Workflows. The parent "Workflows" tab shows the
+  // list; "Workflow Templates" and "Run History" are deferred ⇒ ComingSoon.
+  Workflows: AllWorkflowsScreen,
+  "All Workflows": AllWorkflowsScreen,
 };
 
 export function getScreen(title) {
