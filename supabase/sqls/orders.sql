@@ -1,17 +1,17 @@
 -- ===========================================================================
 -- Geiger Events — ticket orders / registrations
 --
--- Self-contained and idempotent. Depends on public.flow_events (events.sql).
--- Provides an orders table plus an atomic flow_buy_ticket() RPC that records an
+-- Self-contained and idempotent. Depends on events.events (events.sql).
+-- Provides an orders table plus an atomic events.buy_ticket() RPC that records an
 -- order AND bumps the event's sold/revenue in one transaction, with a capacity
 -- guard so an event can't oversell under concurrent purchases.
 -- ===========================================================================
 
 create extension if not exists pgcrypto;
 
-create table if not exists public.flow_event_orders (
+create table if not exists events.event_orders (
   id uuid primary key default gen_random_uuid(),
-  event_id uuid not null references public.flow_events(id) on delete cascade,
+  event_id uuid not null references events.events(id) on delete cascade,
   buyer_name text not null default '',
   buyer_email text not null default '',
   ticket_name text not null default 'General Admission',
@@ -24,13 +24,13 @@ create table if not exists public.flow_event_orders (
 );
 
 create index if not exists flow_event_orders_event_idx
-  on public.flow_event_orders (event_id, created_at desc);
+  on events.event_orders (event_id, created_at desc);
 
 -- Demo-open RLS (the storefront is unauthenticated). Tighten once auth lands.
-alter table public.flow_event_orders enable row level security;
+alter table events.event_orders enable row level security;
 
-drop policy if exists flow_event_orders_demo_all on public.flow_event_orders;
-create policy flow_event_orders_demo_all on public.flow_event_orders
+drop policy if exists flow_event_orders_demo_all on events.event_orders;
+create policy flow_event_orders_demo_all on events.event_orders
   for all
   to anon, authenticated
   using (true)
@@ -44,9 +44,9 @@ create policy flow_event_orders_demo_all on public.flow_event_orders
 -- (and the revenue bump) is (price + addons) × qty. p_meta carries the buyer's
 -- offering selections, stored on the order's metadata bag.
 -- The pre-offerings 6-arg signature is dropped so callers resolve to this one.
-drop function if exists public.flow_buy_ticket(uuid, text, text, text, numeric, integer);
+drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer);
 
-create or replace function public.flow_buy_ticket(
+create or replace function events.buy_ticket(
   p_event_id uuid,
   p_name text,
   p_email text,
@@ -59,7 +59,7 @@ create or replace function public.flow_buy_ticket(
 returns table (ok boolean, order_id uuid, sold integer, capacity integer, remaining integer)
 language plpgsql
 security definer
-set search_path = public
+set search_path = events
 as $$
 declare
   v_sold integer;
@@ -70,7 +70,7 @@ declare
 begin
   select e.sold, e.capacity
     into v_sold, v_cap
-    from public.flow_events e
+    from events.events e
     where e.id = p_event_id and e.deleted_at is null
     for update;
 
@@ -86,13 +86,13 @@ begin
 
   v_total := (coalesce(p_price, 0) + coalesce(p_addons, 0)) * v_qty;
 
-  insert into public.flow_event_orders
+  insert into events.event_orders
     (event_id, buyer_name, buyer_email, ticket_name, ticket_price, quantity, total, metadata)
   values
     (p_event_id, coalesce(p_name, ''), coalesce(p_email, ''), coalesce(p_ticket, 'General Admission'), coalesce(p_price, 0), v_qty, v_total, coalesce(p_meta, '{}'::jsonb))
   returning id into v_order;
 
-  update public.flow_events as e
+  update events.events as e
     set sold = e.sold + v_qty,
         revenue = e.revenue + v_total
     where e.id = p_event_id
@@ -102,5 +102,5 @@ begin
 end;
 $$;
 
-grant execute on function public.flow_buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb)
+grant execute on function events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb)
   to anon, authenticated;

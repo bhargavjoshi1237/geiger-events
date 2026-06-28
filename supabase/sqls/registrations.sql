@@ -2,12 +2,12 @@
 -- Geiger Events — registrations store
 --
 -- The workspace-level "people-coming" pipeline: one row per person per event
--- (flow_registrations) plus reusable form definitions (flow_registration_forms),
+-- (events.registrations) plus reusable form definitions (events.registration_forms),
 -- and two RPCs for the waitlist + approval flows. Separate from paid ticket
--- orders (flow_event_orders) — these are the RSVP / registration records.
+-- orders (events.event_orders) — these are the RSVP / registration records.
 --
 -- Self-contained and idempotent: safe to run repeatedly. Seeds demo rows against
--- the same flow_events UUIDs shipped in sample_data.js so the screens have real
+-- the same events.events UUIDs shipped in sample_data.js so the screens have real
 -- cross-event data to render.
 --
 -- Apply via the Supabase SQL editor (or `npm run db:push`) for the project in
@@ -18,7 +18,7 @@ create extension if not exists pgcrypto;
 
 -- Shared "touch updated_at" trigger function (suite convention). Defined here so
 -- this migration doesn't depend on the events migration having run.
-create or replace function public.flow_touch_updated_at()
+create or replace function events.touch_updated_at()
 returns trigger
 language plpgsql
 as $$
@@ -32,7 +32,7 @@ $$;
 -- Reusable registration forms (field sets the per-event "Custom Questions" tab
 -- and the public registration flow consume).
 -- ---------------------------------------------------------------------------
-create table if not exists public.flow_registration_forms (
+create table if not exists events.registration_forms (
   id uuid primary key default gen_random_uuid(),
   name text not null default 'Untitled form',
   description text,
@@ -50,28 +50,28 @@ create table if not exists public.flow_registration_forms (
   deleted_at timestamptz
 );
 
-alter table public.flow_registration_forms add column if not exists description text;
-alter table public.flow_registration_forms add column if not exists fields jsonb not null default '[]'::jsonb;
-alter table public.flow_registration_forms add column if not exists settings jsonb not null default '{}'::jsonb;
-alter table public.flow_registration_forms add column if not exists created_by uuid references auth.users(id) on delete set null;
-alter table public.flow_registration_forms add column if not exists metadata jsonb not null default '{}'::jsonb;
-alter table public.flow_registration_forms add column if not exists deleted_at timestamptz;
+alter table events.registration_forms add column if not exists description text;
+alter table events.registration_forms add column if not exists fields jsonb not null default '[]'::jsonb;
+alter table events.registration_forms add column if not exists settings jsonb not null default '{}'::jsonb;
+alter table events.registration_forms add column if not exists created_by uuid references auth.users(id) on delete set null;
+alter table events.registration_forms add column if not exists metadata jsonb not null default '{}'::jsonb;
+alter table events.registration_forms add column if not exists deleted_at timestamptz;
 
-drop trigger if exists flow_registration_forms_touch_updated_at on public.flow_registration_forms;
-create trigger flow_registration_forms_touch_updated_at
-before update on public.flow_registration_forms
-for each row execute function public.flow_touch_updated_at();
+drop trigger if exists registration_forms_touch_updated_at on events.registration_forms;
+create trigger registration_forms_touch_updated_at
+before update on events.registration_forms
+for each row execute function events.touch_updated_at();
 
 create index if not exists flow_registration_forms_status_idx
-  on public.flow_registration_forms (status) where deleted_at is null;
+  on events.registration_forms (status) where deleted_at is null;
 
 -- ---------------------------------------------------------------------------
 -- Registrations — one row per person per event.
 -- ---------------------------------------------------------------------------
-create table if not exists public.flow_registrations (
+create table if not exists events.registrations (
   id uuid primary key default gen_random_uuid(),
-  event_id uuid references public.flow_events(id) on delete cascade,
-  form_id uuid references public.flow_registration_forms(id) on delete set null,
+  event_id uuid references events.events(id) on delete cascade,
+  form_id uuid references events.registration_forms(id) on delete set null,
   name text not null default '',
   email text not null default '',
   phone text,
@@ -98,32 +98,32 @@ create table if not exists public.flow_registrations (
 );
 
 -- Back-fill any missing columns on older copies of the table.
-alter table public.flow_registrations add column if not exists form_id uuid references public.flow_registration_forms(id) on delete set null;
-alter table public.flow_registrations add column if not exists phone text;
-alter table public.flow_registrations add column if not exists source text not null default 'Online';
-alter table public.flow_registrations add column if not exists party_size integer not null default 1;
-alter table public.flow_registrations add column if not exists plus_ones jsonb not null default '[]'::jsonb;
-alter table public.flow_registrations add column if not exists dietary text;
-alter table public.flow_registrations add column if not exists accessibility text;
-alter table public.flow_registrations add column if not exists answers jsonb not null default '{}'::jsonb;
-alter table public.flow_registrations add column if not exists waitlist_position integer;
-alter table public.flow_registrations add column if not exists approved_by uuid references auth.users(id) on delete set null;
-alter table public.flow_registrations add column if not exists approved_at timestamptz;
-alter table public.flow_registrations add column if not exists created_by uuid references auth.users(id) on delete set null;
-alter table public.flow_registrations add column if not exists metadata jsonb not null default '{}'::jsonb;
-alter table public.flow_registrations add column if not exists deleted_at timestamptz;
+alter table events.registrations add column if not exists form_id uuid references events.registration_forms(id) on delete set null;
+alter table events.registrations add column if not exists phone text;
+alter table events.registrations add column if not exists source text not null default 'Online';
+alter table events.registrations add column if not exists party_size integer not null default 1;
+alter table events.registrations add column if not exists plus_ones jsonb not null default '[]'::jsonb;
+alter table events.registrations add column if not exists dietary text;
+alter table events.registrations add column if not exists accessibility text;
+alter table events.registrations add column if not exists answers jsonb not null default '{}'::jsonb;
+alter table events.registrations add column if not exists waitlist_position integer;
+alter table events.registrations add column if not exists approved_by uuid references auth.users(id) on delete set null;
+alter table events.registrations add column if not exists approved_at timestamptz;
+alter table events.registrations add column if not exists created_by uuid references auth.users(id) on delete set null;
+alter table events.registrations add column if not exists metadata jsonb not null default '{}'::jsonb;
+alter table events.registrations add column if not exists deleted_at timestamptz;
 
-drop trigger if exists flow_registrations_touch_updated_at on public.flow_registrations;
-create trigger flow_registrations_touch_updated_at
-before update on public.flow_registrations
-for each row execute function public.flow_touch_updated_at();
+drop trigger if exists registrations_touch_updated_at on events.registrations;
+create trigger registrations_touch_updated_at
+before update on events.registrations
+for each row execute function events.touch_updated_at();
 
 create index if not exists flow_registrations_event_idx
-  on public.flow_registrations (event_id) where deleted_at is null;
+  on events.registrations (event_id) where deleted_at is null;
 create index if not exists flow_registrations_status_idx
-  on public.flow_registrations (status) where deleted_at is null;
+  on events.registrations (status) where deleted_at is null;
 create index if not exists flow_registrations_created_idx
-  on public.flow_registrations (created_at desc);
+  on events.registrations (created_at desc);
 
 -- ---------------------------------------------------------------------------
 -- RPCs
@@ -133,25 +133,25 @@ create index if not exists flow_registrations_created_idx
 -- event to Confirmed, then resequence the remaining waitlist to stay contiguous
 -- from 1. Returns the promoted rows. Respects nothing about capacity here — the
 -- caller (or auto-promotion rules) decides how many to promote.
-create or replace function public.flow_promote_waitlist(
+create or replace function events.promote_waitlist(
   p_event_id uuid,
   p_count integer default 1
 )
-returns setof public.flow_registrations
+returns setof events.registrations
 language plpgsql
 as $$
 declare
-  r public.flow_registrations;
+  r events.registrations;
 begin
   for r in
-    select * from public.flow_registrations
+    select * from events.registrations
     where event_id = p_event_id
       and status = 'Waitlisted'
       and deleted_at is null
     order by waitlist_position asc nulls last, created_at asc
     limit greatest(1, coalesce(p_count, 1))
   loop
-    update public.flow_registrations
+    update events.registrations
       set status = 'Confirmed', waitlist_position = null
       where id = r.id
       returning * into r;
@@ -163,12 +163,12 @@ begin
     select id, row_number() over (
       order by waitlist_position asc nulls last, created_at asc
     ) as pos
-    from public.flow_registrations
+    from events.registrations
     where event_id = p_event_id
       and status = 'Waitlisted'
       and deleted_at is null
   )
-  update public.flow_registrations f
+  update events.registrations f
     set waitlist_position = ranked.pos
     from ranked
     where f.id = ranked.id
@@ -179,18 +179,18 @@ end;
 $$;
 
 -- Approve or decline a pending registration, stamping who acted and when.
-create or replace function public.flow_approve_registration(
+create or replace function events.approve_registration(
   p_id uuid,
   p_approve boolean,
   p_by uuid default null
 )
-returns public.flow_registrations
+returns events.registrations
 language plpgsql
 as $$
 declare
-  r public.flow_registrations;
+  r events.registrations;
 begin
-  update public.flow_registrations
+  update events.registrations
     set status = case when p_approve then 'Confirmed' else 'Declined' end,
         approved_by = p_by,
         approved_at = now()
@@ -204,7 +204,7 @@ $$;
 -- capacity + the form's approval/waitlist policy, then inserts. Called by the
 -- public /e/<id> page so a sign-up lands in the RSVPs / Approval / Waitlist
 -- screens with the correct state. Returns the created row.
-create or replace function public.flow_register(
+create or replace function events.register(
   p_event_id uuid,
   p_form_id uuid default null,
   p_name text default '',
@@ -219,7 +219,7 @@ create or replace function public.flow_register(
   p_allow_waitlist boolean default true,
   p_source text default 'Online'
 )
-returns public.flow_registrations
+returns events.registrations
 language plpgsql
 as $$
 declare
@@ -228,11 +228,11 @@ declare
   v_party integer := greatest(1, coalesce(p_party_size, 1));
   v_status text;
   v_pos integer;
-  r public.flow_registrations;
+  r events.registrations;
 begin
-  select capacity into v_cap from public.flow_events where id = p_event_id;
+  select capacity into v_cap from events.events where id = p_event_id;
   select coalesce(sum(party_size), 0) into v_taken
-    from public.flow_registrations
+    from events.registrations
     where event_id = p_event_id
       and status in ('Confirmed', 'Checked-in')
       and deleted_at is null;
@@ -244,7 +244,7 @@ begin
         and p_allow_waitlist then
     v_status := 'Waitlisted';
     select coalesce(max(waitlist_position), 0) + 1 into v_pos
-      from public.flow_registrations
+      from events.registrations
       where event_id = p_event_id
         and status = 'Waitlisted'
         and deleted_at is null;
@@ -252,7 +252,7 @@ begin
     v_status := 'Confirmed';
   end if;
 
-  insert into public.flow_registrations
+  insert into events.registrations
     (event_id, form_id, name, email, phone, status, source, party_size,
      plus_ones, dietary, accessibility, answers, waitlist_position)
   values
@@ -270,20 +270,20 @@ $$;
 -- RLS. The dashboard currently runs unauthenticated (anon key), so the demo
 -- policy grants open access. Replace with an org-scoped policy when auth lands.
 -- ---------------------------------------------------------------------------
-alter table public.flow_registration_forms enable row level security;
-drop policy if exists flow_registration_forms_demo_all on public.flow_registration_forms;
-create policy flow_registration_forms_demo_all on public.flow_registration_forms
+alter table events.registration_forms enable row level security;
+drop policy if exists flow_registration_forms_demo_all on events.registration_forms;
+create policy flow_registration_forms_demo_all on events.registration_forms
   for all to anon, authenticated using (true) with check (true);
 
-alter table public.flow_registrations enable row level security;
-drop policy if exists flow_registrations_demo_all on public.flow_registrations;
-create policy flow_registrations_demo_all on public.flow_registrations
+alter table events.registrations enable row level security;
+drop policy if exists flow_registrations_demo_all on events.registrations;
+create policy flow_registrations_demo_all on events.registrations
   for all to anon, authenticated using (true) with check (true);
 
 -- ---------------------------------------------------------------------------
 -- Seed — reusable forms (stable UUIDs).
 -- ---------------------------------------------------------------------------
-insert into public.flow_registration_forms (id, name, description, status, fields, settings)
+insert into events.registration_forms (id, name, description, status, fields, settings)
 values
   (
     '5e1f0a00-0000-4000-a000-000000000001',
@@ -330,7 +330,7 @@ on conflict (id) do nothing;
 -- statuses and sources, a few with plus-ones / dietary / accessibility, and a
 -- waitlist with positions on the sold-out event.
 -- ---------------------------------------------------------------------------
-insert into public.flow_registrations
+insert into events.registrations
   (id, event_id, form_id, name, email, phone, status, source, party_size, plus_ones, dietary, accessibility, waitlist_position)
 values
   -- Summer Product Launch (7b1c0e9a…) — healthy mix

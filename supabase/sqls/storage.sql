@@ -4,12 +4,12 @@
 -- Self-contained and idempotent. Creates the "products" bucket and the RLS
 -- policies on storage.objects. Event images live at:
 --     products / events / <event-uuid> / <file>
--- Public read (so direct URLs stored in flow_events.cover_url just work), but
--- WRITE is authoritative: only the user who created the event (flow_events
+-- Public read (so direct URLs stored in events.events.cover_url just work), but
+-- WRITE is authoritative: only the user who created the event (events.events
 -- .created_by) may upload/replace/remove that event's images.
 --
 -- Runs as part of `npm run db:push` — the bucket is created if absent.
--- Depends on flow_events.created_by (events.sql).
+-- Depends on events.events.created_by (events.sql).
 -- ===========================================================================
 
 -- Bucket (public read for direct object URLs).
@@ -41,7 +41,7 @@ create policy "Products event owner insert"
     bucket_id = 'products'
     and (storage.foldername(name))[1] = 'events'
     and exists (
-      select 1 from public.flow_events e
+      select 1 from events.events e
       where e.id::text = (storage.foldername(storage.objects.name))[2]
         and e.created_by = auth.uid()
     )
@@ -55,7 +55,7 @@ create policy "Products event owner update"
     bucket_id = 'products'
     and (storage.foldername(name))[1] = 'events'
     and exists (
-      select 1 from public.flow_events e
+      select 1 from events.events e
       where e.id::text = (storage.foldername(storage.objects.name))[2]
         and e.created_by = auth.uid()
     )
@@ -64,7 +64,7 @@ create policy "Products event owner update"
     bucket_id = 'products'
     and (storage.foldername(name))[1] = 'events'
     and exists (
-      select 1 from public.flow_events e
+      select 1 from events.events e
       where e.id::text = (storage.foldername(storage.objects.name))[2]
         and e.created_by = auth.uid()
     )
@@ -78,7 +78,7 @@ create policy "Products event owner delete"
     bucket_id = 'products'
     and (storage.foldername(name))[1] = 'events'
     and exists (
-      select 1 from public.flow_events e
+      select 1 from events.events e
       where e.id::text = (storage.foldername(storage.objects.name))[2]
         and e.created_by = auth.uid()
     )

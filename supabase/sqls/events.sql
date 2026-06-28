@@ -2,7 +2,7 @@
 -- Geiger Events — events store
 --
 -- Self-contained and idempotent: safe to run repeatedly. Creates the shared
--- updated_at trigger function, the public.flow_events table, its indexes, RLS,
+-- updated_at trigger function, the events.events table, its indexes, RLS,
 -- and seeds the eight demo events with the SAME UUIDs the app ships in
 -- sample_data.js so existing /e/<uuid> links resolve to real rows.
 --
@@ -11,9 +11,18 @@
 
 create extension if not exists pgcrypto;
 
+-- This app's objects live in the dedicated `events` schema. The `events` schema
+-- must also be present in PostgREST's exposed-schemas list (managed at the
+-- Supabase project level — already configured for this project).
+create schema if not exists events;
+grant usage on schema events to anon, authenticated, service_role;
+alter default privileges in schema events grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema events grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema events grant all on routines to anon, authenticated, service_role;
+
 -- Shared "touch updated_at" trigger function (suite convention). Defined here
 -- so this migration doesn't depend on the core migration having run.
-create or replace function public.flow_touch_updated_at()
+create or replace function events.touch_updated_at()
 returns trigger
 language plpgsql
 as $$
@@ -23,7 +32,7 @@ begin
 end;
 $$;
 
-create table if not exists public.flow_events (
+create table if not exists events.events (
   id uuid primary key default gen_random_uuid(),
   name text not null default 'Untitled event',
   status text not null default 'Draft',
@@ -56,40 +65,40 @@ create table if not exists public.flow_events (
 );
 
 -- Tolerate older copies of the table by back-filling any missing columns.
-alter table public.flow_events add column if not exists address text;
-alter table public.flow_events add column if not exists timezone text not null default 'Europe/London';
-alter table public.flow_events add column if not exists summary text;
-alter table public.flow_events add column if not exists cover_url text;
-alter table public.flow_events add column if not exists gallery jsonb not null default '[]'::jsonb;
-alter table public.flow_events add column if not exists created_by uuid references auth.users(id) on delete set null;
-alter table public.flow_events add column if not exists metadata jsonb not null default '{}'::jsonb;
-alter table public.flow_events add column if not exists deleted_at timestamptz;
+alter table events.events add column if not exists address text;
+alter table events.events add column if not exists timezone text not null default 'Europe/London';
+alter table events.events add column if not exists summary text;
+alter table events.events add column if not exists cover_url text;
+alter table events.events add column if not exists gallery jsonb not null default '[]'::jsonb;
+alter table events.events add column if not exists created_by uuid references auth.users(id) on delete set null;
+alter table events.events add column if not exists metadata jsonb not null default '{}'::jsonb;
+alter table events.events add column if not exists deleted_at timestamptz;
 
-drop trigger if exists flow_events_touch_updated_at on public.flow_events;
-create trigger flow_events_touch_updated_at
-before update on public.flow_events
-for each row execute function public.flow_touch_updated_at();
+drop trigger if exists events_touch_updated_at on events.events;
+create trigger events_touch_updated_at
+before update on events.events
+for each row execute function events.touch_updated_at();
 
 create index if not exists flow_events_status_idx
-  on public.flow_events (status) where deleted_at is null;
+  on events.events (status) where deleted_at is null;
 create index if not exists flow_events_created_idx
-  on public.flow_events (created_at desc);
+  on events.events (created_at desc);
 
 -- RLS. The events dashboard currently runs unauthenticated (anon key), so the
 -- demo policy below grants open access. When auth lands, replace this with an
 -- organization-scoped policy (see public.flow_is_org_member in the core
 -- migration) and drop the open policy.
-alter table public.flow_events enable row level security;
+alter table events.events enable row level security;
 
-drop policy if exists flow_events_demo_all on public.flow_events;
-create policy flow_events_demo_all on public.flow_events
+drop policy if exists flow_events_demo_all on events.events;
+create policy flow_events_demo_all on events.events
   for all
   to anon, authenticated
   using (true)
   with check (true);
 
 -- Seed — same UUIDs as components/internal/screens/events/sample_data.js.
-insert into public.flow_events
+insert into events.events
   (id, name, status, type, event_date, event_time, venue, address, city, timezone, capacity, sold, revenue, visibility, organizer, summary)
 values
   ('7b1c0e9a-4d2f-4a1b-9c3e-1f5a8d6b2c01', 'Summer Product Launch', 'On sale', 'Hybrid', '2026-06-18', '18:00', 'The Glasshouse', '61 Southwark Street, London SE1 0HL', 'London', 'Europe/London', 400, 312, 9840, 'Public', 'Ava Mitchell', 'An evening unveiling our biggest release yet — talks, live demos, and drinks.'),

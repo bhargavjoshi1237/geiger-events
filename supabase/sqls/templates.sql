@@ -2,7 +2,7 @@
 -- Geiger Events — event templates store
 --
 -- Self-contained and idempotent: safe to run repeatedly. Creates the
--- public.flow_event_templates table, its indexes, RLS, and seeds the six demo
+-- events.event_templates table, its indexes, RLS, and seeds the six demo
 -- templates with the SAME ids the app ships in sample_data.js so the screen
 -- resolves to real rows once the DB is live.
 --
@@ -10,13 +10,13 @@
 -- metadata bag) holds the event defaults applied when you "Use" it to spin up a
 -- new draft event. `uses` tracks how many events were created from it.
 --
--- Depends on public.flow_touch_updated_at() (events.sql). Apply via the Supabase
+-- Depends on events.touch_updated_at() (events.sql). Apply via the Supabase
 -- SQL editor (or `npm run db:push`).
 -- ===========================================================================
 
 create extension if not exists pgcrypto;
 
-create table if not exists public.flow_event_templates (
+create table if not exists events.event_templates (
   id uuid primary key default gen_random_uuid(),
   name text not null default 'Untitled template',
   description text,
@@ -35,37 +35,37 @@ create table if not exists public.flow_event_templates (
 );
 
 -- Tolerate older copies of the table by back-filling any missing columns.
-alter table public.flow_event_templates add column if not exists description text;
-alter table public.flow_event_templates add column if not exists category text not null default 'Community';
-alter table public.flow_event_templates add column if not exists icon text not null default 'Sparkles';
-alter table public.flow_event_templates add column if not exists uses integer not null default 0;
-alter table public.flow_event_templates add column if not exists created_by uuid references auth.users(id) on delete set null;
-alter table public.flow_event_templates add column if not exists metadata jsonb not null default '{}'::jsonb;
-alter table public.flow_event_templates add column if not exists deleted_at timestamptz;
+alter table events.event_templates add column if not exists description text;
+alter table events.event_templates add column if not exists category text not null default 'Community';
+alter table events.event_templates add column if not exists icon text not null default 'Sparkles';
+alter table events.event_templates add column if not exists uses integer not null default 0;
+alter table events.event_templates add column if not exists created_by uuid references auth.users(id) on delete set null;
+alter table events.event_templates add column if not exists metadata jsonb not null default '{}'::jsonb;
+alter table events.event_templates add column if not exists deleted_at timestamptz;
 
-drop trigger if exists flow_event_templates_touch_updated_at on public.flow_event_templates;
-create trigger flow_event_templates_touch_updated_at
-before update on public.flow_event_templates
-for each row execute function public.flow_touch_updated_at();
+drop trigger if exists event_templates_touch_updated_at on events.event_templates;
+create trigger event_templates_touch_updated_at
+before update on events.event_templates
+for each row execute function events.touch_updated_at();
 
 create index if not exists flow_event_templates_category_idx
-  on public.flow_event_templates (category) where deleted_at is null;
+  on events.event_templates (category) where deleted_at is null;
 create index if not exists flow_event_templates_created_idx
-  on public.flow_event_templates (created_at desc);
+  on events.event_templates (created_at desc);
 
 -- RLS. The dashboard currently runs unauthenticated (anon key), so the demo
 -- policy grants open access. Replace with an org-scoped policy when auth lands.
-alter table public.flow_event_templates enable row level security;
+alter table events.event_templates enable row level security;
 
-drop policy if exists flow_event_templates_demo_all on public.flow_event_templates;
-create policy flow_event_templates_demo_all on public.flow_event_templates
+drop policy if exists flow_event_templates_demo_all on events.event_templates;
+create policy flow_event_templates_demo_all on events.event_templates
   for all
   to anon, authenticated
   using (true)
   with check (true);
 
 -- Seed — same ids as components/internal/screens/events/sample_data.js.
-insert into public.flow_event_templates
+insert into events.event_templates
   (id, name, description, category, icon, uses, metadata)
 values
   ('11111111-1111-4111-8111-000000000001', 'Meetup', 'Talks + networking, free RSVP, one ticket type.', 'Community', 'Users', 42,

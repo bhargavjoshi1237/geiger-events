@@ -35,10 +35,13 @@ function getSqlFiles() {
 const SQL_FILES = getSqlFiles();
 
 function extractTableName(stmt) {
+  // Captures an optional schema qualifier so events.* tables are checked in the
+  // right schema (defaults to public when unqualified).
   const match = stmt.match(
-    /create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?(\w+)/i,
+    /create\s+table\s+(?:if\s+not\s+exists\s+)?(?:(\w+)\.)?(\w+)/i,
   );
-  return match ? match[1] : null;
+  if (!match) return null;
+  return { schema: match[1] || "public", name: match[2] };
 }
 
 function extractIndexName(stmt) {
@@ -135,22 +138,23 @@ function splitStatements(sql) {
   return statements;
 }
 
-async function tableExists(client, tableName) {
+async function tableExists(client, schema, tableName) {
   const res = await client.query(
     `SELECT EXISTS (
        SELECT 1 FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = $1
+       WHERE table_schema = $1 AND table_name = $2
      ) AS exists`,
-    [tableName],
+    [schema, tableName],
   );
   return res.rows[0].exists;
 }
 
 async function indexExists(client, indexName) {
+  // Index names are unique per schema; match by name across any schema so
+  // events.* indexes are detected too.
   const res = await client.query(
     `SELECT EXISTS (
-       SELECT 1 FROM pg_indexes
-       WHERE schemaname = 'public' AND indexname = $1
+       SELECT 1 FROM pg_indexes WHERE indexname = $1
      ) AS exists`,
     [indexName],
   );
@@ -169,10 +173,20 @@ async function run() {
 
     // NOTE: this Supabase project is SHARED across the Geiger suite, so a
     // blanket "drop all flow_* tables" (as geiger-flow does) would destroy other
-    // apps' data. --clean here is deliberately scoped to this app's own table.
+    // apps' data. --clean here is deliberately scoped to this app's own tables,
+    // which live in the dedicated `events` schema.
     if (process.argv.includes("--clean")) {
-      console.log("Dropping public.flow_events (events app only)...");
-      await client.query("DROP TABLE IF EXISTS public.flow_events CASCADE");
+      console.log("Dropping events.* app tables (events app only)...");
+      await client.query(`
+        drop table if exists
+          events.event_orders,
+          events.event_notes,
+          events.registrations,
+          events.registration_forms,
+          events.event_templates,
+          events.events,
+          events.event_series
+        cascade`);
       console.log("Clean complete.\n");
     }
 
@@ -189,15 +203,16 @@ async function run() {
 
       for (const rawStmt of statements) {
         const stmt = addIfNotExists(rawStmt);
-        const tableName = extractTableName(stmt);
+        const table = extractTableName(stmt);
+        const tableLabel = table ? `${table.schema}.${table.name}` : null;
         const indexName = extractIndexName(stmt);
 
         if (
-          tableName &&
+          table &&
           /^create\s+table\s+/i.test(stmt) &&
-          (await tableExists(client, tableName))
+          (await tableExists(client, table.schema, table.name))
         ) {
-          console.log(`  SKIP (exists): table ${tableName}`);
+          console.log(`  SKIP (exists): table ${tableLabel}`);
           continue;
         }
 
@@ -212,8 +227,8 @@ async function run() {
 
         try {
           await client.query(stmt);
-          const label = tableName
-            ? `table ${tableName}`
+          const label = tableLabel
+            ? `table ${tableLabel}`
             : indexName
               ? `index ${indexName}`
               : stmt.slice(0, 80).replace(/\n/g, " ");
