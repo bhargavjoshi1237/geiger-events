@@ -12,7 +12,6 @@ import {
   Check,
   CheckCircle2,
   AlertCircle,
-  CreditCard,
   Loader2,
   Lock,
   Minus,
@@ -55,6 +54,7 @@ import { PageBlock } from "./page_blocks";
 import { buyTicket } from "@/lib/supabase/orders";
 import { registerForEvent } from "@/lib/supabase/registrations";
 import { getUser } from "@/lib/supabase/user";
+import { splitRegistrationAnswers } from "@/lib/events/registration_answers";
 
 const MONTHS = [
   "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
@@ -64,86 +64,6 @@ const MONTHS = [
 const CO_HOSTS = ["Marco Reyes", "Priya Shah"];
 const REG_QUESTIONS = ["Full name", "Dietary requirements", "T-shirt size"];
 const TYPE_ICON = { "In-person": MapPin, Online: Video, Hybrid: Globe };
-
-// --- Demo checkout card helpers --------------------------------------------
-
-// Detect the card brand from the leading digits as the buyer types.
-function detectCardBrand(value) {
-  const n = (value || "").replace(/\D/g, "");
-  if (!n) return null;
-  if (/^4/.test(n)) return "visa";
-  if (/^(34|37)/.test(n)) return "amex";
-  if (/^(5[1-5]|2(2[2-9]|[3-6]\d|7[01]\d|720))/.test(n)) return "mastercard";
-  return null;
-}
-
-// Auto-format an expiry as the buyer types: digits only, padded single-digit
-// month (5 → 05), then "MM / YY".
-function formatExpiry(value) {
-  let d = (value || "").replace(/\D/g, "");
-  if (d.length === 1 && Number(d) > 1) d = `0${d}`;
-  d = d.slice(0, 4);
-  return d.length > 2 ? `${d.slice(0, 2)} / ${d.slice(2)}` : d;
-}
-
-// Card-brand wordmarks (SVG Logos by Gil Barbara). Rendered on a white chip so
-// each brand keeps its intended contrast against the dark field.
-function CardBrandMark({ brand, className }) {
-  if (brand === "visa") {
-    return (
-      <svg
-        className={className}
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 256 83"
-        role="img"
-        aria-label="Visa"
-      >
-        <defs>
-          <linearGradient id="card-visa-grad" x1="45.974%" x2="54.877%" y1="-2.006%" y2="100%">
-            <stop offset="0%" stopColor="#222357" />
-            <stop offset="100%" stopColor="#254aa5" />
-          </linearGradient>
-        </defs>
-        <path
-          fill="url(#card-visa-grad)"
-          d="M132.397 56.24c-.146-11.516 10.263-17.942 18.104-21.763c8.056-3.92 10.762-6.434 10.73-9.94c-.06-5.365-6.426-7.733-12.383-7.825c-10.393-.161-16.436 2.806-21.24 5.05l-3.744-17.519c4.82-2.221 13.745-4.158 23-4.243c21.725 0 35.938 10.724 36.015 27.351c.085 21.102-29.188 22.27-28.988 31.702c.069 2.86 2.798 5.912 8.778 6.688c2.96.392 11.131.692 20.395-3.574l3.636 16.95c-4.982 1.814-11.385 3.551-19.357 3.551c-20.448 0-34.83-10.87-34.946-26.428m89.241 24.968c-3.967 0-7.31-2.314-8.802-5.865L181.803 1.245h21.709l4.32 11.939h26.528l2.506-11.939H256l-16.697 79.963zm3.037-21.601l6.265-30.027h-17.158zm-118.599 21.6L88.964 1.246h20.687l17.104 79.963zm-30.603 0L53.941 26.782l-8.71 46.277c-1.022 5.166-5.058 8.149-9.54 8.149H.493L0 78.886c7.226-1.568 15.436-4.097 20.41-6.803c3.044-1.653 3.912-3.098 4.912-7.026L41.819 1.245H63.68l33.516 79.963z"
-          transform="matrix(1 0 0 -1 0 82.668)"
-        />
-      </svg>
-    );
-  }
-  if (brand === "mastercard") {
-    return (
-      <svg
-        className={className}
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 256 199"
-        role="img"
-        aria-label="Mastercard"
-      >
-        <path d="M46.54 198.011V184.84c0-5.05-3.074-8.342-8.343-8.342c-2.634 0-5.488.878-7.464 3.732c-1.536-2.415-3.731-3.732-7.024-3.732c-2.196 0-4.39.658-6.147 3.073v-2.634h-4.61v21.074h4.61v-11.635c0-3.731 1.976-5.488 5.05-5.488c3.072 0 4.61 1.976 4.61 5.488v11.635h4.61v-11.635c0-3.731 2.194-5.488 5.048-5.488c3.074 0 4.61 1.976 4.61 5.488v11.635zm68.271-21.074h-7.463v-6.366h-4.61v6.366h-4.171v4.17h4.17v9.66c0 4.83 1.976 7.683 7.245 7.683c1.976 0 4.17-.658 5.708-1.536l-1.318-3.952c-1.317.878-2.853 1.098-3.951 1.098c-2.195 0-3.073-1.317-3.073-3.513v-9.44h7.463zm39.076-.44c-2.634 0-4.39 1.318-5.488 3.074v-2.634h-4.61v21.074h4.61v-11.854c0-3.512 1.536-5.488 4.39-5.488c.878 0 1.976.22 2.854.439l1.317-4.39c-.878-.22-2.195-.22-3.073-.22m-59.052 2.196c-2.196-1.537-5.269-2.195-8.562-2.195c-5.268 0-8.78 2.634-8.78 6.805c0 3.513 2.634 5.488 7.244 6.147l2.195.22c2.415.438 3.732 1.097 3.732 2.195c0 1.536-1.756 2.634-4.83 2.634s-5.488-1.098-7.025-2.195l-2.195 3.512c2.415 1.756 5.708 2.634 9 2.634c6.147 0 9.66-2.853 9.66-6.805c0-3.732-2.854-5.708-7.245-6.366l-2.195-.22c-1.976-.22-3.512-.658-3.512-1.975c0-1.537 1.536-2.415 3.951-2.415c2.635 0 5.269 1.097 6.586 1.756zm122.495-2.195c-2.635 0-4.391 1.317-5.489 3.073v-2.634h-4.61v21.074h4.61v-11.854c0-3.512 1.537-5.488 4.39-5.488c.879 0 1.977.22 2.855.439l1.317-4.39c-.878-.22-2.195-.22-3.073-.22m-58.833 10.976c0 6.366 4.39 10.976 11.196 10.976c3.073 0 5.268-.658 7.463-2.414l-2.195-3.732c-1.756 1.317-3.512 1.975-5.488 1.975c-3.732 0-6.366-2.634-6.366-6.805c0-3.951 2.634-6.586 6.366-6.805c1.976 0 3.732.658 5.488 1.976l2.195-3.732c-2.195-1.757-4.39-2.415-7.463-2.415c-6.806 0-11.196 4.61-11.196 10.976m42.588 0v-10.537h-4.61v2.634c-1.537-1.975-3.732-3.073-6.586-3.073c-5.927 0-10.537 4.61-10.537 10.976s4.61 10.976 10.537 10.976c3.073 0 5.269-1.097 6.586-3.073v2.634h4.61zm-16.904 0c0-3.732 2.415-6.805 6.366-6.805c3.732 0 6.367 2.854 6.367 6.805c0 3.732-2.635 6.805-6.367 6.805c-3.951-.22-6.366-3.073-6.366-6.805m-55.1-10.976c-6.147 0-10.538 4.39-10.538 10.976s4.39 10.976 10.757 10.976c3.073 0 6.147-.878 8.562-2.853l-2.196-3.293c-1.756 1.317-3.951 2.195-6.146 2.195c-2.854 0-5.708-1.317-6.367-5.05h15.587v-1.755c.22-6.806-3.732-11.196-9.66-11.196m0 3.951c2.853 0 4.83 1.757 5.268 5.05h-10.976c.439-2.854 2.415-5.05 5.708-5.05m114.372 7.025v-18.879h-4.61v10.976c-1.537-1.975-3.732-3.073-6.586-3.073c-5.927 0-10.537 4.61-10.537 10.976s4.61 10.976 10.537 10.976c3.074 0 5.269-1.097 6.586-3.073v2.634h4.61zm-16.903 0c0-3.732 2.414-6.805 6.366-6.805c3.732 0 6.366 2.854 6.366 6.805c0 3.732-2.634 6.805-6.366 6.805c-3.952-.22-6.366-3.073-6.366-6.805m-154.107 0v-10.537h-4.61v2.634c-1.537-1.975-3.732-3.073-6.586-3.073c-5.927 0-10.537 4.61-10.537 10.976s4.61 10.976 10.537 10.976c3.074 0 5.269-1.097 6.586-3.073v2.634h4.61zm-17.123 0c0-3.732 2.415-6.805 6.366-6.805c3.732 0 6.367 2.854 6.367 6.805c0 3.732-2.635 6.805-6.367 6.805c-3.951-.22-6.366-3.073-6.366-6.805" />
-        <path fill="#ff5f00" d="M93.298 16.903h69.15v124.251h-69.15z" />
-        <path fill="#eb001b" d="M97.689 79.029c0-25.245 11.854-47.637 30.074-62.126C114.373 6.366 97.47 0 79.03 0C35.343 0 0 35.343 0 79.029s35.343 79.029 79.029 79.029c18.44 0 35.343-6.366 48.734-16.904c-18.22-14.269-30.074-36.88-30.074-62.125" />
-        <path fill="#f79e1b" d="M255.746 79.029c0 43.685-35.343 79.029-79.029 79.029c-18.44 0-35.343-6.366-48.734-16.904c18.44-14.488 30.075-36.88 30.075-62.125s-11.855-47.637-30.075-62.126C141.373 6.366 158.277 0 176.717 0c43.686 0 79.03 35.563 79.03 79.029" />
-      </svg>
-    );
-  }
-  if (brand === "amex") {
-    return (
-      <svg
-        className={className}
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 256 256"
-        role="img"
-        aria-label="American Express"
-      >
-        <path fill="#fff" d="M0 0h256v256H0z" />
-        <path fill="#006fcf" d="M0 0v256h256v-40.448h-35.328l-13.056-15.273l-13.568 15.273H93.696v-81.321H60.585l41.39-93.696h40.274l9.728 21.248V40.535h50.007l8.361 22.272l8.192-22.272H256V0zm227.072 53.76l-13.143 34.647l-3.497 9.39l-3.584-9.39l-13.225-34.647h-28.928v68.27h17.408V77.573l-.087-8.965l3.415 8.965l16.64 44.457h16.553l16.727-44.457l3.241-8.878v53.335H256V53.76zm-115.712 0l-30.208 68.27h19.794l5.294-13.143h33.111l5.289 13.143h20.055l-30.039-68.27zm8.018 23.127l3.415-8.53l3.415 8.53l7.081 17.234h-20.992zm109.061 57.431l-20.567 22.098l-20.48-22.098h-79.703v68.009h57.006v-14.76h-39.598v-11.864h38.83v-14.674h-38.83v-11.95h39.598v-14.76l31.826 34.129l-31.826 33.879h22.016l20.736-22.185l20.649 22.185h22.61l-31.913-34.135l31.913-33.874zm8.274 33.792L256 187.735v-38.999z" />
-      </svg>
-    );
-  }
-  return null;
-}
 
 function eventBase(event) {
   if (event.sold > 0 && event.revenue > 0) {
@@ -219,13 +139,15 @@ function TicketCheckout({
   live,
   accent,
   onPurchased,
+  // Set when the buyer just returned from Stripe Checkout (event_public_page's
+  // verify-on-mount effect); makes the dialog open straight to done/error
+  // instead of details. Consumed once, then cleared by the parent.
+  resumeResult,
 }) {
-  const [step, setStep] = useState("details"); // details | payment | done | error
+  const [step, setStep] = useState("details"); // details | done | error
   const [qty, setQty] = useState(1);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [card, setCard] = useState("");
-  const [expiry, setExpiry] = useState("");
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -235,6 +157,15 @@ function TicketCheckout({
   // the confirmation step can tailor its copy.
   const [answers, setAnswers] = useState({});
   const [regStatus, setRegStatus] = useState(null);
+  // The ticket name actually purchased — usually `ticket?.name`, but a resumed
+  // Stripe return may land after the sidebar's selection has moved on.
+  const [doneTicketName, setDoneTicketName] = useState("");
+  // Navigating away is done from an effect (not inline in the async handler)
+  // so the actual redirect happens outside the checkout request's own closure.
+  const [redirectUrl, setRedirectUrl] = useState(null);
+  useEffect(() => {
+    if (redirectUrl) window.location.href = redirectUrl;
+  }, [redirectUrl]);
 
   // Prefill the buyer details from the signed-in user when the sheet opens,
   // without clobbering anything they've already typed.
@@ -252,7 +183,6 @@ function TicketCheckout({
   }, [open]);
 
   const price = ticket?.price || 0;
-  const cardBrand = detectCardBrand(card);
 
   // Offerings (add-ons / choices) available for the selected ticket.
   const offerings = (Array.isArray(event.offerings) ? event.offerings : [])
@@ -323,22 +253,36 @@ function TicketCheckout({
       .filter(Boolean);
 
   // Reset to a fresh purchase whenever the dialog opens (render-phase reset —
-  // React's recommended alternative to a setState-in-effect).
+  // React's recommended alternative to a setState-in-effect). A buyer just
+  // back from Stripe opens straight to the done/error step instead.
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
-      setStep("details");
-      setQty(1);
-      setName("");
-      setEmail("");
-      setCard("");
-      setOrder(null);
-      setErrorMsg("");
-      setBusy(false);
-      setSelections({});
-      setAnswers({});
-      setRegStatus(null);
+      if (resumeResult) {
+        setStep(resumeResult.ok ? "done" : "error");
+        setOrder(resumeResult.ok ? { orderId: resumeResult.orderId } : null);
+        setErrorMsg(resumeResult.ok ? "" : resumeResult.error || "Payment could not be completed.");
+        setRegStatus(resumeResult.ok ? "Confirmed" : null);
+        setDoneTicketName(resumeResult.ticket || "");
+        setName(resumeResult.name || "");
+        setEmail(resumeResult.email || "");
+        setQty(resumeResult.quantity || 1);
+        setBusy(false);
+        setSelections({});
+        setAnswers({});
+      } else {
+        setStep("details");
+        setQty(1);
+        setName("");
+        setEmail("");
+        setOrder(null);
+        setErrorMsg("");
+        setBusy(false);
+        setSelections({});
+        setAnswers({});
+        setRegStatus(null);
+      }
     }
   }
 
@@ -355,16 +299,10 @@ function TicketCheckout({
   // Pull dietary / accessibility answers into their own columns; the rest go in
   // the answers bag keyed by readable label.
   const buildRegistration = () => {
-    let dietary = "";
-    let accessibility = "";
-    const bag = {};
-    for (const q of regQuestions) {
-      const val = answers[q.id];
-      if (val === undefined || val === "" || val === false) continue;
-      if (/diet|allerg/i.test(q.label)) dietary = String(val);
-      else if (/accessib|mobility|disab/i.test(q.label)) accessibility = String(val);
-      else bag[q.label] = val;
-    }
+    const { dietary, accessibility, answers: bag } = splitRegistrationAnswers(
+      regQuestions,
+      answers,
+    );
     return {
       eventId: event.id,
       formId: event.formId || null,
@@ -393,6 +331,7 @@ function TicketCheckout({
 
   const finalize = async () => {
     setBusy(true);
+    setDoneTicketName(ticket?.name || "");
     if (!live) {
       // Preview — demonstrate the flow without writing to the database.
       await doRegister();
@@ -440,6 +379,51 @@ function TicketCheckout({
     setStep("done");
   };
 
+  // Paid tickets (live only) hand off to Stripe Hosted Checkout — the buyer
+  // leaves this page and returns to it (?session_id=…) once payment completes.
+  // Registration questions/offering selections ride along as checkout metadata
+  // so the return trip can file the same registration record `doRegister`
+  // would have, without asking the buyer to re-enter anything.
+  const startStripeCheckout = async () => {
+    if (!live) {
+      // Preview — nothing to charge; demonstrate the confirmation directly.
+      await finalize();
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: event.id,
+          ticketName: ticket?.name,
+          ticketPrice: price,
+          quantity: qty,
+          addonUnit,
+          name,
+          email,
+          selections: buildSelections(),
+          answers,
+          formId: event.formId || null,
+          returnUrl: window.location.href.split("?")[0],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        setRedirectUrl(data.url);
+        return;
+      }
+      setBusy(false);
+      setErrorMsg(data.error || "Something went wrong starting checkout.");
+      setStep("error");
+    } catch {
+      setBusy(false);
+      setErrorMsg("Something went wrong starting checkout.");
+      setStep("error");
+    }
+  };
+
   const submitDetails = () => {
     if (!name.trim()) {
       toast.error("Please enter your name.");
@@ -470,8 +454,10 @@ function TicketCheckout({
       requestApproval();
     } else if (isFree) {
       finalize();
+    } else if (event.payments?.enabled === false) {
+      toast.error("Online payments are currently disabled for this event.");
     } else {
-      setStep("payment");
+      startStripeCheckout();
     }
   };
 
@@ -484,9 +470,7 @@ function TicketCheckout({
           : "Order confirmed"
       : step === "error"
         ? "Checkout"
-        : step === "payment"
-          ? "Payment"
-          : "Get tickets";
+        : "Get tickets";
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -724,112 +708,11 @@ function TicketCheckout({
                 </>
               )}
             </Button>
-          </div>
-        ) : null}
-
-        {/* Step: payment (paid tickets only) */}
-        {step === "payment" ? (
-          <div className="grid gap-4">
-            <div className="space-y-2 rounded-xl border border-border bg-surface-card p-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-text-secondary">
-                  {ticket?.name} × {qty}
-                </span>
-                <span className="tabular-nums text-muted-foreground">
-                  ${price * qty}
-                </span>
-              </div>
-              {addonUnit > 0 ? (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-secondary">Add-ons × {qty}</span>
-                  <span className="tabular-nums text-muted-foreground">
-                    ${addonUnit * qty}
-                  </span>
-                </div>
-              ) : null}
-              <div className="flex items-center justify-between border-t border-border pt-2 text-sm font-semibold">
-                <span className="text-foreground">Total due</span>
-                <span className="tabular-nums text-white">${total}</span>
-              </div>
-            </div>
-
-            <div className="grid gap-3">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted-foreground">
-                  Card number
-                </label>
-                <div className="relative">
-                  <CreditCard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
-                  <Input
-                    inputMode="numeric"
-                    value={card}
-                    onChange={(e) =>
-                      setCard(
-                        e.target.value
-                          .replace(/[^\d]/g, "")
-                          .slice(0, 16)
-                          .replace(/(.{4})/g, "$1 ")
-                          .trim(),
-                      )
-                    }
-                    placeholder="4242 4242 4242 4242"
-                    className={cn("!pl-9", cardBrand && "!pr-16")}
-                  />
-                  {cardBrand ? (
-                    <span className="pointer-events-none absolute right-2.5 top-1/2 flex -translate-y-1/2 items-center rounded bg-white px-1 py-0.5 shadow-sm">
-                      <CardBrandMark brand={cardBrand} className="h-4 w-auto" />
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Expiry
-                  </label>
-                  <Input
-                    inputMode="numeric"
-                    value={expiry}
-                    onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                    placeholder="MM / YY"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    CVC
-                  </label>
-                  <Input placeholder="123" inputMode="numeric" />
-                </div>
-              </div>
-            </div>
-
-            <p className="flex items-center justify-center gap-1.5 text-xs text-text-tertiary">
-              <Lock className="h-3 w-3" /> Demo checkout — no real charge is made.
-            </p>
-
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => setStep("details")}
-                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                Back
-              </Button>
-              <Button
-                style={accentStyle}
-                className="flex-1 hover:opacity-90"
-                disabled={busy}
-                onClick={finalize}
-              >
-                {busy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>Pay ${total}</>
-                )}
-              </Button>
-            </div>
+            {!isFree && !requiresApproval ? (
+              <p className="flex items-center justify-center gap-1.5 text-xs text-text-tertiary">
+                <Lock className="h-3 w-3" /> Payments are securely processed by Stripe.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -867,7 +750,7 @@ function TicketCheckout({
                   ? `Your registration for ${event.name} is pending approval.${email ? ` We'll email ${email} once it's reviewed.` : ""}`
                   : regStatus === "Waitlisted"
                     ? `${event.name} is full — we've added you to the waitlist${email ? ` and will email ${email} if a spot opens` : ""}.`
-                    : `${qty} × ${ticket?.name} for ${event.name}.${email ? ` A confirmation is on its way to ${email}.` : ""}`}
+                    : `${qty} × ${doneTicketName || ticket?.name} for ${event.name}.${email ? ` A confirmation is on its way to ${email}.` : ""}`}
               </p>
             </div>
             {order?.preview ? (
@@ -931,6 +814,46 @@ export function EventPublicPageContent({ event, design, live = false }) {
   // After a live purchase the RPC returns the new sold count; reflect it so the
   // remaining counter and sold-out state update without a page reload.
   const [soldOverride, setSoldOverride] = useState(null);
+  // Set once, on mount, when the buyer just landed back from Stripe Checkout.
+  const [resumeResult, setResumeResult] = useState(null);
+
+  // Confirm a Stripe redirect return (?session_id=) or note a cancellation
+  // (?canceled=1), then strip the query string so a refresh doesn't re-verify.
+  useEffect(() => {
+    if (!live || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    const canceled = params.get("canceled");
+    if (sessionId) {
+      fetch(`/api/checkout/verify?session_id=${encodeURIComponent(sessionId)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (typeof data.sold === "number") setSoldOverride(data.sold);
+          setResumeResult({
+            ok: Boolean(data.ok),
+            orderId: data.orderId,
+            error: data.error,
+            ticket: data.ticket,
+            quantity: data.quantity,
+            name: data.name,
+            email: data.email,
+          });
+          setCheckoutOpen(true);
+        })
+        .catch(() => {
+          setResumeResult({ ok: false, error: "Couldn't confirm your payment." });
+          setCheckoutOpen(true);
+        })
+        .finally(() => {
+          window.history.replaceState({}, "", window.location.pathname);
+        });
+    } else if (canceled) {
+      toast.error("Checkout canceled — you haven't been charged.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    // Runs once on mount, right after a Stripe redirect back to this page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Standard mode always renders the tuned default look, regardless of any
   // saved theme tweaks. Themed honors the saved brand theme.
@@ -1300,12 +1223,16 @@ export function EventPublicPageContent({ event, design, live = false }) {
 
       <TicketCheckout
         open={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
+        onClose={() => {
+          setCheckoutOpen(false);
+          setResumeResult(null);
+        }}
         event={event}
         ticket={tickets[selected]}
         remaining={remaining}
         live={live}
         accent={accent}
+        resumeResult={resumeResult}
         onPurchased={(res) => {
           if (typeof res.sold === "number") setSoldOverride(res.sold);
         }}

@@ -17,6 +17,7 @@ import {
   Map as MapIcon,
   Ticket,
   Package,
+  CreditCard,
   ClipboardList,
   MailCheck,
   SlidersHorizontal,
@@ -59,6 +60,7 @@ import { RecurringEventsSection } from "./recurring_clone";
 import { ScheduleSection } from "./schedule";
 import { GuestsSection } from "./guests";
 import { OfferingsSection } from "./offerings";
+import { PaymentsSection } from "./payments";
 import { RsvpOptionsSection } from "./rsvp";
 import { CoHostsAdminsSection } from "./people";
 import { OverviewSection } from "./overview";
@@ -168,6 +170,13 @@ export const NAV_GROUPS = [
         label: "Offerings",
         icon: Package,
         desc: "Add-ons and choices buyers pick at checkout — optionally priced and ticket-based.",
+        ownHeader: true,
+      },
+      {
+        key: "payments",
+        label: "Payments",
+        icon: CreditCard,
+        desc: "Configure how buyers pay for tickets to this event.",
         ownHeader: true,
       },
     ],
@@ -293,6 +302,7 @@ export const SECTIONS = {
   map: MapDirectionsSection,
   tickets: TicketsSection,
   offerings: OfferingsSection,
+  payments: PaymentsSection,
   rsvp: RsvpOptionsSection,
   questions: CustomQuestionsSection,
   regsettings: RegistrationSettingsSection,
