@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 
 import { getEvent } from "@/lib/supabase/events";
+import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
 import { buyTicket } from "@/lib/supabase/orders";
 import { registerForEvent } from "@/lib/supabase/registrations";
 import { sendSuiteEmail } from "@/lib/email/client";
@@ -12,18 +12,17 @@ import { splitRegistrationAnswers } from "@/lib/events/registration_answers";
 // real order. buy_ticket is idempotent on stripe_session_id, so a refreshed
 // return page never double-books, double-registers, or double-emails.
 export async function GET(request) {
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
   const sessionId = request.nextUrl.searchParams.get("session_id");
   if (!sessionId) {
     return NextResponse.json({ ok: false, error: "Missing session id." }, { status: 400 });
   }
-  if (!stripeKey) {
+  if (!isStripeConfigured()) {
     return NextResponse.json({ ok: false, error: "Not configured." }, { status: 503 });
   }
 
   let session;
   try {
-    const stripe = new Stripe(stripeKey);
+    const stripe = getStripe();
     session = await stripe.checkout.sessions.retrieve(sessionId);
   } catch (e) {
     console.error("[checkout.verify]", e);

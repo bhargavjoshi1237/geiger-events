@@ -474,14 +474,16 @@ function TicketCheckout({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[85vh] max-w-md flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{headerLabel}</DialogTitle>
           <DialogDescription>
             {event.name} · {formatDate(event.date)}
           </DialogDescription>
         </DialogHeader>
 
+        {/* Body scrolls within the fixed-height dialog; the header stays put. */}
+        <div className="-mr-3 flex-1 overflow-y-auto pr-3">
         {/* Step: details */}
         {step === "details" ? (
           <div className="grid gap-4">
@@ -799,6 +801,7 @@ function TicketCheckout({
             </div>
           </div>
         ) : null}
+        </div>
       </DialogContent>
     </Dialog>
   );

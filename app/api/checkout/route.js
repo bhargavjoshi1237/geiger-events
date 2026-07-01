@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 
 import { getEvent } from "@/lib/supabase/events";
+import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
 
 // Creates a Stripe Checkout Session for a priced ticket. Free ($0) tickets
 // never call this — the public page finalizes those directly through the
@@ -9,8 +9,7 @@ import { getEvent } from "@/lib/supabase/events";
 // (the client already knows its own origin/basePath); Stripe redirects back to
 // it with `?session_id=` on success or `?canceled=1` on cancel.
 export async function POST(request) {
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey) {
+  if (!isStripeConfigured()) {
     return NextResponse.json(
       { error: "Online payments aren't configured." },
       { status: 503 },
@@ -111,7 +110,7 @@ export async function POST(request) {
   }
 
   try {
-    const stripe = new Stripe(stripeKey);
+    const stripe = getStripe();
     const separator = returnUrl.includes("?") ? "&" : "?";
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
