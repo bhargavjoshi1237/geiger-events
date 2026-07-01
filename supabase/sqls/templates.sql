@@ -64,20 +64,5 @@ create policy flow_event_templates_demo_all on events.event_templates
   using (true)
   with check (true);
 
--- Seed — same ids as components/internal/screens/events/sample_data.js.
-insert into events.event_templates
-  (id, name, description, category, icon, uses, metadata)
-values
-  ('11111111-1111-4111-8111-000000000001', 'Meetup', 'Talks + networking, free RSVP, one ticket type.', 'Community', 'Users', 42,
-   '{"blueprint":{"type":"In-person","capacity":80,"visibility":"Public","timezone":"Europe/London","summary":"An evening of short talks and relaxed networking."}}'::jsonb),
-  ('11111111-1111-4111-8111-000000000002', 'Concert / Gig', 'Paid tickets, tiers, door sales, capacity cap.', 'Music', 'Music', 28,
-   '{"blueprint":{"type":"In-person","capacity":300,"visibility":"Public","timezone":"Europe/London","summary":"A live night out — doors, support, and a headline set."}}'::jsonb),
-  ('11111111-1111-4111-8111-000000000003', 'Workshop', 'Limited seats, custom questions, materials add-on.', 'Education', 'GraduationCap', 35,
-   '{"blueprint":{"type":"In-person","capacity":30,"visibility":"Public","timezone":"Europe/London","summary":"A hands-on session with limited seats and materials provided."}}'::jsonb),
-  ('11111111-1111-4111-8111-000000000004', 'Webinar', 'Online, registration form, automated reminders.', 'Online', 'Video', 51,
-   '{"blueprint":{"type":"Online","capacity":500,"visibility":"Public","timezone":"Europe/London","summary":"A live online session — register to get the join link."}}'::jsonb),
-  ('11111111-1111-4111-8111-000000000005', 'Conference Talk', 'Multi-session agenda, speakers, sponsor slots.', 'Conference', 'Mic', 17,
-   '{"blueprint":{"type":"Hybrid","capacity":250,"visibility":"Public","timezone":"Europe/London","summary":"A flagship talk with speakers, an agenda, and sponsor moments."}}'::jsonb),
-  ('11111111-1111-4111-8111-000000000006', 'Party', 'Guest list, plus-ones, who''s going, photo album.', 'Social', 'PartyPopper', 23,
-   '{"blueprint":{"type":"In-person","capacity":120,"visibility":"Unlisted","timezone":"Europe/London","summary":"A guest-list party with plus-ones and a shared photo album."}}'::jsonb)
-on conflict (id) do nothing;
+-- No demo seed. Templates are project-scoped (see zz_project_access.sql) and
+-- created in-app against a real project.

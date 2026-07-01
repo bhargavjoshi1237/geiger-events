@@ -38,6 +38,7 @@ import {
   updateRegistration,
 } from "@/lib/supabase/registrations";
 import { getUser } from "@/lib/supabase/user";
+import { useProject } from "@/context/project-context";
 import { formatDate, formatDateTime, initials } from "./constants";
 
 // How many rows we paint before asking the user to "show more" — keeps the page
@@ -129,10 +130,11 @@ export function ApprovalGatesScreen() {
 
   const [declineTarget, setDeclineTarget] = useState(null); // reg | { group }
   const [reason, setReason] = useState("");
+  const { projectId } = useProject();
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listRegistrations(), listEvents()]).then(([rows, evts]) => {
+    Promise.all([listRegistrations(projectId), listEvents(projectId)]).then(([rows, evts]) => {
       if (!alive) return;
       setRegs(rows ?? []);
       setEvents(evts ?? []);

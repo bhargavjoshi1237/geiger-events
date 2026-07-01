@@ -146,6 +146,14 @@ export const workspaceNav = [
   },
 
   {
+    // Reusable venues — created and maintained here, then picked when creating
+    // an event (fills in location) and shown on the public event page. A single
+    // workspace-level destination; per-venue detail lives in the venue editor.
+    title: "Venues",
+    icon: Building2,
+  },
+
+  {
     title: "Registrations",
     icon: ClipboardList,
     // Workspace-level surfaces only. Per-event config (plus-ones, token/member

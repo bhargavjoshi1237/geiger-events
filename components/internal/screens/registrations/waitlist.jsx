@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { listEvents, updateEventMeta } from "@/lib/supabase/events";
 import { listRegistrations, promoteWaitlist } from "@/lib/supabase/registrations";
+import { useProject } from "@/context/project-context";
 import { countRegs, PipelineBar } from "./pipeline";
 import { formatDate, formatDateTime, initials } from "./constants";
 
@@ -129,10 +130,11 @@ export function WaitlistScreen() {
   const [listLimit, setListLimit] = useState(PAGE_EVENTS);
   const [detailSearch, setDetailSearch] = useState("");
   const [detailLimit, setDetailLimit] = useState(PAGE_ROWS);
+  const { projectId } = useProject();
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listRegistrations(), listEvents()]).then(([rows, evts]) => {
+    Promise.all([listRegistrations(projectId), listEvents(projectId)]).then(([rows, evts]) => {
       if (!alive) return;
       setRegs(rows ?? []);
       setEvents(evts ?? []);

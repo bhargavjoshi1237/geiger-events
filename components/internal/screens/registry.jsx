@@ -23,6 +23,7 @@ import {
   WaitlistAutoPromotionScreen,
 } from "./registrations/folded_redirect";
 import { AllWorkflowsScreen } from "./workflows/all_workflows";
+import { VenuesScreen } from "./venues/all_venues";
 
 /**
  * Maps a sidebar nav title to its screen component. Titles must exactly match
@@ -44,6 +45,10 @@ export const SCREEN_REGISTRY = {
   Templates: TemplatesScreen,
   "Event Series": EventSeriesScreen,
   "Event Wall": EventWallScreen,
+
+  // Venues area (workspace-level). The sectioned venue editor opens by
+  // selecting a row (?venue=<id>); per-venue concerns are its sections.
+  Venues: VenuesScreen,
 
   // Registrations area. Six substantive screens; the remaining sub-items are
   // per-entity config/behaviours that fold onto a host screen with a context

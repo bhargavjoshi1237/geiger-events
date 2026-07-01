@@ -7,6 +7,7 @@
 
 import {
   LayoutDashboard,
+  BellRing,
   SquarePen,
   Palette,
   ImageIcon,
@@ -64,6 +65,7 @@ import { PaymentsSection } from "./payments";
 import { RsvpOptionsSection } from "./rsvp";
 import { CoHostsAdminsSection } from "./people";
 import { OverviewSection } from "./overview";
+import { AlertsSection } from "./alerts";
 
 // Per-event topics, grouped the way the original sidebar grouped them. `key`
 // must match a SECTIONS entry; `ownHeader` sections render their own title row.
@@ -76,6 +78,13 @@ export const NAV_GROUPS = [
         label: "Overview",
         icon: LayoutDashboard,
         desc: "A snapshot of this event — sales, preview, and publish controls.",
+      },
+      {
+        key: "alerts",
+        label: "Alerts",
+        icon: BellRing,
+        desc: "Get emailed when a milestone or threshold needs your attention.",
+        ownHeader: true,
       },
     ],
   },
@@ -293,6 +302,7 @@ export const NAV_GROUPS = [
 // title key → section component. Unmapped keys fall back to Overview.
 export const SECTIONS = {
   overview: OverviewSection,
+  alerts: AlertsSection,
   basics: BasicsSection,
   cover: CoverMediaSection,
   description: RichDescriptionsSection,

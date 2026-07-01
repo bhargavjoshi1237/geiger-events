@@ -12,6 +12,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NotificationsDropdown } from "./dialogue/notifications_dropdown";
 import { ProfileDropdown } from "./dialogue/profile_dropdown";
 import { SupabaseActivityLine } from "./supabase_activity_line";
+import { ProjectSwitcher } from "./project_switcher";
 
 export function Topbar() {
   return (
@@ -30,8 +31,10 @@ export function Topbar() {
             }}
           />
         </div>
-        <div className="flex items-center gap-1 cursor-pointer group group-data-[collapsible=icon]:hidden md:border-l md:border-border pl-2 hidden sm:flex">
+        <div className="flex items-center gap-1 group group-data-[collapsible=icon]:hidden md:border-l md:border-border pl-2 hidden sm:flex">
           <span className="text-foreground font-semibold text-sm ml-1">Events</span>
+          <span className="text-border-strong mx-0.5" aria-hidden="true">/</span>
+          <ProjectSwitcher />
         </div>
       </div>
 

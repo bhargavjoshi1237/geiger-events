@@ -65,7 +65,11 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
 
   const viewLive = () => {
     if (typeof window !== "undefined") {
-      window.open(`/e/${form.id}`, "_blank", "noopener,noreferrer");
+      window.open(
+        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/e/${form.id}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
     }
   };
 

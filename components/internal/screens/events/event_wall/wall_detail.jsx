@@ -7,6 +7,7 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { useProject } from "@/context/project-context";
 import { getWall } from "@/lib/supabase/event_wall";
 import { NAV_GROUPS, SECTIONS } from "./wall_sections";
 
@@ -17,12 +18,13 @@ import { NAV_GROUPS, SECTIONS } from "./wall_sections";
 // they're never open at once that's harmless.
 export function EventWallScreen() {
   const { section: active, setSection: setActive } = useWorkspaceUrl();
+  const { projectId } = useProject();
   const [wall, setWall] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
-    getWall().then((row) => {
+    getWall(projectId).then((row) => {
       if (!alive) return;
       setWall(row);
       setLoading(false);
@@ -30,7 +32,7 @@ export function EventWallScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [projectId]);
 
   const activeItem = useMemo(
     () =>
@@ -41,7 +43,11 @@ export function EventWallScreen() {
 
   const viewLive = () => {
     if (typeof window !== "undefined") {
-      window.open(`/w/${wall?.slug || "events"}`, "_blank", "noopener,noreferrer");
+      window.open(
+        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/w/${wall?.slug || "events"}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
     }
   };
 

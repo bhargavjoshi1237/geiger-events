@@ -6,12 +6,14 @@ import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useProject } from "@/context/project-context";
 import { updateWall } from "@/lib/supabase/event_wall";
 
 // Wall name/tagline/logo are real event_wall columns (not the metadata bag),
 // so they persist through updateWall() directly, matching how the per-event
 // Visibility column commits — not the metadata-merge RPC other sections use.
 export function WallGeneralSection({ wall }) {
+  const { projectId } = useProject();
   const [form, setForm] = useState({
     name: wall?.name || "",
     tagline: wall?.tagline || "",
@@ -22,7 +24,7 @@ export function WallGeneralSection({ wall }) {
 
   const save = async () => {
     setSaving(true);
-    const res = await updateWall(form);
+    const res = await updateWall(projectId, form);
     setSaving(false);
     if (res) toast.success("Changes saved.");
     else toast.error("Couldn't save changes.");

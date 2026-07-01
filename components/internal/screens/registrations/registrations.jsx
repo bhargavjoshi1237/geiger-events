@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import {
   listRegistrations,
@@ -150,10 +151,11 @@ export function RegistrationsScreen() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [userId, setUserId] = useState(null);
   const { setTab } = useWorkspaceUrl();
+  const { projectId } = useProject();
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listRegistrations(), listEvents()]).then(([rows, evts]) => {
+    Promise.all([listRegistrations(projectId), listEvents(projectId)]).then(([rows, evts]) => {
       if (!alive) return;
       setRegs(rows ?? []);
       setEvents(evts ?? []);
@@ -225,6 +227,7 @@ export function RegistrationsScreen() {
       answers: {},
       waitlistPosition: null,
       createdBy: userId,
+      projectId,
       createdAt: new Date().toISOString(),
     };
     setRegs((prev) => [reg, ...prev]);

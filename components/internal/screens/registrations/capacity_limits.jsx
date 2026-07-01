@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { listEvents, updateEvent, updateEventMeta } from "@/lib/supabase/events";
 import { listRegistrations } from "@/lib/supabase/registrations";
+import { useProject } from "@/context/project-context";
 import { countRegs, PipelineBar, PipelineChips } from "./pipeline";
 
 function AdjustDialog({ row, open, onOpenChange, onSave }) {
@@ -87,10 +88,11 @@ export function CapacityLimitsScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [adjust, setAdjust] = useState(null);
+  const { projectId } = useProject();
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listEvents(), listRegistrations()]).then(([evts, rows]) => {
+    Promise.all([listEvents(projectId), listRegistrations(projectId)]).then(([evts, rows]) => {
       if (!alive) return;
       setEvents(evts ?? []);
       setRegs(rows ?? []);

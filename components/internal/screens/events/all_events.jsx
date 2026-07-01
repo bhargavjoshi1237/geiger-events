@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  Calendar as CalendarIcon,
   CalendarPlus,
+  Clock,
   Copy,
   ExternalLink,
   Loader2,
@@ -12,6 +14,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { format } from "date-fns";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -49,6 +52,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   EVENTS,
@@ -65,8 +75,10 @@ import {
   updateEvent,
   softDeleteEvent,
 } from "@/lib/supabase/events";
+import { listVenues } from "@/lib/supabase/venues";
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { useProject } from "@/context/project-context";
 import { EventDetailScreen } from "./event_detail";
 
 const STATUS_FILTER_OPTIONS = [
@@ -91,14 +103,59 @@ const EMPTY_DRAFT = {
   date: "",
   time: "",
   venue: "",
+  // Set when a managed venue is picked; also snapshots address/city onto the
+  // event so its page reads right even before the venue is fetched.
+  venueId: null,
+  address: "",
+  city: "",
   capacity: "",
   visibility: "Public",
 };
 
-function CreateEventDialog({ open, onOpenChange, onCreate }) {
+// The draft stores date as "YYYY-MM-DD" and time as "HH:mm" (the shapes toRow
+// persists). Convert to/from a Date for the Calendar using local parts so the
+// picked day never shifts across a timezone boundary.
+const toDateValue = (date) => {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+const parseDateValue = (value) => {
+  if (!value) return undefined;
+  const [y, m, d] = value.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+};
+
+// Half-hour slots ("HH:mm" value, 12-hour label) for the time Select.
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2);
+  const min = i % 2 === 0 ? "00" : "30";
+  const value = `${String(h).padStart(2, "0")}:${min}`;
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  const label = `${hour12}:${min} ${h < 12 ? "AM" : "PM"}`;
+  return { value, label };
+});
+
+function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
 
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
+
+  // Picking a managed venue links it and snapshots its location onto the draft.
+  const pickVenue = (id) => {
+    const v = venues.find((x) => x.id === id);
+    setDraft((d) => ({
+      ...d,
+      venueId: v?.id || null,
+      venue: v?.name || "",
+      address: v?.address || "",
+      city: v?.city || d.city,
+    }));
+  };
 
   const submit = () => {
     if (!draft.name.trim()) {
@@ -163,35 +220,79 @@ function CreateEventDialog({ open, onOpenChange, onCreate }) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Date">
-              <Input
-                type="date"
-                value={draft.date}
-                onChange={(e) => set("date")(e.target.value)}
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start font-normal",
+                      !draft.date && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 size-4 text-muted-foreground" />
+                    {draft.date
+                      ? format(parseDateValue(draft.date), "PPP")
+                      : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={parseDateValue(draft.date)}
+                    onSelect={(d) => set("date")(toDateValue(d))}
+                    autoFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </Field>
             <Field label="Start time">
-              <Input
-                type="time"
-                value={draft.time}
-                onChange={(e) => set("time")(e.target.value)}
-              />
+              <Select value={draft.time} onValueChange={set("time")}>
+                <SelectTrigger className="w-full">
+                  <Clock className="mr-2 size-4 text-muted-foreground" />
+                  <SelectValue placeholder="Select time" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {TIME_OPTIONS.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Venue">
-              <Select value={draft.venue} onValueChange={set("venue")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select venue" />
-                </SelectTrigger>
-                <SelectContent>
-                  {VENUES.map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {v}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {venues.length ? (
+                <Select value={draft.venueId || ""} onValueChange={pickVenue}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select venue" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {venues.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}
+                        {v.city ? ` · ${v.city}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={draft.venue} onValueChange={set("venue")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select venue" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VENUES.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </Field>
             <Field label="Capacity">
               <Input
@@ -236,8 +337,12 @@ export function AllEventsScreen() {
   const [type, setType] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  // Managed venues for this project — populate the create dialog's venue picker.
+  // Empty (no DB / none created) falls back to the sample venue list.
+  const [venues, setVenues] = useState([]);
   // The open event lives in the URL (?event=<id>) so a refresh stays on it.
   const { eventId, openEvent, closeEvent } = useWorkspaceUrl();
+  const { projectId } = useProject();
   // Signed-in user — new events are stamped with created_by so only they can
   // upload that event's images (enforced by storage RLS).
   const [userId, setUserId] = useState(null);
@@ -253,7 +358,7 @@ export function AllEventsScreen() {
 
   useEffect(() => {
     let alive = true;
-    listEvents().then((rows) => {
+    listEvents(projectId).then((rows) => {
       if (!alive) return;
       if (rows) {
         setEvents(rows);
@@ -262,10 +367,11 @@ export function AllEventsScreen() {
       setLoading(false);
     });
     getUser().then((u) => alive && setUserId(u?.id || null));
+    listVenues(projectId).then((rows) => alive && setVenues(rows ?? []));
     return () => {
       alive = false;
     };
-  }, []);
+  }, [projectId]);
 
   const filtered = useMemo(() => {
     return events.filter((e) => {
@@ -320,8 +426,9 @@ export function AllEventsScreen() {
       date: draft.date || "2026-07-15",
       time: draft.time || "18:00",
       venue: draft.venue || "TBD",
-      address: "",
-      city: "London",
+      venueId: draft.venueId || null,
+      address: draft.address || "",
+      city: draft.city || "London",
       timezone: "Europe/London",
       capacity: draft.capacity,
       sold: 0,
@@ -332,6 +439,7 @@ export function AllEventsScreen() {
       coverUrl: "",
       gallery: [],
       createdBy: userId,
+      projectId,
     };
     setEvents((prev) => [newEvent, ...prev]);
     toast.success(`"${newEvent.name}" created as a draft.`);
@@ -369,6 +477,7 @@ export function AllEventsScreen() {
       // The copy is owned by whoever duplicated it, and starts with no images
       // (they live under the original event's folder).
       createdBy: userId,
+      projectId,
       coverUrl: "",
       gallery: [],
     };
@@ -379,7 +488,11 @@ export function AllEventsScreen() {
 
   const handleViewPage = (event) => {
     if (typeof window !== "undefined") {
-      window.open(`/e/${event.id}`, "_blank", "noopener,noreferrer");
+      window.open(
+        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/e/${event.id}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
     }
   };
 
@@ -590,6 +703,7 @@ export function AllEventsScreen() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreate={handleCreate}
+        venues={venues}
       />
 
       <Dialog

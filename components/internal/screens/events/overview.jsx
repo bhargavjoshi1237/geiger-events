@@ -353,10 +353,14 @@ export function OverviewSection({
 
   const copyLink = () => {
     if (typeof window === "undefined" || !navigator.clipboard) return;
-    navigator.clipboard.writeText(`${window.location.origin}/e/${event.id}`).then(
-      () => toast.success("Public link copied."),
-      () => toast.error("Couldn't copy the link."),
-    );
+    navigator.clipboard
+      .writeText(
+        `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ""}/e/${event.id}`,
+      )
+      .then(
+        () => toast.success("Public link copied."),
+        () => toast.error("Couldn't copy the link."),
+      );
   };
 
   const quickActions = [

@@ -26,6 +26,11 @@ import {
   Languages,
   Gauge,
   Image as ImgIcon,
+  Users,
+  Phone,
+  Mail,
+  Navigation,
+  ExternalLink,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -53,6 +58,8 @@ import {
 import { PageBlock } from "./page_blocks";
 import { buyTicket } from "@/lib/supabase/orders";
 import { registerForEvent } from "@/lib/supabase/registrations";
+import { getVenue } from "@/lib/supabase/venues";
+import { AMENITY_LABEL, venueCapacity } from "../venues/constants";
 import { getUser } from "@/lib/supabase/user";
 import { splitRegistrationAnswers } from "@/lib/events/registration_answers";
 
@@ -392,7 +399,7 @@ function TicketCheckout({
     }
     setBusy(true);
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -474,7 +481,7 @@ function TicketCheckout({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[85vh] max-w-md flex-col overflow-hidden">
+      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col overflow-hidden">
         <DialogHeader className="shrink-0">
           <DialogTitle>{headerLabel}</DialogTitle>
           <DialogDescription>
@@ -482,8 +489,9 @@ function TicketCheckout({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Body scrolls within the fixed-height dialog; the header stays put. */}
-        <div className="-mr-3 flex-1 overflow-y-auto pr-3">
+        {/* Body scrolls within the fixed-height dialog; the header stays put.
+            Scrollbar hidden (suite convention) so it doesn't clutter the form. */}
+        <div className="flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Step: details */}
         {step === "details" ? (
           <div className="grid gap-4">
@@ -807,6 +815,172 @@ function TicketCheckout({
   );
 }
 
+// Venue detail, opened by clicking the venue line on the public page. Fetches
+// the managed venue by id (public read RLS allows it); falls back to the event's
+// text snapshot in preview / no-DB mode so it always shows something.
+function VenueDetailsDialog({ open, onClose, venueId, fallback, accent }) {
+  // null until the fetch resolves; the loaded venue is keyed by id so a fetch
+  // for a different venue re-loads. `loaded` distinguishes "not fetched yet"
+  // from "fetched, no managed row" (falls back to the event snapshot).
+  const [venue, setVenue] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let alive = true;
+    getVenue(venueId).then((v) => {
+      if (!alive) return;
+      setVenue(v);
+      setLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [open, venueId]);
+
+  const v = venue || fallback;
+  const cap = venueCapacity(v);
+  const fullAddress = [v?.address, v?.city, v?.postcode, v?.country]
+    .filter(Boolean)
+    .join(", ");
+  const mapHref =
+    v?.latitude != null && v?.longitude != null
+      ? `https://www.google.com/maps/search/?api=1&query=${v.latitude},${v.longitude}`
+      : fullAddress
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
+        : null;
+  const amenities = Array.isArray(v?.amenities) ? v.amenities : [];
+  const contacts = [
+    v?.contactPhone ? { icon: Phone, label: v.contactPhone, href: `tel:${v.contactPhone}` } : null,
+    v?.contactEmail ? { icon: Mail, label: v.contactEmail, href: `mailto:${v.contactEmail}` } : null,
+    v?.website ? { icon: Globe, label: v.website.replace(/^https?:\/\//, ""), href: v.website } : null,
+  ].filter(Boolean);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
+          <DialogTitle>{v?.name || "Venue"}</DialogTitle>
+          <DialogDescription>
+            {[v?.type, fullAddress].filter(Boolean).join(" · ") || "Venue details"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 space-y-4 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {!loaded && !venue ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading venue…
+            </div>
+          ) : (
+            <>
+              {v?.coverUrl ? (
+                <div className="overflow-hidden rounded-xl border border-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={v.coverUrl}
+                    alt={`${v.name} cover`}
+                    className="aspect-[16/9] w-full object-cover"
+                  />
+                </div>
+              ) : null}
+
+              {v?.description ? (
+                <p className="text-sm text-muted-foreground">{v.description}</p>
+              ) : null}
+
+              <div className="grid gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-sm">
+                {fullAddress ? (
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex items-center gap-2 text-text-secondary">
+                      <MapPin className="h-4 w-4" /> Address
+                    </span>
+                    <span className="text-right text-muted-foreground">{fullAddress}</span>
+                  </div>
+                ) : null}
+                {cap ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-text-secondary">
+                      <Users className="h-4 w-4" /> Capacity
+                    </span>
+                    <span className="text-muted-foreground">{cap.toLocaleString()}</span>
+                  </div>
+                ) : null}
+              </div>
+
+              {amenities.length ? (
+                <div>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wider text-text-secondary">
+                    Amenities
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {amenities.map((a) => (
+                      <Badge key={a} variant="neutral">
+                        {AMENITY_LABEL[a] || a}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {v?.transitNotes || v?.parkingNotes ? (
+                <div className="space-y-2 text-sm">
+                  {v?.transitNotes ? (
+                    <p className="text-muted-foreground">
+                      <span className="text-text-secondary">Getting there: </span>
+                      {v.transitNotes}
+                    </p>
+                  ) : null}
+                  {v?.parkingNotes ? (
+                    <p className="text-muted-foreground">
+                      <span className="text-text-secondary">Parking: </span>
+                      {v.parkingNotes}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {contacts.length ? (
+                <div className="space-y-2">
+                  {contacts.map((c) => {
+                    const Icon = c.icon;
+                    return (
+                      <a
+                        key={c.label}
+                        href={c.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        <Icon className="h-4 w-4 text-text-secondary" />
+                        {c.label}
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+
+        {mapHref ? (
+          <div className="shrink-0 pt-2">
+            <Button
+              asChild
+              className="w-full hover:opacity-90"
+              style={{ backgroundColor: accent.color, color: accent.text }}
+            >
+              <a href={mapHref} target="_blank" rel="noopener noreferrer">
+                <Navigation className="h-4 w-4" /> Get directions
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </Button>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // The shared, chrome-less public page body. Rendered both inside the editor
 // preview overlay and on the standalone /e/[id] published route. `live` enables
 // real ticket purchases (DB-backed); the editor preview leaves it off.
@@ -819,6 +993,8 @@ export function EventPublicPageContent({ event, design, live = false }) {
   const [soldOverride, setSoldOverride] = useState(null);
   // Set once, on mount, when the buyer just landed back from Stripe Checkout.
   const [resumeResult, setResumeResult] = useState(null);
+  // The venue-detail dialog, opened by clicking the venue line.
+  const [venueOpen, setVenueOpen] = useState(false);
 
   // Confirm a Stripe redirect return (?session_id=) or note a cancellation
   // (?canceled=1), then strip the query string so a refresh doesn't re-verify.
@@ -828,7 +1004,9 @@ export function EventPublicPageContent({ event, design, live = false }) {
     const sessionId = params.get("session_id");
     const canceled = params.get("canceled");
     if (sessionId) {
-      fetch(`/api/checkout/verify?session_id=${encodeURIComponent(sessionId)}`)
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/checkout/verify?session_id=${encodeURIComponent(sessionId)}`,
+      )
         .then((r) => r.json())
         .then((data) => {
           if (typeof data.sold === "number") setSoldOverride(data.sold);
@@ -1006,11 +1184,27 @@ export function EventPublicPageContent({ event, design, live = false }) {
                   <Clock className="h-4 w-4 text-text-secondary" />
                   {formatDate(event.date)} · {event.time}
                 </span>
-                <span className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-text-secondary" />
-                  {event.venue}
-                  {event.city && event.city !== "Remote" ? `, ${event.city}` : ""}
-                </span>
+                {event.venueId ? (
+                  <button
+                    type="button"
+                    onClick={() => setVenueOpen(true)}
+                    className="flex items-center gap-2 text-left transition-colors hover:text-foreground"
+                    style={{ color: undefined }}
+                  >
+                    <MapPin className="h-4 w-4 text-text-secondary" />
+                    <span className="underline decoration-dotted underline-offset-4">
+                      {event.venue}
+                      {event.city && event.city !== "Remote" ? `, ${event.city}` : ""}
+                    </span>
+                    <ChevronRight className="h-3.5 w-3.5 text-text-tertiary" />
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-text-secondary" />
+                    {event.venue}
+                    {event.city && event.city !== "Remote" ? `, ${event.city}` : ""}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1238,6 +1432,18 @@ export function EventPublicPageContent({ event, design, live = false }) {
         resumeResult={resumeResult}
         onPurchased={(res) => {
           if (typeof res.sold === "number") setSoldOverride(res.sold);
+        }}
+      />
+
+      <VenueDetailsDialog
+        open={venueOpen}
+        onClose={() => setVenueOpen(false)}
+        venueId={event.venueId}
+        accent={accent}
+        fallback={{
+          name: event.venue,
+          address: event.address,
+          city: event.city,
         }}
       />
     </div>

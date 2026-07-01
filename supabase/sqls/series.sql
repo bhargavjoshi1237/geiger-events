@@ -93,29 +93,5 @@ create policy flow_event_series_demo_all on events.event_series
   using (true)
   with check (true);
 
--- Seed — same ids as components/internal/screens/events/sample_data.js. Then
--- attach the matching seed events to their series (ids from events.sql).
-insert into events.event_series
-  (id, name, description, status, cadence, visibility, settings)
-values
-  ('22222222-2222-4222-8222-000000000001', 'Founder Sessions', 'A monthly run of founder AMAs and live customer webinars.', 'On sale', 'Monthly', 'Public',
-   '{"defaults":{"type":"Online","visibility":"Public","timezone":"Europe/London","organizer":"Ava Mitchell"},"followPage":true}'::jsonb),
-  ('22222222-2222-4222-8222-000000000002', 'Hands-on Workshops', 'Practical, limited-seat workshops across design and craft.', 'On sale', 'Monthly', 'Public',
-   '{"defaults":{"type":"In-person","visibility":"Public","timezone":"Europe/London"},"followPage":true}'::jsonb),
-  ('22222222-2222-4222-8222-000000000003', 'Quarterly Town Hall', 'Company-wide town halls, once a quarter.', 'Scheduled', 'Quarterly', 'Unlisted',
-   '{"defaults":{"type":"Hybrid","visibility":"Unlisted","timezone":"Europe/London"},"followPage":false}'::jsonb),
-  ('22222222-2222-4222-8222-000000000004', 'Summer Concert Run', 'A themed run of summer gigs at partner venues.', 'Draft', 'Custom', 'Public',
-   '{"defaults":{"type":"In-person","visibility":"Public","timezone":"Europe/London"},"followPage":true}'::jsonb)
-on conflict (id) do nothing;
-
-update events.events set series_id = '22222222-2222-4222-8222-000000000001'
-  where id in (
-    'c3e5079b-2c4d-4e6f-9a01-3b4c5d6e7f03',
-    '072941df-6081-42a3-de45-7f8091a2b307'
-  ) and series_id is null;
-
-update events.events set series_id = '22222222-2222-4222-8222-000000000002'
-  where id in (
-    'd4f618ac-3d5e-4f70-ab12-4c5d6e7f8004',
-    '183a52e0-7192-43b4-ef56-8091a2b3c408'
-  ) and series_id is null;
+-- No demo seed. Series are project-scoped (see zz_project_access.sql) and
+-- created in-app against a real project.

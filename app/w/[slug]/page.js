@@ -24,14 +24,18 @@ export default function EventWallPage() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([getWallBySlug(slug), listListableEvents()]).then(
-      ([wallRow, eventRows]) => {
-        if (!alive) return;
-        setWall(wallRow);
-        setEvents(eventRows ?? []);
-        setLoading(false);
-      },
-    );
+    // Public page (outside ProjectProvider): resolve the wall by slug first,
+    // then scope its listable events to that wall's project.
+    getWallBySlug(slug).then(async (wallRow) => {
+      if (!alive) return;
+      setWall(wallRow);
+      const eventRows = wallRow
+        ? await listListableEvents(wallRow.projectId)
+        : [];
+      if (!alive) return;
+      setEvents(eventRows ?? []);
+      setLoading(false);
+    });
     return () => {
       alive = false;
     };

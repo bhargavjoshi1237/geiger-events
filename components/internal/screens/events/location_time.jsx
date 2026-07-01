@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EVENTS } from "./sample_data";
+import { listVenues } from "@/lib/supabase/venues";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import {
   EventMap,
@@ -81,6 +82,30 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
   const isRemote = event?.city === "Remote";
   const [locMode, setLocMode] = useState("search");
 
+  // Managed venues for this project — picking one fills in the venue snapshot
+  // (name, address, city, timezone) and links it so the public page can show
+  // the full venue detail. Empty when there's no DB / none created.
+  const [venues, setVenues] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    listVenues(event?.projectId).then((rows) => alive && setVenues(rows ?? []));
+    return () => {
+      alive = false;
+    };
+  }, [event?.projectId]);
+
+  const pickVenue = (id) => {
+    const v = venues.find((x) => x.id === id);
+    if (!v) return;
+    patch({
+      venueId: v.id,
+      venue: v.name,
+      address: v.address || event?.address || "",
+      city: v.city || event?.city || "",
+      timezone: v.timezone || event?.timezone || "Europe/London",
+    });
+  };
+
   // Venue/address/timezone are columns (live via patch); the finer schedule
   // fields live in the metadata bag.
   const [loc, setLoc, saveLoc, saving] = useEventConfig(event, "location", {
@@ -112,7 +137,9 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
   const save = async () => {
     commit({
       venue: event?.venue,
+      venueId: event?.venueId ?? null,
       address: event?.address,
+      city: event?.city,
       timezone: event?.timezone,
     });
     await Promise.all([
@@ -159,11 +186,32 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
       )}
 
       <SectionCard title="Venue details">
+        {venues.length ? (
+          <Field
+            label="Saved venue"
+            hint="Pick one of your venues to fill in the details, or type a name below."
+            className="mb-4"
+          >
+            <Select value={event?.venueId || ""} onValueChange={pickVenue}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a saved venue" />
+              </SelectTrigger>
+              <SelectContent>
+                {venues.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}
+                    {v.city ? ` · ${v.city}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Venue name">
             <Input
               value={event?.venue || ""}
-              onChange={(e) => patch({ venue: e.target.value })}
+              onChange={(e) => patch({ venue: e.target.value, venueId: null })}
               placeholder="Where is it held?"
             />
           </Field>

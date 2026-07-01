@@ -102,16 +102,6 @@ create policy flow_events_demo_all on events.events
   using (true)
   with check (true);
 
--- Seed — same UUIDs as components/internal/screens/events/sample_data.js.
-insert into events.events
-  (id, name, status, type, event_date, event_time, venue, address, city, timezone, capacity, sold, revenue, visibility, organizer, summary)
-values
-  ('7b1c0e9a-4d2f-4a1b-9c3e-1f5a8d6b2c01', 'Summer Product Launch', 'On sale', 'Hybrid', '2026-06-18', '18:00', 'The Glasshouse', '61 Southwark Street, London SE1 0HL', 'London', 'Europe/London', 400, 312, 9840, 'Public', 'Ava Mitchell', 'An evening unveiling our biggest release yet — talks, live demos, and drinks.'),
-  ('a2d4f6e8-1b3c-4d5e-8f90-2a3b4c5d6e02', 'Local Music Night', 'Sold out', 'In-person', '2026-06-12', '20:00', 'Basement 45', 'Frogmore Street, Bristol BS1 5NA', 'Bristol', 'Europe/London', 300, 300, 5400, 'Public', 'Marco Reyes', 'Three local bands, one tiny basement, and a very loud night out.'),
-  ('c3e5079b-2c4d-4e6f-9a01-3b4c5d6e7f03', 'Founder AMA — Live', 'On sale', 'Online', '2026-06-20', '16:00', 'Zoom Webinar', 'Online — link sent on registration', 'Remote', 'Europe/London', 150, 128, 3120, 'Unlisted', 'Ava Mitchell', 'Ask our founders anything — product, fundraising, and lessons learned.'),
-  ('d4f618ac-3d5e-4f70-ab12-4c5d6e7f8004', 'Design Systems Workshop', 'Draft', 'In-person', '2026-07-02', '10:00', 'WeWork Moorgate', '1 Fore Street Avenue, London EC2Y 9DT', 'London', 'Europe/London', 80, 54, 2160, 'Private', 'Priya Shah', 'A hands-on day building a scalable design system from tokens to components.'),
-  ('e50729bd-4e6f-4081-bc23-5d6e7f809105', 'Indie Film Screening', 'On sale', 'In-person', '2026-06-28', '19:30', 'The Ritzy', 'Brixton Oval, London SW2 1JG', 'London', 'Europe/London', 120, 74, 1480, 'Public', 'Marco Reyes', 'A première screening followed by a Q&A with the director and cast.'),
-  ('f61830ce-5f70-4192-cd34-6e7f8091a206', 'Startup Networking Brunch', 'Scheduled', 'In-person', '2026-07-11', '11:00', 'Caravan King''s Cross', '1 Granary Square, London N1C 4AA', 'London', 'Europe/London', 90, 0, 0, 'Public', 'Priya Shah', 'Founders, operators, and investors over brunch — relaxed, no pitches.'),
-  ('072941df-6081-42a3-de45-7f8091a2b307', 'Q2 Customer Webinar', 'Ended', 'Online', '2026-05-22', '15:00', 'Geiger Live', 'Online — link sent on registration', 'Remote', 'Europe/London', 500, 438, 0, 'Public', 'Ava Mitchell', 'A walkthrough of everything we shipped this quarter, plus a live roadmap Q&A.'),
-  ('183a52e0-7192-43b4-ef56-8091a2b3c408', 'Pottery Masterclass', 'On sale', 'In-person', '2026-07-05', '14:00', 'Turning Earth', 'Argall Avenue, London E10 7QE', 'London', 'Europe/London', 24, 19, 1140, 'Public', 'Lena Okafor', 'A beginner-friendly afternoon at the wheel — clay, glaze, and a piece to take home.')
-on conflict (id) do nothing;
+-- No demo seed. Rows are project-scoped (see zz_project_access.sql) and created
+-- in-app against a real public.projects row; there is nothing to seed without a
+-- project. The client still ships sample_data.js for an instant first paint.

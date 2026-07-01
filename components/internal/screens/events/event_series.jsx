@@ -75,6 +75,7 @@ import {
 } from "@/lib/supabase/events";
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { useProject } from "@/context/project-context";
 import { SeriesDetailScreen } from "./series_detail";
 
 const TODAY = "2026-06-27";
@@ -189,12 +190,13 @@ export function EventSeriesScreen() {
   const [selectedId, setSelectedId] = useState(null);
   const [userId, setUserId] = useState(null);
   const { openEventInTab } = useWorkspaceUrl();
+  const { projectId } = useProject();
 
   const usingDb = source === "db";
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listSeries(), listEvents()]).then(([rows, evts]) => {
+    Promise.all([listSeries(projectId), listEvents(projectId)]).then(([rows, evts]) => {
       if (!alive) return;
       if (rows) {
         setSeriesList(rows);
@@ -268,6 +270,7 @@ export function EventSeriesScreen() {
       visibility: draft.visibility,
       settings: emptySeriesSettings(),
       createdBy: userId,
+      projectId,
     };
     setSeriesList((prev) => [series, ...prev]);
     toast.success(`Series "${series.name}" created.`);
@@ -378,6 +381,7 @@ export function EventSeriesScreen() {
       gallery: [],
       seriesId,
       createdBy: userId,
+      projectId,
     };
     setEvents((prev) => [draftEvent, ...prev]);
     toast.success("Added a new draft event to the series.");

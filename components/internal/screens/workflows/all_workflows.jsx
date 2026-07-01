@@ -61,6 +61,7 @@ import {
 import { listEvents } from "@/lib/supabase/events";
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { useProject } from "@/context/project-context";
 
 import {
   WORKFLOW_STATUS_MAP,
@@ -204,6 +205,7 @@ export function AllWorkflowsScreen() {
   const [userId, setUserId] = useState(null);
 
   const { workflowId, openWorkflow, closeWorkflow } = useWorkspaceUrl();
+  const { projectId } = useProject();
 
   const eventName = useMemo(() => {
     const map = new Map((events || []).map((e) => [e.id, e.name]));
@@ -217,12 +219,12 @@ export function AllWorkflowsScreen() {
 
   useEffect(() => {
     let alive = true;
-    listWorkflows().then((rows) => {
+    listWorkflows(projectId).then((rows) => {
       if (!alive) return;
       setWorkflows(rows ?? []);
       setLoading(false);
     });
-    listEvents().then((rows) => alive && setEvents(rows ?? []));
+    listEvents(projectId).then((rows) => alive && setEvents(rows ?? []));
     getUser().then((u) => alive && setUserId(u?.id || null));
     return () => {
       alive = false;
@@ -287,6 +289,7 @@ export function AllWorkflowsScreen() {
       runCount: 0,
       lastRunAt: null,
       createdBy: userId,
+      projectId,
     };
     setWorkflows((prev) => [workflow, ...prev]);
     toast.success(`"${name}" created as a draft.`);
@@ -331,6 +334,7 @@ export function AllWorkflowsScreen() {
       runCount: 0,
       lastRunAt: null,
       createdBy: userId,
+      projectId,
     };
     setWorkflows((prev) => [copy, ...prev]);
     toast.success(`Duplicated "${workflow.name}".`);

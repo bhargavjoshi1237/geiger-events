@@ -63,6 +63,7 @@ import {
   softDeleteForm,
 } from "@/lib/supabase/registration_forms";
 import { getUser } from "@/lib/supabase/user";
+import { useProject } from "@/context/project-context";
 import {
   FORM_STATUS_MAP,
   FORM_STATUS_FILTER_OPTIONS,
@@ -545,10 +546,11 @@ export function RegistrationFormsScreen() {
   const [openId, setOpenId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [userId, setUserId] = useState(null);
+  const { projectId } = useProject();
 
   useEffect(() => {
     let alive = true;
-    listForms().then((rows) => {
+    listForms(projectId).then((rows) => {
       if (!alive) return;
       setForms(rows ?? []);
       setLoading(false);
@@ -604,6 +606,7 @@ export function RegistrationFormsScreen() {
       ],
       settings: DEFAULT_SETTINGS,
       createdBy: userId,
+      projectId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -638,6 +641,7 @@ export function RegistrationFormsScreen() {
       name: `${form.name} (copy)`,
       status: "Draft",
       createdBy: userId,
+      projectId,
       createdAt: new Date().toISOString(),
     };
     setForms((prev) => [copy, ...prev]);

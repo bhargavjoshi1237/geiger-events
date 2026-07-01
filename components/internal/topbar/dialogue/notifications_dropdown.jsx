@@ -27,8 +27,12 @@ export function NotificationsDropdown({ children }) {
 
       if (userData) {
         const { createClient } = await import("@/lib/supabase/client");
+        // The base client is scoped to this app's `events` schema, but
+        // flow_notifications is a suite-shared table in `public` — override the
+        // schema for this read so it doesn't resolve to events.flow_notifications.
         const supabase = createClient();
         const { data, error } = await supabase
+          .schema("public")
           .from("flow_notifications")
           .select("*")
           .eq("user_id", userData.id)

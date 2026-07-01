@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useProject } from "@/context/project-context";
 import { useWallConfig } from "@/lib/events/use-wall-config";
 import { listListableEvents } from "@/lib/supabase/events";
 import { formatDate } from "../sample_data";
@@ -34,6 +35,7 @@ const DEFAULT_FILTERS = { status: "upcoming", sortBy: "date_asc" };
 // listable — see the Visibility section of the event editor), how they're
 // sorted, and an optional manually-ordered "featured" set pinned to the top.
 export function WallEventsSection({ wall }) {
+  const { projectId } = useProject();
   const [filters, setFilters, saveFilters] = useWallConfig(
     wall,
     "filters",
@@ -45,7 +47,7 @@ export function WallEventsSection({ wall }) {
 
   useEffect(() => {
     let alive = true;
-    listListableEvents().then((rows) => {
+    listListableEvents(projectId).then((rows) => {
       if (!alive) return;
       setEvents(rows ?? []);
       setLoading(false);
@@ -53,7 +55,7 @@ export function WallEventsSection({ wall }) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [projectId]);
 
   const featuredEvents = featured
     .map((id) => events.find((e) => e.id === id))

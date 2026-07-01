@@ -71,6 +71,7 @@ import {
 import { createEvent } from "@/lib/supabase/events";
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { useProject } from "@/context/project-context";
 
 // Lucide name (stored as data on the template) → component. Falls back to a
 // neutral icon so an unknown name never crashes the card.
@@ -297,12 +298,13 @@ export function TemplatesScreen() {
   const [editing, setEditing] = useState(null);
   const [userId, setUserId] = useState(null);
   const { openEventInTab } = useWorkspaceUrl();
+  const { projectId } = useProject();
 
   const usingDb = source === "db";
 
   useEffect(() => {
     let alive = true;
-    listTemplates().then((rows) => {
+    listTemplates(projectId).then((rows) => {
       if (!alive) return;
       if (rows) {
         setTemplates(rows);
@@ -337,7 +339,7 @@ export function TemplatesScreen() {
   };
 
   const handleCreate = (input) => {
-    const template = { id: newId(), uses: 0, createdBy: userId, ...input };
+    const template = { id: newId(), uses: 0, createdBy: userId, projectId, ...input };
     setTemplates((prev) => [template, ...prev]);
     toast.success(`Template "${template.name}" saved.`);
     persistCreate(template);
@@ -363,6 +365,7 @@ export function TemplatesScreen() {
       name: `${t.name} (copy)`,
       uses: 0,
       createdBy: userId,
+      projectId,
     };
     setTemplates((prev) => [copy, ...prev]);
     toast.success(`Duplicated "${t.name}".`);
@@ -405,6 +408,7 @@ export function TemplatesScreen() {
       gallery: [],
       seriesId: null,
       createdBy: userId,
+      projectId,
     };
 
     // Optimistically bump the use counter.

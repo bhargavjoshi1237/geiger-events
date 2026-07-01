@@ -72,12 +72,6 @@ $$;
 grant execute on function events.event_wall_merge_meta(uuid, jsonb)
   to anon, authenticated;
 
--- Singleton seed — stable id so the data layer can target it directly.
-insert into events.event_wall (id, name, tagline, slug)
-values (
-  '44444444-4444-4444-8444-000000000001',
-  'Our Events',
-  'Discover what''s happening.',
-  'events'
-)
-on conflict (id) do nothing;
+-- No singleton seed. The wall is now one row per project (see
+-- zz_project_access.sql), created on demand by lib/supabase/event_wall.js the
+-- first time a project's Event Wall is opened.

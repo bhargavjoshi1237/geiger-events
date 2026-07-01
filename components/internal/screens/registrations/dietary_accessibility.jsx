@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { listEvents } from "@/lib/supabase/events";
 import { listRegistrations } from "@/lib/supabase/registrations";
+import { useProject } from "@/context/project-context";
 import { DIETARY_TAGS, formatDateTime } from "./constants";
 import { downloadCsv } from "./csv";
 
@@ -28,10 +29,11 @@ export function DietaryAccessibilityScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
+  const { projectId } = useProject();
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listRegistrations(), listEvents()]).then(([rows, evts]) => {
+    Promise.all([listRegistrations(projectId), listEvents(projectId)]).then(([rows, evts]) => {
       if (!alive) return;
       setRegs(rows ?? []);
       setEvents(evts ?? []);
