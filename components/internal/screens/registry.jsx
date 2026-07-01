@@ -3,6 +3,7 @@ import { EventsHomeScreen } from "./events/events_home";
 import { AllEventsScreen } from "./events/all_events";
 import { TemplatesScreen } from "./events/templates";
 import { EventSeriesScreen } from "./events/event_series";
+import { EventWallScreen } from "./events/event_wall/wall_detail";
 import { RegistrationsScreen } from "./registrations/registrations";
 import { RegistrationFormsScreen } from "./registrations/registration_forms";
 import { WaitlistScreen } from "./registrations/waitlist";
@@ -42,6 +43,7 @@ export const SCREEN_REGISTRY = {
   "All Events": AllEventsScreen,
   Templates: TemplatesScreen,
   "Event Series": EventSeriesScreen,
+  "Event Wall": EventWallScreen,
 
   // Registrations area. Six substantive screens; the remaining sub-items are
   // per-entity config/behaviours that fold onto a host screen with a context

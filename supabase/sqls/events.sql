@@ -73,6 +73,9 @@ alter table events.events add column if not exists gallery jsonb not null defaul
 alter table events.events add column if not exists created_by uuid references auth.users(id) on delete set null;
 alter table events.events add column if not exists metadata jsonb not null default '{}'::jsonb;
 alter table events.events add column if not exists deleted_at timestamptz;
+-- Whether this event appears on the public Event Wall (see event_wall.sql).
+-- A real column (not metadata) since the wall's public page filters on it.
+alter table events.events add column if not exists is_listable boolean not null default false;
 
 drop trigger if exists events_touch_updated_at on events.events;
 create trigger events_touch_updated_at
@@ -83,6 +86,8 @@ create index if not exists flow_events_status_idx
   on events.events (status) where deleted_at is null;
 create index if not exists flow_events_created_idx
   on events.events (created_at desc);
+create index if not exists flow_events_listable_idx
+  on events.events (event_date) where is_listable and deleted_at is null;
 
 -- RLS. The events dashboard currently runs unauthenticated (anon key), so the
 -- demo policy below grants open access. When auth lands, replace this with an

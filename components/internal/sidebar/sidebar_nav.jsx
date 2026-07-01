@@ -141,6 +141,7 @@ export const workspaceNav = [
       { title: "All Events", icon: CalendarDays },
       { title: "Templates", icon: LayoutTemplate },
       { title: "Event Series", icon: Layers },
+      { title: "Event Wall", icon: LayoutGrid },
     ],
   },
 

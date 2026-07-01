@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Globe, Link2, Lock, EyeOff, Check } from "lucide-react";
+import { Globe, Link2, Lock, EyeOff, Check, LayoutGrid } from "lucide-react";
 
 import {
   DataTable,
@@ -118,6 +118,21 @@ export function VisibilitySection({ event, headerItem, onPatch, onCommit }) {
           );
         })}
       </div>
+
+      <SectionCard
+        title="Event Wall"
+        description="Your public events hub — configured under Events → Event Wall."
+      >
+        <SettingsList>
+          <SettingRow
+            icon={LayoutGrid}
+            title="List on Event Wall"
+            description="Show this event on your public Event Wall page."
+            checked={!!event.isListable}
+            onCheckedChange={(v) => (onCommit || onPatch)?.({ isListable: v })}
+          />
+        </SettingsList>
+      </SectionCard>
 
       <SectionCard title="Access & indexing">
         <SettingsList>
