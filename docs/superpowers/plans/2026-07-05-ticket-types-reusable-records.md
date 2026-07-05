@@ -660,7 +660,74 @@ git commit -m "refactor: repoint Ticket Types event tab to attach panel, retire 
 
 ### Task 5 (GATED): Sell attached tickets on the public page
 
-> **Do not start until the reviewer confirms decision #4 (public sale) AND Risk #1 is resolved:** verify `ticketing_records` is readable on the unauthenticated `/e/<id>` page. Test by opening a published event's `/e/<uuid>` while signed out (or in a private window) after attaching a ticket; if `listRecordsByIds` returns empty for anonymous users, a public-read RLS policy on `ticketing_records` (mirroring how published events are read) must be added first in `supabase/sqls/`. That RLS work, if needed, is its own task.
+> **STATUS (2026-07-05): BLOCKED pending user decision.** Risk #1 investigated and
+> confirmed real: `zz_project_access.sql:302-310` gives `events.ticketing_records`
+> a **member-only** policy (`for all to authenticated using can_access_project`)
+> with the explicit note *"no public surface (attachment applies them, read via
+> the event)."* There is **no anon read policy**, so on the unauthenticated
+> `/e/<id>` page `listRecordsByIds` returns `[]` for every visitor — attached
+> tickets would never render or sell. A blanket anon-read on `ticketing_records`
+> is unsafe: it would also expose payout / payment-method / discount / invoice
+> configs (every other module shares this table). **Do not run the original
+> `listRecordsByIds` approach below.** See the revised RPC approach next; execution
+> waits on the user choosing an approach and (for the RPC) running the migration.
+
+#### Task 5 — Revised safe approach (SECURITY DEFINER RPC)
+
+Mirror the codebase's existing "read via the event" pattern (`buy_ticket`,
+`event_orders` — *"purchases through events.buy_ticket() SECURITY DEFINER, so no
+anon policy is needed"*). Add one RPC that returns **only** the ticket_type
+records attached to a specific readable event — nothing else in the table is
+exposed.
+
+- **New migration** `supabase/sqls/` (new file, e.g. `ticketing_public.sql`, runs
+  after `zz_project_access.sql` — pick a filename that sorts after `zz`, e.g.
+  `zzz_ticketing_public.sql`), idempotent:
+
+  ```sql
+  -- Public read of an event's attached ticket_type records only. SECURITY
+  -- DEFINER so it bypasses the member-only RLS on ticketing_records, but returns
+  -- ONLY ticket_type rows whose id is attached to a non-Private, non-deleted
+  -- event — no discount/payout/method/invoice rows, no other events' tickets.
+  create or replace function events.list_event_tickets(p_event_id uuid)
+  returns setof events.ticketing_records
+  language sql stable security definer set search_path = events, public as $$
+    select r.*
+    from events.ticketing_records r
+    join events.events e on e.id = p_event_id
+    where e.deleted_at is null
+      and e.visibility <> 'Private'
+      and r.deleted_at is null
+      and r.module = 'ticket_type'
+      and r.active is true
+      and r.id::text in (
+        select jsonb_array_elements_text(
+          coalesce(e.metadata -> 'attached' -> 'ticket_type', '[]'::jsonb)
+        )
+      );
+  $$;
+
+  grant execute on function events.list_event_tickets(uuid) to anon, authenticated;
+  ```
+
+  Run with `npm run db:push` (executes `supabase/sqls/*` in filename order). This
+  touches the **shared** suite database — run only with user awareness.
+
+- **Data layer** `lib/supabase/ticketing.js`: add `listEventTickets(eventId)` that
+  calls the RPC (`sb.rpc("list_event_tickets", { p_event_id: eventId })` on the
+  schema-scoped client) and maps rows through `normalizeRecord`. Guard +
+  tri-state return like the siblings. (Keep `listRecordsByIds` — harmless, or
+  remove it if unused after this.)
+
+- **Public page** `event_public_page.jsx`: same wiring as the original Task 5
+  steps below, except call `listEventTickets(event.id)` instead of
+  `listRecordsByIds(...)`, and drop the id-reordering (the RPC can `order by` or
+  the page can order by the `attached` array). `buildTickets(event, ticketRecords)`
+  and `ticketOnSale(...)` are unchanged from the code below.
+
+> The original `listRecordsByIds`-based steps below are **superseded** by the RPC
+> approach and retained only for the `buildTickets`/`ticketOnSale`/fetch-effect
+> code, which is reused verbatim with the RPC swapped in.
 
 **Files:**
 - Modify: `components/internal/screens/events/event_public_page.jsx` (`buildTickets`, `EventPublicPageContent`)
