@@ -11,9 +11,13 @@
 -- ===========================================================================
 
 -- Validate a staff access code for an event. Returns the matching active role
--- ({ id, name, permissions }) for the event's project, or null. Every other RPC
--- here calls this first and raises on an invalid code.
-create or replace function events.checkin_validate_code(p_event uuid, p_code text)
+-- ({ id, name, permissions, type }) for the event's project, or null. `p_type`
+-- narrows to 'staff' or 'kiosk' — the AccessGate on each route passes its own,
+-- so staff and kiosk codes are separate spaces (one can't unlock the other).
+-- Left null (the default) for the internal callers below, which only need to
+-- confirm a code is valid+active and don't care which type it is.
+drop function if exists events.checkin_validate_code(uuid, text);
+create or replace function events.checkin_validate_code(p_event uuid, p_code text, p_type text default null)
 returns jsonb
 language plpgsql
 stable
@@ -33,21 +37,22 @@ begin
   if v_project is null then
     return null;
   end if;
-  select id, name, permissions into v_role
+  select id, name, permissions, type into v_role
     from events.checkin_staff_roles
     where project_id = v_project
       and access_code = p_code
       and active = true
       and deleted_at is null
+      and (p_type is null or type = p_type)
     limit 1;
   if not found then
     return null;
   end if;
-  return jsonb_build_object('id', v_role.id, 'name', v_role.name, 'permissions', v_role.permissions);
+  return jsonb_build_object('id', v_role.id, 'name', v_role.name, 'permissions', v_role.permissions, 'type', v_role.type);
 end;
 $$;
 
-grant execute on function events.checkin_validate_code(uuid, text) to anon, authenticated;
+grant execute on function events.checkin_validate_code(uuid, text, text) to anon, authenticated;
 
 -- Search an event's registrations by name / email / ticket code. Each row
 -- carries checked_in (an `in` attendance row exists). Ticket code mirrors the

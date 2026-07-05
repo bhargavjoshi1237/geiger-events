@@ -220,7 +220,7 @@ export default function DoorSalesPage() {
   }, [eventId]);
 
   return (
-    <AccessGate eventId={eventId} title="Door sales" subtitle="Enter the staff access code to sell at the door." require="canSell">
+    <AccessGate eventId={eventId} title="Door sales" subtitle="Enter the staff access code to sell at the door." require="canSell" codeType="staff">
       {({ code, role, exit }) => <DoorPos eventId={eventId} code={code} role={role} exit={exit} event={event} />}
     </AccessGate>
   );

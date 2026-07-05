@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   Loader2,
+  Monitor,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -30,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +61,13 @@ import {
 import { withDefaults } from "./constants";
 
 const genCode = () => String(Math.floor(100000 + Math.random() * 900000));
+
+// staff = /checkin + /door routes; kiosk = the /kiosk route — separate code
+// spaces (see checkin_validate_code's p_type) so one can't unlock the other.
+const ROLE_TYPES = [
+  { value: "staff", label: "Staff", icon: Users },
+  { value: "kiosk", label: "Kiosk", icon: Monitor },
+];
 
 const defaultPermissions = () => ({
   canScan: true,
@@ -150,12 +159,17 @@ function RoleEditPage({ role, gates, zones, onBack, onSave }) {
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </button>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            aria-label="Role name"
-            className="w-full max-w-md rounded-sm bg-transparent text-2xl font-semibold tracking-tight text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:text-3xl"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              aria-label="Role name"
+              className="w-full max-w-md rounded-sm bg-transparent text-2xl font-semibold tracking-tight text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:text-3xl"
+            />
+            <Badge variant="neutral" className="shrink-0 capitalize">
+              {role.type === "kiosk" ? "Kiosk" : "Staff"}
+            </Badge>
+          </div>
         </div>
         <Button
           className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
@@ -214,7 +228,14 @@ function RoleEditPage({ role, gates, zones, onBack, onSave }) {
           </div>
         </SectionCard>
 
-        <SectionCard title="Access code" description="Staff enter this PIN to open the check-in routes for their shift.">
+        <SectionCard
+          title="Access code"
+          description={
+            role.type === "kiosk"
+              ? "Enter this PIN on the kiosk device to unlock it."
+              : "Staff enter this PIN to open the check-in routes for their shift."
+          }
+        >
           <div className="flex flex-wrap items-center gap-3">
             <span className="rounded-lg border border-border bg-surface-card px-4 py-2 font-mono text-lg tracking-[0.3em] text-foreground">
               {code}
@@ -233,10 +254,111 @@ function RoleEditPage({ role, gates, zones, onBack, onSave }) {
   );
 }
 
+// One type's list — filtered rows, three states, row actions. Rendered once
+// per tab so Staff and Kiosk each get their own loading/empty/filtered-empty.
+function RoleList({ type, icon: Icon, roles, loading, search, onOpen, onDelete, onCreate }) {
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return roles.filter(
+      (r) => r.type === type && (q ? r.name.toLowerCase().includes(q) : true),
+    );
+  }, [roles, search, type]);
+  const typeTotal = roles.filter((r) => r.type === type).length;
+  const label = type === "kiosk" ? "kiosk" : "staff";
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading roles…
+      </div>
+    );
+  }
+
+  if (!filtered.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface-subtle">
+        <EmptyState
+          icon={Icon}
+          title={typeTotal ? "No matches" : `No ${label} roles yet`}
+          description={
+            typeTotal
+              ? "Try a different search."
+              : type === "kiosk"
+                ? "Create a kiosk role to hand a self-service tablet its own access code, separate from staff codes."
+                : "Create a role to control what door staff can do and hand them an access code."
+          }
+          action={
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={onCreate}>
+              <Plus className="h-4 w-4" /> New {label} role
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      {filtered.map((role) => (
+        <div
+          key={role.id}
+          role="button"
+          tabIndex={0}
+          onClick={() => onOpen(role.id)}
+          onKeyDown={(e) => e.key === "Enter" && onOpen(role.id)}
+          className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+            <Icon className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-foreground">{role.name}</span>
+              <Badge variant="neutral" className="font-mono">{role.accessCode}</Badge>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-text-secondary">
+              {permSummary({ ...defaultPermissions(), ...role.permissions })}
+            </p>
+          </div>
+          <div onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 border-border bg-surface-card shadow-xl">
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
+                  onClick={() => onOpen(role.id)}
+                >
+                  <Pencil className="h-4 w-4" /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-surface-strong" />
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
+                  onClick={() => onDelete(role)}
+                >
+                  <Trash2 className="h-4 w-4 text-red-300" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function StaffScanningRolesScreen() {
   const { projectId } = useProject();
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("staff");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [draftName, setDraftName] = useState("");
@@ -265,10 +387,7 @@ export function StaffScanningRolesScreen() {
     };
   }, [projectId]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return roles.filter((r) => (q ? r.name.toLowerCase().includes(q) : true));
-  }, [roles, search]);
+  const activeType = ROLE_TYPES.find((t) => t.value === tab) || ROLE_TYPES[0];
 
   const handleCreate = () => {
     const name = draftName.trim();
@@ -280,6 +399,7 @@ export function StaffScanningRolesScreen() {
       id: newId(),
       projectId,
       name,
+      type: tab,
       permissions: defaultPermissions(),
       accessCode: genCode(),
       active: true,
@@ -291,16 +411,18 @@ export function StaffScanningRolesScreen() {
     setDraftName("");
     setOpenId(role.id);
     createStaffRole(role).then((saved) => {
-      if (saved === null) return;
-      if (!saved) toast.error("Couldn't save the role to the server.");
-      else setRoles((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
+      if (!saved) {
+        toast.error("Couldn't save the role to the server.");
+      } else {
+        setRoles((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
+      }
     });
   };
 
   const handleSave = async (id, patch) => {
     setRoles((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     const saved = await updateStaffRole(id, patch);
-    if (saved === false) {
+    if (!saved) {
       toast.error("Couldn't save your changes.");
       return;
     }
@@ -334,111 +456,56 @@ export function StaffScanningRolesScreen() {
     <MainScreenWrapper>
       <ScreenHeader
         title="Staff Scanning Roles"
-        description="Define what your door staff can do — scan, sell, override — which gates and zones they cover, and the access code they use to open the check-in routes."
+        description="Define what door staff and kiosk devices can do, and the access codes they use to unlock their routes — staff and kiosk codes are managed and validated separately."
         actions={
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setCreateOpen(true)}
           >
-            <Plus className="h-4 w-4" /> New role
+            <Plus className="h-4 w-4" /> New {activeType.label.toLowerCase()} role
           </Button>
         }
       />
 
-      <Toolbar>
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search roles…"
-          className="w-full sm:max-w-xs"
-        />
-        <span />
-      </Toolbar>
-
-      {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading roles…
-        </div>
-      ) : filtered.length ? (
-        <div className="grid gap-3">
-          {filtered.map((role) => (
-            <div
-              key={role.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setOpenId(role.id)}
-              onKeyDown={(e) => e.key === "Enter" && setOpenId(role.id)}
-              className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
-                <Users className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-foreground">{role.name}</span>
-                  <Badge variant="neutral" className="font-mono">{role.accessCode}</Badge>
-                </div>
-                <p className="mt-0.5 truncate text-xs text-text-secondary">
-                  {permSummary({ ...defaultPermissions(), ...role.permissions })}
-                </p>
-              </div>
-              <div onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40 border-border bg-surface-card shadow-xl">
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                      onClick={() => setOpenId(role.id)}
-                    >
-                      <Pencil className="h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-surface-strong" />
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                      onClick={() => setDeleteTarget(role)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-300" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          {ROLE_TYPES.map((t) => (
+            <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
+              <t.icon className="h-4 w-4" /> {t.label}
+            </TabsTrigger>
           ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-border bg-surface-subtle">
-          <EmptyState
-            icon={Users}
-            title={roles.length ? "No matches" : "No roles yet"}
-            description={
-              roles.length
-                ? "Try a different search."
-                : "Create a role to control what door staff can do and hand them an access code."
-            }
-            action={
-              <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => setCreateOpen(true)}
-              >
-                <Plus className="h-4 w-4" /> New role
-              </Button>
-            }
-          />
-        </div>
-      )}
+        </TabsList>
+
+        {ROLE_TYPES.map((t) => (
+          <TabsContent key={t.value} value={t.value} className="space-y-4">
+            <Toolbar>
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder={`Search ${t.label.toLowerCase()} roles…`}
+                className="w-full sm:max-w-xs"
+              />
+              <span />
+            </Toolbar>
+
+            <RoleList
+              type={t.value}
+              icon={t.icon}
+              roles={roles}
+              loading={loading}
+              search={search}
+              onOpen={setOpenId}
+              onDelete={setDeleteTarget}
+              onCreate={() => setCreateOpen(true)}
+            />
+          </TabsContent>
+        ))}
+      </Tabs>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md bg-background">
           <DialogHeader>
-            <DialogTitle>New scanning role</DialogTitle>
+            <DialogTitle>New {activeType.label.toLowerCase()} role</DialogTitle>
             <DialogDescription>
               Name it — you&apos;ll set abilities, scope, and the access code on
               its edit page.
@@ -450,7 +517,7 @@ export function StaffScanningRolesScreen() {
               value={draftName}
               onChange={(e) => setDraftName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              placeholder="e.g. Door staff"
+              placeholder={tab === "kiosk" ? "e.g. Front lobby kiosk" : "e.g. Door staff"}
               autoFocus
             />
           </Field>

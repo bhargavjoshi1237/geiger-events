@@ -106,6 +106,9 @@ create table if not exists events.checkin_staff_roles (
   id uuid primary key default gen_random_uuid(),
   project_id uuid references public.projects(id) on delete cascade,
   name text not null default 'Untitled role',
+  -- staff = /checkin + /door routes; kiosk = the /kiosk route. Separate code
+  -- spaces so a leaked staff code can't unlock a kiosk and vice versa.
+  type text not null default 'staff',
   -- { canScan, canSell, canOverride, gates[], zones[] }
   permissions jsonb not null default '{}'::jsonb,
   -- Shared PIN staff enter to open the Phase-2 routes for this role.
@@ -124,6 +127,11 @@ alter table events.checkin_staff_roles add column if not exists active boolean n
 alter table events.checkin_staff_roles add column if not exists created_by uuid references auth.users(id) on delete set null;
 alter table events.checkin_staff_roles add column if not exists metadata jsonb not null default '{}'::jsonb;
 alter table events.checkin_staff_roles add column if not exists deleted_at timestamptz;
+alter table events.checkin_staff_roles add column if not exists type text not null default 'staff';
+
+alter table events.checkin_staff_roles drop constraint if exists checkin_staff_roles_type_check;
+alter table events.checkin_staff_roles add constraint checkin_staff_roles_type_check
+  check (type in ('staff', 'kiosk'));
 
 create index if not exists events_checkin_staff_roles_project_idx
   on events.checkin_staff_roles (project_id) where deleted_at is null;

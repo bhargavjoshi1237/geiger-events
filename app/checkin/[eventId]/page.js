@@ -230,7 +230,7 @@ export default function CheckinScannerPage() {
   }, [eventId]);
 
   return (
-    <AccessGate eventId={eventId} title="Check-in scanner" require="canScan">
+    <AccessGate eventId={eventId} title="Check-in scanner" require="canScan" codeType="staff">
       {({ code, role, exit }) => (
         <Scanner eventId={eventId} code={code} role={role} exit={exit} event={event} />
       )}

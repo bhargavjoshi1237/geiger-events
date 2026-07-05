@@ -25,7 +25,9 @@ function readSession(eventId) {
 // validated code + role in sessionStorage and renders children(code, role). A
 // `?code=` query param auto-attempts unlock so a shared link opens straight in.
 // `require` (e.g. "canSell") fails validation unless the role grants it.
-export function AccessGate({ eventId, title, subtitle, require: requiredPerm, children }) {
+// `codeType` ("staff" | "kiosk") scopes which code space this route accepts —
+// staff and kiosk codes are separate, so a leaked kiosk code can't open /door.
+export function AccessGate({ eventId, title, subtitle, require: requiredPerm, codeType, children }) {
   const [unlocked, setUnlocked] = useState(null); // { code, role }
   const [code, setCode] = useState("");
   const [checking, setChecking] = useState(false);
@@ -40,7 +42,7 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, ch
     }
     setChecking(true);
     setError("");
-    const role = await validateCheckinCode(eventId, value);
+    const role = await validateCheckinCode(eventId, value, codeType);
     setChecking(false);
     if (!role) {
       setError("That code isn't valid for this event.");
@@ -68,7 +70,7 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, ch
       const stored = readSession(eventId);
       if (stored?.code) {
         // Re-validate silently so a revoked code doesn't linger.
-        const role = await validateCheckinCode(eventId, stored.code);
+        const role = await validateCheckinCode(eventId, stored.code, codeType);
         if (!alive) return;
         if (role && (!requiredPerm || role.permissions?.[requiredPerm])) {
           setUnlocked({ code: stored.code, role });

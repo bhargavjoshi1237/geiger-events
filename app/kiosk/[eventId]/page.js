@@ -296,7 +296,7 @@ export default function KioskPage() {
   }, [eventId]);
 
   return (
-    <AccessGate eventId={eventId} title="Kiosk setup" subtitle="Enter the staff access code to start kiosk mode." require="canScan">
+    <AccessGate eventId={eventId} title="Kiosk setup" subtitle="Enter the kiosk access code to start kiosk mode." require="canScan" codeType="kiosk">
       {({ code, role, exit }) => <Kiosk eventId={eventId} code={code} role={role} exit={exit} event={event} />}
     </AccessGate>
   );
