@@ -2,8 +2,17 @@
 
 import { Field, SectionCard, SettingsList, SettingRow } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useWallConfig } from "@/lib/events/use-wall-config";
 import { Segmented, ColorField } from "../theme_controls";
+import { FooterEditor, DEFAULT_FOOTER } from "../page_footer";
+import {
+  WALL_COLUMNS,
+  CARD_STYLES,
+  FEATURED_STYLES,
+  HEADER_ALIGNS,
+  DEFAULT_LAYOUT,
+} from "./wall_layout";
 import {
   resolveTheme,
   DEFAULT_THEME,
@@ -16,6 +25,10 @@ import {
   COVER_OPTIONS,
   BASES,
   BASE_PALETTES,
+  BUTTON_STYLES,
+  ELEVATIONS,
+  DENSITIES,
+  BG_TYPES,
 } from "@/lib/events/theme";
 
 // The wall's brand theme — the same model individual event pages use
@@ -28,6 +41,16 @@ export function WallDesignSection({ wall }) {
     "theme",
     DEFAULT_THEME,
   );
+  const [layout, setLayout, saveLayout] = useWallConfig(
+    wall,
+    "layout",
+    DEFAULT_LAYOUT,
+  );
+  const [footer, setFooter, saveFooter] = useWallConfig(
+    wall,
+    "footer",
+    DEFAULT_FOOTER,
+  );
   const resolved = resolveTheme({ theme });
   const patch = (next) => setTheme({ ...resolved, ...next });
   const setColors = (next) => patch({ colors: { ...resolved.colors, ...next } });
@@ -35,6 +58,21 @@ export function WallDesignSection({ wall }) {
   const onBase = (base) =>
     patch({ base, colors: { ...resolved.colors, ...BASE_PALETTES[base] } });
   const applyPreset = (preset) => setTheme(preset.theme);
+
+  // Layout config is a flat bag; helpers mirror the theme setters.
+  const setLayoutKey = (next) => setLayout({ ...layout, ...next });
+  const setCardMeta = (key, v) =>
+    setLayoutKey({ cardMeta: { ...(layout.cardMeta || {}), [key]: v } });
+  const setHeader = (next) =>
+    setLayoutKey({ header: { ...(layout.header || {}), ...next } });
+
+  // One Save persists all three config sections (theme + layout + footer). Each
+  // merges into a different metadata key, so they never clobber one another.
+  const onSave = async () => {
+    await saveLayout(layout);
+    await saveFooter(footer);
+    await saveTheme(theme, { successMsg: "Design saved." });
+  };
 
   return (
     <div className="space-y-6">
@@ -157,11 +195,25 @@ export function WallDesignSection({ wall }) {
               options={RADIUS_OPTIONS}
             />
           </Field>
-          <Field label="Cover style">
+          <Field label="Button style">
             <Segmented
-              value={resolved.cover}
-              onChange={(v) => patch({ cover: v })}
-              options={COVER_OPTIONS}
+              value={resolved.button}
+              onChange={(v) => patch({ button: v })}
+              options={BUTTON_STYLES}
+            />
+          </Field>
+          <Field label="Card shadow">
+            <Segmented
+              value={resolved.elevation}
+              onChange={(v) => patch({ elevation: v })}
+              options={ELEVATIONS}
+            />
+          </Field>
+          <Field label="Spacing">
+            <Segmented
+              value={resolved.density}
+              onChange={(v) => patch({ density: v })}
+              options={DENSITIES}
             />
           </Field>
           <Field label="Content width">
@@ -174,11 +226,127 @@ export function WallDesignSection({ wall }) {
         </div>
       </SectionCard>
 
+      <SectionCard
+        title="Grid & cards"
+        description="How your events are laid out and what each card shows."
+      >
+        <div className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Columns">
+              <Segmented
+                value={layout.columns || "auto"}
+                onChange={(v) => setLayoutKey({ columns: v })}
+                options={WALL_COLUMNS}
+              />
+            </Field>
+            <Field label="Card style">
+              <Segmented
+                value={layout.cardStyle || "classic"}
+                onChange={(v) => setLayoutKey({ cardStyle: v })}
+                options={CARD_STYLES}
+              />
+            </Field>
+          </div>
+          <SettingsList>
+            <SettingRow
+              title="Type badge"
+              description="Show the event type on each card."
+              checked={layout.cardMeta?.type !== false}
+              onCheckedChange={(v) => setCardMeta("type", v)}
+            />
+            <SettingRow
+              title="Date"
+              description="Show the date and time."
+              checked={layout.cardMeta?.date !== false}
+              onCheckedChange={(v) => setCardMeta("date", v)}
+            />
+            <SettingRow
+              title="Venue"
+              description="Show the venue and city."
+              checked={layout.cardMeta?.venue !== false}
+              onCheckedChange={(v) => setCardMeta("venue", v)}
+            />
+            <SettingRow
+              title="Price"
+              description="Show the lead ticket price, when set."
+              checked={!!layout.cardMeta?.price}
+              onCheckedChange={(v) => setCardMeta("price", v)}
+            />
+          </SettingsList>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Header & background"
+        description="The banner and background behind your events page header."
+      >
+        <div className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Header alignment">
+              <Segmented
+                value={layout.header?.align || "center"}
+                onChange={(v) => setHeader({ align: v })}
+                options={HEADER_ALIGNS}
+              />
+            </Field>
+            <Field label="Page background">
+              <Segmented
+                value={resolved.background?.type || "surface"}
+                onChange={(v) =>
+                  patch({ background: { ...resolved.background, type: v } })
+                }
+                options={BG_TYPES}
+              />
+            </Field>
+          </div>
+          <Field label="Banner image URL" hint="Sits behind the header. Optional.">
+            <Input
+              value={layout.header?.bannerUrl || ""}
+              onChange={(e) => setHeader({ bannerUrl: e.target.value })}
+              placeholder="https://…"
+            />
+          </Field>
+          {resolved.background?.type === "image" ? (
+            <Field label="Background image URL">
+              <Input
+                value={resolved.background?.value || ""}
+                onChange={(e) =>
+                  patch({
+                    background: { ...resolved.background, value: e.target.value },
+                  })
+                }
+                placeholder="https://…"
+              />
+            </Field>
+          ) : null}
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Featured events"
+        description="How pinned events (set in the Events section) are displayed."
+      >
+        <Field label="Featured style">
+          <Segmented
+            value={layout.featuredStyle || "badge"}
+            onChange={(v) => setLayoutKey({ featuredStyle: v })}
+            options={FEATURED_STYLES}
+          />
+        </Field>
+      </SectionCard>
+
+      <SectionCard
+        title="Footer"
+        description="Links, socials, and a closing line at the bottom of the wall."
+      >
+        <FooterEditor value={footer} onChange={setFooter} />
+      </SectionCard>
+
       <div className="flex justify-end">
         <Button
           className="bg-primary text-primary-foreground hover:bg-primary/90"
           disabled={saving}
-          onClick={() => saveTheme(theme, { successMsg: "Design saved." })}
+          onClick={onSave}
         >
           Save changes
         </Button>

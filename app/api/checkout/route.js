@@ -26,6 +26,7 @@ export async function POST(request) {
   const {
     eventId,
     ticketName,
+    ticketId = null,
     ticketPrice,
     quantity,
     addonUnit = 0,
@@ -34,6 +35,7 @@ export async function POST(request) {
     selections = null,
     answers = null,
     formId = null,
+    skipRegistration = false,
     returnUrl,
   } = body || {};
 
@@ -124,11 +126,16 @@ export async function POST(request) {
       metadata: {
         eventId,
         ticketName: ticketName || "General Admission",
+        // The chosen tier id (when a real tier) so the return trip can enforce
+        // that tier's inventory in buy_ticket. Empty string when untiered.
+        ticketId: ticketId != null ? String(ticketId) : "",
         price: String(price),
         quantity: String(qty),
         addons: String(addons),
         name,
         email,
+        // "1" for approved guests already registered — verify skips re-filing.
+        skipReg: skipRegistration ? "1" : "",
         extra: extraJson,
       },
     });

@@ -49,6 +49,7 @@ export async function GET(request) {
     name: meta.name,
     email: meta.email,
     ticket: meta.ticketName,
+    ticketId: meta.ticketId || null,
     price: Number(meta.price) || 0,
     quantity: qty,
     addons: Number(meta.addons) || 0,
@@ -57,10 +58,11 @@ export async function GET(request) {
     stripePaymentIntentId: session.payment_intent,
   });
 
-  if (res.ok && res.created) {
+  if (res.ok && res.created && meta.skipReg !== "1") {
     // Parity with the free-ticket path: a paid order also files a registration
     // record so the buyer shows up in Guests/RSVPs. Approval/waitlist policy is
     // read from the event itself, not trusted from checkout-time metadata.
+    // Skipped for approved guests (skipReg) — they're already a registration.
     const rsvpCfg = event?.rsvp || {};
     const { dietary, accessibility, answers } = splitRegistrationAnswers(
       event?.questions,
@@ -78,6 +80,9 @@ export async function GET(request) {
       requireApproval: !!rsvpCfg.requireApproval,
       allowWaitlist: rsvpCfg.waitlist !== false,
       source: "Online",
+      // Parity registration after a paid order — buy_ticket already gated
+      // capacity, so don't re-gate (would drop a paid attendee).
+      enforceCapacity: false,
     });
 
     const total = (Number(meta.price) || 0) * qty + (Number(meta.addons) || 0) * qty;

@@ -2,6 +2,24 @@
 
 Date: 2026-07-05
 Status: Approved scope, pending spec review
+
+> **Amendment (2026-07-05) — sidebar compressed 13 → 4.** The 13 sidebar
+> sub-items were over-listed: 6 were folded redirect banners and 3 more were
+> actions/filtered views, not destinations. The sidebar now shows only the four
+> real destinations — **Contact Book · Guest List · Segments · Data Requests**.
+> Everything else relocated (features unchanged):
+> - **Guest Import** → Contact Book *Actions ▸ Import CSV* (opens the wizard as a
+>   sub-view; contacts refetch on return).
+> - **Dedupe & Merge** → Contact Book *Actions ▸ Find duplicates* (sub-view).
+> - **Blocklist** → a "Blocked" filter on Contact Book, plus *Actions ▸ Block an
+>   email* (the raw-email block flow) and the existing row Block/Unblock action.
+> - **Guest Profiles / Tags & Notes / Communication History / Consent Tracking**
+>   → already the Contact profile drawer + its tabs and Contact Book filters.
+> - **Who's Going / Attendee Export** → Guest List's event filter + Export button.
+>
+> `guests/folded_redirect.jsx` and `guests/blocklist.jsx` were removed; the
+> registry now maps only the four titles. Sections below describe the original
+> 13-entry plan for context.
 Reference build: the **Registrations** area
 (`components/internal/screens/registrations`, `lib/supabase/registrations.js`,
 `supabase/sqls/registrations.sql`) and the **Events** area. Same rhythm:

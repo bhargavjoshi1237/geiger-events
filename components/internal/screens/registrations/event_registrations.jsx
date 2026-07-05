@@ -227,7 +227,7 @@ export function EventRegistrationsDetail({
           {r.status === "Pending" ? (
             <Button
               size="sm"
-              className="bg-emerald-500/90 text-white hover:bg-emerald-500"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => onStatusChange(r, "Confirmed")}
             >
               <Check className="h-4 w-4" /> Approve
@@ -236,7 +236,7 @@ export function EventRegistrationsDetail({
           {r.status === "Waitlisted" ? (
             <Button
               size="sm"
-              className="bg-emerald-500/90 text-white hover:bg-emerald-500"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => onStatusChange(r, "Confirmed")}
             >
               <ArrowUp className="h-4 w-4" /> Promote
@@ -396,7 +396,7 @@ export function EventRegistrationsDetail({
               <>
                 <Button
                   size="sm"
-                  className="bg-emerald-500/90 text-white hover:bg-emerald-500"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={() => runBulk("Confirmed")}
                 >
                   <Check className="h-4 w-4" /> Approve
@@ -414,7 +414,7 @@ export function EventRegistrationsDetail({
             {tab === "Waitlisted" ? (
               <Button
                 size="sm"
-                className="bg-emerald-500/90 text-white hover:bg-emerald-500"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => runBulk("Confirmed")}
               >
                 <ArrowUp className="h-4 w-4" /> Promote

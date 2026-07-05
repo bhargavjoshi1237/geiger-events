@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   SquarePen,
@@ -8,18 +8,20 @@ import {
   Gauge,
   Contact,
   ImageIcon,
-  Map as MapIcon,
+  LocateFixed,
   UploadCloud,
   Trash2,
   Loader2,
   Star,
   Check,
+  Accessibility,
 } from "lucide-react";
 
 import {
   Field,
   SectionCard,
 } from "@/components/internal/shared/screen_kit";
+import { GuidelineListEditor } from "@/components/internal/shared/guideline_editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,11 +39,27 @@ import {
   removeEventImage,
   pathFromPublicUrl,
 } from "@/lib/supabase/storage";
+import { mergeVenueMeta } from "@/lib/supabase/venues";
+import {
+  LocationPicker,
+  LocationModeTabs,
+} from "@/components/internal/screens/events/location_picker";
+import {
+  EventMap,
+  NearbyList,
+  nearbyGroups,
+  hasNearby,
+  flattenPlaces,
+  GETTING_THERE_GROUPS,
+  AROUND_VENUE_GROUPS,
+} from "@/components/internal/screens/events/event_map";
+import { resolveEventLocation } from "@/lib/map/geo";
 import {
   AMENITIES,
   VENUE_STATUS_OPTIONS,
   VENUE_TYPE_OPTIONS,
   VENUE_TIMEZONES,
+  venueFullAddress,
 } from "./constants";
 
 // Right-hand editor navigation. `key` must match a SECTIONS entry below.
@@ -50,6 +68,7 @@ export const VENUE_NAV = [
   { key: "location", label: "Location", icon: MapPin, desc: "Address, region, timezone, and how to get there." },
   { key: "capacity", label: "Capacity & amenities", icon: Gauge, desc: "How many it holds and what it offers." },
   { key: "contact", label: "Contact", icon: Contact, desc: "Who to reach and where to find them online." },
+  { key: "guidelines", label: "Dietary & Accessibility", icon: Accessibility, desc: "Guidelines shown on every event held here." },
   { key: "media", label: "Media", icon: ImageIcon, desc: "The cover image and photo gallery for this venue." },
 ];
 
@@ -113,28 +132,119 @@ function DetailsSection({ venue, patch }) {
 
 // --- Location ----------------------------------------------------------------
 
-function LocationSection({ venue, patch }) {
-  const mapQuery = [venue.address, venue.city, venue.postcode, venue.country]
-    .filter(Boolean)
-    .join(", ");
-  const mapHref =
-    venue.latitude != null && venue.longitude != null
-      ? `https://www.google.com/maps/search/?api=1&query=${venue.latitude},${venue.longitude}`
-      : mapQuery
-        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`
-        : null;
+// The nearby-place buckets stored in the venue's `nearby` metadata. Same keys
+// the event's `map` config uses, so the shared map helpers work on it directly.
+const EMPTY_NEARBY = {
+  nearbyParking: [],
+  nearbyTransit: [],
+  nearbyBike: [],
+  nearbyTaxi: [],
+  nearbyCharging: [],
+  nearbyHotels: [],
+  nearbyFood: [],
+};
+
+function LocationSection({ venue, patch, commit }) {
+  const [locMode, setLocMode] = useState("search");
+  const [detecting, setDetecting] = useState(false);
+  const isVirtual = venue.type === "Virtual";
+
+  // Coords live on the venue's latitude/longitude columns; the shared picker &
+  // map speak `{ lat, lng }`, so we adapt at the boundary.
+  const coords =
+    venue.latitude != null &&
+    venue.longitude != null &&
+    venue.latitude !== "" &&
+    venue.longitude !== ""
+      ? { lat: Number(venue.latitude), lng: Number(venue.longitude) }
+      : null;
+
+  // Address is a column (live via patch); coords go to the lat/lng columns.
+  const handleLocation = ({ address, coords: c }) => {
+    if (address !== undefined) patch({ address });
+    if (c !== undefined) patch({ latitude: c.lat, longitude: c.lng });
+  };
+
+  // Nearby buckets read straight off the view model (metadata is spread onto it).
+  const nearby = venue.nearby || EMPTY_NEARBY;
+  const places = useMemo(() => flattenPlaces(nearby), [nearby]);
+  const gettingThere = nearbyGroups(nearby, GETTING_THERE_GROUPS);
+  const aroundVenue = nearbyGroups(nearby, AROUND_VENUE_GROUPS);
+  const anyNearby = hasNearby(nearby, GETTING_THERE_GROUPS, AROUND_VENUE_GROUPS);
+
+  const detect = async () => {
+    const query = venueFullAddress(venue) || venue.address;
+    if (!query) {
+      toast.error("Add an address first.");
+      return;
+    }
+    setDetecting(true);
+    const res = await resolveEventLocation(query);
+    setDetecting(false);
+    if (!res?.coords) {
+      toast.error("Couldn't locate that address on the map.");
+      return;
+    }
+    const nextNearby = {
+      nearbyParking: res.parking,
+      nearbyTransit: res.transit,
+      nearbyBike: res.bike,
+      nearbyTaxi: res.taxi,
+      nearbyCharging: res.charging,
+      nearbyHotels: res.hotels,
+      nearbyFood: res.food,
+    };
+    // Coords stick immediately via the columns; the buckets persist through the
+    // shallow-merge RPC so they never clobber another metadata section.
+    commit({
+      latitude: res.coords.lat,
+      longitude: res.coords.lng,
+      nearby: nextNearby,
+    });
+    mergeVenueMeta(venue.id, { nearby: nextNearby });
+    const found =
+      res.transit.length +
+      res.parking.length +
+      res.bike.length +
+      res.taxi.length +
+      res.charging.length +
+      res.hotels.length +
+      res.food.length;
+    toast.success(`Found ${found} nearby ${found === 1 ? "place" : "places"}.`);
+  };
 
   return (
     <div className="space-y-6">
+      {/* Picker header — mode tabs pinned to the far right. */}
+      <div className="flex flex-col gap-4 pb-1 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-text-secondary">
+          Search an address, drop a pin on the map, or enter coordinates.
+        </p>
+        {!isVirtual ? (
+          <LocationModeTabs
+            mode={locMode}
+            onModeChange={setLocMode}
+            className="shrink-0"
+          />
+        ) : null}
+      </div>
+
+      {isVirtual ? (
+        <div className="rounded-xl border border-dashed border-border bg-surface-subtle px-4 py-8 text-center text-sm text-text-secondary">
+          This is a virtual venue — there&apos;s no physical location to pin.
+          Timezone and contact details still apply.
+        </div>
+      ) : (
+        <LocationPicker
+          mode={locMode}
+          address={venue.address || ""}
+          coords={coords}
+          onChange={handleLocation}
+        />
+      )}
+
       <SectionCard title="Address">
         <div className="grid gap-4">
-          <Field label="Street address">
-            <Input
-              value={venue.address || ""}
-              onChange={(e) => patch({ address: e.target.value })}
-              placeholder="61 Southwark Street"
-            />
-          </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="City">
               <Input
@@ -187,75 +297,102 @@ function LocationSection({ venue, patch }) {
         </div>
       </SectionCard>
 
-      <SectionCard
-        title="Map & directions"
-        description="Optional coordinates pin the venue precisely; notes help attendees arrive."
-      >
-        <div className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Latitude">
-              <Input
-                type="number"
-                step="any"
-                value={venue.latitude ?? ""}
-                onChange={(e) => patch({ latitude: e.target.value })}
-                placeholder="51.5045"
+      {!isVirtual ? (
+        <SectionCard
+          title="Map & directions"
+          description="A pinned map and auto-detected nearby transport, parking and food — reused on every event held here."
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={detecting}
+              onClick={detect}
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              {detecting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <LocateFixed className="h-4 w-4" />
+              )}
+              {detecting ? "Detecting…" : "Nearby amenities"}
+            </Button>
+          }
+        >
+          <EventMap
+            coords={coords}
+            places={places}
+            label={venue.name || "Venue"}
+            address={venueFullAddress(venue)}
+            className="mb-5 aspect-[21/9] w-full"
+          />
+          {anyNearby ? (
+            <div className="mb-5 space-y-5">
+              <NearbyList groups={gettingThere} />
+              <NearbyList groups={aroundVenue} />
+            </div>
+          ) : (
+            <div className="mb-5 rounded-lg border border-dashed border-border bg-surface-card px-4 py-6 text-center text-sm text-text-secondary">
+              Run <span className="text-foreground">Nearby amenities</span> to
+              list nearby transport, parking, cycling, hotels and food.
+            </div>
+          )}
+          <div className="grid gap-4">
+            <Field label="Parking notes" hint="Permits, validation, accessibility.">
+              <Textarea
+                rows={2}
+                value={venue.parkingNotes || ""}
+                onChange={(e) => patch({ parkingNotes: e.target.value })}
+                placeholder="e.g. Blue-badge bays on Level 1; NCP 3 min walk…"
               />
             </Field>
-            <Field label="Longitude">
-              <Input
-                type="number"
-                step="any"
-                value={venue.longitude ?? ""}
-                onChange={(e) => patch({ longitude: e.target.value })}
-                placeholder="-0.0865"
+            <Field label="Transit notes" hint="Nearest stations, bus routes, step-free access.">
+              <Textarea
+                rows={2}
+                value={venue.transitNotes || ""}
+                onChange={(e) => patch({ transitNotes: e.target.value })}
+                placeholder="e.g. 5 min from London Bridge (Jubilee, Northern)…"
               />
             </Field>
           </div>
-          {mapHref ? (
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="w-fit border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            >
-              <a href={mapHref} target="_blank" rel="noopener noreferrer">
-                <MapIcon className="h-4 w-4" /> View on Google Maps
-              </a>
-            </Button>
-          ) : null}
-          <Field label="Parking notes" hint="Permits, validation, accessibility.">
-            <Textarea
-              rows={2}
-              value={venue.parkingNotes || ""}
-              onChange={(e) => patch({ parkingNotes: e.target.value })}
-              placeholder="e.g. Blue-badge bays on Level 1; NCP 3 min walk…"
-            />
-          </Field>
-          <Field label="Transit notes" hint="Nearest stations, bus routes, step-free access.">
-            <Textarea
-              rows={2}
-              value={venue.transitNotes || ""}
-              onChange={(e) => patch({ transitNotes: e.target.value })}
-              placeholder="e.g. 5 min from London Bridge (Jubilee, Northern)…"
-            />
-          </Field>
-        </div>
-      </SectionCard>
+        </SectionCard>
+      ) : null}
     </div>
   );
 }
 
 // --- Capacity & amenities ----------------------------------------------------
 
-function CapacitySection({ venue, patch }) {
+function CapacitySection({ venue, patch, commit }) {
   const selected = Array.isArray(venue.amenities) ? venue.amenities : [];
-  const toggle = (key) =>
-    patch({
-      amenities: selected.includes(key)
-        ? selected.filter((k) => k !== key)
-        : [...selected, key],
-    });
+  // Toggle updates the UI instantly (patch) but buffers the DB write 2s so
+  // spam-clicking coalesces into a single persist. One shared timer + a ref to
+  // the latest commit so an unmount flush never uses a stale closure.
+  const saveTimer = useRef(null);
+  const pending = useRef(null);
+  const commitRef = useRef(commit);
+  useEffect(() => {
+    commitRef.current = commit;
+  });
+  const toggle = (key) => {
+    const amenities = selected.includes(key)
+      ? selected.filter((k) => k !== key)
+      : [...selected, key];
+    patch({ amenities });
+    pending.current = amenities;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      commitRef.current({ amenities });
+      pending.current = null;
+    }, 2000);
+  };
+  // Flush any pending write on unmount so a quick toggle-then-leave still saves.
+  useEffect(
+    () => () => {
+      clearTimeout(saveTimer.current);
+      if (pending.current !== null) commitRef.current({ amenities: pending.current });
+    },
+    [],
+  );
 
   return (
     <div className="space-y-6">
@@ -307,13 +444,18 @@ function CapacitySection({ venue, patch }) {
                 className={cn(
                   "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
                   on
-                    ? "border-border-strong bg-surface-card text-foreground"
+                    ? "border-foreground bg-foreground text-background"
                     : "border-border bg-transparent text-muted-foreground hover:bg-surface-card",
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
+                <Icon
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    on ? "text-background" : "text-text-secondary",
+                  )}
+                />
                 <span className="min-w-0 flex-1 truncate">{a.label}</span>
-                {on ? <Check className="h-4 w-4 shrink-0 text-emerald-400" /> : null}
+                {on ? <Check className="h-4 w-4 shrink-0 text-background" /> : null}
               </button>
             );
           })}
@@ -550,11 +692,52 @@ function MediaSection({ venue, commit }) {
   );
 }
 
+// --- Dietary & Accessibility guidelines --------------------------------------
+
+function GuidelinesSection({ venue, patch }) {
+  const [items, setItems] = useState(
+    Array.isArray(venue.guidelines) ? venue.guidelines : [],
+  );
+  const [saving, setSaving] = useState(false);
+
+  // Guidelines live in the metadata bag (no column), so persist through the
+  // shallow-merge RPC — commit()/updateVenue would drop the unmapped key.
+  const save = async () => {
+    setSaving(true);
+    patch({ guidelines: items });
+    const res = await mergeVenueMeta(venue.id, { guidelines: items });
+    setSaving(false);
+    if (res === false) toast.error("Couldn't save the guidelines.");
+    else toast.success("Guidelines saved.");
+  };
+
+  return (
+    <SectionCard
+      title="Dietary & Accessibility guidelines"
+      description="Informational notes shown on the public page of every event at this venue — e.g. step-free access, allergen policy. Events can add their own on top."
+      action={
+        <Button
+          size="sm"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={saving}
+          onClick={save}
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {saving ? "Saving…" : "Save guidelines"}
+        </Button>
+      }
+    >
+      <GuidelineListEditor items={items} onChange={setItems} />
+    </SectionCard>
+  );
+}
+
 // section key → component. Unmapped keys fall back to Details.
 export const SECTIONS = {
   details: DetailsSection,
   location: LocationSection,
   capacity: CapacitySection,
   contact: ContactSection,
+  guidelines: GuidelinesSection,
   media: MediaSection,
 };

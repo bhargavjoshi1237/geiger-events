@@ -135,3 +135,67 @@ create policy events_venues_demo_all on events.venues
 
 -- No demo seed. Venues are project-scoped (see zz_project_access.sql) and
 -- created in-app against a real project.
+
+-- ---------------------------------------------------------------------------
+-- Venue media storage RLS (products bucket, venues/<id>/).
+--
+-- Lives here (not storage.sql) because the policies reference events.venues,
+-- and the db:push runner executes files in filename order — storage.sql runs
+-- before venues.sql, so the table wouldn't exist yet there. Public read is
+-- already granted for the whole bucket in storage.sql; these add owner writes
+-- for the venues/ prefix, mirroring the event-owner policies.
+-- ---------------------------------------------------------------------------
+drop policy if exists "Products venue owner insert" on storage.objects;
+drop policy if exists "Products venue owner update" on storage.objects;
+drop policy if exists "Products venue owner delete" on storage.objects;
+
+create policy "Products venue owner insert"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (
+    bucket_id = 'products'
+    and (storage.foldername(name))[1] = 'venues'
+    and exists (
+      select 1 from events.venues v
+      where v.id::text = (storage.foldername(storage.objects.name))[2]
+        and v.created_by = auth.uid()
+    )
+  );
+
+create policy "Products venue owner update"
+  on storage.objects
+  for update
+  to authenticated
+  using (
+    bucket_id = 'products'
+    and (storage.foldername(name))[1] = 'venues'
+    and exists (
+      select 1 from events.venues v
+      where v.id::text = (storage.foldername(storage.objects.name))[2]
+        and v.created_by = auth.uid()
+    )
+  )
+  with check (
+    bucket_id = 'products'
+    and (storage.foldername(name))[1] = 'venues'
+    and exists (
+      select 1 from events.venues v
+      where v.id::text = (storage.foldername(storage.objects.name))[2]
+        and v.created_by = auth.uid()
+    )
+  );
+
+create policy "Products venue owner delete"
+  on storage.objects
+  for delete
+  to authenticated
+  using (
+    bucket_id = 'products'
+    and (storage.foldername(name))[1] = 'venues'
+    and exists (
+      select 1 from events.venues v
+      where v.id::text = (storage.foldername(storage.objects.name))[2]
+        and v.created_by = auth.uid()
+    )
+  );

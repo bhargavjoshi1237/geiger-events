@@ -21,7 +21,7 @@ export function Segmented({ value, onChange, options }) {
             type="button"
             onClick={() => onChange(key)}
             className={cn(
-              "min-w-[72px] flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+              "min-w-[72px] flex-1 break-words rounded-lg border px-3 py-2 text-xs font-medium leading-tight transition-colors",
               value === key
                 ? "border-foreground bg-foreground text-background"
                 : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
@@ -41,12 +41,16 @@ export function ColorField({ label, value, onChange }) {
     <Field label={label}>
       <div className="flex items-center gap-2">
         <span className="relative h-9 w-10 shrink-0 overflow-hidden rounded-md border border-border">
+          <span
+            className="block h-full w-full"
+            style={{ backgroundColor: value || "#000000" }}
+          />
           <input
             type="color"
             aria-label={label}
             value={value || "#000000"}
             onChange={(e) => onChange(e.target.value)}
-            className="absolute -left-1 -top-1 h-[calc(100%+8px)] w-[calc(100%+8px)] cursor-pointer border-0 bg-transparent p-0"
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           />
         </span>
         <Input

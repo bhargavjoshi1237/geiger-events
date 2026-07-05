@@ -61,9 +61,9 @@ const PAGE_PEOPLE = 100;
 // An "action chip" in the Needs Attention strip — a number that does something.
 function ActionChip({ icon: Icon, value, label, tone, onClick, disabled }) {
   const tones = {
-    amber: "text-amber-400",
-    violet: "text-violet-300",
-    sky: "text-sky-400",
+    amber: "text-zinc-400",
+    violet: "text-zinc-300",
+    sky: "text-zinc-400",
   };
   return (
     <button
@@ -89,7 +89,7 @@ function ActionChip({ icon: Icon, value, label, tone, onClick, disabled }) {
         <p className="text-lg font-semibold leading-none text-foreground tabular-nums">
           {value}
         </p>
-        <p className="mt-1 truncate text-xs text-text-secondary">{label}</p>
+        <p className="mt-1 truncate text-xs text-text-secondary capitalize">{label}</p>
       </div>
       {!disabled ? (
         <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-text-tertiary" />

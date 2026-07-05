@@ -21,9 +21,8 @@ const DEFAULT_RSVP = {
   allowMaybe: true,
   requireApproval: false,
   deadline: "",
-  limitCapacity: false,
-  capacity: 100,
   waitlist: true,
+  blockWaitlistedRebook: false,
   allowGuests: false,
   maxGuests: 1,
   collectGuestNames: true,
@@ -32,12 +31,27 @@ const DEFAULT_RSVP = {
   sendConfirmation: true,
 };
 
-export function RsvpOptionsSection({ event, headerItem }) {
+export function RsvpOptionsSection({ event, headerItem, onCommit }) {
   const [rsvp, setRsvp, saveRsvp, saving] = useEventConfig(
     event,
     "rsvp",
     DEFAULT_RSVP,
   );
+
+  // The attendance cap lives on the real events.capacity column — the single
+  // source of truth shared with ticketing and enforced at sale/RSVP time — not
+  // the rsvp metadata bag. `onCommit` patches the event and persists it.
+  const cap = Number(event?.capacity) || 0;
+  const limitCapacity = cap > 0;
+  const [maxDraft, setMaxDraft] = React.useState(cap || 100);
+  const [capSeed, setCapSeed] = React.useState(cap);
+  if (cap !== capSeed) {
+    setCapSeed(cap);
+    setMaxDraft(cap || 100);
+  }
+  const commitCapacity = (value) =>
+    onCommit?.({ capacity: Math.max(0, Number(value) || 0) });
+  const toggleLimit = (on) => commitCapacity(on ? maxDraft || 100 : 0);
 
   // Toggles persist immediately; free-text/number fields edit transiently and
   // persist on blur (so we don't hit the server on every keystroke).
@@ -114,34 +128,42 @@ export function RsvpOptionsSection({ event, headerItem }) {
             <SettingsList>
               <SettingRow
                 title="Limit capacity"
-                description="Cap the number of people who can RSVP."
-                checked={rsvp.limitCapacity}
-                onCheckedChange={commit("limitCapacity")}
+                description="Cap the total number of attendees (shared with ticketing)."
+                checked={limitCapacity}
+                onCheckedChange={toggleLimit}
               />
-              {rsvp.limitCapacity ? (
+              {limitCapacity ? (
                 <SettingRow
                   title="Maximum attendees"
-                  description="RSVPs close automatically once this is reached."
+                  description="RSVPs and ticket sales stop once this is reached."
                   control={
                     <Input
                       type="number"
                       inputMode="numeric"
                       min={1}
-                      value={rsvp.capacity}
+                      value={maxDraft}
                       aria-label="Maximum attendees"
-                      onChange={(e) => draft("capacity")(Number(e.target.value))}
-                      onBlur={() => saveRsvp()}
+                      onChange={(e) => setMaxDraft(Number(e.target.value))}
+                      onBlur={() => commitCapacity(maxDraft)}
                       className="w-24 tabular-nums"
                     />
                   }
                 />
               ) : null}
-              {rsvp.limitCapacity ? (
+              {limitCapacity ? (
                 <SettingRow
                   title="Enable waitlist"
                   description="Collect a waitlist once the event is full and promote as spots open."
                   checked={rsvp.waitlist}
                   onCheckedChange={commit("waitlist")}
+                />
+              ) : null}
+              {limitCapacity && rsvp.waitlist ? (
+                <SettingRow
+                  title="One entry per guest on the waitlist"
+                  description="If someone's already on the waitlist, stop them registering or buying another ticket for this event."
+                  checked={rsvp.blockWaitlistedRebook}
+                  onCheckedChange={commit("blockWaitlistedRebook")}
                 />
               ) : null}
             </SettingsList>

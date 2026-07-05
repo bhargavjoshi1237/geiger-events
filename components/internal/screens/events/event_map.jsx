@@ -101,80 +101,118 @@ export function EventMap({
 }) {
   const elRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const center = coords || fallbackCenter || DEFAULT_CENTER;
-  const zoom = coords ? 15 : fallbackCenter ? 13 : 2;
-  // Primitive deps so the effect doesn't rebuild on every new object identity.
-  const lat = center.lat;
-  const lng = center.lng;
+  const markersRef = useRef(null);
+  const LRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  // First paint is instant; a later pin move animates (Google-style fly-to).
+  const initedRef = useRef(false);
+  const lastCoordRef = useRef(null);
+  const sigRef = useRef(null);
 
+  // Build the map a single time — markers and camera are updated imperatively
+  // below so a location change flies to the new spot instead of rebuilding.
   useEffect(() => {
-    let map;
     let cancelled = false;
-
     (async () => {
       const L = (await import("leaflet")).default;
-      if (cancelled || !elRef.current) return;
-
-      map = L.map(elRef.current, {
+      if (cancelled || !elRef.current || mapInstanceRef.current) return;
+      LRef.current = L;
+      const map = L.map(elRef.current, {
         zoomControl: false,
         scrollWheelZoom: false,
         attributionControl: false,
-      }).setView([lat, lng], zoom);
-      mapInstanceRef.current = map;
-
+      }).setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 2);
       L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        {
-          subdomains: "abcd",
-          maxZoom: 19,
-        },
+        { subdomains: "abcd", maxZoom: 19 },
       ).addTo(map);
-
-      if (coords) {
-        // Venue pin.
-        const pin = L.divIcon({
-          className: "",
-          html: `<span style="display:flex;height:18px;width:18px;border-radius:9999px;background:#ededed;border:3px solid #161616;box-shadow:0 0 0 2px #ededed"></span>`,
-          iconSize: [18, 18],
-          iconAnchor: [9, 9],
-        });
-        L.marker([coords.lat, coords.lng], { icon: pin })
-          .addTo(map)
-          .bindPopup(
-            venuePopupHtml({ label, address, lat: coords.lat, lng: coords.lng }),
-          );
-
-        // Nearby places — one Lucide-icon marker per place, tinted by its
-        // category accent, each with a rich popup (name, detail, coords, Maps).
-        places.forEach((p) => {
-          if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
-          L.marker([p.lat, p.lng], { icon: placeMarkerIcon(L, p) })
-            .addTo(map)
-            .bindPopup(placePopupHtml(p));
-        });
-
-        // Fit to everything if there are nearby points.
-        const pts = [
-          [coords.lat, coords.lng],
-          ...places
-            .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
-            .map((p) => [p.lat, p.lng]),
-        ];
-        if (pts.length > 1) {
-          map.fitBounds(pts, { padding: [32, 32], maxZoom: 16 });
-        }
-      }
-
-      // Tiles can mis-measure before layout settles.
-      setTimeout(() => !cancelled && map && map.invalidateSize(), 0);
+      markersRef.current = L.layerGroup().addTo(map);
+      mapInstanceRef.current = map;
+      setReady(true);
+      setTimeout(
+        () => mapInstanceRef.current && mapInstanceRef.current.invalidateSize(),
+        0,
+      );
     })();
-
     return () => {
       cancelled = true;
-      mapInstanceRef.current = null;
-      if (map) map.remove();
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        markersRef.current = null;
+      }
     };
-  }, [coords, places, lat, lng, zoom, label, address]);
+  }, []);
+
+  // Redraw markers and move the camera when the pin or nearby places change.
+  useEffect(() => {
+    const L = LRef.current;
+    const map = mapInstanceRef.current;
+    const layer = markersRef.current;
+    if (!L || !map || !layer || !ready) return;
+
+    const center = coords || fallbackCenter || DEFAULT_CENTER;
+    const zoom = coords ? 15 : fallbackCenter ? 13 : 2;
+    const valid = places.filter(
+      (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng),
+    );
+
+    // Skip unrelated re-renders so a manual zoom/pan isn't reset — only redraw
+    // when the pin, its label, or the nearby places actually change.
+    const coordKey = coords ? `${coords.lat},${coords.lng}` : "none";
+    const sig = `${coordKey}|${zoom}|${label}|${address}|${valid
+      .map((p) => `${p.lat},${p.lng}`)
+      .join(";")}`;
+    if (sig === sigRef.current) return;
+    sigRef.current = sig;
+
+    layer.clearLayers();
+
+    if (coords) {
+      const pin = L.divIcon({
+        className: "",
+        html: `<span style="display:flex;height:18px;width:18px;border-radius:9999px;background:#ededed;border:3px solid #161616;box-shadow:0 0 0 2px #ededed"></span>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+      L.marker([coords.lat, coords.lng], { icon: pin })
+        .addTo(layer)
+        .bindPopup(
+          venuePopupHtml({ label, address, lat: coords.lat, lng: coords.lng }),
+        );
+      // Nearby places — one Lucide-icon marker per place, tinted by category.
+      valid.forEach((p) => {
+        L.marker([p.lat, p.lng], { icon: placeMarkerIcon(L, p) })
+          .addTo(layer)
+          .bindPopup(placePopupHtml(p));
+      });
+    }
+
+    // Animate only when the location itself moved — first paint and nearby
+    // places loading in settle instantly, a pin change flies.
+    const moved = lastCoordRef.current !== null && lastCoordRef.current !== coordKey;
+    const animate = initedRef.current && moved;
+    lastCoordRef.current = coordKey;
+    initedRef.current = true;
+
+    const pts = coords
+      ? [[coords.lat, coords.lng], ...valid.map((p) => [p.lat, p.lng])]
+      : [];
+    if (pts.length > 1) {
+      const opts = { padding: [32, 32], maxZoom: 16 };
+      if (animate) map.flyToBounds(pts, { ...opts, duration: 1.1 });
+      else map.fitBounds(pts, opts);
+    } else if (animate) {
+      map.flyTo([center.lat, center.lng], zoom, { duration: 1.1 });
+    } else {
+      map.setView([center.lat, center.lng], zoom);
+    }
+
+    setTimeout(
+      () => mapInstanceRef.current && mapInstanceRef.current.invalidateSize(),
+      0,
+    );
+  }, [ready, coords, places, fallbackCenter, label, address]);
 
   return (
     <div

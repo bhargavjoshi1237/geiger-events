@@ -85,3 +85,11 @@ export function venueCapacity(v) {
 export function venueLocation(v) {
   return [v?.city, v?.region || v?.country].filter(Boolean).join(", ");
 }
+
+// Full, human-readable address (street → country). Used when attaching a venue
+// to an event so the event's single `address` field is geocoder-friendly.
+export function venueFullAddress(v) {
+  return [v?.address, v?.city, v?.region, v?.postcode, v?.country]
+    .filter(Boolean)
+    .join(", ");
+}

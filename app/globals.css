@@ -216,6 +216,11 @@
   font-weight: var(--ev-heading-weight, 700);
   text-transform: var(--ev-heading-case, none);
 }
+/* Elevated card surfaces on themed pages take the brand shadow (theme.elevation,
+   compiled to --ev-elevation in lib/events/theme.js → themeStyle). */
+.ev-themed .ev-surface {
+  box-shadow: var(--ev-elevation, none);
+}
 
 
 .scrollbar-subtle {

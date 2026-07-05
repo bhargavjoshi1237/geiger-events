@@ -124,6 +124,7 @@ function PickerMap({ coords, onPick }) {
       }
       return;
     }
+    const target = [coords.lat, coords.lng];
     if (!markerRef.current) {
       const icon = L.divIcon({
         className: "",
@@ -131,19 +132,20 @@ function PickerMap({ coords, onPick }) {
         iconSize: [18, 18],
         iconAnchor: [9, 9],
       });
-      const marker = L.marker([coords.lat, coords.lng], {
-        icon,
-        draggable: true,
-      }).addTo(map);
+      const marker = L.marker(target, { icon, draggable: true }).addTo(map);
       marker.on("dragend", () => {
         const ll = marker.getLatLng();
         onPickRef.current?.({ lat: ll.lat, lng: ll.lng });
       });
       markerRef.current = marker;
-      map.setView([coords.lat, coords.lng], Math.max(map.getZoom(), 14));
+      // First placement — fly in from wherever the map was (world → venue).
+      map.flyTo(target, Math.max(map.getZoom(), 15), { duration: 1.1 });
     } else {
-      markerRef.current.setLatLng([coords.lat, coords.lng]);
-      map.panTo([coords.lat, coords.lng]);
+      markerRef.current.setLatLng(target);
+      // Big jump (search / coords) flies + zooms in; a small pin-drag just pans.
+      const far = map.distance(map.getCenter(), coords) > 500;
+      if (far) map.flyTo(target, Math.max(map.getZoom(), 15), { duration: 1.1 });
+      else map.panTo(target);
     }
     // Primitive deps — we react to the lat/lng values, not the object identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps

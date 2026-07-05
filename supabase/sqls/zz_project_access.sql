@@ -27,22 +27,14 @@
 create extension if not exists pgcrypto;
 
 -- ---------------------------------------------------------------------------
--- 0. Wipe demo rows. The six dashboard entities move to NOT NULL project_id;
---    the seeded demo rows have no project to map to, so they are removed.
---    CASCADE clears the child rows (orders, registrations, notes) too.
+-- 0. (Removed — was DATA-DESTROYING on every re-run.)
+--    This migration originally `TRUNCATE`d every table here so the demo rows
+--    (which had no project) couldn't block the NOT NULL promotion below. But
+--    `db:push` re-runs every non-`create table` statement, so that truncate
+--    wiped ALL real data on every push. It is gone. Section 1 now deletes ONLY
+--    unscoped rows (project_id is null) immediately before the NOT NULL step —
+--    idempotent, and a no-op once every row is project-scoped.
 -- ---------------------------------------------------------------------------
-truncate table
-  events.events,
-  events.event_series,
-  events.event_templates,
-  events.registration_forms,
-  events.workflows,
-  events.event_wall,
-  events.venues,
-  events.event_orders,
-  events.registrations,
-  events.event_notes
-restart identity cascade;
 
 -- ---------------------------------------------------------------------------
 -- 1. project_id columns + indexes.
@@ -61,7 +53,21 @@ alter table events.venues              add column if not exists project_id uuid 
 alter table events.event_orders        add column if not exists project_id uuid references public.projects(id) on delete set null;
 alter table events.registrations       add column if not exists project_id uuid references public.projects(id) on delete set null;
 
--- Tables are empty (truncated above), so promoting to NOT NULL is safe.
+-- Remove only the unscoped rows (no project to back-fill them to) so the NOT
+-- NULL promotion below succeeds. On an already-migrated DB every row is scoped,
+-- so these delete nothing — re-running `db:push` no longer wipes data. Only the
+-- seven tables promoted to NOT NULL are touched; event_orders / registrations
+-- keep a NULLABLE project_id (stamped by the RPCs) and must NOT be deleted by
+-- it — deleting a demo event cascades to its orders/registrations anyway.
+-- Delete events first so its FKs to series/venues are released before those go.
+delete from events.events             where project_id is null;
+delete from events.event_series       where project_id is null;
+delete from events.event_templates    where project_id is null;
+delete from events.registration_forms where project_id is null;
+delete from events.workflows          where project_id is null;
+delete from events.event_wall         where project_id is null;
+delete from events.venues             where project_id is null;
+
 alter table events.events             alter column project_id set not null;
 alter table events.event_series       alter column project_id set not null;
 alter table events.event_templates    alter column project_id set not null;
@@ -245,13 +251,182 @@ create policy event_notes_member_all on events.event_notes
     )
   );
 
+-- dietary_config / dietary_requests ----------------------------------------
+drop policy if exists events_dietary_config_demo_all on events.dietary_config;
+drop policy if exists dietary_config_member_all on events.dietary_config;
+create policy dietary_config_member_all on events.dietary_config
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_dietary_requests_demo_all on events.dietary_requests;
+drop policy if exists dietary_requests_member_all on events.dietary_requests;
+-- Members read/manage requests for their projects. Public submission goes
+-- through events.submit_dietary_request() (SECURITY DEFINER), so no anon policy.
+create policy dietary_requests_member_all on events.dietary_requests
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+-- Guests area: contacts / contact_segments / contact_activity / data_requests --
+-- All member-scoped; the Guests area has no public surface. merge_contacts() is
+-- SECURITY INVOKER, so these policies scope it too.
+drop policy if exists events_contacts_demo_all on events.contacts;
+drop policy if exists contacts_member_all on events.contacts;
+create policy contacts_member_all on events.contacts
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_contact_segments_demo_all on events.contact_segments;
+drop policy if exists contact_segments_member_all on events.contact_segments;
+create policy contact_segments_member_all on events.contact_segments
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_contact_activity_demo_all on events.contact_activity;
+drop policy if exists contact_activity_member_all on events.contact_activity;
+create policy contact_activity_member_all on events.contact_activity
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_data_requests_demo_all on events.data_requests;
+drop policy if exists data_requests_member_all on events.data_requests;
+create policy data_requests_member_all on events.data_requests
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+-- contact_tags (Guests > Tags catalog) -------------------------------------
+-- Member-scoped; no public surface. rewrite_contact_tags() is SECURITY
+-- INVOKER, so the contacts policy scopes its array rewrites too.
+drop policy if exists events_contact_tags_demo_all on events.contact_tags;
+drop policy if exists contact_tags_member_all on events.contact_tags;
+create policy contact_tags_member_all on events.contact_tags
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+-- ticketing_records (Tickets global modules) --------------------------------
+-- Reusable coupons / rules / methods / policies, scoped to the owning project.
+-- Member-only: no public surface (attachment applies them, read via the event).
+drop policy if exists events_ticketing_records_demo_all on events.ticketing_records;
+drop policy if exists ticketing_records_member_all on events.ticketing_records;
+create policy ticketing_records_member_all on events.ticketing_records
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+-- ticketing_settings / refund_requests / group_purchases / membership_members --
+-- Project-global Tickets config + transactional logs + membership roster.
+-- Member-only: no public surface (applied via the event / managed in-app).
+drop policy if exists events_ticketing_settings_demo_all on events.ticketing_settings;
+drop policy if exists ticketing_settings_member_all on events.ticketing_settings;
+create policy ticketing_settings_member_all on events.ticketing_settings
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_refund_requests_demo_all on events.refund_requests;
+drop policy if exists refund_requests_member_all on events.refund_requests;
+create policy refund_requests_member_all on events.refund_requests
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_group_purchases_demo_all on events.group_purchases;
+drop policy if exists group_purchases_member_all on events.group_purchases;
+create policy group_purchases_member_all on events.group_purchases
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_membership_members_demo_all on events.membership_members;
+drop policy if exists membership_members_member_all on events.membership_members;
+create policy membership_members_member_all on events.membership_members
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+-- Discovery: organiser_profile / organiser_followers -----------------------
+-- The profile is the project's public identity — member-managed, publicly
+-- readable (the /w/<slug> wall renders it). Followers are private (member-only);
+-- anonymous follows go through events.follow_organiser() (SECURITY DEFINER), so
+-- no anon table policy is needed — mirrors event_orders.
+drop policy if exists organiser_profile_demo_all on events.organiser_profile;
+drop policy if exists organiser_profile_member_all on events.organiser_profile;
+drop policy if exists organiser_profile_public_read on events.organiser_profile;
+
+create policy organiser_profile_member_all on events.organiser_profile
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+create policy organiser_profile_public_read on events.organiser_profile
+  for select to anon, authenticated
+  using (deleted_at is null);
+
+drop policy if exists organiser_followers_demo_all on events.organiser_followers;
+drop policy if exists organiser_followers_member_all on events.organiser_followers;
+create policy organiser_followers_member_all on events.organiser_followers
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+-- check-in module (settings / attendance / staff roles / leads) ---------------
+-- All project-scoped, member-only in Phase 1 (the Phase-2 staff routes get their
+-- own access-code path). checkin_settings / checkin_staff_roles are configured
+-- in the dashboard; checkin_attendance / checkin_leads are written by staff
+-- surfaces for a project's events.
+drop policy if exists events_checkin_settings_demo_all on events.checkin_settings;
+drop policy if exists checkin_settings_member_all on events.checkin_settings;
+create policy checkin_settings_member_all on events.checkin_settings
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_checkin_attendance_demo_all on events.checkin_attendance;
+drop policy if exists checkin_attendance_member_all on events.checkin_attendance;
+create policy checkin_attendance_member_all on events.checkin_attendance
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_checkin_staff_roles_demo_all on events.checkin_staff_roles;
+drop policy if exists checkin_staff_roles_member_all on events.checkin_staff_roles;
+create policy checkin_staff_roles_member_all on events.checkin_staff_roles
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_checkin_leads_demo_all on events.checkin_leads;
+drop policy if exists checkin_leads_member_all on events.checkin_leads;
+create policy checkin_leads_member_all on events.checkin_leads
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
 -- ---------------------------------------------------------------------------
 -- 4. Stamp project_id inside the public-facing RPCs so anonymous RSVP/checkout
 --    rows land in the right project. Both are SECURITY DEFINER and derive the
 --    project from the parent event.
 -- ---------------------------------------------------------------------------
 
--- register(): unchanged behaviour, now also stamps registrations.project_id.
+-- register(): stamps registrations.project_id, honours the overbook buffer
+-- (metadata.capacityBuffer) in the cap, and — the fix — REFUSES to confirm when
+-- the event is full and waitlist is disabled (it used to silently fall through
+-- to 'Confirmed', i.e. oversell). A full-with-no-waitlist call raises EVENT_FULL
+-- so the caller can surface it instead of quietly overbooking.
+--
+-- p_enforce_capacity lets the parity registration filed right after a successful
+-- buy_ticket skip this gate: buy_ticket is the capacity authority for ticketed
+-- flows, so re-gating here would wrongly drop an already-paid attendee from the
+-- guest list. RSVP-only / direct callers keep the default (true).
+-- Signature changed (extra trailing arg) so the old 13-arg overload is dropped.
+drop function if exists events.register(uuid, uuid, text, text, text, integer, jsonb, text, text, jsonb, boolean, boolean, text);
+
 create or replace function events.register(
   p_event_id uuid,
   p_form_id uuid default null,
@@ -265,7 +440,8 @@ create or replace function events.register(
   p_answers jsonb default '{}'::jsonb,
   p_require_approval boolean default false,
   p_allow_waitlist boolean default true,
-  p_source text default 'Online'
+  p_source text default 'Online',
+  p_enforce_capacity boolean default true
 )
 returns events.registrations
 language plpgsql
@@ -274,6 +450,9 @@ set search_path = events, public
 as $$
 declare
   v_cap integer;
+  v_meta jsonb;
+  v_buffer integer;
+  v_effcap integer;
   v_taken integer;
   v_party integer := greatest(1, coalesce(p_party_size, 1));
   v_status text;
@@ -281,8 +460,11 @@ declare
   v_project uuid;
   r events.registrations;
 begin
-  select capacity, project_id into v_cap, v_project
+  select capacity, project_id, metadata into v_cap, v_project, v_meta
     from events.events where id = p_event_id;
+  -- Effective cap = base capacity + overbook buffer (0 base = unlimited).
+  v_buffer := greatest(0, coalesce((v_meta->>'capacityBuffer')::integer, 0));
+  v_effcap := case when coalesce(v_cap, 0) > 0 then v_cap + v_buffer else 0 end;
   select coalesce(sum(party_size), 0) into v_taken
     from events.registrations
     where event_id = p_event_id
@@ -291,15 +473,18 @@ begin
 
   if p_require_approval then
     v_status := 'Pending';
-  elsif coalesce(v_cap, 0) > 0
-        and (v_taken + v_party) > v_cap
-        and p_allow_waitlist then
-    v_status := 'Waitlisted';
-    select coalesce(max(waitlist_position), 0) + 1 into v_pos
-      from events.registrations
-      where event_id = p_event_id
-        and status = 'Waitlisted'
-        and deleted_at is null;
+  elsif p_enforce_capacity and v_effcap > 0 and (v_taken + v_party) > v_effcap then
+    if p_allow_waitlist then
+      v_status := 'Waitlisted';
+      select coalesce(max(waitlist_position), 0) + 1 into v_pos
+        from events.registrations
+        where event_id = p_event_id
+          and status = 'Waitlisted'
+          and deleted_at is null;
+    else
+      -- Full, no waitlist, no approval: reject rather than overbook.
+      raise exception 'EVENT_FULL' using errcode = 'check_violation';
+    end if;
   else
     v_status := 'Confirmed';
   end if;
@@ -318,7 +503,12 @@ begin
 end;
 $$;
 
--- buy_ticket(): unchanged behaviour, now also stamps event_orders.project_id.
+-- buy_ticket(): stamps event_orders.project_id, honours the overbook buffer
+-- (metadata.capacityBuffer) in the event-level cap, AND — when a tier id is
+-- given — enforces that tier's own inventory (metadata.tickets[].qty). Per-tier
+-- sold counts live in a SEPARATE metadata.ticketSold map keyed by tier id, so
+-- the tickets editor (which round-trips metadata.tickets) never clobbers the
+-- system counter. A tier qty of 0 = unlimited, mirroring capacity 0 = unlimited.
 drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer);
 drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb);
 drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text);
@@ -333,7 +523,8 @@ create or replace function events.buy_ticket(
   p_addons numeric default 0,
   p_meta jsonb default '{}'::jsonb,
   p_stripe_session_id text default null,
-  p_stripe_payment_intent_id text default null
+  p_stripe_payment_intent_id text default null,
+  p_tier_id text default null
 )
 returns table (ok boolean, order_id uuid, sold integer, capacity integer, remaining integer, created boolean)
 language plpgsql
@@ -343,6 +534,12 @@ as $$
 declare
   v_sold integer;
   v_cap integer;
+  v_meta jsonb;
+  v_buffer integer;
+  v_effcap integer;
+  v_tier jsonb;
+  v_tier_qty integer;
+  v_tier_sold integer;
   v_total numeric;
   v_order uuid;
   v_project uuid;
@@ -361,8 +558,8 @@ begin
     end if;
   end if;
 
-  select e.sold, e.capacity, e.project_id
-    into v_sold, v_cap, v_project
+  select e.sold, e.capacity, e.project_id, e.metadata
+    into v_sold, v_cap, v_project, v_meta
     from events.events e
     where e.id = p_event_id and e.deleted_at is null
     for update;
@@ -372,9 +569,29 @@ begin
     return;
   end if;
 
-  if v_cap > 0 and v_sold + v_qty > v_cap then
-    return query select false, null::uuid, v_sold, v_cap, greatest(0, v_cap - v_sold), false;
+  -- Effective event cap = base capacity + overbook buffer (0 base = unlimited).
+  v_buffer := greatest(0, coalesce((v_meta->>'capacityBuffer')::integer, 0));
+  v_effcap := case when coalesce(v_cap, 0) > 0 then v_cap + v_buffer else 0 end;
+
+  if v_effcap > 0 and v_sold + v_qty > v_effcap then
+    return query select false, null::uuid, v_sold, v_cap, greatest(0, v_effcap - v_sold), false;
     return;
+  end if;
+
+  -- Per-tier inventory: reject when this tier's qty would be exceeded.
+  if p_tier_id is not null then
+    select t.val into v_tier
+      from jsonb_array_elements(coalesce(v_meta->'tickets', '[]'::jsonb)) as t(val)
+      where t.val->>'id' = p_tier_id
+      limit 1;
+    if v_tier is not null then
+      v_tier_qty := coalesce((v_tier->>'qty')::integer, 0);
+      v_tier_sold := coalesce((v_meta->'ticketSold'->>p_tier_id)::integer, 0);
+      if v_tier_qty > 0 and v_tier_sold + v_qty > v_tier_qty then
+        return query select false, null::uuid, v_sold, v_cap, greatest(0, v_effcap - v_sold), false;
+        return;
+      end if;
+    end if;
   end if;
 
   v_total := (coalesce(p_price, 0) + coalesce(p_addons, 0)) * v_qty;
@@ -387,15 +604,25 @@ begin
 
   update events.events as e
     set sold = e.sold + v_qty,
-        revenue = e.revenue + v_total
+        revenue = e.revenue + v_total,
+        -- Bump the per-tier sold counter under the same row lock (no-op when no
+        -- tier was passed) so per-tier inventory stays consistent with sold.
+        metadata = case
+          when p_tier_id is not null then jsonb_set(
+            coalesce(e.metadata, '{}'::jsonb),
+            array['ticketSold', p_tier_id],
+            to_jsonb(coalesce((e.metadata->'ticketSold'->>p_tier_id)::integer, 0) + v_qty),
+            true)
+          else e.metadata
+        end
     where e.id = p_event_id
     returning e.sold, e.capacity into v_sold, v_cap;
 
-  return query select true, v_order, v_sold, v_cap, greatest(0, v_cap - v_sold), true;
+  return query select true, v_order, v_sold, v_cap, greatest(0, v_effcap - v_sold), true;
 end;
 $$;
 
-grant execute on function events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text)
+grant execute on function events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text, text)
   to anon, authenticated;
-grant execute on function events.register(uuid, uuid, text, text, text, integer, jsonb, text, text, jsonb, boolean, boolean, text)
+grant execute on function events.register(uuid, uuid, text, text, text, integer, jsonb, text, text, jsonb, boolean, boolean, text, boolean)
   to anon, authenticated;

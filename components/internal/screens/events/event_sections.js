@@ -33,6 +33,8 @@ import {
   Video,
   Repeat,
   Accessibility,
+  ScanLine,
+  DoorOpen,
 } from "lucide-react";
 
 import {
@@ -69,6 +71,13 @@ import { AlertsSection } from "./alerts";
 import { GuidelinesSection } from "./guidelines";
 import { TicketAttachmentsSection } from "../tickets/event_attachments";
 import { TicketTypeAttachmentsSection } from "../tickets/ticket_type_attachments";
+import { TicketRulesSection } from "../tickets/event_ticket_rules";
+import {
+  CheckinOptionsSection,
+  GatesZonesSection,
+  SessionsSection,
+  DoorKioskSection,
+} from "./checkin_section";
 
 // Per-event topics, grouped the way the original sidebar grouped them. `key`
 // must match a SECTIONS entry; `ownHeader` sections render their own title row.
@@ -203,6 +212,13 @@ export const NAV_GROUPS = [
         desc: "Attach reusable coupons, methods, and policies (managed under the Tickets sidebar) to this event.",
         ownHeader: true,
       },
+      {
+        key: "ticketrules",
+        label: "Ticket Rules",
+        icon: SlidersHorizontal,
+        desc: "Turn project-wide ticketing features (early-bird, donations, reserved seating…) on for this event.",
+        ownHeader: true,
+      },
     ],
   },
   {
@@ -227,6 +243,39 @@ export const NAV_GROUPS = [
         label: "Registration Settings",
         icon: SlidersHorizontal,
         desc: "Approval, waitlist, and what attendees see while registering.",
+        ownHeader: true,
+      },
+    ],
+  },
+  {
+    group: "Check-in",
+    items: [
+      {
+        key: "checkinoptions",
+        label: "Check-in options",
+        icon: ScanLine,
+        desc: "QR on tickets, wallet passes, self check-in, and how staff admit attendees.",
+        ownHeader: true,
+      },
+      {
+        key: "gateszones",
+        label: "Gates & Zones",
+        icon: MapIcon,
+        desc: "Which entrances and restricted areas apply to this event.",
+        ownHeader: true,
+      },
+      {
+        key: "sessions",
+        label: "Sessions",
+        icon: Clock,
+        desc: "Break this event into sessions staff can check attendees into separately.",
+        ownHeader: true,
+      },
+      {
+        key: "doorkiosk",
+        label: "Door Sales & Kiosk",
+        icon: DoorOpen,
+        desc: "On-site sales, self-service kiosk, and tap-to-enter for this event.",
         ownHeader: true,
       },
     ],
@@ -330,9 +379,14 @@ export const SECTIONS = {
   offerings: OfferingsSection,
   payments: PaymentsSection,
   ticketlinks: TicketAttachmentsSection,
+  ticketrules: TicketRulesSection,
   rsvp: RsvpOptionsSection,
   questions: CustomQuestionsSection,
   regsettings: RegistrationSettingsSection,
+  checkinoptions: CheckinOptionsSection,
+  gateszones: GatesZonesSection,
+  sessions: SessionsSection,
+  doorkiosk: DoorKioskSection,
   url: CustomUrlSection,
   seo: SeoSharingSection,
   calendar: AddToCalendarSection,

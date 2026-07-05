@@ -45,6 +45,11 @@ create policy flow_event_orders_demo_all on events.event_orders
   using (true)
   with check (true);
 
+-- NOTE: this is the base definition. zz_project_access.sql (runs last) REPLACES
+-- it with the authoritative version that also stamps project_id, honours the
+-- overbook buffer, and enforces per-tier inventory (extra p_tier_id arg). Keep
+-- the two in sync in spirit; the zz copy is what actually runs.
+--
 -- Atomic purchase. Locks the event row, refuses to oversell, inserts the order,
 -- bumps sold/revenue, and returns the new tallies. security definer so it keeps
 -- working if/when the tables get stricter RLS.

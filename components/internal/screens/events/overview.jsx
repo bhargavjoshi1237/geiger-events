@@ -383,7 +383,7 @@ export function OverviewSection({
         <SectionCard
           title="Status & sharing"
           description="Control how this event is published and who can find it."
-          className="h-full"
+          className="xl:self-start"
         >
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Status">
@@ -451,14 +451,19 @@ export function OverviewSection({
         </SectionCard>
 
         {/* Row 1, right — At a glance */}
-        <SectionCard title="At a glance" className="h-full">
+        <SectionCard
+          title="At glance"
+          className="h-full"
+          action={
             <div className="flex items-center gap-2">
               <Badge variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}>
                 {event.type}
               </Badge>
               <StatusPill status={event.status} map={EVENT_STATUS_MAP} />
             </div>
-            <div className="mt-3 space-y-2.5 text-sm">
+          }
+        >
+            <div className="space-y-2.5 text-sm">
               <GlanceRow
                 icon={CalendarClock}
                 label={`${formatDate(event.date)} · ${event.time}`}

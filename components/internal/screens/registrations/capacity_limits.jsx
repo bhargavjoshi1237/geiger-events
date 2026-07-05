@@ -120,6 +120,11 @@ export function CapacityLimitsScreen() {
         const counts = countsByEvent[e.id] || countRegs([]);
         const buffer = Number(e.capacityBuffer) || 0;
         const effective = (e.capacity || 0) + buffer;
+        // Fill = confirmed registration seats vs the effective cap. Paid buyers
+        // are included here: checkout files a parity registration alongside the
+        // order, so `seats` already unifies free RSVPs and paid tickets. (The
+        // events.sold column is the paid-only tally; it and `seats` track the
+        // same people and aren't summed.)
         const fill = effective ? Math.round((counts.seats / effective) * 100) : 0;
         return {
           ...e,

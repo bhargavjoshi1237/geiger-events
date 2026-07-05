@@ -21,6 +21,12 @@ import {
   Banknote,
   ShoppingBag,
   TrendingUp,
+  Coins,
+  Timer,
+  Armchair,
+  RotateCcw,
+  BadgeCheck,
+  Scale,
   Layers,
   Newspaper,
   Bell,
@@ -42,14 +48,11 @@ import {
   Repeat,
   Copy,
   Link2,
-  UserCog,
   Globe,
   SquarePen,
   CalendarCheck,
-  Code,
   Map,
   Share2,
-  Languages,
   Accessibility,
   KeyRound,
   CalendarClock,
@@ -81,10 +84,6 @@ import {
   Tag,
   BellRing,
   Store,
-  Star,
-  Flame,
-  ThumbsUp,
-  Bookmark,
   Network,
   Music,
   Vote,
@@ -100,13 +99,11 @@ import {
   Award,
   CirclePlay,
   Captions,
-  Brush,
   LifeBuoy,
   ScrollText,
-  Fingerprint,
-  Database,
-  Scale,
   Activity,
+  Download,
+  StickyNote,
 } from "lucide-react";
 
 // Sidebar navigation for Geiger Events.
@@ -160,14 +157,20 @@ export const workspaceNav = [
   {
     // The contact/CRM layer. Contact Book is the hub — Import, Find duplicates
     // and Block-an-email are actions on it, and per-contact surfaces (profile,
-    // tags, notes, activity, consent) are its drawer tabs. Who's-going and
-    // attendee export live on the Guest List. Only real destinations appear here.
+    // consent, activity) are its drawer tabs. Guest List is the all-time roster;
+    // Who's Going is the upcoming-only lens; Attendee Export builds exports many
+    // ways; Segments/Tags manage audience grouping; Notes is the cross-contact
+    // note feed. Only real destinations appear here.
     title: "Guests",
     icon: Users,
     subItems: [
       { title: "Contact Book", icon: BookUser },
       { title: "Guest List", icon: Users },
+      { title: "Who's Going", icon: CalendarCheck },
+      { title: "Attendee Export", icon: Download },
       { title: "Segments", icon: ListChecks },
+      { title: "Tags", icon: Tag },
+      { title: "Notes", icon: StickyNote },
       { title: "Data Requests", icon: ShieldAlert },
     ],
   },
@@ -183,12 +186,39 @@ export const workspaceNav = [
     icon: Ticket,
     subItems: [
       { title: "Ticket Types", icon: Ticket },
+      { title: "Ticket Tiers", icon: Layers },
       { title: "Discounts & Codes", icon: Percent },
+      { title: "Bundles", icon: Package },
+      { title: "Early-bird Sales", icon: Timer },
+      { title: "Donations", icon: Heart },
+      { title: "Group Purchasing", icon: Users },
+      { title: "Access-code Tickets", icon: KeyRound },
+      { title: "Reserved Seating", icon: Armchair },
+      { title: "Anti-scalping & Resale", icon: ShieldAlert },
+      { title: "Multi-currency", icon: Coins },
       { title: "Payments & Methods", icon: CreditCard },
+      { title: "Payment Plans", icon: CalendarClock },
       { title: "Payouts", icon: Banknote },
       { title: "Dynamic Pricing", icon: TrendingUp },
+      { title: "Refunds", icon: RotateCcw },
+      { title: "Transfers", icon: Repeat },
+      { title: "Taxes", icon: Scale },
       { title: "Orders & Attendees", icon: ShoppingBag },
       { title: "Invoices & Receipts", icon: FileText },
+    ],
+  },
+
+  {
+    // Memberships — recurring plans that unlock special pricing/access. Enabled
+    // from Membership Settings (events.ticketing_settings, module 'membership');
+    // plans are reusable records (ticketing_records module 'membership') that
+    // attach to events. Members is the enrollment roster.
+    title: "Memberships",
+    icon: BadgeCheck,
+    subItems: [
+      { title: "Membership Plans", icon: BadgeCheck },
+      { title: "Members", icon: Users },
+      { title: "Membership Settings", icon: Settings },
     ],
   },
 
@@ -261,8 +291,8 @@ export const workspaceNav = [
 
   {
     // Automation engine. The builder (linear step list + drag-drop node canvas)
-    // opens by selecting a workflow in All Workflows — so only workspace-level
-    // destinations appear here. Templates / Run History are placeholders for now.
+    // opens by selecting a workflow in All Workflows. Workflow Templates is a
+    // curated starter gallery; Run History logs each workflow execution.
     title: "Workflows",
     icon: Workflow,
     subItems: [
@@ -273,25 +303,10 @@ export const workspaceNav = [
   },
 
   {
+    // A single destination: the project's public organiser profile (rendered on
+    // the /w/<slug> Event Wall) that buyers can follow for new-event updates.
     title: "Discovery",
     icon: Compass,
-    subItems: [
-      { title: "Marketplace Listing", icon: Store },
-      { title: "City & Category Search", icon: Search },
-      { title: "Recommendations", icon: Sparkles },
-      { title: "SEO Pages", icon: Globe },
-      { title: "Organizer Profile", icon: UserCog },
-      { title: "Follow Organizers", icon: Star },
-      { title: "Social Proof", icon: Share2 },
-      { title: "Featured Events", icon: Flame },
-      { title: "External Distribution", icon: Send },
-      { title: "Ratings & Reviews", icon: ThumbsUp },
-      { title: "Saved & Wishlist", icon: Bookmark },
-      { title: "Paid Promotion", icon: Megaphone },
-      { title: "Partner Syndication", icon: Network },
-      { title: "Referral Links", icon: Link2 },
-      { title: "Embeddable Lists", icon: Code },
-    ],
   },
 
   {
@@ -365,20 +380,12 @@ export const workspaceNav = [
       { title: "Branding", icon: Palette },
       { title: "Security", icon: Lock },
       { title: "Billing & Plans", icon: CreditCard },
+      { title: "Usage", icon: Gauge },
       { title: "Multi-event Dashboard", icon: LayoutGrid },
       { title: "SSO", icon: KeyRound },
-      { title: "White-label", icon: Brush },
       { title: "Support & SLA", icon: LifeBuoy },
       { title: "Audit Logs", icon: ScrollText },
-      { title: "2FA / MFA", icon: Fingerprint },
       { title: "Custom Domains", icon: Globe },
-      { title: "Sub-accounts", icon: Building2 },
-      { title: "Data & Backup", icon: Database },
-      { title: "Sending Domains", icon: Mail },
-      { title: "App Marketplace", icon: Store },
-      { title: "Accessibility", icon: Accessibility },
-      { title: "Localization", icon: Languages },
-      { title: "Tax & Legal", icon: Scale },
     ],
   },
 ];

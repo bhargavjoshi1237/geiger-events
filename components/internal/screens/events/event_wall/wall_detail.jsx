@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Copy, ExternalLink, LayoutGrid, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EmptyState } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
@@ -41,14 +43,23 @@ export function EventWallScreen() {
     [active],
   );
 
+  // The public path (basePath included) and, on the client, its absolute URL.
+  const wallPath = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/w/${wall?.slug || "events"}`;
+  const wallUrl =
+    typeof window !== "undefined" ? `${window.location.origin}${wallPath}` : wallPath;
+
   const viewLive = () => {
     if (typeof window !== "undefined") {
-      window.open(
-        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/w/${wall?.slug || "events"}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
+      window.open(wallPath, "_blank", "noopener,noreferrer");
     }
+  };
+
+  const copyLink = () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(wallUrl).then(
+      () => toast.success("Public link copied."),
+      () => toast.error("Couldn't copy the link."),
+    );
   };
 
   if (loading) {
@@ -56,6 +67,22 @@ export function EventWallScreen() {
       <MainScreenWrapper>
         <div className="flex h-64 items-center justify-center gap-2 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        </div>
+      </MainScreenWrapper>
+    );
+  }
+
+  // No wall row (unconfigured DB, or no authenticated project session). Render a
+  // clear empty state instead of feeding a null wall into the editor sections.
+  if (!wall) {
+    return (
+      <MainScreenWrapper>
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={LayoutGrid}
+            title="Event Wall unavailable"
+            description="We couldn't load this project's public events page. Check your connection and refresh, or make sure a project is selected."
+          />
         </div>
       </MainScreenWrapper>
     );
@@ -73,8 +100,25 @@ export function EventWallScreen() {
           <p className="mt-1 text-sm font-medium text-muted-foreground">
             The public page listing every event you&apos;ve marked listable.
           </p>
+          {/* The live, shareable address — click to copy. */}
+          <button
+            type="button"
+            onClick={copyLink}
+            title="Copy public link"
+            className="group mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md text-xs text-text-tertiary transition-colors hover:text-foreground"
+          >
+            <span className="truncate font-mono">{wallUrl}</span>
+            <Copy className="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100" />
+          </button>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={copyLink}
+          >
+            <Copy className="h-4 w-4" /> Copy link
+          </Button>
           <Button
             variant="outline"
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"

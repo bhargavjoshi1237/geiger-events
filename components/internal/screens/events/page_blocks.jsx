@@ -36,6 +36,7 @@ import {
   AROUND_VENUE_GROUPS,
 } from "./event_map";
 import { geocodeAddress } from "@/lib/map/geo";
+import { getVenue } from "@/lib/supabase/venues";
 
 // Sample content for the "smart" event blocks. Stands in for real per-event
 // data until the backend is connected.
@@ -175,12 +176,36 @@ function LocationBlock({ event }) {
   const aroundVenue = nearbyGroups(m, AROUND_VENUE_GROUPS);
   const mapPlaces = useMemo(() => flattenPlaces(event.map), [event.map]);
 
-  // When the event has no saved pin, lightly geocode the address so the map
-  // still centres on the right area (centre-only — no pin).
+  // When the event has no pin of its own, fall back to the linked venue's
+  // coordinates (the venue owns its location) so a venue picked at creation — or
+  // geocoded after it was attached — still drops a real pin on the live map.
+  const [venueCoords, setVenueCoords] = useState(null);
+  useEffect(() => {
+    if (coords || !event.venueId || isRemote) return undefined;
+    let alive = true;
+    getVenue(event.venueId).then((v) => {
+      if (!alive || !v) return;
+      const has =
+        v.latitude != null &&
+        v.longitude != null &&
+        v.latitude !== "" &&
+        v.longitude !== "";
+      if (has) setVenueCoords({ lat: Number(v.latitude), lng: Number(v.longitude) });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [coords, event.venueId, isRemote]);
+
+  // The pin the map centres on — the event's own saved coords, else the venue's.
+  const pin = coords || venueCoords;
+
+  // With no pin at all, lightly geocode the address so the map still centres on
+  // the right area (centre-only — no pin).
   const [autoCenter, setAutoCenter] = useState(null);
   const geocodedFor = useRef("");
   useEffect(() => {
-    if (coords || isRemote || !address || geocodedFor.current === address)
+    if (pin || isRemote || !address || geocodedFor.current === address)
       return undefined;
     geocodedFor.current = address;
     let alive = true;
@@ -190,7 +215,7 @@ function LocationBlock({ event }) {
     return () => {
       alive = false;
     };
-  }, [address, coords, isRemote]);
+  }, [address, pin, isRemote]);
 
   return (
     <section className="space-y-4">
@@ -210,7 +235,7 @@ function LocationBlock({ event }) {
 
       {!isRemote ? (
         <EventMap
-          coords={coords}
+          coords={pin}
           places={mapPlaces}
           fallbackCenter={autoCenter}
           label={event.venue || event.name || "Venue"}
@@ -220,7 +245,7 @@ function LocationBlock({ event }) {
       ) : null}
 
       {!isRemote ? (
-        <WeatherCard coords={coords || autoCenter} date={event.date} />
+        <WeatherCard coords={pin || autoCenter} date={event.date} />
       ) : null}
 
       <NearbyList groups={gettingThere} collapse />

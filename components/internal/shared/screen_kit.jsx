@@ -284,7 +284,7 @@ export function SectionCard({
         <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
           <div className="min-w-0">
             {title ? (
-              <h3 className="text-base font-semibold text-foreground">{title}</h3>
+              <h3 className="text-base font-semibold capitalize text-foreground">{title}</h3>
             ) : null}
             {description ? (
               <p className="mt-0.5 text-sm text-text-secondary">{description}</p>

@@ -2,7 +2,16 @@
 
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Mail, MoreHorizontal, Shield } from "lucide-react";
+import {
+  Plus,
+  Mail,
+  MoreHorizontal,
+  Crown,
+  ShieldCheck,
+  Users,
+  ScanLine,
+  Eye,
+} from "lucide-react";
 
 import {
   DataTable,
@@ -46,13 +55,47 @@ const ROLES = [
   { value: "Viewer", description: "Read-only access to analytics and lists." },
 ];
 
-const ROLE_VARIANT = {
-  Owner: "info",
-  Admin: "purple",
-  "Co-host": "success",
-  "Check-in staff": "warning",
-  Viewer: "neutral",
+// Roles ranked by authority — a warm-to-cool palette so tiers read at a glance.
+const ROLE_STYLE = {
+  Owner: {
+    icon: Crown,
+    variant: "warning",
+    avatar: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+  },
+  Admin: {
+    icon: ShieldCheck,
+    variant: "purple",
+    avatar: "border-violet-500/25 bg-violet-500/10 text-violet-300",
+  },
+  "Co-host": {
+    icon: Users,
+    variant: "info",
+    avatar: "border-sky-500/25 bg-sky-500/10 text-sky-300",
+  },
+  "Check-in staff": {
+    icon: ScanLine,
+    variant: "success",
+    avatar: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+  },
+  Viewer: {
+    icon: Eye,
+    variant: "neutral",
+    avatar: "border-border bg-surface-card text-muted-foreground",
+  },
 };
+
+const FALLBACK_STYLE = ROLE_STYLE.Viewer;
+
+function RoleBadge({ role }) {
+  const style = ROLE_STYLE[role] || FALLBACK_STYLE;
+  const Icon = style.icon;
+  return (
+    <Badge variant={style.variant}>
+      <Icon className="h-3 w-3" />
+      {role}
+    </Badge>
+  );
+}
 
 const INITIAL_MEMBERS = [
   { id: "m1", name: "Ava Mitchell", email: "ava@geiger.events", role: "Owner" },
@@ -120,8 +163,10 @@ export function CoHostsAdminsSection({ event, headerItem }) {
       header: "Member",
       render: (m) => (
         <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8 border border-border">
-            <AvatarFallback className="bg-surface-card text-xs text-muted-foreground">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback
+              className={`border text-xs font-medium ${(ROLE_STYLE[m.role] || FALLBACK_STYLE).avatar}`}
+            >
               {initials(m.name)}
             </AvatarFallback>
           </Avatar>
@@ -135,12 +180,7 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     {
       key: "role",
       header: "Role",
-      render: (m) => (
-        <Badge variant={ROLE_VARIANT[m.role] || "neutral"}>
-          <Shield className="h-3 w-3" />
-          {m.role}
-        </Badge>
-      ),
+      render: (m) => <RoleBadge role={m.role} />,
     },
     {
       key: "actions",
@@ -225,9 +265,7 @@ export function CoHostsAdminsSection({ event, headerItem }) {
                   </p>
                   <p className="text-xs text-text-secondary">Invited {p.sent}</p>
                 </div>
-                <Badge variant={ROLE_VARIANT[p.role] || "neutral"}>
-                  {p.role}
-                </Badge>
+                <RoleBadge role={p.role} />
                 <Button
                   size="sm"
                   variant="ghost"

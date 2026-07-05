@@ -58,7 +58,7 @@ export function WallCustomUrlSection({ wall }) {
         <p className="mt-2 text-xs text-text-secondary">
           Preview:{" "}
           <code className="rounded bg-surface-card px-1.5 py-0.5 text-muted-foreground">
-            geiger.events/w/{clean || "…"}
+            geiger.studio/events/w/{clean || "…"}
           </code>
         </p>
       </SectionCard>

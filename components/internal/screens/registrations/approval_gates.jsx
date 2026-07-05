@@ -39,12 +39,22 @@ import {
 } from "@/lib/supabase/registrations";
 import { getUser } from "@/lib/supabase/user";
 import { useProject } from "@/context/project-context";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { formatDate, formatDateTime, initials } from "./constants";
 
 // How many rows we paint before asking the user to "show more" — keeps the page
 // light no matter how many thousands are pending.
 const PAGE_EVENTS = 60;
 const PAGE_CARDS = 40;
+
+// Sort options for the master list of events with pending requests — mirrors the
+// filter/sort toolbar the other list screens use.
+const SORT_OPTIONS = [
+  { value: "pending-desc", label: "Most pending" },
+  { value: "pending-asc", label: "Fewest pending" },
+  { value: "date-asc", label: "Event date" },
+  { value: "name-asc", label: "Name (A–Z)" },
+];
 
 // A single pending request — everything an approver needs to decide.
 function RequestCard({ reg, onApprove, onDecline }) {
@@ -97,7 +107,7 @@ function RequestCard({ reg, onApprove, onDecline }) {
       <div className="flex shrink-0 gap-2">
         <Button
           size="sm"
-          className="bg-emerald-500/90 text-white hover:bg-emerald-500"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => onApprove(reg)}
         >
           <Check className="h-4 w-4" /> Approve
@@ -124,6 +134,7 @@ export function ApprovalGatesScreen() {
   // Master list ↔ per-event inbox. Only one event's requests render at a time.
   const [openEventId, setOpenEventId] = useState(null);
   const [listSearch, setListSearch] = useState("");
+  const [listSort, setListSort] = useState("pending-desc");
   const [listLimit, setListLimit] = useState(PAGE_EVENTS);
   const [detailSearch, setDetailSearch] = useState("");
   const [detailLimit, setDetailLimit] = useState(PAGE_CARDS);
@@ -171,11 +182,6 @@ export function ApprovalGatesScreen() {
       .sort((a, b) => b.list.length - a.list.length);
   }, [regs, eventNames]);
 
-  const totalPending = useMemo(
-    () => groups.reduce((s, g) => s + g.list.length, 0),
-    [groups],
-  );
-
   // --- Persistence (optimistic) ---
   const persist = (id, approve) => {
     approveRegistration(id, approve, userId).then((res) => {
@@ -190,6 +196,29 @@ export function ApprovalGatesScreen() {
     });
   };
 
+  // Email an approved guest a "continue & pay" link back to the event page.
+  // Fire-and-forget — a failed send never blocks or reverses the approval.
+  const notifyApproved = (reg) => {
+    if (typeof window === "undefined" || !reg?.email) return;
+    const event = eventNames[reg.eventId];
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/registrations/approval-email`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: reg.name,
+          email: reg.email,
+          eventId: reg.eventId,
+          eventName: event?.name || "",
+          eventDate: event?.date || "",
+          origin: window.location.origin,
+          basePath: process.env.NEXT_PUBLIC_BASE_PATH || "",
+        }),
+      },
+    ).catch(() => {});
+  };
+
   const decide = (reg, approve) => {
     setRegs((prev) =>
       prev.map((r) =>
@@ -200,6 +229,7 @@ export function ApprovalGatesScreen() {
     );
     toast.success(`${approve ? "Approved" : "Declined"} ${reg.name}.`);
     persist(reg.id, approve);
+    if (approve) notifyApproved(reg);
   };
 
   const decideMany = (list, approve) => {
@@ -213,6 +243,7 @@ export function ApprovalGatesScreen() {
       `${approve ? "Approved" : "Declined"} ${list.length} registrations.`,
     );
     list.forEach((r) => persist(r.id, approve));
+    if (approve) list.forEach(notifyApproved);
   };
 
   const confirmDecline = () => {
@@ -277,7 +308,7 @@ export function ApprovalGatesScreen() {
               <X className="h-4 w-4" /> Decline all
             </Button>
             <Button
-              className="bg-emerald-500/90 text-white hover:bg-emerald-500"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => decideMany(openGroup.list, true)}
             >
               <CheckCheck className="h-4 w-4" /> Approve all
@@ -363,7 +394,19 @@ export function ApprovalGatesScreen() {
   const listMatches = groups.filter((g) =>
     listSearch ? g.name.toLowerCase().includes(listSearch.toLowerCase()) : true,
   );
-  const listShown = listMatches.slice(0, listLimit);
+  const listSorted = [...listMatches].sort((a, b) => {
+    switch (listSort) {
+      case "pending-asc":
+        return a.list.length - b.list.length;
+      case "date-asc":
+        return (a.date || "9999").localeCompare(b.date || "9999");
+      case "name-asc":
+        return a.name.localeCompare(b.name);
+      default:
+        return b.list.length - a.list.length;
+    }
+  });
+  const listShown = listSorted.slice(0, listLimit);
 
   return (
     <MainScreenWrapper>
@@ -373,11 +416,12 @@ export function ApprovalGatesScreen() {
       />
 
       <Toolbar>
-        <span className="text-sm text-text-tertiary">
-          {totalPending
-            ? `${totalPending.toLocaleString()} awaiting approval across ${groups.length} ${groups.length === 1 ? "event" : "events"}`
-            : "Inbox zero"}
-        </span>
+        <FilterDropdown
+          value={listSort}
+          onValueChange={setListSort}
+          options={SORT_OPTIONS}
+          height="h-9"
+        />
         <SearchInput
           value={listSearch}
           onChange={(v) => {
@@ -417,12 +461,12 @@ export function ApprovalGatesScreen() {
                       </p>
                     ) : null}
                   </div>
-                  <span className="shrink-0 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-400 tabular-nums">
-                    {g.list.length} pending
+                  <span className="shrink-0 rounded-full bg-zinc-500/10 px-2.5 py-0.5 text-xs font-medium text-white-400 tabular-nums">
+                    {g.list.length} Pending
                   </span>
                   <Button
                     size="sm"
-                    className="hidden shrink-0 bg-emerald-500/90 text-white hover:bg-emerald-500 sm:inline-flex"
+                    className="hidden shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 sm:inline-flex"
                     onClick={(e) => {
                       e.stopPropagation();
                       decideMany(g.list, true);

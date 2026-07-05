@@ -1,98 +1,67 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { useParams } from "next/navigation";
-import { ArrowLeft, CalendarX2, Loader2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { WallPublicPageContent } from "@/components/internal/screens/events/event_wall/wall_public_page";
-import { getWallBySlug } from "@/lib/supabase/event_wall";
-import { listListableEvents } from "@/lib/supabase/events";
+import WallClient from "./wall_client";
 
 // Standalone published Event Wall, reachable at /w/<slug> — the public hub
-// listing every event an organizer has marked listable (see the Visibility
-// section of the event editor). Mirrors app/e/[id]/page.js.
-export default function EventWallPage() {
-  const params = useParams();
-  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
+// listing every event an organizer has marked listable. This server wrapper
+// resolves SEO/OG metadata for the shared link; the interactive listing renders
+// in the client child (WallClient), mirroring app/e/[id].
 
-  const [wall, setWall] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    // Public page (outside ProjectProvider): resolve the wall by slug first,
-    // then scope its listable events to that wall's project.
-    getWallBySlug(slug).then(async (wallRow) => {
-      if (!alive) return;
-      setWall(wallRow);
-      const eventRows = wallRow
-        ? await listListableEvents(wallRow.projectId)
-        : [];
-      if (!alive) return;
-      setEvents(eventRows ?? []);
-      setLoading(false);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [slug]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center gap-2 bg-background text-sm text-text-secondary">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-      </div>
+// Minimal server-side read of the wall's public branding for <head> tags. Uses a
+// plain PostgREST GET with the anon key (RLS allows public read of the wall) —
+// no browser client, so it's safe on the server. Degrades to null on any
+// failure or when Supabase isn't configured; the page still renders.
+async function fetchWallMeta(slug) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key || !slug) return null;
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/event_wall?slug=eq.${encodeURIComponent(slug)}&select=name,tagline,logo_url&limit=1`,
+      {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          // The wall lives in the `events` schema, not `public`.
+          "Accept-Profile": "events",
+        },
+        // Public branding changes rarely; a short revalidate keeps OG fresh
+        // without hitting the DB on every crawl.
+        next: { revalidate: 300 },
+      },
     );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return Array.isArray(rows) && rows[0] ? rows[0] : null;
+  } catch {
+    return null;
   }
+}
 
-  if (!wall) {
-    return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background px-6 text-center text-foreground">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-surface-subtle text-text-secondary">
-          <CalendarX2 className="h-7 w-7" />
-        </div>
-        <div className="space-y-1">
-          <h1 className="text-lg font-semibold text-foreground">Page not found</h1>
-          <p className="max-w-sm text-sm text-text-secondary">
-            This events page may have moved, or the link is incorrect.
-          </p>
-        </div>
-        <Button
-          asChild
-          variant="outline"
-          className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-        >
-          <Link href="/home">
-            <ArrowLeft className="h-4 w-4" /> Back to dashboard
-          </Link>
-        </Button>
-      </div>
-    );
-  }
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const wall = await fetchWallMeta(slug);
+  const name = wall?.name || "Events";
+  const description =
+    wall?.tagline || `Upcoming events from ${wall?.name || "our team"}.`;
+  const images = wall?.logo_url ? [wall.logo_url] : [];
+  return {
+    title: `${name} — Events`,
+    description,
+    openGraph: {
+      title: `${name} — Events`,
+      description,
+      type: "website",
+      images,
+    },
+    twitter: {
+      card: images.length ? "summary_large_image" : "summary",
+      title: `${name} — Events`,
+      description,
+      images,
+    },
+  };
+}
 
-  return (
-    <div className="min-h-[100dvh] bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex items-center gap-3 bg-background/80 px-4 py-3 backdrop-blur sm:px-6">
-        <Link href="/" className="flex min-w-0 items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center">
-            <Image
-              src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo1.svg`}
-              alt="Logo"
-              width={20}
-              height={20}
-            />
-          </div>
-          <span className="truncate text-sm font-semibold text-foreground">
-            Geiger Studios
-          </span>
-        </Link>
-      </header>
-
-      <WallPublicPageContent wall={wall} events={events} />
-    </div>
-  );
+export default async function EventWallPage({ params }) {
+  const { slug } = await params;
+  return <WallClient slug={slug} />;
 }

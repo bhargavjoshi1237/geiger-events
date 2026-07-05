@@ -69,6 +69,41 @@ export const FORM_STATUS_FILTER_OPTIONS = [
   { value: "Draft", label: "Draft" },
 ];
 
+// Prefix for inquiry answers stored in a registration's `answers` jsonb (answer
+// key = prefix + questionId). Re-exported from the shared bucketing helper so the
+// client and the paid verify route agree on one value.
+export { DIETARY_ANSWER_PREFIX } from "@/lib/events/registration_answers";
+
+// Inquiry question types offered by the Dietary & Accessibility builder.
+export const DIETARY_QUESTION_TYPE_OPTIONS = [
+  { value: "radio", label: "Single choice (radio)" },
+  { value: "multiselect", label: "Multiple choice (checkboxes)" },
+];
+
+// Request inbox status -> StatusPill config.
+export const DIETARY_REQUEST_STATUS_MAP = {
+  Open: { label: "Open", variant: "warning", dotClass: "bg-amber-400" },
+  Resolved: { label: "Resolved", variant: "success", dotClass: "bg-emerald-400" },
+};
+
+export const DIETARY_REQUEST_STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All requests" },
+  { value: "Open", label: "Open" },
+  { value: "Resolved", label: "Resolved" },
+];
+
+// Guideline categories (shared by the venue + event guideline editors and the
+// public display). { value, label } for the select; variant drives the Badge.
+export const GUIDELINE_CATEGORY_OPTIONS = [
+  { value: "dietary", label: "Dietary" },
+  { value: "accessibility", label: "Accessibility" },
+];
+
+export const GUIDELINE_CATEGORY_MAP = {
+  dietary: { label: "Dietary", variant: "warning" },
+  accessibility: { label: "Accessibility", variant: "info" },
+};
+
 // Common dietary tags used to bucket the Dietary & Accessibility report.
 export const DIETARY_TAGS = [
   "Vegetarian",

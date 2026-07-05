@@ -200,6 +200,11 @@ begin
 end;
 $$;
 
+-- NOTE: this is the base definition. zz_project_access.sql (runs last) REPLACES
+-- it with the authoritative version that also stamps project_id, honours the
+-- overbook buffer, and refuses to overbook (raises EVENT_FULL when full with no
+-- waitlist). The zz copy is what actually runs.
+--
 -- Public registration entry point. Computes the right status from the event's
 -- capacity + the form's approval/waitlist policy, then inserts. Called by the
 -- public /e/<id> page so a sign-up lands in the RSVPs / Approval / Waitlist
@@ -265,6 +270,32 @@ begin
   return r;
 end;
 $$;
+
+-- Does this email already sit on the event's waitlist? Powers the optional
+-- "block waitlisted guests from booking again" policy on the public page.
+-- SECURITY DEFINER so the anonymous storefront can check it despite the
+-- member-only RLS on registrations. Case-insensitive email match.
+create or replace function events.has_waitlisted_registration(
+  p_event_id uuid,
+  p_email text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = events, public
+as $$
+  select exists (
+    select 1 from events.registrations
+    where event_id = p_event_id
+      and lower(email) = lower(coalesce(p_email, ''))
+      and status = 'Waitlisted'
+      and deleted_at is null
+  );
+$$;
+
+grant execute on function events.has_waitlisted_registration(uuid, text)
+  to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- RLS. The dashboard currently runs unauthenticated (anon key), so the demo

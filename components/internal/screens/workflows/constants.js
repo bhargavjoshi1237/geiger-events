@@ -366,6 +366,164 @@ export function summarizeConfig(entry, config) {
   return parts.length ? parts.join(" · ") : entry?.description || "Not configured";
 }
 
+// --- Template gallery --------------------------------------------------------
+// Curated starter workflows shown on the Workflow Templates tab. Config, not row
+// data — a fixed catalog (like the trigger/action catalogs above). "Use" mints a
+// real workflow from `trigger` + `steps` and opens it in the builder. Each step
+// is { kind, type, config }; the trigger is always steps[0]. Card icons come from
+// the trigger's catalog entry, so templates never store their own icon.
+
+export const WORKFLOW_TEMPLATE_CATEGORY_MAP = {
+  Ticketing: { label: "Ticketing", variant: "info" },
+  Engagement: { label: "Engagement", variant: "purple" },
+  Operations: { label: "Operations", variant: "neutral" },
+  Reminders: { label: "Reminders", variant: "warning" },
+};
+
+export const WORKFLOW_TEMPLATE_CATEGORY_OPTIONS = [
+  { value: "all", label: "All categories" },
+  { value: "Ticketing", label: "Ticketing" },
+  { value: "Engagement", label: "Engagement" },
+  { value: "Operations", label: "Operations" },
+  { value: "Reminders", label: "Reminders" },
+];
+
+export const WORKFLOW_TEMPLATES = [
+  {
+    id: "tmpl_vip_welcome",
+    name: "VIP welcome on purchase",
+    description:
+      "When a VIP buys a ticket, send them a tailored welcome email right away.",
+    category: "Ticketing",
+    trigger: "ticket.purchased",
+    steps: [
+      { kind: "trigger", type: "ticket.purchased", config: {} },
+      {
+        kind: "condition",
+        type: "if.buyer_attribute",
+        config: { attribute: "Is VIP" },
+      },
+      {
+        kind: "action",
+        type: "send.email",
+        config: { subject: "Welcome, VIP!", template: "Welcome" },
+      },
+    ],
+  },
+  {
+    id: "tmpl_checkin_thanks",
+    name: "Thank-you after check-in",
+    description:
+      "Email attendees a thank-you the moment they're checked in at the door.",
+    category: "Engagement",
+    trigger: "attendee.checked_in",
+    steps: [
+      { kind: "trigger", type: "attendee.checked_in", config: {} },
+      {
+        kind: "action",
+        type: "send.email",
+        config: { subject: "Thanks for coming!", template: "Thank you" },
+      },
+    ],
+  },
+  {
+    id: "tmpl_waitlist_notify",
+    name: "Waitlist notification",
+    description:
+      "Text someone as soon as they join the waitlist and tag them for follow-up.",
+    category: "Operations",
+    trigger: "waitlist.joined",
+    steps: [
+      { kind: "trigger", type: "waitlist.joined", config: {} },
+      {
+        kind: "action",
+        type: "send.sms",
+        config: { message: "You're on the waitlist — we'll be in touch soon." },
+      },
+      { kind: "action", type: "tag.add", config: { tag: "Waitlisted" } },
+    ],
+  },
+  {
+    id: "tmpl_event_reminder",
+    name: "Event reminder",
+    description:
+      "Send a reminder email to registrants shortly before the event starts.",
+    category: "Reminders",
+    trigger: "event.starting_soon",
+    steps: [
+      { kind: "trigger", type: "event.starting_soon", config: {} },
+      {
+        kind: "action",
+        type: "send.email",
+        config: { subject: "Starting soon", template: "Reminder" },
+      },
+    ],
+  },
+  {
+    id: "tmpl_failed_payment",
+    name: "Failed payment recovery",
+    description:
+      "Nudge the buyer to retry a failed payment and alert your team to follow up.",
+    category: "Ticketing",
+    trigger: "payment.failed",
+    steps: [
+      { kind: "trigger", type: "payment.failed", config: {} },
+      {
+        kind: "action",
+        type: "send.email",
+        config: { subject: "Payment didn't go through", template: "Custom" },
+      },
+      {
+        kind: "action",
+        type: "staff.notify",
+        config: { channel: "#payments", message: "A payment failed — check the order." },
+      },
+    ],
+  },
+  {
+    id: "tmpl_big_spender",
+    name: "Big-spender alert",
+    description:
+      "Flag high-value orders to your team and tag the buyer for VIP treatment.",
+    category: "Operations",
+    trigger: "ticket.purchased",
+    steps: [
+      { kind: "trigger", type: "ticket.purchased", config: {} },
+      {
+        kind: "condition",
+        type: "if.order_amount",
+        config: { operator: "greater than", amount: "250" },
+      },
+      {
+        kind: "action",
+        type: "staff.notify",
+        config: { channel: "#events", message: "High-value order just came in." },
+      },
+      { kind: "action", type: "tag.add", config: { tag: "High value" } },
+    ],
+  },
+];
+
+// --- Run history -------------------------------------------------------------
+// Outcome of a single workflow execution. No runner exists yet, so the Run
+// History screen reads an (empty) events.workflow_runs table and shows its empty
+// state until executions land.
+
+export const RUN_STATUS_MAP = {
+  Success: { label: "Success", variant: "success", dotClass: "bg-emerald-400" },
+  Failed: { label: "Failed", variant: "danger", dotClass: "bg-red-400" },
+  Running: { label: "Running", variant: "info", dotClass: "bg-sky-400" },
+  Skipped: { label: "Skipped", variant: "neutral", dotClass: "bg-[#737373]" },
+};
+
+export const RUN_STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All statuses" },
+  { value: "Success", label: "Success" },
+  { value: "Failed", label: "Failed" },
+  { value: "Running", label: "Running" },
+  { value: "Skipped", label: "Skipped" },
+];
+
 // --- Formatters --------------------------------------------------------------
 
 export function formatRelativeDate(value) {
@@ -377,4 +535,29 @@ export function formatRelativeDate(value) {
     month: "short",
     year: "numeric",
   });
+}
+
+// Date + time, for run timestamps (runs are finer-grained than workflows).
+export function formatDateTime(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Human-readable run duration from milliseconds.
+export function formatDuration(ms) {
+  const n = Number(ms);
+  if (!n || Number.isNaN(n) || n < 0) return "—";
+  if (n < 1000) return `${Math.round(n)}ms`;
+  const s = n / 1000;
+  if (s < 60) return `${s.toFixed(s < 10 ? 1 : 0)}s`;
+  const m = Math.floor(s / 60);
+  const rem = Math.round(s % 60);
+  return `${m}m ${rem}s`;
 }

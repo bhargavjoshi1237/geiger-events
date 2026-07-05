@@ -92,7 +92,7 @@ export function RegistrationDrawer({
               <>
                 <Button
                   size="sm"
-                  className="bg-emerald-500/90 text-white hover:bg-emerald-500"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={() => onStatusChange(reg, "Confirmed")}
                 >
                   <Check className="h-4 w-4" /> Approve
@@ -119,7 +119,7 @@ export function RegistrationDrawer({
             {reg.status === "Waitlisted" ? (
               <Button
                 size="sm"
-                className="bg-emerald-500/90 text-white hover:bg-emerald-500"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => onStatusChange(reg, "Confirmed")}
               >
                 <Check className="h-4 w-4" /> Promote

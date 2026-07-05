@@ -10,6 +10,7 @@ import {
   Clock,
   Loader2,
   LucideCircleParking,
+  Unlink,
 } from "lucide-react";
 
 import {
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { EVENTS } from "./sample_data";
 import { listVenues } from "@/lib/supabase/venues";
+import { venueFullAddress } from "@/components/internal/screens/venues/constants";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import {
   EventMap,
@@ -94,18 +96,6 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
     };
   }, [event?.projectId]);
 
-  const pickVenue = (id) => {
-    const v = venues.find((x) => x.id === id);
-    if (!v) return;
-    patch({
-      venueId: v.id,
-      venue: v.name,
-      address: v.address || event?.address || "",
-      city: v.city || event?.city || "",
-      timezone: v.timezone || event?.timezone || "Europe/London",
-    });
-  };
-
   // Venue/address/timezone are columns (live via patch); the finer schedule
   // fields live in the metadata bag.
   const [loc, setLoc, saveLoc, saving] = useEventConfig(event, "location", {
@@ -124,6 +114,54 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
     coords: null,
     ...EMPTY_NEARBY,
   });
+
+  const linkedVenue = venues.find((v) => v.id === event?.venueId) || null;
+
+  // Attaching a venue prefills *everything* location — the snapshot columns plus
+  // the map pin, arrival notes, and any nearby places the venue detected — so
+  // one pick seeds both this section and Map & Directions. It overwrites what's
+  // there (the organizer chose the venue); every field stays editable after.
+  const pickVenue = (id) => {
+    const v = venues.find((x) => x.id === id);
+    if (!v) return;
+    const hasCoords =
+      v.latitude != null &&
+      v.longitude != null &&
+      v.latitude !== "" &&
+      v.longitude !== "";
+    // Columns — commit persists them immediately so the link + snapshot stick.
+    commit({
+      venueId: v.id,
+      venue: v.name,
+      address: venueFullAddress(v) || v.address || "",
+      city: v.city || "",
+      timezone: v.timezone || "Europe/London",
+    });
+    // Map config — coords, notes, and detected nearby places in one write.
+    const nv = v.nearby || {};
+    const nextMap = {
+      ...mapCfg,
+      coords: hasCoords ? { lat: Number(v.latitude), lng: Number(v.longitude) } : null,
+      transport: v.transitNotes || "",
+      parking: v.parkingNotes || "",
+      nearbyParking: nv.nearbyParking || [],
+      nearbyTransit: nv.nearbyTransit || [],
+      nearbyBike: nv.nearbyBike || [],
+      nearbyTaxi: nv.nearbyTaxi || [],
+      nearbyCharging: nv.nearbyCharging || [],
+      nearbyHotels: nv.nearbyHotels || [],
+      nearbyFood: nv.nearbyFood || [],
+    };
+    setMapCfg(nextMap);
+    saveMapCfg(nextMap);
+    toast.success(`Prefilled from "${v.name}".`, {
+      description: "Edit any field below to override it for this event.",
+    });
+  };
+
+  // Detach keeps the prefilled snapshot (address / pin / notes / nearby) and
+  // just clears the link, so nothing the organizer set is wiped.
+  const detachVenue = () => commit({ venueId: null });
 
   // Address is an event column (live via patch); coords go to the map config.
   // Moving the pin invalidates any previously detected nearby places.
@@ -185,28 +223,40 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
         />
       )}
 
+      {venues.length ? (
+        <SectionCard
+          title="Saved venue"
+          description="Attach one to prefill the location, map pin, arrival notes and nearby places — or type a name below."
+          action={
+            linkedVenue ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={detachVenue}
+                className="shrink-0 gap-1.5 text-red-300 hover:bg-red-500/10 hover:text-red-300"
+              >
+                <Unlink className="h-3.5 w-3.5" /> Detach
+              </Button>
+            ) : null
+          }
+        >
+          <Select value={event?.venueId || ""} onValueChange={pickVenue}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a saved venue" />
+            </SelectTrigger>
+            <SelectContent>
+              {venues.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.name}
+                  {v.city ? ` · ${v.city}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SectionCard>
+      ) : null}
+
       <SectionCard title="Venue details">
-        {venues.length ? (
-          <Field
-            label="Saved venue"
-            hint="Pick one of your venues to fill in the details, or type a name below."
-            className="mb-4"
-          >
-            <Select value={event?.venueId || ""} onValueChange={pickVenue}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a saved venue" />
-              </SelectTrigger>
-              <SelectContent>
-                {venues.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.name}
-                    {v.city ? ` · ${v.city}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        ) : null}
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Venue name">
             <Input
@@ -240,10 +290,11 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
             </Select>
           </Field>
         </div>
-      </SectionCard>
 
-      <SectionCard title="Date & time">
-        <div className="grid gap-4 sm:grid-cols-3">
+        
+
+        
+        <div className="grid gap-4 sm:grid-cols-3 mt-6 mb-2">
           <Field label="Doors open">
             <Input
               type="time"
@@ -279,6 +330,8 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
           </Button>
         </div>
       </SectionCard>
+
+
     </div>
   );
 }

@@ -76,9 +76,9 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
   const ActiveSection = SECTIONS[active] || SECTIONS.overview;
 
   return (
-    <MainScreenWrapper>
+    <MainScreenWrapper className="lg:flex lg:h-full lg:flex-col lg:gap-6 lg:space-y-0 lg:overflow-hidden lg:py-0">
       {/* Editor header */}
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between lg:shrink-0">
         <div className="min-w-0">
           {/* Breadcrumb back — reads as part of the page rather than a stray
               icon button, matching the suite's text-link navigation. */}
@@ -124,9 +124,11 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
         </div>
       </div>
 
-      {/* Content (left) + section nav (right) */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px]">
-        <div className="order-2 min-w-0 lg:order-1">
+      {/* Content (left) + section nav (right). On lg the grid fills the
+          remaining editor height (one 1fr row) so each column scrolls inside
+          its own area rather than growing the page. */}
+      <div className="grid grid-cols-1 gap-8 lg:min-h-0 lg:flex-1 lg:grid-rows-1 lg:grid-cols-[1fr_260px]">
+        <div className="scrollbar-subtle order-2 min-w-0 lg:order-1 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
           {/* Sections flagged `ownHeader` render their own title row (e.g. so
               summary stats can sit beside it); everything else gets the
               standard label + description block. */}
@@ -171,14 +173,11 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
           )}
         </div>
 
-        <aside className="order-1 lg:order-2">
-          {/* Pinned to the viewport at a fixed screen height so the nav always
-              spans the full viewport — even when the section content on the left
-              is shorter — and scrolls inside its own area rather than the whole
-              page. Offset = topbar (3.5rem) + main top/bottom padding (2rem
-              each). The thin scrollbar is hidden to match the suite's chrome-free
-              scroll surfaces. */}
-          <nav className="space-y-5 lg:sticky lg:top-0 lg:h-[calc(100dvh-7.5rem)] lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <aside className="order-1 lg:order-2 lg:min-h-0">
+          {/* Fills the editor column and scrolls inside its own area rather than
+              the whole page. The thin scrollbar is hidden to match the suite's
+              chrome-free scroll surfaces. */}
+          <nav className="space-y-5 lg:h-full lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {NAV_GROUPS.map((group, gi) => (
               <div key={group.group || `g${gi}`}>
                 {group.group ? (

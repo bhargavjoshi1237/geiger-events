@@ -56,8 +56,16 @@ import {
   COVER_OPTIONS,
   BASES,
   BASE_PALETTES,
+  BUTTON_STYLES,
+  ELEVATIONS,
+  DENSITIES,
+  HERO_STYLES,
+  OVERLAY_STYLES,
+  SIDEBAR_SIDES,
+  BG_TYPES,
 } from "@/lib/events/theme";
 import { Segmented, ColorField } from "./theme_controls";
+import { FooterEditor, DEFAULT_FOOTER } from "./page_footer";
 
 // ---------------------------------------------------------------------------
 // Shared page-design model
@@ -548,11 +556,25 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                   options={RADIUS_OPTIONS}
                 />
               </Field>
-              <Field label="Cover style">
+              <Field label="Button style">
                 <Segmented
-                  value={theme.cover}
-                  onChange={(v) => setTheme({ cover: v })}
-                  options={COVER_OPTIONS}
+                  value={theme.button}
+                  onChange={(v) => setTheme({ button: v })}
+                  options={BUTTON_STYLES}
+                />
+              </Field>
+              <Field label="Card shadow">
+                <Segmented
+                  value={theme.elevation}
+                  onChange={(v) => setTheme({ elevation: v })}
+                  options={ELEVATIONS}
+                />
+              </Field>
+              <Field label="Spacing">
+                <Segmented
+                  value={theme.density}
+                  onChange={(v) => setTheme({ density: v })}
+                  options={DENSITIES}
                 />
               </Field>
               <Field label="Content width">
@@ -562,6 +584,72 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                   options={WIDTHS}
                 />
               </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Header & layout"
+            description="How the top of your page and the ticket sidebar are arranged."
+          >
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Hero style">
+                <Segmented
+                  value={theme.hero}
+                  onChange={(v) => setTheme({ hero: v })}
+                  options={HERO_STYLES}
+                />
+              </Field>
+              <Field label="Cover style">
+                <Segmented
+                  value={theme.cover}
+                  onChange={(v) => setTheme({ cover: v })}
+                  options={COVER_OPTIONS}
+                />
+              </Field>
+              <Field label="Cover overlay" hint="Improves text legibility on a banner hero.">
+                <Segmented
+                  value={theme.coverOverlay}
+                  onChange={(v) => setTheme({ coverOverlay: v })}
+                  options={OVERLAY_STYLES}
+                />
+              </Field>
+              <Field label="Ticket sidebar">
+                <Segmented
+                  value={theme.sidebar}
+                  onChange={(v) => setTheme({ sidebar: v })}
+                  options={SIDEBAR_SIDES}
+                />
+              </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Page background"
+            description="What sits behind your content, edge to edge."
+          >
+            <div className="space-y-4">
+              <Field label="Background">
+                <Segmented
+                  value={theme.background?.type || "surface"}
+                  onChange={(v) =>
+                    setTheme({ background: { ...theme.background, type: v } })
+                  }
+                  options={BG_TYPES}
+                />
+              </Field>
+              {theme.background?.type === "image" ? (
+                <Field label="Image URL" hint="A large, high-quality image works best.">
+                  <Input
+                    value={theme.background?.value || ""}
+                    onChange={(e) =>
+                      setTheme({
+                        background: { ...theme.background, value: e.target.value },
+                      })
+                    }
+                    placeholder="https://…"
+                  />
+                </Field>
+              ) : null}
             </div>
           </SectionCard>
 
@@ -675,6 +763,16 @@ export function PageDesignSection({ design, onChange, onPreview }) {
                 );
               })}
             </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Footer"
+            description="Links, socials, and a closing line at the bottom of your page."
+          >
+            <FooterEditor
+              value={design.footer || DEFAULT_FOOTER}
+              onChange={(footer) => set({ footer })}
+            />
           </SectionCard>
         </>
       )}

@@ -34,12 +34,23 @@ import {
 import { listEvents, updateEventMeta } from "@/lib/supabase/events";
 import { listRegistrations, promoteWaitlist } from "@/lib/supabase/registrations";
 import { useProject } from "@/context/project-context";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { countRegs, PipelineBar } from "./pipeline";
 import { formatDate, formatDateTime, initials } from "./constants";
 
 const PAGE_EVENTS = 60;
 const PAGE_ROWS = 100;
 const DEFAULT_RULES = { autoPromote: false, claimWindowHours: 24, notify: true };
+
+// Sort options for the master list of events with a waitlist — mirrors the
+// filter/sort toolbar the other list screens use.
+const SORT_OPTIONS = [
+  { value: "waiting-desc", label: "Most waiting" },
+  { value: "waiting-asc", label: "Fewest waiting" },
+  { value: "open-desc", label: "Most open spots" },
+  { value: "date-asc", label: "Event date" },
+  { value: "name-asc", label: "Name (A–Z)" },
+];
 
 function RulesDialog({ event, open, onOpenChange, onSaved }) {
   const [rules, setRules] = useState({
@@ -127,6 +138,7 @@ export function WaitlistScreen() {
 
   const [openEventId, setOpenEventId] = useState(null);
   const [listSearch, setListSearch] = useState("");
+  const [listSort, setListSort] = useState("waiting-desc");
   const [listLimit, setListLimit] = useState(PAGE_EVENTS);
   const [detailSearch, setDetailSearch] = useState("");
   const [detailLimit, setDetailLimit] = useState(PAGE_ROWS);
@@ -174,11 +186,6 @@ export function WaitlistScreen() {
       .filter((g) => g.queue.length > 0)
       .sort((a, b) => b.queue.length - a.queue.length);
   }, [regs, eventsById]);
-
-  const totalWaiting = useMemo(
-    () => groups.reduce((s, g) => s + g.queue.length, 0),
-    [groups],
-  );
 
   const handlePromote = async (eventId, count) => {
     const group = groups.find((g) => g.event.id === eventId);
@@ -383,7 +390,21 @@ export function WaitlistScreen() {
       ? g.event.name.toLowerCase().includes(listSearch.toLowerCase())
       : true,
   );
-  const listShown = listMatches.slice(0, listLimit);
+  const listSorted = [...listMatches].sort((a, b) => {
+    switch (listSort) {
+      case "waiting-asc":
+        return a.queue.length - b.queue.length;
+      case "open-desc":
+        return b.open - a.open;
+      case "date-asc":
+        return (a.event.date || "9999").localeCompare(b.event.date || "9999");
+      case "name-asc":
+        return a.event.name.localeCompare(b.event.name);
+      default:
+        return b.queue.length - a.queue.length;
+    }
+  });
+  const listShown = listSorted.slice(0, listLimit);
 
   return (
     <MainScreenWrapper>
@@ -393,11 +414,12 @@ export function WaitlistScreen() {
       />
 
       <Toolbar>
-        <span className="text-sm text-text-tertiary">
-          {totalWaiting
-            ? `${totalWaiting.toLocaleString()} waiting across ${groups.length} ${groups.length === 1 ? "event" : "events"}`
-            : "No waitlists"}
-        </span>
+        <FilterDropdown
+          value={listSort}
+          onValueChange={setListSort}
+          options={SORT_OPTIONS}
+          height="h-9"
+        />
         <SearchInput
           value={listSearch}
           onChange={(v) => {

@@ -30,7 +30,8 @@ export function countRegs(regs) {
   return c;
 }
 
-// The seat-fill bar: checked-in (sky) then confirmed (emerald) against capacity.
+// The seat-fill bar: checked-in (dim brand) then confirmed (brand) against
+// capacity, using the app palette's primary shade rather than green/blue.
 // Pending/waitlisted live in the chips, not the bar, so "filled" always means
 // "seats actually committed".
 export function PipelineBar({ counts, capacity, className, size = "md" }) {
@@ -52,9 +53,9 @@ export function PipelineBar({ counts, capacity, className, size = "md" }) {
       role="img"
       aria-label={`${taken} of ${cap || "∞"} seats filled`}
     >
-      <div className="h-full bg-sky-400/90" style={{ width: `${checkedPct}%` }} />
+      <div className="h-full bg-primary/50" style={{ width: `${checkedPct}%` }} />
       <div
-        className={cn("h-full", over ? "bg-red-400" : "bg-emerald-400")}
+        className={cn("h-full", over ? "bg-red-400" : "bg-primary")}
         style={{ width: `${confirmedPct}%` }}
       />
     </div>
