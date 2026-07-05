@@ -32,11 +32,11 @@ import {
   Globe,
   Video,
   Repeat,
+  Accessibility,
 } from "lucide-react";
 
 import {
   BasicsSection,
-  TicketsSection,
   RegistrationSettingsSection,
 } from "./event_builder";
 import {
@@ -66,6 +66,9 @@ import { RsvpOptionsSection } from "./rsvp";
 import { CoHostsAdminsSection } from "./people";
 import { OverviewSection } from "./overview";
 import { AlertsSection } from "./alerts";
+import { GuidelinesSection } from "./guidelines";
+import { TicketAttachmentsSection } from "../tickets/event_attachments";
+import { TicketTypeAttachmentsSection } from "../tickets/ticket_type_attachments";
 
 // Per-event topics, grouped the way the original sidebar grouped them. `key`
 // must match a SECTIONS entry; `ownHeader` sections render their own title row.
@@ -161,6 +164,12 @@ export const NAV_GROUPS = [
         // Renders its own header so the Re-detect action can sit beside the title.
         ownHeader: true,
       },
+      {
+        key: "guidelines",
+        label: "Dietary & Accessibility",
+        icon: Accessibility,
+        desc: "Guidelines shown on your event page, plus the post-purchase request opt-in.",
+      },
     ],
   },
   {
@@ -170,8 +179,7 @@ export const NAV_GROUPS = [
         key: "tickets",
         label: "Ticket Types",
         icon: Ticket,
-        desc: "The ticket tiers attendees can buy.",
-        // Renders its own header so the tier stats can sit beside the title.
+        desc: "Attach reusable tickets to this event.",
         ownHeader: true,
       },
       {
@@ -186,6 +194,13 @@ export const NAV_GROUPS = [
         label: "Payments",
         icon: CreditCard,
         desc: "Configure how buyers pay for tickets to this event.",
+        ownHeader: true,
+      },
+      {
+        key: "ticketlinks",
+        label: "Ticketing",
+        icon: Link2,
+        desc: "Attach reusable coupons, methods, and policies (managed under the Tickets sidebar) to this event.",
         ownHeader: true,
       },
     ],
@@ -310,9 +325,11 @@ export const SECTIONS = {
   guests: GuestsSection,
   location: LocationTimeSection,
   map: MapDirectionsSection,
-  tickets: TicketsSection,
+  guidelines: GuidelinesSection,
+  tickets: TicketTypeAttachmentsSection,
   offerings: OfferingsSection,
   payments: PaymentsSection,
+  ticketlinks: TicketAttachmentsSection,
   rsvp: RsvpOptionsSection,
   questions: CustomQuestionsSection,
   regsettings: RegistrationSettingsSection,

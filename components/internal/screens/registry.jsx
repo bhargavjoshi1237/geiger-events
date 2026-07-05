@@ -24,6 +24,17 @@ import {
 } from "./registrations/folded_redirect";
 import { AllWorkflowsScreen } from "./workflows/all_workflows";
 import { VenuesScreen } from "./venues/all_venues";
+import { TicketTypesScreen } from "./tickets/ticket_types";
+import { DiscountsScreen } from "./tickets/discounts";
+import { PaymentMethodsScreen } from "./tickets/payment_methods";
+import { PayoutsScreen } from "./tickets/payouts";
+import { DynamicPricingScreen } from "./tickets/dynamic_pricing";
+import { OrdersAttendeesScreen } from "./tickets/orders_attendees";
+import { InvoiceProfilesScreen } from "./tickets/invoice_profiles";
+import { ContactBookScreen } from "./guests/contact_book";
+import { GuestListScreen } from "./guests/guest_list";
+import { SegmentsScreen } from "./guests/segments";
+import { DataRequestsScreen } from "./guests/data_requests";
 
 /**
  * Maps a sidebar nav title to its screen component. Titles must exactly match
@@ -50,6 +61,19 @@ export const SCREEN_REGISTRY = {
   // selecting a row (?venue=<id>); per-venue concerns are its sections.
   Venues: VenuesScreen,
 
+  // Tickets area. Ticket Types is a reusable-records screen (like Discounts).
+  // The rest are GLOBAL project-level record managers (reusable coupons, rules,
+  // methods, policies, profiles — each with its own edit page) that get attached
+  // to an event from the event editor's Ticketing section. Orders & Attendees
+  // also carries a cross-event orders list. See screens/tickets/.
+  "Ticket Types": TicketTypesScreen,
+  "Discounts & Codes": DiscountsScreen,
+  "Payments & Methods": PaymentMethodsScreen,
+  Payouts: PayoutsScreen,
+  "Dynamic Pricing": DynamicPricingScreen,
+  "Orders & Attendees": OrdersAttendeesScreen,
+  "Invoices & Receipts": InvoiceProfilesScreen,
+
   // Registrations area. Six substantive screens; the remaining sub-items are
   // per-entity config/behaviours that fold onto a host screen with a context
   // banner (see registrations/folded_redirect.jsx) — never ComingSoon.
@@ -70,6 +94,16 @@ export const SCREEN_REGISTRY = {
   "Register on Behalf": RegisterOnBehalfScreen,
   "Waitlist Auto-promotion": WaitlistAutoPromotionScreen,
   "Confirmation Page": ConfirmationPageScreen,
+
+  // Guests area — four workspace destinations. Contact Book is the CRM hub:
+  // Import, Find duplicates and Block-an-email are actions on it (Import/Dedupe
+  // open as sub-views), and the old Blocklist is a "Blocked" filter. Per-contact
+  // surfaces (profile, tags/notes, activity, consent) are its drawer tabs;
+  // Who's-going / attendee export live on Guest List.
+  "Guest List": GuestListScreen,
+  "Contact Book": ContactBookScreen,
+  Segments: SegmentsScreen,
+  "Data Requests": DataRequestsScreen,
 
   // Workflows area (automation engine). The dual-view builder (list + canvas)
   // opens from a row in All Workflows. The parent "Workflows" tab shows the
