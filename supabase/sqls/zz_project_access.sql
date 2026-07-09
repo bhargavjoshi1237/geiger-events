@@ -50,6 +50,10 @@ alter table events.registration_forms  add column if not exists project_id uuid 
 alter table events.workflows           add column if not exists project_id uuid references public.projects(id) on delete cascade;
 alter table events.event_wall          add column if not exists project_id uuid references public.projects(id) on delete cascade;
 alter table events.venues              add column if not exists project_id uuid references public.projects(id) on delete cascade;
+alter table events.conference_records  add column if not exists project_id uuid references public.projects(id) on delete cascade;
+alter table events.community_records   add column if not exists project_id uuid references public.projects(id) on delete cascade;
+alter table events.settings_records    add column if not exists project_id uuid references public.projects(id) on delete cascade;
+alter table events.analytics_records   add column if not exists project_id uuid references public.projects(id) on delete cascade;
 alter table events.event_orders        add column if not exists project_id uuid references public.projects(id) on delete set null;
 alter table events.registrations       add column if not exists project_id uuid references public.projects(id) on delete set null;
 
@@ -67,6 +71,10 @@ delete from events.registration_forms where project_id is null;
 delete from events.workflows          where project_id is null;
 delete from events.event_wall         where project_id is null;
 delete from events.venues             where project_id is null;
+delete from events.conference_records where project_id is null;
+delete from events.community_records  where project_id is null;
+delete from events.settings_records   where project_id is null;
+delete from events.analytics_records  where project_id is null;
 
 alter table events.events             alter column project_id set not null;
 alter table events.event_series       alter column project_id set not null;
@@ -75,6 +83,10 @@ alter table events.registration_forms alter column project_id set not null;
 alter table events.workflows          alter column project_id set not null;
 alter table events.event_wall         alter column project_id set not null;
 alter table events.venues             alter column project_id set not null;
+alter table events.conference_records alter column project_id set not null;
+alter table events.community_records  alter column project_id set not null;
+alter table events.settings_records   alter column project_id set not null;
+alter table events.analytics_records  alter column project_id set not null;
 
 -- One Event Wall per project (the public listing page for that project).
 create unique index if not exists events_event_wall_project_idx
@@ -86,6 +98,10 @@ create index if not exists events_event_templates_project_idx    on events.event
 create index if not exists events_registration_forms_project_idx on events.registration_forms (project_id) where deleted_at is null;
 create index if not exists events_workflows_project_idx          on events.workflows (project_id) where deleted_at is null;
 create index if not exists events_venues_project_idx             on events.venues (project_id) where deleted_at is null;
+create index if not exists events_conference_records_project_idx on events.conference_records (project_id) where deleted_at is null;
+create index if not exists events_community_records_project_idx  on events.community_records (project_id) where deleted_at is null;
+create index if not exists events_settings_records_project_idx   on events.settings_records (project_id) where deleted_at is null;
+create index if not exists events_analytics_records_project_idx  on events.analytics_records (project_id) where deleted_at is null;
 create index if not exists events_event_orders_project_idx       on events.event_orders (project_id);
 create index if not exists events_registrations_project_idx      on events.registrations (project_id) where deleted_at is null;
 
@@ -194,6 +210,39 @@ create policy venues_member_all on events.venues
 create policy venues_public_read on events.venues
   for select to anon, authenticated
   using (deleted_at is null);
+
+-- conference_records (Conference area) --------------------------------------
+-- Reusable speaker/sponsor/booth/paper/… records, scoped to the owning project.
+-- Member-only: no public surface (managed in the dashboard).
+drop policy if exists events_conference_records_demo_all on events.conference_records;
+drop policy if exists conference_records_member_all on events.conference_records;
+create policy conference_records_member_all on events.conference_records
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+-- community_records / settings_records / analytics_records ------------------
+-- Config-driven record areas (Community, Settings, Analytics). Member-only.
+drop policy if exists events_community_records_demo_all on events.community_records;
+drop policy if exists community_records_member_all on events.community_records;
+create policy community_records_member_all on events.community_records
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_settings_records_demo_all on events.settings_records;
+drop policy if exists settings_records_member_all on events.settings_records;
+create policy settings_records_member_all on events.settings_records
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_analytics_records_demo_all on events.analytics_records;
+drop policy if exists analytics_records_member_all on events.analytics_records;
+create policy analytics_records_member_all on events.analytics_records
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
 
 -- event_wall ---------------------------------------------------------------
 drop policy if exists flow_event_wall_demo_all on events.event_wall;

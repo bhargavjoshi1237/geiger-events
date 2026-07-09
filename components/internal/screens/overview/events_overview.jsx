@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   ArrowUpRight,
+  CalendarDays,
+  ChevronDown,
   ChevronRight,
   Clock,
   CreditCard,
@@ -16,6 +18,13 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   CartesianGrid,
   Label,
@@ -50,6 +59,8 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { RollingNumber, StatsBar } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "./filter_dropdown";
 import { cn } from "@/lib/utils";
+import { useProject } from "@/context/project-context";
+import { listEvents } from "@/lib/supabase/events";
 
 const CHART_COLORS = {
   primary: "#ffffff",
@@ -170,8 +181,9 @@ function WidgetHeader({ title, subtitle, action }) {
 
 // --- Registrations over time (line + label, with detail) ---------------------
 
-function RegistrationsTrendWidget() {
+function RegistrationsTrendWidget({ events = [] }) {
   const [metric, setMetric] = useState("rsvps");
+  const [eventScope, setEventScope] = useState([]);
   const selected =
     REGISTRATION_RANGE_OPTIONS.find((o) => o.value === metric) ||
     REGISTRATION_RANGE_OPTIONS[0];
@@ -195,12 +207,19 @@ function RegistrationsTrendWidget() {
         title="Registrations Over Time"
         subtitle={`${selected.label} across your events.`}
         action={
-          <FilterDropdown
-            value={metric}
-            onValueChange={setMetric}
-            options={REGISTRATION_RANGE_OPTIONS}
-            height="h-9"
-          />
+          <div className="flex items-center gap-2">
+            <EventScopeSelect
+              events={events}
+              selected={eventScope}
+              onChange={setEventScope}
+            />
+            <FilterDropdown
+              value={metric}
+              onValueChange={setMetric}
+              options={REGISTRATION_RANGE_OPTIONS}
+              height="h-9"
+            />
+          </div>
         }
       />
       <div className="mt-4 flex min-h-0 flex-1 items-center justify-center">
@@ -258,8 +277,9 @@ function RegistrationsTrendWidget() {
 
 // --- Ticket type mix (donut) -------------------------------------------------
 
-function TicketMixWidget() {
+function TicketMixWidget({ events = [] }) {
   const [selectedType, setSelectedType] = useState(TICKET_MIX[0].key);
+  const [eventScope, setEventScope] = useState([]);
   const total = TICKET_MIX.reduce((sum, item) => sum + item.value, 0);
   const chartData = TICKET_MIX.map((item, index) => ({
     ...item,
@@ -288,12 +308,19 @@ function TicketMixWidget() {
         title="Ticket Type Mix"
         subtitle="Distribution across ticket types."
         action={
-          <FilterDropdown
-            value={selectedType}
-            onValueChange={setSelectedType}
-            options={typeOptions}
-            height="h-9"
-          />
+          <div className="flex items-center gap-2">
+            <EventScopeSelect
+              events={events}
+              selected={eventScope}
+              onChange={setEventScope}
+            />
+            <FilterDropdown
+              value={selectedType}
+              onValueChange={setSelectedType}
+              options={typeOptions}
+              height="h-9"
+            />
+          </div>
         }
       />
       <div className="relative mt-4 flex min-h-0 w-full flex-1 items-center justify-center">
@@ -333,7 +360,8 @@ function TicketMixWidget() {
 
 // --- Conversion funnel (radar chart — dots) ----------------------------------
 
-function ConversionFunnelWidget() {
+function ConversionFunnelWidget({ events = [] }) {
+  const [eventScope, setEventScope] = useState([]);
   const top = CONVERSION_FUNNEL[0].value;
   const bottom = CONVERSION_FUNNEL[CONVERSION_FUNNEL.length - 1].value;
   const overall = Math.round((bottom / top) * 100);
@@ -355,9 +383,16 @@ function ConversionFunnelWidget() {
         title="Registration Funnel"
         subtitle="Share of page views reaching each step toward a ticket."
         action={
-          <div className="flex shrink-0 flex-col items-end">
-            <span className="text-3xl font-bold leading-none text-white">{overall}%</span>
-            <span className="mt-1 text-[11px] text-text-secondary">view → ticket</span>
+          <div className="flex items-center gap-3">
+            <EventScopeSelect
+              events={events}
+              selected={eventScope}
+              onChange={setEventScope}
+            />
+            <div className="flex shrink-0 flex-col items-end">
+              <span className="text-3xl font-bold leading-none text-white">{overall}%</span>
+              <span className="mt-1 text-[11px] text-text-secondary">view → ticket</span>
+            </div>
           </div>
         }
       />
@@ -407,7 +442,8 @@ function ConversionFunnelWidget() {
 
 // --- Lifecycle gauge (radial text) -------------------------------------------
 
-function GaugeWidget({ title, subtitle, value, caption, footnote }) {
+function GaugeWidget({ title, subtitle, value, caption, footnote, events = [] }) {
+  const [eventScope, setEventScope] = useState([]);
   const clamped = Math.max(0, Math.min(100, value));
   // Sweep the colored arc clockwise from the top, proportional to the value.
   const endAngle = 90 - (clamped / 100) * 360;
@@ -415,7 +451,17 @@ function GaugeWidget({ title, subtitle, value, caption, footnote }) {
 
   return (
     <WidgetShell contentClassName="flex flex-col">
-      <WidgetHeader title={title} subtitle={subtitle} />
+      <WidgetHeader
+        title={title}
+        subtitle={subtitle}
+        action={
+          <EventScopeSelect
+            events={events}
+            selected={eventScope}
+            onChange={setEventScope}
+          />
+        }
+      />
       <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
         <ChartContainer
           config={{ value: { label: caption, color: CHART_COLORS.primary } }}
@@ -485,8 +531,9 @@ const TOP_EVENTS_SORT_OPTIONS = [
   { value: "sellthrough", label: "Sell-through" },
 ];
 
-function TopEventsTable() {
+function TopEventsTable({ events = [] }) {
   const [sortBy, setSortBy] = useState("revenue");
+  const [eventScope, setEventScope] = useState([]);
   const sorted = [...TOP_EVENTS].sort((a, b) =>
     sortBy === "revenue"
       ? b.revenue - a.revenue
@@ -500,12 +547,19 @@ function TopEventsTable() {
           title="Top Performing Events"
           subtitle="Ranked by sales momentum and sell-through."
         />
-        <FilterDropdown
-          value={sortBy}
-          onValueChange={setSortBy}
-          options={TOP_EVENTS_SORT_OPTIONS}
-          height="h-9"
-        />
+        <div className="flex items-center gap-2">
+          <EventScopeSelect
+            events={events}
+            selected={eventScope}
+            onChange={setEventScope}
+          />
+          <FilterDropdown
+            value={sortBy}
+            onValueChange={setSortBy}
+            options={TOP_EVENTS_SORT_OPTIONS}
+            height="h-9"
+          />
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border bg-surface-card">
@@ -638,9 +692,77 @@ function GeneralStatsCard() {
   );
 }
 
+// --- Event scope selector (multi-select) -------------------------------------
+
+// Scopes every stat on the page to a chosen set of events. Empty selection means
+// "all events". Options are the project's real events; the placeholder numbers
+// stay put until the backend is wired, but the control drives the scope state.
+function EventScopeSelect({ events, selected, onChange }) {
+  const all = selected.length === 0;
+  const label = all
+    ? "All events"
+    : selected.length === 1
+      ? events.find((e) => e.id === selected[0])?.name || "1 event"
+      : `${selected.length} events`;
+
+  const toggle = (id) =>
+    onChange(
+      selected.includes(id)
+        ? selected.filter((x) => x !== id)
+        : [...selected, id],
+    );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="h-9 gap-2 border-border bg-surface-card text-foreground hover:bg-surface-active"
+          disabled={!events.length}
+        >
+          <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          <span className="max-w-[160px] truncate">{label}</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="max-h-72 w-56 overflow-y-auto border-border bg-surface-subtle"
+      >
+        <DropdownMenuCheckboxItem
+          checked={all}
+          onCheckedChange={() => onChange([])}
+          onSelect={(e) => e.preventDefault()}
+        >
+          All events
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator className="bg-border" />
+        {events.map((event) => (
+          <DropdownMenuCheckboxItem
+            key={event.id}
+            checked={selected.includes(event.id)}
+            onCheckedChange={() => toggle(event.id)}
+            onSelect={(e) => e.preventDefault()}
+          >
+            <span className="truncate">{event.name || "Untitled event"}</span>
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 // --- Screen ------------------------------------------------------------------
 
 export function EventsOverviewScreen() {
+  const { projectId } = useProject();
+  const [events, setEvents] = useState([]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    listEvents(projectId).then((rows) => setEvents(rows ?? []));
+  }, [projectId]);
+
   return (
     <MainScreenWrapper>
       {/* Header: title + workspace summary stats */}
@@ -694,17 +816,17 @@ export function EventsOverviewScreen() {
       {/* Bento hero: wide trend + donut */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 h-[360px]">
-          <RegistrationsTrendWidget />
+          <RegistrationsTrendWidget events={events} />
         </div>
         <div className="h-[360px]">
-          <TicketMixWidget />
+          <TicketMixWidget events={events} />
         </div>
       </div>
 
       {/* Attendee lifecycle: funnel + two gauges (equal ratio) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="h-[300px]">
-          <ConversionFunnelWidget />
+          <ConversionFunnelWidget events={events} />
         </div>
         <div className="h-[300px]">
           <GaugeWidget
@@ -713,6 +835,7 @@ export function EventsOverviewScreen() {
             value={SELL_THROUGH.value}
             caption="sold"
             footnote={`${SELL_THROUGH.sold.toLocaleString()} of ${SELL_THROUGH.capacity.toLocaleString()} seats`}
+            events={events}
           />
         </div>
         <div className="h-[300px]">
@@ -722,12 +845,13 @@ export function EventsOverviewScreen() {
             value={ATTENDANCE.value}
             caption="checked in"
             footnote={`${ATTENDANCE.attended.toLocaleString()} of ${ATTENDANCE.registered.toLocaleString()} showed up`}
+            events={events}
           />
         </div>
       </div>
 
       {/* Top performing events table */}
-      <TopEventsTable />
+      <TopEventsTable events={events} />
 
       {/* General stats */}
       <GeneralStatsCard />

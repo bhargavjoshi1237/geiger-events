@@ -376,7 +376,7 @@ export function RegistrationsScreen() {
 
       <Toolbar>
         {/* Events / People view switch. */}
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
+        <div className="flex w-fit shrink-0 items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
           {[
             { key: "events", label: "By event", icon: Inbox },
             { key: "people", label: "All people", icon: Users },

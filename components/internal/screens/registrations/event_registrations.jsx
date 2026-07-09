@@ -352,8 +352,9 @@ export function EventRegistrationsDetail({
         </div>
       </div>
 
-      {/* Lifecycle tabs. */}
-      <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
+      {/* Lifecycle tabs and search share one flex row. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex w-fit flex-wrap items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -384,6 +385,16 @@ export function EventRegistrationsDetail({
             ) : null}
           </button>
         ))}
+        </div>
+        <SearchInput
+          value={search}
+          onChange={(v) => {
+            setSearch(v);
+            setLimit(PAGE_ROWS);
+          }}
+          placeholder="Search name or email…"
+          className="w-full sm:max-w-xs"
+        />
       </div>
 
       <Toolbar>
@@ -435,15 +446,6 @@ export function EventRegistrationsDetail({
             {filtered.length} {filtered.length === 1 ? "person" : "people"}
           </span>
         )}
-        <SearchInput
-          value={search}
-          onChange={(v) => {
-            setSearch(v);
-            setLimit(PAGE_ROWS);
-          }}
-          placeholder="Search name or email…"
-          className="w-full sm:max-w-xs"
-        />
       </Toolbar>
 
       <DataTable

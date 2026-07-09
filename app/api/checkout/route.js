@@ -35,6 +35,7 @@ export async function POST(request) {
     selections = null,
     answers = null,
     formId = null,
+    clientRef = null,
     skipRegistration = false,
     returnUrl,
   } = body || {};
@@ -136,6 +137,8 @@ export async function POST(request) {
         email,
         // "1" for approved guests already registered — verify skips re-filing.
         skipReg: skipRegistration ? "1" : "",
+        // Correlates the pre-payment ticket answers to the order on return.
+        clientRef: clientRef || "",
         extra: extraJson,
       },
     });

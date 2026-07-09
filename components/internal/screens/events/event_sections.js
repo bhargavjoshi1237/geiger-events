@@ -70,7 +70,7 @@ import { OverviewSection } from "./overview";
 import { AlertsSection } from "./alerts";
 import { GuidelinesSection } from "./guidelines";
 import { TicketAttachmentsSection } from "../tickets/event_attachments";
-import { TicketTypeAttachmentsSection } from "../tickets/ticket_type_attachments";
+import { EventTicketsSection } from "../tickets/event_tickets";
 import { TicketRulesSection } from "../tickets/event_ticket_rules";
 import {
   CheckinOptionsSection,
@@ -186,9 +186,9 @@ export const NAV_GROUPS = [
     items: [
       {
         key: "tickets",
-        label: "Ticket Types",
+        label: "Tickets",
         icon: Ticket,
-        desc: "Attach reusable tickets to this event.",
+        desc: "The tickets buyers can purchase for this event.",
         ownHeader: true,
       },
       {
@@ -375,7 +375,7 @@ export const SECTIONS = {
   location: LocationTimeSection,
   map: MapDirectionsSection,
   guidelines: GuidelinesSection,
-  tickets: TicketTypeAttachmentsSection,
+  tickets: EventTicketsSection,
   offerings: OfferingsSection,
   payments: PaymentsSection,
   ticketlinks: TicketAttachmentsSection,

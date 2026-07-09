@@ -14,10 +14,7 @@ import {
   useProject,
   pickDefaultProjectId,
 } from "@/context/project-context";
-import {
-  LoadingArea,
-  NoProjectState,
-} from "@/components/internal/workspace/workspace_states";
+import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 
 // The active screen for the current tab, gated on the path's project resolving
 // to one the user can reach. Keyed by project id so switching projects remounts
@@ -26,16 +23,20 @@ function ScreenArea({ activeItem, Screen }) {
   const router = useRouter();
   const { project, projects, loading } = useProject();
 
-  // A stale/invalid project id in the path → send the user to a valid project.
+  // No reachable projects → login. A stale/invalid id in the path → a valid one.
   useEffect(() => {
-    if (loading || project || projects.length === 0) return;
+    if (loading) return;
+    if (projects.length === 0) {
+      router.replace("/login");
+      return;
+    }
+    if (project) return;
     const fallback = pickDefaultProjectId(projects);
     if (fallback) router.replace(`/project/${fallback}`);
   }, [loading, project, projects, router]);
 
   if (loading) return <LoadingArea />;
-  if (projects.length === 0) return <NoProjectState />;
-  if (!project) return <LoadingArea />;
+  if (projects.length === 0 || !project) return <LoadingArea />;
 
   return (
     <div key={project.id} className="h-full">

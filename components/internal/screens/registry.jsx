@@ -85,6 +85,30 @@ import {
   AbTestingScreen,
   SendSchedulingScreen,
 } from "./campaigns/lenses";
+import {
+  SpeakersScreen,
+  SponsorsScreen,
+  SponsorshipPackagesScreen,
+  ExpoBoothsScreen,
+  VenueSourcingScreen,
+  HousingTravelScreen,
+  CallForPapersScreen,
+  CertificatesScreen,
+  AgendaBuilderScreen,
+  RecordingsScreen,
+} from "./conference/screens";
+import {
+  PollsScreen,
+  SurveysScreen,
+  AnnouncementsScreen,
+} from "./community/screens";
+import {
+  TeamMembersScreen,
+  RolesPermissionsScreen,
+  ApiWebhooksScreen,
+  CustomDomainsScreen,
+} from "./settings/screens";
+import { ScheduledReportsScreen } from "./analytics/screens";
 import { SegmentationScreen } from "./campaigns/segmentation";
 import { EmailTemplateBuilderScreen } from "./campaigns/email_template_builder";
 import { DripSequencesScreen } from "./campaigns/drip_sequences";
@@ -244,6 +268,37 @@ export const SCREEN_REGISTRY = {
   Deliverability: DeliverabilityScreen,
   Personalization: PersonalizationScreen,
   "Push Notifications": PushNotificationsScreen,
+
+  // Conference area. Eight reusable record managers backed by the shared
+  // events.conference_records table (module discriminator), rendered by the
+  // config-driven conference kit. Rich editors: Speakers, Sponsors, Call for
+  // Papers; the rest are single-panel. See screens/conference/.
+  Speakers: SpeakersScreen,
+  Sponsors: SponsorsScreen,
+  "Sponsorship Packages": SponsorshipPackagesScreen,
+  "Expo Booths": ExpoBoothsScreen,
+  "Venue Sourcing": VenueSourcingScreen,
+  "Housing & Travel": HousingTravelScreen,
+  "Call for Papers": CallForPapersScreen,
+  "CEU & Certificates": CertificatesScreen,
+  "Agenda Builder": AgendaBuilderScreen,
+  "Recordings & Replay": RecordingsScreen,
+
+  // Community area — engagement records (events.community_records).
+  Polls: PollsScreen,
+  Surveys: SurveysScreen,
+  Announcements: AnnouncementsScreen,
+
+  // Settings area — workspace config records (events.settings_records). Usage
+  // stays a read-only dashboard (ComingSoon for now).
+  "Team & Members": TeamMembersScreen,
+  "Roles & Permissions": RolesPermissionsScreen,
+  "API & Webhooks": ApiWebhooksScreen,
+  "Custom Domains": CustomDomainsScreen,
+
+  // Analytics area — only Scheduled Reports is a record set
+  // (events.analytics_records); the rest are dashboards (ComingSoon).
+  "Scheduled Reports": ScheduledReportsScreen,
 };
 
 export function getScreen(title) {

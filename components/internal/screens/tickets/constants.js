@@ -16,14 +16,12 @@ export const formatDate = (iso) => {
   });
 };
 
-// --- Ticket Types record config (ticketing_records.config, module ticket_type)
+// --- Ticket Type record config (ticketing_records.config, module ticket_type)
 
-// A fresh default config for a new reusable ticket. Returned by a function (not
-// a shared literal) so nested objects aren't shared across records.
+// A ticket TYPE is a reusable RULE SET (not purchasable). Identity fields
+// (name/price/qty/description) live on the event's ticket, not here. Returned by
+// a function (not a shared literal) so nested objects aren't shared across records.
 export const defaultTicketConfig = () => ({
-  price: 0, // face value; 0 = free
-  qty: 0, // capacity; 0 = unlimited
-  description: "", // buyer-facing blurb
   minPerOrder: 1,
   maxPerOrder: 0, // 0 = no max
   refund: { refundable: false, cutoffDays: 7, feeHandling: "absorb" },
@@ -32,12 +30,25 @@ export const defaultTicketConfig = () => ({
   onSaleAt: "", // scheduled on-sale datetime (visibility === "scheduled")
   accessCode: { enabled: false, code: "" },
   reservedSeating: false,
+  questionIds: [], // ordered events.ticket_questions ids asked per attendee
 });
 
 export const VISIBILITY_OPTIONS = [
   { value: "public", label: "Public" },
   { value: "hidden", label: "Hidden" },
   { value: "scheduled", label: "Scheduled" },
+];
+
+// Response types for ticket-based questions (events.ticket_questions.type). The
+// public checkout renders each: text/number/email -> Input, textarea -> Textarea,
+// select -> dropdown, checkbox -> Checkbox.
+export const QUESTION_TYPE_OPTIONS = [
+  { value: "text", label: "Short text" },
+  { value: "textarea", label: "Paragraph" },
+  { value: "number", label: "Number" },
+  { value: "email", label: "Email" },
+  { value: "select", label: "Dropdown" },
+  { value: "checkbox", label: "Checkbox" },
 ];
 
 // --- Ticket Tiers (module "tier") --------------------------------------------

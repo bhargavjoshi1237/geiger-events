@@ -117,10 +117,10 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
         />
 
         <div className="grid gap-4">
-          <Field label="Photo" hint="Optional" className="space-y-3">
+          <Field>
             <div className="flex items-center justify-between gap-4">
               {draft.image ? (
-                <div className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-full border border-border">
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-border">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={draft.image}
@@ -129,38 +129,40 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
                   />
                 </div>
               ) : (
-                <Avatar className="h-20 w-20 shrink-0 border border-border">
+                <Avatar className="h-16 w-16 shrink-0 border border-border">
                   <AvatarFallback className="bg-surface-card text-base text-muted-foreground">
                     {draft.name ? initials(draft.name) : "?"}
                   </AvatarFallback>
                 </Avatar>
               )}
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => fileInput.current?.click()}
-                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                >
-                  {busy ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <UploadCloud className="h-4 w-4" />
-                  )}
-                  {draft.image ? "Replace" : "Upload photo"}
-                </Button>
-                {draft.image ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={busy}
-                    onClick={removeImage}
-                    className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                    onClick={() => fileInput.current?.click()}
+                    className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
                   >
-                    <Trash2 className="h-4 w-4" /> Remove
+                    {busy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UploadCloud className="h-4 w-4" />
+                    )}
+                    {draft.image ? "Replace" : "Upload"}
                   </Button>
-                ) : null}
+                  {draft.image ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={removeImage}
+                      className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4" /> Remove
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </Field>
@@ -169,7 +171,7 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
               id="guest-name"
               value={draft.name}
               onChange={(e) => set("name")(e.target.value)}
-              placeholder="e.g. Ava Mitchell"
+              placeholder="Ava Mitchell"
               autoFocus
             />
           </Field>
@@ -178,7 +180,7 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
               id="guest-role"
               value={draft.role}
               onChange={(e) => set("role")(e.target.value)}
-              placeholder="e.g. Keynote speaker"
+              placeholder="Keynote speaker"
             />
           </Field>
           <Field label="Bio" hint="Optional" htmlFor="guest-bio">

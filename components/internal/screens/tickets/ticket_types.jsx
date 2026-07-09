@@ -5,7 +5,6 @@ import { Armchair, KeyRound, RotateCcw, Ticket } from "lucide-react";
 
 import { Field, SectionCard, SettingsList, SettingRow } from "@/components/internal/shared/screen_kit";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -16,19 +15,20 @@ import {
 
 import { RecordsScreen } from "./records_kit";
 import { Segmented, NumField as Num } from "./controls";
-import { currency, defaultTicketConfig, VISIBILITY_OPTIONS } from "./constants";
+import { TicketQuestionsEditor } from "./ticket_questions_editor";
+import { defaultTicketConfig, VISIBILITY_OPTIONS } from "./constants";
 
 const KINDS = [{ value: "ticket", label: "Ticket", defaultConfig: defaultTicketConfig }];
 
-// List-card summary line: "$25 · 200 cap · refundable".
+// List-card summary line: "Refundable · Public · 2 questions".
 function summarize(r) {
   const c = r.config || {};
-  const price = Number(c.price) || 0;
-  const qty = Number(c.qty) || 0;
+  const vis = c.visibility || "public";
+  const qCount = Array.isArray(c.questionIds) ? c.questionIds.length : 0;
   return [
-    price === 0 ? "Free" : currency(price),
-    qty > 0 ? `${qty.toLocaleString()} cap` : "unlimited",
-    c.refund?.refundable ? "refundable" : "non-refundable",
+    c.refund?.refundable ? "Refundable" : "Non-refundable",
+    vis.charAt(0).toUpperCase() + vis.slice(1),
+    qCount ? `${qCount} question${qCount > 1 ? "s" : ""}` : "no questions",
   ].join(" · ");
 }
 
@@ -43,35 +43,10 @@ function TicketEditForm({ config, setConfig }) {
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Pricing & inventory" description="What buyers pay and how many are available.">
+      <SectionCard title="Order limits" description="How many of a ticket a buyer can purchase per order.">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Price">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm text-text-secondary">$</span>
-              <Input
-                type="number"
-                min={0}
-                inputMode="decimal"
-                value={config.price ?? 0}
-                onChange={(e) => set({ price: Number(e.target.value) || 0 })}
-                className="tabular-nums"
-                placeholder="0"
-              />
-            </div>
-          </Field>
-          <Num label="Quantity" hint="0 = unlimited." value={config.qty ?? 0} onChange={(v) => set({ qty: v })} unit="tickets" />
           <Num label="Min per order" value={config.minPerOrder ?? 1} onChange={(v) => set({ minPerOrder: v })} unit="tickets" />
           <Num label="Max per order" hint="0 = no limit." value={config.maxPerOrder ?? 0} onChange={(v) => set({ maxPerOrder: v })} unit="tickets" />
-        </div>
-        <div className="mt-4">
-          <Field label="Description" hint="Shown to buyers under the ticket name.">
-            <Textarea
-              rows={2}
-              value={config.description || ""}
-              onChange={(e) => set({ description: e.target.value })}
-              placeholder="e.g. Includes front-row seating and after-party access."
-            />
-          </Field>
         </div>
       </SectionCard>
 
@@ -168,6 +143,8 @@ function TicketEditForm({ config, setConfig }) {
           </div>
         ) : null}
       </SectionCard>
+
+      <TicketQuestionsEditor config={config} setConfig={setConfig} />
     </div>
   );
 }
@@ -177,7 +154,7 @@ export function TicketTypesScreen() {
     <RecordsScreen
       module="ticket_type"
       title="Ticket Types"
-      description="Reusable tickets. Create one here with its price, refund policy, and settings, then attach it to any event from its edit page."
+      description="Reusable rule sets — refund policy, sales window, visibility, and questions. Apply one to an event's tickets from the event editor."
       singular="ticket"
       icon={Ticket}
       kinds={KINDS}

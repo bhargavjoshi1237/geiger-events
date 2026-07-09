@@ -7,25 +7,24 @@ import {
   useProject,
   pickDefaultProjectId,
 } from "@/context/project-context";
-import {
-  LoadingArea,
-  NoProjectState,
-} from "@/components/internal/workspace/workspace_states";
+import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 
 // Entry resolver for the project-scoped workspace. Opens the last-used (or
-// first) project, or prompts to create one when the user has none.
+// first) project; a signed-out user with no reachable projects is sent to login.
 function ProjectResolver() {
   const router = useRouter();
   const { projects, loading } = useProject();
 
   useEffect(() => {
-    if (loading || projects.length === 0) return;
+    if (loading) return;
+    if (projects.length === 0) {
+      router.replace("/login");
+      return;
+    }
     const id = pickDefaultProjectId(projects);
     if (id) router.replace(`/project/${id}`);
   }, [loading, projects, router]);
 
-  if (loading) return <LoadingArea />;
-  if (projects.length === 0) return <NoProjectState />;
   return <LoadingArea />;
 }
 

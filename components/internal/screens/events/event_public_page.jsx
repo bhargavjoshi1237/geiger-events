@@ -39,6 +39,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -63,6 +70,7 @@ import {
 import { PageBlock } from "./page_blocks";
 import { PageFooter } from "./page_footer";
 import { buyTicket } from "@/lib/supabase/orders";
+import { listEventTicketsResolved } from "@/lib/supabase/ticketing";
 import {
   registerForEvent,
   hasWaitlistedRegistration,
@@ -84,6 +92,10 @@ import {
   getPublicDietaryConfig,
   submitDietaryRequest,
 } from "@/lib/supabase/dietary";
+import {
+  getPublicTicketQuestions,
+  saveTicketAnswers,
+} from "@/lib/supabase/ticket_questions";
 import { GUIDELINE_CATEGORY_MAP } from "../registrations/constants";
 
 const MONTHS = [
@@ -105,27 +117,34 @@ function eventBase(event) {
   return 25;
 }
 
-function buildTickets(event) {
-  // Prefer the real, editor-configured tiers (stored on the event's metadata
-  // bag). Only fall back to a synthesized set when none have been set up yet.
-  if (Array.isArray(event.tickets) && event.tickets.length) {
-    return event.tickets.map((t) => ({
-      // Keep the stable tier id so checkout can enforce this tier's inventory.
-      id: t.id ?? null,
-      name: t.name || "Ticket",
-      price: Number(t.price) || 0,
-      qty: Number(t.qty) || 0,
-    }));
+function buildTickets(event, resolved) {
+  // Prefer live-resolved tickets (identity + applied-type rules); fall back to the
+  // raw metadata.tickets entries, then a single sensible default. Hidden tickets
+  // (a rule from the applied type) never list. Each entry keeps its id (the
+  // per-ticket inventory key) and ticketTypeId (resolves rules/questions).
+  const source =
+    Array.isArray(resolved) && resolved.length
+      ? resolved
+      : Array.isArray(event.tickets) && event.tickets.length
+        ? event.tickets
+        : null;
+  if (source) {
+    return source
+      .filter((t) => (t.rules?.visibility || "public") !== "hidden")
+      .map((t) => ({
+        id: t.id ?? null,
+        name: t.name || "Ticket",
+        price: Number(t.price) || 0,
+        qty: Number(t.qty) || 0,
+        note: t.description || "",
+        ticketTypeId: t.ticketTypeId ?? null,
+        rules: t.rules && typeof t.rules === "object" ? t.rules : {},
+      }));
   }
   if (event.type === "Online" && event.revenue === 0) {
     return [{ name: "Free registration", price: 0, note: "Online access link sent on registration" }];
   }
-  const base = eventBase(event);
-  return [
-    { name: "Early Bird", price: Math.max(0, Math.round(base * 0.7)), note: "Limited availability" },
-    { name: "General Admission", price: base, note: "Standard entry" },
-    { name: "VIP", price: Math.round(base * 2.2), note: "Front row + after-party" },
-  ];
+  return [{ name: "General Admission", price: Math.max(0, eventBase(event)), note: "Standard entry" }];
 }
 
 function QtyStepper({ qty, setQty, max, accent }) {
@@ -212,6 +231,10 @@ function TicketCheckout({
   // resulting registration status (Confirmed / Pending / Waitlisted) is kept so
   // the confirmation step can tailor its copy.
   const [answers, setAnswers] = useState({});
+  // Ticket-based questions for the selected ticket + their per-seat answers,
+  // keyed `${seatIndex}:${questionId}`. Collected before paying, saved per ticket.
+  const [ticketQuestions, setTicketQuestions] = useState([]);
+  const [ticketAnswers, setTicketAnswers] = useState({});
   const [regStatus, setRegStatus] = useState(null);
   // The ticket name actually purchased — usually `ticket?.name`, but a resumed
   // Stripe return may land after the sidebar's selection has moved on.
@@ -237,6 +260,25 @@ function TicketCheckout({
       alive = false;
     };
   }, [open]);
+
+  // Load the selected ticket's questions when the sheet opens (or the ticket
+  // changes) and reset any answers carried over from a different ticket. A
+  // missing ticket id resolves to [] inside the data layer, so the state is only
+  // ever set from the async callback (no synchronous setState in the effect).
+  useEffect(() => {
+    if (!open) return undefined;
+    let alive = true;
+    // Questions are a rule on the applied ticket type, so resolve them from the
+    // ticket's ticketTypeId (null when the ticket has no type -> no questions).
+    getPublicTicketQuestions(ticket?.ticketTypeId).then((rows) => {
+      if (!alive) return;
+      setTicketQuestions(rows ?? []);
+      setTicketAnswers({});
+    });
+    return () => {
+      alive = false;
+    };
+  }, [open, ticket?.ticketTypeId]);
 
   const price = ticket?.price || 0;
 
@@ -327,6 +369,7 @@ function TicketCheckout({
         setBusy(false);
         setSelections({});
         setAnswers({});
+        setTicketAnswers({});
       } else {
         setStep("details");
         setQty(1);
@@ -337,6 +380,7 @@ function TicketCheckout({
         setBusy(false);
         setSelections({});
         setAnswers({});
+        setTicketAnswers({});
         setRegStatus(null);
       }
     }
@@ -354,6 +398,46 @@ function TicketCheckout({
     .filter((q) => !/^(full\s*)?name$|^e-?mail$/i.test(q.label.trim()));
   const setAnswer = (id) => (value) =>
     setAnswers((a) => ({ ...a, [id]: value }));
+
+  // Ticket-based questions: answers are keyed per seat so buying N of a ticket
+  // collects N sets.
+  const seatKey = (seat, qid) => `${seat}:${qid}`;
+  const setTicketAnswer = (seat, qid) => (value) =>
+    setTicketAnswers((a) => ({ ...a, [seatKey(seat, qid)]: value }));
+  const isTicketAnswerBlank = (v) =>
+    v === undefined ||
+    v === "" ||
+    v === false ||
+    (Array.isArray(v) && v.length === 0);
+  // Flatten the per-seat answers into the { questionId, seatIndex, value } rows
+  // the save RPC expects (skipping blanks — required ones are validated first).
+  const buildTicketAnswers = () => {
+    const out = [];
+    for (let seat = 0; seat < qty; seat++) {
+      for (const q of ticketQuestions) {
+        const v = ticketAnswers[seatKey(seat, q.id)];
+        if (isTicketAnswerBlank(v)) continue;
+        out.push({ questionId: q.id, seatIndex: seat, value: v });
+      }
+    }
+    return out;
+  };
+  // Persist the collected answers. Free/approval passes a registrationId; the
+  // paid path passes a clientRef the return trip links to the order. No-ops in
+  // preview or when the ticket has no questions.
+  const persistTicketAnswers = async ({ registrationId = null, clientRef = null }) => {
+    if (!live || !ticketQuestions.length || !ticket?.ticketTypeId) return;
+    const rows = buildTicketAnswers();
+    if (!rows.length) return;
+    await saveTicketAnswers({
+      eventId: event.id,
+      ticketTypeId: ticket.ticketTypeId,
+      ticketRef: ticket.id,
+      registrationId,
+      clientRef,
+      answers: rows,
+    });
+  };
   // Structured Dietary & Accessibility inquiry (radio/multiselect) attached to
   // this event's ticket form. Answers are keyed with the dietary: prefix so they
   // ride the answers bag without colliding with custom questions.
@@ -403,10 +487,11 @@ function TicketCheckout({
   const doRegister = async () => {
     if (!live) {
       setRegStatus(requiresApproval ? "Pending" : "Confirmed");
-      return;
+      return null;
     }
     const res = await registerForEvent(buildRegistration());
     setRegStatus(res.ok ? res.status : requiresApproval ? "Pending" : "Confirmed");
+    return res;
   };
 
   const finalize = async () => {
@@ -437,7 +522,10 @@ function TicketCheckout({
       // came from an approval link — they're already an approved registration and
       // a second one would duplicate them on the guest list.
       if (approvedResume) setRegStatus("Confirmed");
-      else await doRegister();
+      else {
+        const regRes = await doRegister();
+        await persistTicketAnswers({ registrationId: regRes?.registration?.id || null });
+      }
       setBusy(false);
       setOrder(res);
       setStep("done");
@@ -457,7 +545,8 @@ function TicketCheckout({
   // request that lands in Approval Gates as Pending.
   const requestApproval = async () => {
     setBusy(true);
-    await doRegister();
+    const regRes = await doRegister();
+    await persistTicketAnswers({ registrationId: regRes?.registration?.id || null });
     setBusy(false);
     setOrder({ orderId: null, pending: true });
     setStep("done");
@@ -475,6 +564,10 @@ function TicketCheckout({
       return;
     }
     setBusy(true);
+    // Write the ticket answers before leaving for Stripe, tagged with a ref the
+    // return trip links to the order — only the small ref rides in Stripe metadata.
+    const clientRef = ticketQuestions.length ? crypto.randomUUID() : null;
+    if (clientRef) await persistTicketAnswers({ clientRef });
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/checkout`, {
         method: "POST",
@@ -491,6 +584,7 @@ function TicketCheckout({
           selections: buildSelections(),
           answers,
           formId: event.formId || null,
+          clientRef,
           // Approved guests are already a registration — skip filing a second
           // one when their payment is confirmed on return.
           skipRegistration: !!approvedResume,
@@ -546,6 +640,20 @@ function TicketCheckout({
     if (missingInq) {
       toast.error(`Please answer "${missingInq.label}".`);
       return;
+    }
+    // Required ticket questions must be answered for every seat.
+    for (let seat = 0; seat < qty; seat++) {
+      const missingT = ticketQuestions.find(
+        (q) => q.required && isTicketAnswerBlank(ticketAnswers[seatKey(seat, q.id)]),
+      );
+      if (missingT) {
+        toast.error(
+          qty > 1
+            ? `Please answer "${missingT.label}" for attendee ${seat + 1}.`
+            : `Please answer "${missingT.label}".`,
+        );
+        return;
+      }
     }
     // Policy: if this guest is already waitlisted, don't let them book again.
     if (live && blockWaitlistedRebook) {
@@ -874,6 +982,90 @@ function TicketCheckout({
                 </div>
               ) : null}
             </div>
+
+            {/* Ticket-based questions — asked per attendee before paying. */}
+            {ticketQuestions.length ? (
+              <div className="space-y-4">
+                {Array.from({ length: qty }).map((_, seat) => (
+                  <div
+                    key={seat}
+                    className="space-y-3 rounded-xl border border-border bg-surface-subtle p-3"
+                  >
+                    {qty > 1 ? (
+                      <p className="text-sm font-semibold text-foreground">
+                        Attendee {seat + 1} of {qty}
+                      </p>
+                    ) : null}
+                    {ticketQuestions.map((q) => {
+                      const key = seatKey(seat, q.id);
+                      const val = ticketAnswers[key];
+                      if (q.type === "checkbox") {
+                        return (
+                          <label
+                            key={q.id}
+                            className="flex items-center gap-2.5 text-sm text-muted-foreground"
+                          >
+                            <Checkbox
+                              checked={!!val}
+                              onCheckedChange={(v) => setTicketAnswer(seat, q.id)(!!v)}
+                            />
+                            {q.label}
+                            {q.required ? (
+                              <span className="text-red-400">*</span>
+                            ) : null}
+                          </label>
+                        );
+                      }
+                      return (
+                        <div key={q.id} className="space-y-1.5">
+                          <label className="text-sm font-medium text-muted-foreground">
+                            {q.label}
+                            {q.required ? (
+                              <span className="ml-1 text-red-400">*</span>
+                            ) : null}
+                          </label>
+                          {q.type === "textarea" ? (
+                            <Textarea
+                              rows={2}
+                              value={val || ""}
+                              onChange={(e) => setTicketAnswer(seat, q.id)(e.target.value)}
+                            />
+                          ) : q.type === "select" ? (
+                            <Select
+                              value={val || ""}
+                              onValueChange={(v) => setTicketAnswer(seat, q.id)(v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(q.options || []).map((opt, oi) => (
+                                  <SelectItem key={oi} value={String(opt)}>
+                                    {String(opt)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              type={
+                                q.type === "number"
+                                  ? "number"
+                                  : q.type === "email"
+                                    ? "email"
+                                    : "text"
+                              }
+                              value={val || ""}
+                              onChange={(e) => setTicketAnswer(seat, q.id)(e.target.value)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
             <div className="border-t border-border pt-4">
               {addonUnit > 0 ? (
@@ -1384,7 +1576,11 @@ function PostPurchaseRequest({ event, name, email, prompt, accentStyle, live }) 
 }
 
 export function EventPublicPageContent({ event, design, live = false }) {
-  const tickets = buildTickets(event);
+  // The event's tickets with each applied type's rules resolved (visibility,
+  // sales, questions). null until fetched — buildTickets falls back to the raw
+  // metadata.tickets entries meanwhile.
+  const [resolvedTickets, setResolvedTickets] = useState(null);
+  const tickets = buildTickets(event, resolvedTickets);
   const [selected, setSelected] = useState(Math.min(1, tickets.length - 1));
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   // After a live purchase the RPC returns the new sold count; reflect it so the
@@ -1411,10 +1607,15 @@ export function EventPublicPageContent({ event, design, live = false }) {
     if (event.venueId) {
       getVenue(event.venueId).then((v) => alive && setVenueData(v));
     }
+    if (event.id) {
+      listEventTicketsResolved(event.id).then(
+        (rows) => alive && setResolvedTickets(rows ?? []),
+      );
+    }
     return () => {
       alive = false;
     };
-  }, [event.projectId, event.venueId]);
+  }, [event.projectId, event.venueId, event.id]);
 
   // Venue guidelines first, then the event's own — both shown (the event adds
   // to, doesn't replace, the venue's).

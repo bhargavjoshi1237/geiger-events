@@ -4,6 +4,7 @@ import { getEvent } from "@/lib/supabase/events";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
 import { buyTicket } from "@/lib/supabase/orders";
 import { registerForEvent } from "@/lib/supabase/registrations";
+import { linkTicketAnswers } from "@/lib/supabase/ticket_questions";
 import { sendSuiteEmail } from "@/lib/email/client";
 import { formatDate } from "@/components/internal/screens/events/sample_data";
 import { splitRegistrationAnswers } from "@/lib/events/registration_answers";
@@ -68,7 +69,7 @@ export async function GET(request) {
       event?.questions,
       extra.answers || {},
     );
-    await registerForEvent({
+    const regRes = await registerForEvent({
       eventId: meta.eventId,
       formId: extra.formId || null,
       name: meta.name,
@@ -84,6 +85,12 @@ export async function GET(request) {
       // capacity, so don't re-gate (would drop a paid attendee).
       enforceCapacity: false,
     });
+
+    // Attach the pre-payment ticket answers (written before the Stripe handoff)
+    // to the registration we just filed.
+    if (meta.clientRef && regRes?.registration?.id) {
+      await linkTicketAnswers(meta.clientRef, regRes.registration.id);
+    }
 
     const total = (Number(meta.price) || 0) * qty + (Number(meta.addons) || 0) * qty;
     await sendSuiteEmail({
