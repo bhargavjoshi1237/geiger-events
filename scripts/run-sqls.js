@@ -18,18 +18,43 @@ if (!STRING_URI) {
   process.exit(1);
 }
 
-const SQL_DIR = "supabase/sqls";
+// --articles pushes ONLY the SEO/marketing page inserts under supabase/articles
+// (nested by page type) into public.dash_seo_pages — nothing from supabase/sqls.
+// Every article file is an idempotent `insert … on conflict (page_type, slug) do
+// nothing`, so re-running never duplicates a page.
+const ARTICLES_MODE = process.argv.includes("--articles");
+const SQL_DIR = ARTICLES_MODE ? "supabase/articles" : "supabase/sqls";
+
+function walkSqlFiles(dir) {
+  let files = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files = files.concat(walkSqlFiles(full));
+    } else if (entry.name.endsWith(".sql")) {
+      files.push(full);
+    }
+  }
+  return files;
+}
 
 function getSqlFiles() {
   const dir = path.join(process.cwd(), SQL_DIR);
   if (!fs.existsSync(dir)) {
     return [];
   }
-  return fs
-    .readdirSync(dir)
-    .filter((file) => file.endsWith(".sql"))
-    .sort()
-    .map((file) => `${SQL_DIR}/${file}`);
+  // Articles live in subfolders (solutions/, core-features/, features/) so walk
+  // recursively; the plain sqls dir is flat. Sort by repo-relative path so order
+  // is stable and deterministic.
+  const found = ARTICLES_MODE
+    ? walkSqlFiles(dir)
+    : fs
+        .readdirSync(dir)
+        .filter((file) => file.endsWith(".sql"))
+        .map((file) => path.join(dir, file));
+  return found
+    .map((file) => path.relative(process.cwd(), file).split(path.sep).join("/"))
+    .sort();
 }
 
 const SQL_FILES = getSqlFiles();
@@ -49,6 +74,68 @@ function extractIndexName(stmt) {
     /create\s+(?:unique\s+)?index\s+(?:if\s+not\s+exists\s+)?(\w+)/i,
   );
   return match ? match[1] : null;
+}
+
+// --- Articles constraint + preflight -----------------------------------------
+// Pages nest under /<type>/<product>/<slug>, so dash_seo_pages is unique on
+// (product, page_type, slug) and the article inserts target that key. This
+// ensures the matching unique index exists (replacing the older (page_type,
+// slug) one) so `on conflict (product, page_type, slug)` resolves. Idempotent.
+const ARTICLE_PRODUCT = "geiger-events";
+
+function articleTypeFromPath(file) {
+  return file.includes("/solutions/") ? "solution" : "feature";
+}
+
+function articleSlugFromPath(file) {
+  return path.basename(file, ".sql");
+}
+
+async function ensureArticlesConstraint(client) {
+  try {
+    await client.query("drop index if exists public.idx_seo_pages_type_slug");
+    await client.query(
+      "create unique index if not exists idx_seo_pages_product_type_slug on public.dash_seo_pages (product, page_type, slug)",
+    );
+    console.log(
+      "Constraint: unique (product, page_type, slug) ensured on public.dash_seo_pages.\n",
+    );
+  } catch (err) {
+    console.log(`Constraint step warning: ${err.message}\n`);
+  }
+}
+
+// With product in the unique key a slug can never collide across products, so
+// this is purely informational: how many pages are new vs already Events-owned
+// (an idempotent re-run). Type comes from the folder, slug from the filename.
+async function articlesPreflight(client) {
+  let rows;
+  try {
+    ({ rows } = await client.query(
+      "select page_type, slug, product from public.dash_seo_pages where product = $1",
+      [ARTICLE_PRODUCT],
+    ));
+  } catch (err) {
+    console.log(
+      `Preflight skipped (couldn't read public.dash_seo_pages: ${err.message}).\n`,
+    );
+    return;
+  }
+
+  const existing = new Set();
+  for (const r of rows) existing.add(`${r.page_type}::${r.slug}`);
+
+  let fresh = 0;
+  let ownedByUs = 0;
+  for (const file of SQL_FILES) {
+    const key = `${articleTypeFromPath(file)}::${articleSlugFromPath(file)}`;
+    if (existing.has(key)) ownedByUs++;
+    else fresh++;
+  }
+
+  console.log(
+    `Preflight: ${fresh} new, ${ownedByUs} already Events-owned (idempotent re-run).\n`,
+  );
 }
 
 function addIfNotExists(stmt) {
@@ -169,13 +256,23 @@ async function run() {
 
   try {
     await client.connect();
-    console.log("Connected to database.\n");
+    console.log("Connected to database.");
+    console.log(
+      ARTICLES_MODE
+        ? `Mode: --articles (SEO pages → public.dash_seo_pages, ${SQL_FILES.length} file(s))\n`
+        : `Mode: schema (${SQL_DIR}, ${SQL_FILES.length} file(s))\n`,
+    );
+
+    if (ARTICLES_MODE) {
+      await ensureArticlesConstraint(client);
+      await articlesPreflight(client);
+    }
 
     // NOTE: this Supabase project is SHARED across the Geiger suite, so a
     // blanket "drop all flow_* tables" (as geiger-flow does) would destroy other
     // apps' data. --clean here is deliberately scoped to this app's own tables,
     // which live in the dedicated `events` schema.
-    if (process.argv.includes("--clean")) {
+    if (process.argv.includes("--clean") && !ARTICLES_MODE) {
       console.log("Dropping events.* app tables (events app only)...");
       await client.query(`
         drop table if exists

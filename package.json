@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "node scripts/run-sqls.js"
+    "db:push": "node scripts/run-sqls.js",
+    "db:push:articles": "node scripts/run-sqls.js --articles"
   },
   "dependencies": {
     "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#master",
