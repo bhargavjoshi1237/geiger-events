@@ -3,22 +3,7 @@
 import React from "react";
 import { Ticket } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { currency } from "./constants";
-
-// Small pill for the ticket's meta line (quantity, applied type, visibility).
-function MetaChip({ children, className }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full border border-border bg-surface-subtle px-2 py-0.5 text-[11px] font-medium text-text-secondary",
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
-}
 
 // A read-only event ticket rendered as a torn-ticket stub: a body (name,
 // description, meta chips) and a perforated right panel showing the price.
@@ -35,7 +20,19 @@ export function TicketStub({
   menu,
 }) {
   const priceLabel = Number(price) > 0 ? currency(price) : "Free";
-  const qtyLabel = Number(qty) > 0 ? `${qty} available` : "Unlimited";
+  const qtyLabel = Number(qty) > 0 ? `${qty} Available` : "Unlimited";
+
+  // Meta shown as an elegant "22 available · Picture Perfect · Public" stat line
+  // in place of separate badges. Falls back to a muted "No rules applied" hint.
+  const metaItems = [
+    { label: qtyLabel },
+    typeName ? { label: typeName } : null,
+    visibilityLabel
+      ? { label: visibilityLabel }
+      : typeName
+        ? null
+        : { label: "No rules applied", muted: true },
+  ].filter(Boolean);
 
   return (
     <div
@@ -52,7 +49,7 @@ export function TicketStub({
     >
       {/* Main body */}
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
-        <div className="flex items-start gap-2.5">
+        <div className="flex items-center gap-2.5 ">
           <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-surface-subtle text-muted-foreground">
             <Ticket className="h-3.5 w-3.5" />
           </div>
@@ -75,14 +72,17 @@ export function TicketStub({
             </div>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <MetaChip>{qtyLabel}</MetaChip>
-          {typeName ? <MetaChip>{typeName}</MetaChip> : null}
-          {visibilityLabel ? (
-            <MetaChip>{visibilityLabel}</MetaChip>
-          ) : typeName ? null : (
-            <MetaChip className="text-text-tertiary">No rules applied</MetaChip>
-          )}
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-text-secondary">
+          {metaItems.map((item, idx) => (
+            <React.Fragment key={item.label}>
+              {idx > 0 ? (
+                <span aria-hidden className="text-text-tertiary/40">|</span>
+              ) : null}
+              <span className={item.muted ? "text-text-tertiary" : undefined}>
+                {item.label}
+              </span>
+            </React.Fragment>
+          ))}
         </div>
       </div>
 

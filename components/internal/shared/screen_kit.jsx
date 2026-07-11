@@ -512,7 +512,7 @@ export function SettingRow({
 
 export function Field({ label, hint, htmlFor, children, className }) {
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("space-y-1.5 flex flex-col gap-0.5", className)}>
       {label ? (
         <label
           htmlFor={htmlFor}

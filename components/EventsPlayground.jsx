@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { AppSidebar } from "@/components/internal/sidebar/sidebar";
 import { Topbar } from "@/components/internal/topbar/topbar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -8,12 +8,13 @@ import { PlaceholderScreen } from "@/components/internal/screens/placeholder_scr
 import { EventsOverviewScreen } from "@/components/internal/screens/overview/events_overview";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
+import { ProjectProvider } from "@/context/project-context";
 
 // Live, embeddable copy of the Events dashboard used on the landing page.
 // Mirrors app/home/page.js but fills its container (h-full) instead of the
 // viewport so it can be mounted inside the playground showcase. No save, no
 // load — it's a throwaway, fully interactive instance of the real interface.
-export function EventsPlayground() {
+function EventsPlaygroundContent() {
   const [currentTab, setCurrentTab] = useState("Overview");
 
   const findActiveItem = () => {
@@ -51,6 +52,22 @@ export function EventsPlayground() {
         </div>
       </SidebarProvider>
     </div>
+  );
+}
+
+// Screens here read the active project via useProject(), so the playground needs
+// its own ProjectProvider (like the real workspace shell). Suspense is required
+// because the provider reads the URL via useSearchParams. On the public landing
+// page no session resolves, so it stays project-less and the screens render empty.
+export function EventsPlayground() {
+  return (
+    <Suspense
+      fallback={<div className="h-full w-full bg-background" />}
+    >
+      <ProjectProvider>
+        <EventsPlaygroundContent />
+      </ProjectProvider>
+    </Suspense>
   );
 }
 

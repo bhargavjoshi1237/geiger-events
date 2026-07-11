@@ -132,7 +132,7 @@ function TicketEditDialog({ ticket, types, onClose, onSave }) {
                 />
               </div>
             </Field>
-            <Field label="Quantity" hint="0 = unlimited">
+            <Field label="Quantity">
               <Input
                 type="number"
                 min={0}
