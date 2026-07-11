@@ -1,5 +1,7 @@
 # Pending SEO Work
 
+claude resume 6c630927-e747-402f-b255-9208e3690fb9
+
 Status tracker for the Geiger Events SEO program. **What's already live:** 54 pages
 in `public.dash_seo_pages` (`product='geiger-events'`, all published) — 22 solutions
 (13 use-case + 9 competitor-alternative), 7 core-feature, 25 feature — rendering at

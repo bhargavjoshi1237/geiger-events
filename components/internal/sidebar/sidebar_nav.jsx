@@ -90,6 +90,10 @@ import {
   Activity,
   Download,
   StickyNote,
+  PencilRuler,
+  Box,
+  FileSearch,
+  BadgeDollarSign,
 } from "lucide-react";
 
 // Sidebar navigation for Geiger Events.
@@ -122,6 +126,39 @@ export const workspaceNav = [
     // workspace-level destination; per-venue detail lives in the venue editor.
     title: "Venues",
     icon: Building2,
+  },
+
+  {
+    // Event diagramming (à la Cvent Event Diagramming / Social Tables): to-scale
+    // floor plans, an object library, seating charts, setup-style capacity checks,
+    // 3D walkthroughs and shareable diagrams. Per-diagram editing lives inside the
+    // Floor Plans canvas — these are the workspace-level destinations.
+    title: "Event Design",
+    icon: PencilRuler,
+    subItems: [
+      { title: "Floor Plans", icon: Map },
+      { title: "Object Library", icon: Armchair },
+      { title: "Seating Charts", icon: Users },
+      { title: "Setup Styles & Capacity", icon: LayoutGrid },
+      { title: "3D Walkthrough", icon: Box },
+      { title: "Room Templates", icon: LayoutTemplate },
+      { title: "Collaboration & Sharing", icon: Handshake },
+      { title: "Venue Diagram Library", icon: Building2 },
+    ],
+  },
+
+  {
+    // Venue/supplier sourcing (à la Cvent Supplier & Venue Solutions). Only the
+    // features Geiger doesn't already cover: Smart Custom Proposals, Instant Book
+    // and Advertising. 3D Virtual Tour → Event Design → 3D Walkthrough; Hotel RFP
+    // → Conference → Venue Sourcing; Passkey → Conference → Housing & Travel.
+    title: "Sourcing",
+    icon: FileSearch,
+    subItems: [
+      { title: "Smart Custom Proposals", icon: FileText },
+      { title: "Instant Book", icon: Zap },
+      { title: "Advertising", icon: BadgeDollarSign },
+    ],
   },
 
   {
