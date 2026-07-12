@@ -6,7 +6,8 @@ import { Loader2, LogOut, ShieldCheck, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
+import { Field, SectionCard, ScreenHeader } from "@/components/internal/shared/screen_kit";
+import { SecondaryScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { initials } from "./portal_kit";
 
 async function postJson(url, body) {
@@ -74,7 +75,11 @@ export function PortalAccount({ member, onMemberChange }) {
   };
 
   return (
-    <div className="space-y-6">
+    <SecondaryScreenWrapper>
+      <ScreenHeader
+        title="Account"
+        description="Manage your profile, password, and sessions."
+      />
       <div className="flex items-center gap-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-strong text-lg font-semibold text-foreground">
           {initials(member?.name, member?.email)}
@@ -176,7 +181,7 @@ export function PortalAccount({ member, onMemberChange }) {
           </Button>
         </div>
       </SectionCard>
-    </div>
+    </SecondaryScreenWrapper>
   );
 }
 

@@ -3,7 +3,13 @@
 import React, { useMemo, useState } from "react";
 import { ShoppingBag, Receipt, MessageSquare } from "lucide-react";
 
-import { EmptyState, StatusPill, SearchInput } from "@/components/internal/shared/screen_kit";
+import {
+  EmptyState,
+  StatusPill,
+  SearchInput,
+  ScreenHeader,
+} from "@/components/internal/shared/screen_kit";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -153,44 +159,49 @@ export function PortalOrders({ orders, onMessage, onRequestRefund }) {
     });
   }, [orders, search, status]);
 
-  if (!orders?.length) {
-    return (
-      <EmptyState
-        icon={ShoppingBag}
-        title="No orders yet"
-        description="Your ticket purchases and receipts will show up here."
-      />
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <FilterDropdown
-          value={status}
-          options={STATUS_FILTER}
-          onValueChange={setStatus}
-        />
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search orders…"
-          className="sm:max-w-xs"
-        />
-      </div>
+    <MainScreenWrapper>
+      <ScreenHeader
+        title="Orders"
+        description="Your purchases and receipts."
+      />
 
-      {filtered.length ? (
-        <div className="space-y-3">
-          {filtered.map((o) => (
-            <OrderCard key={o.id} o={o} onOpen={setOpen} />
-          ))}
+      {!orders?.length ? (
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={ShoppingBag}
+            title="No orders yet"
+            description="Your ticket purchases and receipts will show up here."
+          />
         </div>
       ) : (
-        <EmptyState
-          icon={Receipt}
-          title="No matching orders"
-          description="Try a different search or clear the status filter."
-        />
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <FilterDropdown value={status} options={STATUS_FILTER} onValueChange={setStatus} />
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search orders…"
+              className="sm:max-w-xs"
+            />
+          </div>
+
+          {filtered.length ? (
+            <div className="space-y-3">
+              {filtered.map((o) => (
+                <OrderCard key={o.id} o={o} onOpen={setOpen} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-surface-subtle">
+              <EmptyState
+                icon={Receipt}
+                title="No matching orders"
+                description="Try a different search or clear the status filter."
+              />
+            </div>
+          )}
+        </div>
       )}
 
       <ReceiptDialog
@@ -202,7 +213,7 @@ export function PortalOrders({ orders, onMessage, onRequestRefund }) {
         }}
         onRequestRefund={onRequestRefund}
       />
-    </div>
+    </MainScreenWrapper>
   );
 }
 

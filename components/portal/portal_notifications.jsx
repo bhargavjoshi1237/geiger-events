@@ -3,13 +3,17 @@
 import React from "react";
 import { Bell, Megaphone } from "lucide-react";
 
-import { EmptyState } from "@/components/internal/shared/screen_kit";
-import { Card, SectionTitle, fmtDateTime } from "./portal_kit";
+import { EmptyState, ScreenHeader } from "@/components/internal/shared/screen_kit";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { Card, fmtDateTime } from "./portal_kit";
 
 export function PortalNotifications({ items = [], loading }) {
   return (
-    <div className="space-y-4">
-      <SectionTitle>Notifications</SectionTitle>
+    <MainScreenWrapper>
+      <ScreenHeader
+        title="Notifications"
+        description="Updates and announcements from the events you're attending."
+      />
 
       {loading ? (
         <div className="py-16 text-center text-sm text-text-secondary">Loading…</div>
@@ -46,7 +50,7 @@ export function PortalNotifications({ items = [], loading }) {
           description="Updates and announcements from the events you're attending will show up here."
         />
       )}
-    </div>
+    </MainScreenWrapper>
   );
 }
 

@@ -3,7 +3,8 @@
 import React from "react";
 import { BadgeCheck, Check, CalendarClock, Loader2, Sparkles } from "lucide-react";
 
-import { EmptyState, StatusPill } from "@/components/internal/shared/screen_kit";
+import { EmptyState, StatusPill, ScreenHeader } from "@/components/internal/shared/screen_kit";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { Button } from "@/components/ui/button";
 import { Card, money, fmtDate, useCountdown, SectionTitle } from "./portal_kit";
 
@@ -140,7 +141,11 @@ export function PortalMemberships({
   const held = memberships || [];
 
   return (
-    <div className="space-y-8">
+    <MainScreenWrapper>
+      <ScreenHeader
+        title="Memberships"
+        description="Your memberships, their benefits and renewal dates — and plans you can join."
+      />
       {held.length ? (
         <section>
           <SectionTitle>Your memberships</SectionTitle>
@@ -176,7 +181,7 @@ export function PortalMemberships({
           description="Memberships you hold will appear here. When an organizer offers one, you'll be able to join right from this page."
         />
       ) : null}
-    </div>
+    </MainScreenWrapper>
   );
 }
 

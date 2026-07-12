@@ -13,7 +13,8 @@ import {
   Building2,
 } from "lucide-react";
 
-import { EmptyState, StatusPill } from "@/components/internal/shared/screen_kit";
+import { EmptyState, StatusPill, ScreenHeader } from "@/components/internal/shared/screen_kit";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -264,39 +265,46 @@ export function PortalTickets({ tickets, onMessage, onRequestRefund }) {
     [open, tickets],
   );
 
-  if (!tickets?.length) {
-    return (
-      <EmptyState
-        icon={Ticket}
-        title="No tickets yet"
-        description="Buy a ticket to any event and it'll appear here, ready to scan at the door."
-      />
-    );
-  }
-
   return (
-    <div className="space-y-8">
-      {upcoming.length ? (
-        <section>
-          <SectionTitle>Upcoming</SectionTitle>
-          <div className="space-y-3">
-            {upcoming.map((t) => (
-              <TicketCard key={t.id} t={t} onOpen={setOpen} />
-            ))}
-          </div>
-        </section>
-      ) : null}
+    <MainScreenWrapper>
+      <ScreenHeader
+        title="Tickets"
+        description="Your tickets, ready to scan at the door — tap one for the QR, calendar and directions."
+      />
 
-      {past.length ? (
-        <section>
-          <SectionTitle>Past</SectionTitle>
-          <div className="space-y-3 opacity-75">
-            {past.map((t) => (
-              <TicketCard key={t.id} t={t} onOpen={setOpen} />
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {!tickets?.length ? (
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={Ticket}
+            title="No tickets yet"
+            description="Buy a ticket to any event and it'll appear here, ready to scan at the door."
+          />
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {upcoming.length ? (
+            <section>
+              <SectionTitle>Upcoming</SectionTitle>
+              <div className="space-y-3">
+                {upcoming.map((t) => (
+                  <TicketCard key={t.id} t={t} onOpen={setOpen} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {past.length ? (
+            <section>
+              <SectionTitle>Past</SectionTitle>
+              <div className="space-y-3 opacity-75">
+                {past.map((t) => (
+                  <TicketCard key={t.id} t={t} onOpen={setOpen} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+      )}
 
       <TicketDialog
         ticket={openTicket}
@@ -307,7 +315,7 @@ export function PortalTickets({ tickets, onMessage, onRequestRefund }) {
         }}
         onRequestRefund={onRequestRefund}
       />
-    </div>
+    </MainScreenWrapper>
   );
 }
 

@@ -17,6 +17,7 @@ import {
   isUpcoming,
 } from "./portal_kit";
 import { StatusPill } from "@/components/internal/shared/screen_kit";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 
 const ORDER_STATUS = {
   confirmed: { label: "Confirmed", dotClass: "bg-emerald-400" },
@@ -110,7 +111,7 @@ export function PortalHome({ member, data, onNavigate, availablePlans = 0 }) {
   const recentOrders = (orders || []).slice(0, 4);
 
   return (
-    <div className="space-y-8">
+    <MainScreenWrapper>
       <div>
         <h1 className="text-xl font-semibold text-foreground">
           {greeting()}, {firstName(member?.name, member?.email)}
@@ -188,7 +189,7 @@ export function PortalHome({ member, data, onNavigate, availablePlans = 0 }) {
           </div>
         </section>
       ) : null}
-    </div>
+    </MainScreenWrapper>
   );
 }
 

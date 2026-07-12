@@ -54,7 +54,7 @@ export function AuthFlow({ initialSetupToken = null }) {
     const { ok, data } = await postJson("/api/portal/login", { email, password });
     setBusy(false);
     if (!ok) return toast.error(data.error || "Incorrect email or password.");
-    window.location.href = `${basePath}/login`;
+    window.location.href = `${basePath}/members`;
   };
 
   const sendSetup = async () => {
@@ -74,7 +74,7 @@ export function AuthFlow({ initialSetupToken = null }) {
     });
     setBusy(false);
     if (!ok) return toast.error(data.error || "This link is invalid or expired.");
-    window.location.href = `${basePath}/login`;
+    window.location.href = `${basePath}/members`;
   };
 
   return (

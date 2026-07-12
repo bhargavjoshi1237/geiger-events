@@ -4,11 +4,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, MessageSquarePlus, Send, MessagesSquare } from "lucide-react";
 
-import { EmptyState, Field } from "@/components/internal/shared/screen_kit";
+import { EmptyState, Field, ScreenHeader } from "@/components/internal/shared/screen_kit";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, SectionTitle, fmtDateTime } from "./portal_kit";
+import { Card, fmtDateTime } from "./portal_kit";
 
 async function postJson(url, body) {
   const res = await fetch(url, {
@@ -219,35 +220,45 @@ export function PortalMessages({ threads = [], loading, initialCompose, onRefres
 
   if (composing) {
     return (
-      <Composer
-        initial={composeInitial}
-        onCancel={closeCompose}
-        onCreated={(id) => {
-          closeCompose();
-          onRefresh?.();
-          setOpenId(id);
-        }}
-      />
+      <MainScreenWrapper>
+        <div className="mx-auto w-full max-w-2xl">
+          <Composer
+            initial={composeInitial}
+            onCancel={closeCompose}
+            onCreated={(id) => {
+              closeCompose();
+              onRefresh?.();
+              setOpenId(id);
+            }}
+          />
+        </div>
+      </MainScreenWrapper>
     );
   }
 
   if (openId) {
     return (
-      <ThreadView
-        threadId={openId}
-        onBack={() => {
-          setOpenId(null);
-          onRefresh?.();
-        }}
-        onChanged={onRefresh}
-      />
+      <MainScreenWrapper>
+        <div className="mx-auto w-full max-w-2xl">
+          <ThreadView
+            threadId={openId}
+            onBack={() => {
+              setOpenId(null);
+              onRefresh?.();
+            }}
+            onChanged={onRefresh}
+          />
+        </div>
+      </MainScreenWrapper>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <SectionTitle
-        action={
+    <MainScreenWrapper>
+      <ScreenHeader
+        title="Messages"
+        description="Questions about an event or order? Chat directly with the organiser."
+        actions={
           <Button
             type="button"
             size="sm"
@@ -257,9 +268,7 @@ export function PortalMessages({ threads = [], loading, initialCompose, onRefres
             <MessageSquarePlus className="h-4 w-4" /> New message
           </Button>
         }
-      >
-        Messages
-      </SectionTitle>
+      />
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary">
@@ -296,7 +305,7 @@ export function PortalMessages({ threads = [], loading, initialCompose, onRefres
           }
         />
       )}
-    </div>
+    </MainScreenWrapper>
   );
 }
 
