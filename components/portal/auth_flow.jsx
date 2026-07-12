@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { Loader2, Mail, Ticket, QrCode, CalendarPlus } from "lucide-react";
 
@@ -84,8 +85,15 @@ export function AuthFlow({ initialSetupToken = null }) {
       />
       <div className="relative w-full max-w-sm space-y-5 rounded-2xl border border-border bg-surface-subtle p-6 shadow-2xl shadow-black/30">
         <div className="space-y-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-base font-bold text-primary-foreground">
-            G
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-card">
+            <Image
+              src={`${basePath}/logo1.svg`}
+              alt="Geiger Events"
+              width={22}
+              height={22}
+              className="geiger-logo"
+              priority
+            />
           </div>
           <div className="space-y-1">
             <h1 className="text-lg font-semibold text-foreground">Geiger Events</h1>

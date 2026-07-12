@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { ShoppingBag, Receipt } from "lucide-react";
+import { ShoppingBag, Receipt, MessageSquare } from "lucide-react";
 
 import { EmptyState, StatusPill, SearchInput } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, Cover, money, fmtDate } from "./portal_kit";
+import { RefundPanel, REFUND_STATUS } from "./portal_tickets";
 
 const ORDER_STATUS = {
   confirmed: { label: "Confirmed", dotClass: "bg-emerald-400" },
@@ -40,15 +42,16 @@ function OrderCard({ o, onOpen }) {
       <div className="flex shrink-0 flex-col items-end gap-1 pr-4">
         <StatusPill status={o.status} map={ORDER_STATUS} />
         <span className="text-sm tabular-nums text-foreground">{money(o.total)}</span>
+        {o.refund ? <StatusPill status={o.refund.status} map={REFUND_STATUS} /> : null}
       </div>
     </Card>
   );
 }
 
-function ReceiptDialog({ order, onClose }) {
+function ReceiptDialog({ order, onClose, onMessage, onRequestRefund }) {
   return (
     <Dialog open={Boolean(order)} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
         {order ? (
           <>
             <DialogHeader>
@@ -87,6 +90,20 @@ function ReceiptDialog({ order, onClose }) {
               {order.buyerName ? <Meta label="Buyer">{order.buyerName}</Meta> : null}
               {order.city ? <Meta label="Location">{order.city}</Meta> : null}
             </dl>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onMessage(order)}
+                className="border-border bg-surface-card text-foreground hover:bg-surface-hover"
+              >
+                <MessageSquare className="h-4 w-4" /> Message organiser
+              </Button>
+            </div>
+
+            <RefundPanel ticket={order} onRequestRefund={onRequestRefund} />
           </>
         ) : null}
       </DialogContent>
@@ -112,10 +129,16 @@ function Meta({ label, children }) {
   );
 }
 
-export function PortalOrders({ orders }) {
+export function PortalOrders({ orders, onMessage, onRequestRefund }) {
   const [open, setOpen] = useState(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+
+  // Keep the open receipt's data fresh after a refund refetch.
+  const openOrder = useMemo(
+    () => (open ? (orders || []).find((o) => o.id === open.id) || open : null),
+    [open, orders],
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -170,7 +193,15 @@ export function PortalOrders({ orders }) {
         />
       )}
 
-      <ReceiptDialog order={open} onClose={() => setOpen(null)} />
+      <ReceiptDialog
+        order={openOrder}
+        onClose={() => setOpen(null)}
+        onMessage={(o) => {
+          setOpen(null);
+          onMessage?.(o);
+        }}
+        onRequestRefund={onRequestRefund}
+      />
     </div>
   );
 }

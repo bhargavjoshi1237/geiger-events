@@ -1,8 +1,19 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
-import { Loader2, LogOut, Home, Ticket, ShoppingBag, BadgeCheck, User } from "lucide-react";
+import {
+  Loader2,
+  LogOut,
+  Home,
+  Ticket,
+  ShoppingBag,
+  BadgeCheck,
+  User,
+  MessagesSquare,
+  Bell,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { initials } from "./portal_kit";
@@ -10,6 +21,8 @@ import PortalHome from "./portal_home";
 import PortalTickets from "./portal_tickets";
 import PortalOrders from "./portal_orders";
 import PortalMemberships from "./portal_memberships";
+import PortalMessages from "./portal_messages";
+import PortalNotifications from "./portal_notifications";
 import PortalAccount from "./portal_account";
 
 const NAV = [
@@ -17,12 +30,13 @@ const NAV = [
   { key: "tickets", label: "Tickets", icon: Ticket },
   { key: "orders", label: "Orders", icon: ShoppingBag },
   { key: "memberships", label: "Memberships", icon: BadgeCheck },
+  { key: "messages", label: "Messages", icon: MessagesSquare },
+  { key: "notifications", label: "Notifications", icon: Bell },
   { key: "account", label: "Account", icon: User },
 ];
 
 export function PortalShell({ member: initialMember }) {
   const [member, setMember] = useState(initialMember);
-  // Land on Memberships when returning from a membership Stripe Checkout.
   const [tab, setTab] = useState(() => {
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
@@ -33,6 +47,9 @@ export function PortalShell({ member: initialMember }) {
   const [data, setData] = useState(null);
   const [plans, setPlans] = useState({ plans: [], paymentsEnabled: false });
   const [busyPlanId, setBusyPlanId] = useState(null);
+  const [threads, setThreads] = useState(null);
+  const [notifications, setNotifications] = useState({ items: [], unread: 0 });
+  const [messageDraft, setMessageDraft] = useState(null);
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
   const loadData = () =>
@@ -47,9 +64,23 @@ export function PortalShell({ member: initialMember }) {
       .then((d) => setPlans({ plans: d.plans || [], paymentsEnabled: !!d.paymentsEnabled }))
       .catch(() => {});
 
+  const loadThreads = () =>
+    fetch("/api/portal/threads")
+      .then((r) => r.json())
+      .then((d) => setThreads(d.threads || []))
+      .catch(() => setThreads([]));
+
+  const loadNotifications = () =>
+    fetch("/api/portal/notifications")
+      .then((r) => r.json())
+      .then((d) => setNotifications({ items: d.items || [], unread: d.unread || 0 }))
+      .catch(() => {});
+
   useEffect(() => {
     loadData();
     loadPlans();
+    loadThreads();
+    loadNotifications();
   }, []);
 
   // Confirm a membership Stripe Checkout on return, then clean the URL.
@@ -57,8 +88,7 @@ export function PortalShell({ member: initialMember }) {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get("membership_session");
     const canceled = params.get("membership_canceled");
-    const cleanUrl = () =>
-      window.history.replaceState({}, "", `${basePath}/login`);
+    const cleanUrl = () => window.history.replaceState({}, "", `${basePath}/login`);
     if (canceled) {
       toast.info("Checkout canceled.");
       cleanUrl();
@@ -85,6 +115,26 @@ export function PortalShell({ member: initialMember }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Mark the announcements feed read when the member opens Notifications.
+  useEffect(() => {
+    if (tab !== "notifications" || !notifications.unread) return;
+    fetch("/api/portal/notifications", { method: "POST" })
+      .then(() =>
+        setNotifications((n) => ({
+          ...n,
+          unread: 0,
+          items: n.items.map((i) => ({ ...i, unread: false })),
+        })),
+      )
+      .catch(() => {});
+  }, [tab, notifications.unread]);
+
+  const signOut = async () => {
+    await fetch("/api/portal/logout", { method: "POST" }).catch(() => {});
+    toast.success("Signed out.");
+    window.location.href = `${basePath}/login`;
+  };
+
   const buyMembership = async (plan) => {
     if (!plan || busyPlanId) return;
     setBusyPlanId(plan.id);
@@ -97,7 +147,7 @@ export function PortalShell({ member: initialMember }) {
       });
       const d = await r.json();
       if (d.url) {
-        window.location.href = d.url; // to Stripe
+        window.location.href = d.url;
         return;
       }
       if (d.enrolled) {
@@ -113,13 +163,41 @@ export function PortalShell({ member: initialMember }) {
     }
   };
 
-  const signOut = async () => {
-    await fetch("/api/portal/logout", { method: "POST" }).catch(() => {});
-    toast.success("Signed out.");
-    window.location.href = `${basePath}/login`;
+  // Open the message composer prefilled with an order's context.
+  const messageOrganiser = (order) => {
+    setMessageDraft(
+      order
+        ? {
+            subject: order.eventName ? `Re: ${order.eventName}` : "",
+            orderId: order.id,
+            contextLabel: `${order.eventName || "Order"} · ${order.orderCode || ""}`,
+          }
+        : {},
+    );
+    setTab("messages");
   };
 
+  const requestRefund = async (order, reason) => {
+    const r = await fetch("/api/portal/refund", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: order.id, reason }),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      toast.success("Refund request sent to the organiser.");
+      await loadData();
+      return true;
+    }
+    toast.error(d.error || "Couldn't submit your request.");
+    return false;
+  };
+
+  const unreadThreads = (threads || []).filter((t) => t.unread).length;
+
   const countFor = (key) => {
+    if (key === "messages") return unreadThreads || null;
+    if (key === "notifications") return notifications.unread || null;
     if (!data) return null;
     if (key === "tickets") return data.tickets?.length || null;
     if (key === "orders") return data.orders?.length || null;
@@ -128,7 +206,24 @@ export function PortalShell({ member: initialMember }) {
   };
 
   const renderTab = () => {
-    if (!data && tab !== "account") {
+    if (tab === "messages") {
+      return (
+        <PortalMessages
+          threads={threads || []}
+          loading={threads === null}
+          initialCompose={messageDraft}
+          onConsumeCompose={() => setMessageDraft(null)}
+          onRefresh={loadThreads}
+        />
+      );
+    }
+    if (tab === "notifications") {
+      return <PortalNotifications items={notifications.items} loading={false} />;
+    }
+    if (tab === "account") {
+      return <PortalAccount member={member} onMemberChange={setMember} />;
+    }
+    if (!data) {
       return (
         <div className="flex items-center justify-center gap-2 py-24 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
@@ -146,9 +241,21 @@ export function PortalShell({ member: initialMember }) {
           />
         );
       case "tickets":
-        return <PortalTickets tickets={data.tickets} />;
+        return (
+          <PortalTickets
+            tickets={data.tickets}
+            onMessage={messageOrganiser}
+            onRequestRefund={requestRefund}
+          />
+        );
       case "orders":
-        return <PortalOrders orders={data.orders} />;
+        return (
+          <PortalOrders
+            orders={data.orders}
+            onMessage={messageOrganiser}
+            onRequestRefund={requestRefund}
+          />
+        );
       case "memberships":
         return (
           <PortalMemberships
@@ -159,8 +266,6 @@ export function PortalShell({ member: initialMember }) {
             onBuy={buyMembership}
           />
         );
-      case "account":
-        return <PortalAccount member={member} onMemberChange={setMember} />;
       default:
         return null;
     }
@@ -168,12 +273,16 @@ export function PortalShell({ member: initialMember }) {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      {/* Top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur sm:px-6">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-            G
-          </div>
+          <Image
+            src={`${basePath}/logo1.svg`}
+            alt="Geiger Events"
+            width={20}
+            height={20}
+            className="geiger-logo"
+            priority
+          />
           <p className="text-sm font-semibold">Geiger Events</p>
         </div>
         <div className="flex items-center gap-3">
@@ -199,24 +308,31 @@ export function PortalShell({ member: initialMember }) {
 
       {/* Mobile tab bar */}
       <nav className="sticky top-[57px] z-20 flex gap-1 overflow-x-auto border-b border-border bg-background/80 px-3 py-2 backdrop-blur lg:hidden">
-        {NAV.map((n) => (
-          <button
-            key={n.key}
-            type="button"
-            onClick={() => setTab(n.key)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === n.key
-                ? "bg-surface-hover text-foreground"
-                : "text-text-secondary hover:text-foreground"
-            }`}
-          >
-            <n.icon className="h-4 w-4" /> {n.label}
-          </button>
-        ))}
+        {NAV.map((n) => {
+          const badge = countFor(n.key);
+          return (
+            <button
+              key={n.key}
+              type="button"
+              onClick={() => setTab(n.key)}
+              className={`relative flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                tab === n.key
+                  ? "bg-surface-hover text-foreground"
+                  : "text-text-secondary hover:text-foreground"
+              }`}
+            >
+              <n.icon className="h-4 w-4" /> {n.label}
+              {badge ? (
+                <span className="ml-0.5 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                  {badge}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
       </nav>
 
       <div className="mx-auto flex w-full max-w-6xl gap-8 px-4 py-6 sm:px-6">
-        {/* Desktop sidebar */}
         <aside className="hidden w-52 shrink-0 lg:block">
           <div className="sticky top-24 space-y-1">
             {NAV.map((n) => {
@@ -236,7 +352,13 @@ export function PortalShell({ member: initialMember }) {
                   <n.icon className="h-4 w-4" />
                   <span className="flex-1 text-left">{n.label}</span>
                   {badge ? (
-                    <span className="rounded-full bg-surface-strong px-1.5 text-[11px] tabular-nums text-muted-foreground">
+                    <span
+                      className={`rounded-full px-1.5 text-[11px] tabular-nums ${
+                        n.key === "messages" || n.key === "notifications"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-surface-strong text-muted-foreground"
+                      }`}
+                    >
                       {badge}
                     </span>
                   ) : null}
