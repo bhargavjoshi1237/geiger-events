@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listGuests, createContact, updateContact } from "@/lib/supabase/contacts";
+import { listSegments, updateSegment } from "@/lib/supabase/segments";
 import { getUser } from "@/lib/supabase/user";
 import { downloadCsv } from "@/components/internal/screens/registrations/csv";
 import {
@@ -40,6 +41,7 @@ function latestStatus(guest) {
 export function GuestListScreen() {
   const [guests, setGuests] = useState([]);
   const [events, setEvents] = useState([]);
+  const [segments, setSegments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
@@ -49,14 +51,17 @@ export function GuestListScreen() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listGuests(projectId), listEvents(projectId)]).then(
-      ([gs, evs]) => {
-        if (!alive) return;
-        setGuests(gs ?? []);
-        setEvents(evs ?? []);
-        setLoading(false);
-      },
-    );
+    Promise.all([
+      listGuests(projectId),
+      listEvents(projectId),
+      listSegments(projectId),
+    ]).then(([gs, evs, sg]) => {
+      if (!alive) return;
+      setGuests(gs ?? []);
+      setEvents(evs ?? []);
+      setSegments(sg ?? []);
+      setLoading(false);
+    });
     getUser().then((u) => alive && setUserId(u?.id || null));
     return () => {
       alive = false;
@@ -180,6 +185,24 @@ export function GuestListScreen() {
   const openGuestDrawer = (guest) => {
     if (!guest.contact) return;
     setOpenContact(guest.contact);
+  };
+
+  // Manually add/remove the linked contact to a segment (stored in the
+  // segment's manualIds; membership ORs these with the rule matches).
+  const handleToggleSegment = (contactId, segmentId) => {
+    const seg = segments.find((s) => s.id === segmentId);
+    if (!seg) return;
+    const has = (seg.manualIds || []).includes(contactId);
+    const manualIds = has
+      ? seg.manualIds.filter((x) => x !== contactId)
+      : [...(seg.manualIds || []), contactId];
+    setSegments((prev) =>
+      prev.map((s) => (s.id === segmentId ? { ...s, manualIds } : s)),
+    );
+    toast.success(has ? `Removed from ${seg.name}.` : `Added to ${seg.name}.`);
+    updateSegment(segmentId, { manualIds }).then((res) => {
+      if (res === false) toast.error("Couldn't update the segment.");
+    });
   };
 
   const drawerAttendedEvents = useMemo(() => {
@@ -338,11 +361,13 @@ export function GuestListScreen() {
         projectId={projectId}
         userId={userId}
         attendedEvents={drawerAttendedEvents}
+        segments={segments}
         onPatch={handlePatch}
         onDelete={() => {
           toast.message("Delete contacts from the Contact Book.");
           setOpenContact(null);
         }}
+        onToggleSegment={handleToggleSegment}
         onClose={() => setOpenContact(null)}
       />
     </MainScreenWrapper>

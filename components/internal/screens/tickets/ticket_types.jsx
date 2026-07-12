@@ -5,6 +5,7 @@ import { Armchair, KeyRound, RotateCcw, Ticket } from "lucide-react";
 
 import { Field, SectionCard, SettingsList, SettingRow } from "@/components/internal/shared/screen_kit";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -32,7 +33,7 @@ function summarize(r) {
   ].join(" · ");
 }
 
-function TicketEditForm({ config, setConfig }) {
+function TicketEditForm({ config, setConfig, active, setActive }) {
   const set = (patch) => setConfig({ ...config, ...patch });
   const refund = config.refund || {};
   const sales = config.sales || {};
@@ -43,14 +44,46 @@ function TicketEditForm({ config, setConfig }) {
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Order limits" description="How many of a ticket a buyer can purchase per order.">
+      {/* Active toggle (left) and sales availability (right). */}
+      <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Switch checked={!!active} onCheckedChange={setActive} />
+          {active ? "Active" : "Inactive"}
+        </label>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Availability</span>
+          <Segmented
+            value={sales.mode || "always"}
+            onChange={(v) => setSales({ mode: v })}
+            options={[
+              { value: "always", label: "Always on sale" },
+              { value: "window", label: "Scheduled window" },
+            ]}
+          />
+        </div>
+      </div>
+
+      <SectionCard bare title="Order limits" description="How many of a ticket a buyer can purchase per order.">
         <div className="grid gap-4 sm:grid-cols-2">
           <Num label="Min per order" value={config.minPerOrder ?? 1} onChange={(v) => set({ minPerOrder: v })} unit="tickets" />
-          <Num label="Max per order" hint="0 = no limit." value={config.maxPerOrder ?? 0} onChange={(v) => set({ maxPerOrder: v })} unit="tickets" />
+          <Num label="Max per order" value={config.maxPerOrder ?? 0} onChange={(v) => set({ maxPerOrder: v })} unit="tickets" />
         </div>
       </SectionCard>
 
-      <SectionCard title="Refund policy" description="Whether and when buyers can get their money back.">
+      {sales.mode === "window" ? (
+        <SectionCard bare title="Sales window" description="When this ticket is on sale.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="On sale from">
+              <Input type="datetime-local" value={sales.startAt || ""} onChange={(e) => setSales({ startAt: e.target.value })} />
+            </Field>
+            <Field label="On sale until">
+              <Input type="datetime-local" value={sales.endAt || ""} onChange={(e) => setSales({ endAt: e.target.value })} />
+            </Field>
+          </div>
+        </SectionCard>
+      ) : null}
+
+      <SectionCard bare title="Refund policy" description="Whether and when buyers can get their money back.">
         <SettingsList>
           <SettingRow
             icon={RotateCcw}
@@ -76,32 +109,9 @@ function TicketEditForm({ config, setConfig }) {
         ) : null}
       </SectionCard>
 
-      <SectionCard title="Sales window" description="When this ticket is on sale.">
-        <Field label="Availability">
-          <Segmented
-            value={sales.mode || "always"}
-            onChange={(v) => setSales({ mode: v })}
-            options={[
-              { value: "always", label: "Always on sale" },
-              { value: "window", label: "Scheduled window" },
-            ]}
-          />
-        </Field>
-        {sales.mode === "window" ? (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="On sale from">
-              <Input type="datetime-local" value={sales.startAt || ""} onChange={(e) => setSales({ startAt: e.target.value })} />
-            </Field>
-            <Field label="On sale until">
-              <Input type="datetime-local" value={sales.endAt || ""} onChange={(e) => setSales({ endAt: e.target.value })} />
-            </Field>
-          </div>
-        ) : null}
-      </SectionCard>
-
-      <SectionCard title="Visibility & access" description="Who can see and unlock this ticket, and seating.">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Visibility">
+      <SectionCard bare title="Visibility & access" description="Who can see and unlock this ticket, and seating.">
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <Field label="Visibility" className="flex-1">
             <Select value={config.visibility || "public"} onValueChange={(v) => set({ visibility: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -112,7 +122,7 @@ function TicketEditForm({ config, setConfig }) {
             </Select>
           </Field>
           {config.visibility === "scheduled" ? (
-            <Field label="On sale from">
+            <Field label="On sale from" className="flex-1">
               <Input type="datetime-local" value={config.onSaleAt || ""} onChange={(e) => set({ onSaleAt: e.target.value })} />
             </Field>
           ) : null}
@@ -144,6 +154,8 @@ function TicketEditForm({ config, setConfig }) {
         ) : null}
       </SectionCard>
 
+      <hr className="my-8 border-border" />
+
       <TicketQuestionsEditor config={config} setConfig={setConfig} />
     </div>
   );
@@ -160,6 +172,7 @@ export function TicketTypesScreen() {
       kinds={KINDS}
       summarize={summarize}
       EditForm={TicketEditForm}
+      hideHeaderActive
     />
   );
 }

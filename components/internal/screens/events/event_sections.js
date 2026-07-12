@@ -17,6 +17,7 @@ import {
   MapPin,
   Map as MapIcon,
   Ticket,
+  BadgeCheck,
   Package,
   CreditCard,
   ClipboardList,
@@ -72,6 +73,7 @@ import { GuidelinesSection } from "./guidelines";
 import { TicketAttachmentsSection } from "../tickets/event_attachments";
 import { EventTicketsSection } from "../tickets/event_tickets";
 import { TicketRulesSection } from "../tickets/event_ticket_rules";
+import { EventMembershipsSection } from "./event_memberships";
 import {
   CheckinOptionsSection,
   GatesZonesSection,
@@ -217,6 +219,13 @@ export const NAV_GROUPS = [
         label: "Ticket Rules",
         icon: SlidersHorizontal,
         desc: "Turn project-wide ticketing features (early-bird, donations, reserved seating…) on for this event.",
+        ownHeader: true,
+      },
+      {
+        key: "memberships",
+        label: "Memberships",
+        icon: BadgeCheck,
+        desc: "Enable membership plans for this event — members get the plan's discount here.",
         ownHeader: true,
       },
     ],
@@ -380,6 +389,7 @@ export const SECTIONS = {
   payments: PaymentsSection,
   ticketlinks: TicketAttachmentsSection,
   ticketrules: TicketRulesSection,
+  memberships: EventMembershipsSection,
   rsvp: RsvpOptionsSection,
   questions: CustomQuestionsSection,
   regsettings: RegistrationSettingsSection,

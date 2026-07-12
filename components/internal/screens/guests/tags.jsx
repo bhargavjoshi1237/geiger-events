@@ -46,6 +46,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import {
@@ -56,31 +64,45 @@ import {
   mergeTags,
   deleteTagEverywhere,
 } from "@/lib/supabase/tags";
+import { listContacts } from "@/lib/supabase/contacts";
 import { getUser } from "@/lib/supabase/user";
-import { SEGMENT_COLOR_MAP, SEGMENT_COLOR_OPTIONS } from "./constants";
+import { SEGMENT_COLOR_MAP, SEGMENT_COLOR_OPTIONS, initials } from "./constants";
+
+const TAG_SORT_OPTIONS = [
+  { value: "count-desc", label: "Most used" },
+  { value: "count-asc", label: "Least used" },
+  { value: "name-asc", label: "Name (A–Z)" },
+  { value: "name-desc", label: "Name (Z–A)" },
+];
 
 const EMPTY_DRAFT = { name: "", color: "slate", description: "" };
 
 export function TagsScreen() {
   const [tags, setTags] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("count-desc");
   const [createOpen, setCreateOpen] = useState(false);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [editing, setEditing] = useState(null);
   const [merging, setMerging] = useState(null);
   const [mergeInto, setMergeInto] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [openTag, setOpenTag] = useState(null);
   const [userId, setUserId] = useState(null);
   const { projectId } = useProject();
 
   useEffect(() => {
     let alive = true;
-    listTags(projectId).then((t) => {
-      if (!alive) return;
-      setTags(t ?? []);
-      setLoading(false);
-    });
+    Promise.all([listTags(projectId), listContacts(projectId)]).then(
+      ([t, cs]) => {
+        if (!alive) return;
+        setTags(t ?? []);
+        setContacts(cs ?? []);
+        setLoading(false);
+      },
+    );
     getUser().then((u) => alive && setUserId(u?.id || null));
     return () => {
       alive = false;
@@ -89,9 +111,34 @@ export function TagsScreen() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return tags;
-    return tags.filter((t) => t.name.toLowerCase().includes(q));
-  }, [tags, search]);
+    const list = q
+      ? tags.filter((t) => t.name.toLowerCase().includes(q))
+      : [...tags];
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    list.sort((a, b) => {
+      switch (sort) {
+        case "count-asc":
+          return a.count - b.count || byName(a, b);
+        case "name-asc":
+          return byName(a, b);
+        case "name-desc":
+          return byName(b, a);
+        case "count-desc":
+        default:
+          return b.count - a.count || byName(a, b);
+      }
+    });
+    return list;
+  }, [tags, search, sort]);
+
+  // Contacts carrying the tag currently open in the side sheet.
+  const tagContacts = useMemo(() => {
+    if (!openTag) return [];
+    const name = openTag.name.toLowerCase();
+    return contacts.filter((c) =>
+      (c.tags || []).some((x) => String(x).toLowerCase() === name),
+    );
+  }, [openTag, contacts]);
 
   const stats = useMemo(() => {
     const applications = tags.reduce((sum, t) => sum + t.count, 0);
@@ -160,6 +207,11 @@ export function TagsScreen() {
           : t,
       ),
     );
+    setOpenTag((o) =>
+      o && o.name === oldName
+        ? { ...o, name, color: editing.color, description: editing.description }
+        : o,
+    );
     setEditing(null);
     toast.success("Tag updated.");
 
@@ -205,6 +257,7 @@ export function TagsScreen() {
     const source = merging;
     setMerging(null);
     setMergeInto("");
+    setOpenTag((o) => (o && o.name === source.name ? null : o));
     toast.success(`Merged “${source.name}” into “${target.name}”.`);
     const ok = await mergeTags(
       projectId,
@@ -217,6 +270,7 @@ export function TagsScreen() {
 
   const handleDelete = async (tag) => {
     setTags((prev) => prev.filter((t) => t.name !== tag.name));
+    setOpenTag((o) => (o && o.name === tag.name ? null : o));
     toast.success("Tag deleted.");
     const ok = await deleteTagEverywhere(projectId, tag.name, tag.id);
     if (!ok) toast.error("Couldn't delete on the server.");
@@ -336,7 +390,12 @@ export function TagsScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <div />
+        <FilterDropdown
+          value={sort}
+          onValueChange={setSort}
+          options={TAG_SORT_OPTIONS}
+          height="h-9"
+        />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -354,6 +413,7 @@ export function TagsScreen() {
           columns={columns}
           data={filtered}
           getRowKey={(t) => t.name}
+          onRowClick={(t) => setOpenTag(t)}
           empty={
             <EmptyState
               icon={TagIcon}
@@ -520,6 +580,115 @@ export function TagsScreen() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Tag detail sheet — opens from a row click. */}
+      <Sheet open={!!openTag} onOpenChange={(o) => !o && setOpenTag(null)}>
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-md">
+          {openTag ? (
+            <div className="flex h-full flex-col">
+              <SheetHeader className="border-b border-border">
+                <div className="flex items-center gap-3 pr-8">
+                  <span
+                    className={cn(
+                      "inline-block h-3 w-3 shrink-0 rounded-full border",
+                      SEGMENT_COLOR_MAP[openTag.color] || SEGMENT_COLOR_MAP.slate,
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <SheetTitle className="truncate">{openTag.name}</SheetTitle>
+                    <SheetDescription>
+                      {openTag.count.toLocaleString()}{" "}
+                      {openTag.count === 1 ? "contact" : "contacts"}
+                    </SheetDescription>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              <div className="flex flex-wrap gap-2 border-b border-border p-4">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                  onClick={() =>
+                    setEditing({
+                      id: openTag.id,
+                      _name: openTag.name,
+                      name: openTag.name,
+                      color: openTag.color,
+                      description: openTag.description,
+                    })
+                  }
+                >
+                  <Pencil className="h-4 w-4" /> Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={tags.length < 2}
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                  onClick={() => {
+                    setMerging(openTag);
+                    setMergeInto("");
+                  }}
+                >
+                  <Merge className="h-4 w-4" /> Merge
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ml-auto text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                  onClick={() => setDeleteTarget(openTag)}
+                >
+                  <Trash2 className="h-4 w-4" /> Delete
+                </Button>
+              </div>
+
+              {openTag.description ? (
+                <div className="border-b border-border p-4">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">
+                    Description
+                  </p>
+                  <p className="mt-1 text-sm text-foreground">
+                    {openTag.description}
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-text-secondary">
+                  Contacts
+                </p>
+                {tagContacts.length ? (
+                  <div className="space-y-1.5">
+                    {tagContacts.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-2"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-subtle text-xs font-semibold text-foreground">
+                          {initials(c.name, c.email) || "?"}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {c.name || "Unnamed"}
+                          </p>
+                          <p className="truncate text-xs text-text-secondary">
+                            {c.email || "No email"}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="py-8 text-center text-sm text-text-tertiary">
+                    No contacts carry this tag yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </MainScreenWrapper>
   );
 }

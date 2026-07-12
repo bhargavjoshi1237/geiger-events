@@ -3,19 +3,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  CalendarDays,
   ChevronRight,
-  Clock,
   Download,
   Inbox,
   Loader2,
-  ShieldCheck,
-  Sparkles,
   UserPlus,
   Users,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
+  DataTable,
   EmptyState,
   ScreenHeader,
   SearchInput,
@@ -25,7 +24,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import {
@@ -42,7 +40,7 @@ import {
   formatDate,
   formatDateTime,
 } from "./constants";
-import { countRegs, PipelineBar, PipelineChips } from "./pipeline";
+import { countRegs, PipelineBar } from "./pipeline";
 import {
   RegistrationDrawer,
   AddRegistrantDialog,
@@ -51,88 +49,64 @@ import {
 import { EventRegistrationsDetail } from "./event_registrations";
 import { downloadCsv } from "./csv";
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-
 // Render caps so the hub stays light with hundreds of events / thousands of
 // people — refine with search or "show more" to go past them.
 const PAGE_EVENTS = 60;
 const PAGE_PEOPLE = 100;
 
-// An "action chip" in the Needs Attention strip — a number that does something.
-function ActionChip({ icon: Icon, value, label, tone, onClick, disabled }) {
-  const tones = {
-    amber: "text-zinc-400",
-    violet: "text-zinc-300",
-    sky: "text-zinc-400",
-  };
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "flex flex-1 items-center gap-3 rounded-xl border border-border bg-surface-subtle px-4 py-3 text-left transition-colors",
-        disabled
-          ? "cursor-default opacity-70"
-          : "hover:border-border-strong hover:bg-surface-hover",
-      )}
-    >
-      <div
-        className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card",
-          tones[tone],
-        )}
-      >
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-lg font-semibold leading-none text-foreground tabular-nums">
-          {value}
-        </p>
-        <p className="mt-1 truncate text-xs text-text-secondary capitalize">{label}</p>
-      </div>
-      {!disabled ? (
-        <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-text-tertiary" />
-      ) : null}
-    </button>
-  );
+// Two-letter avatar seed for a person row.
+function initials(name) {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
 }
 
 // One event's registration funnel as a clickable card — the hub's main unit.
 function EventCard({ event, counts, onOpen }) {
   const cap = event.capacity || 0;
   const full = cap > 0 && counts.seats >= cap;
+  const pct = cap > 0 ? Math.min(100, Math.round((counts.seats / cap) * 100)) : null;
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="group flex w-full flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+      className="group flex w-full items-center gap-4 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">{event.name}</span>
-            <Badge variant={EVENT_TYPE_MAP_LITE[event.type] || "neutral"}>
-              {event.type}
-            </Badge>
-            {full ? (
-              <span className="text-[11px] font-medium uppercase tracking-wide text-red-400">
-                Full
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-0.5 text-xs text-text-secondary">{formatDate(event.date)}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 text-sm">
-          <span className="font-semibold text-foreground tabular-nums">
-            {counts.seats}
-            <span className="font-normal text-text-secondary">/{cap || "∞"}</span>
-          </span>
-          <ChevronRight className="h-4 w-4 text-text-tertiary transition-colors group-hover:text-foreground" />
-        </div>
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-text-secondary transition-colors group-hover:text-foreground">
+        <CalendarDays className="h-5 w-5" />
       </div>
-      <PipelineBar counts={counts} capacity={cap} />
-      <PipelineChips counts={counts} />
+      <div className="w-px self-stretch bg-border" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="truncate font-medium text-foreground">{event.name}</span>
+              <Badge variant={EVENT_TYPE_MAP_LITE[event.type] || "neutral"}>
+                {event.type}
+              </Badge>
+              {full ? (
+                <span className="text-[11px] font-medium uppercase tracking-wide text-red-400">
+                  Full
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-0.5 text-xs text-text-secondary">{formatDate(event.date)}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="text-right">
+              <span className="text-sm font-semibold text-foreground tabular-nums">
+                {counts.seats}
+                <span className="font-normal text-text-secondary">/{cap || "∞"}</span>
+              </span>
+              {pct !== null ? (
+                <p className="text-[11px] text-text-tertiary tabular-nums">{pct}% full</p>
+              ) : null}
+            </div>
+            <ChevronRight className="h-4 w-4 text-text-tertiary transition-colors group-hover:text-foreground" />
+          </div>
+        </div>
+        <PipelineBar counts={counts} capacity={cap} />
+      </div>
     </button>
   );
 }
@@ -150,7 +124,6 @@ export function RegistrationsScreen() {
   const [peopleOpenId, setPeopleOpenId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [userId, setUserId] = useState(null);
-  const { setTab } = useWorkspaceUrl();
   const { projectId } = useProject();
 
   useEffect(() => {
@@ -198,17 +171,6 @@ export function RegistrationsScreen() {
         return b.counts.total - a.counts.total;
       });
   }, [events, regsByEvent, search]);
-
-  // Needs-attention tallies.
-  const attention = useMemo(() => {
-    const today = todayIso();
-    const pending = regs.filter((r) => r.status === "Pending").length;
-    const waitlisted = regs.filter((r) => r.status === "Waitlisted").length;
-    const newToday = regs.filter(
-      (r) => (r.createdAt || "").slice(0, 10) === today,
-    ).length;
-    return { pending, waitlisted, newToday };
-  }, [regs]);
 
   // --- Mutations (optimistic + persisted) — shared by both views & detail. ---
   const handleCreate = (draft) => {
@@ -291,7 +253,7 @@ export function RegistrationsScreen() {
       regs,
       "registrations.csv",
     );
-    toast.success(`Exported ${regs.length} registrations.`);
+    toast.success(`Exported ${regs.length} Registrations.`);
   };
 
   // --- Per-event detail takes over the screen when an event is open. ---
@@ -321,6 +283,71 @@ export function RegistrationsScreen() {
   );
   const peopleSelected = regs.find((r) => r.id === peopleOpenId) || null;
 
+  // People view renders through the shared DataTable, matching All Events.
+  const peopleColumns = [
+    {
+      key: "person",
+      header: "Person",
+      render: (r) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-card text-xs font-semibold text-text-secondary">
+            {initials(r.name)}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="truncate font-medium text-foreground">
+                {r.name || "Unnamed"}
+              </span>
+              {r.partySize > 1 ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface-card px-1.5 py-0.5 text-[11px] font-medium text-text-secondary tabular-nums">
+                  <UserPlus className="h-3 w-3" />
+                  {r.partySize - 1}
+                </span>
+              ) : null}
+            </div>
+            <span className="block truncate text-xs text-text-secondary">
+              {r.email || "No email"}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "event",
+      header: "Event",
+      render: (r) => (
+        <span className="text-sm text-text-secondary">
+          {eventNames[r.eventId] || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "source",
+      header: "Source",
+      render: (r) => (
+        <Badge variant={SOURCE_MAP[r.source]?.variant || "neutral"}>
+          {r.source}
+        </Badge>
+      ),
+    },
+    {
+      key: "registered",
+      header: "Registered",
+      render: (r) => (
+        <span className="text-xs text-text-secondary tabular-nums">
+          {r.createdAt ? formatDate(r.createdAt) : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      align: "right",
+      className: "text-right",
+      render: (r) => <StatusPill status={r.status} map={REGISTRATION_STATUS_MAP} />,
+    },
+  ];
+
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -345,38 +372,21 @@ export function RegistrationsScreen() {
         }
       />
 
-      {/* Needs attention — actionable counts that link to the right queue. */}
-      {!loading && regs.length ? (
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <ActionChip
-            icon={ShieldCheck}
-            value={attention.pending}
-            label={attention.pending ? "waiting for approval" : "nothing to approve"}
-            tone="amber"
-            disabled={!attention.pending}
-            onClick={() => setTab("Approval Gates")}
-          />
-          <ActionChip
-            icon={Clock}
-            value={attention.waitlisted}
-            label={attention.waitlisted ? "on a waitlist" : "no one waiting"}
-            tone="violet"
-            disabled={!attention.waitlisted}
-            onClick={() => setTab("Waitlist")}
-          />
-          <ActionChip
-            icon={Sparkles}
-            value={attention.newToday}
-            label="registered today"
-            tone="sky"
-            disabled
-          />
-        </div>
-      ) : null}
-
       <Toolbar>
+        {/* Search on the left. */}
+        <SearchInput
+          value={search}
+          onChange={(v) => {
+            setSearch(v);
+            setEventLimit(PAGE_EVENTS);
+            setPeopleLimit(PAGE_PEOPLE);
+          }}
+          placeholder={view === "events" ? "Search events…" : "Search name, email, event…"}
+          className="w-full sm:max-w-xs"
+        />
+
         {/* Events / People view switch. */}
-        <div className="flex w-fit shrink-0 items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
+        <div className="flex h-10 w-fit shrink-0 items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
           {[
             { key: "events", label: "By event", icon: Inbox },
             { key: "people", label: "All people", icon: Users },
@@ -397,16 +407,6 @@ export function RegistrationsScreen() {
             </button>
           ))}
         </div>
-        <SearchInput
-          value={search}
-          onChange={(v) => {
-            setSearch(v);
-            setEventLimit(PAGE_EVENTS);
-            setPeopleLimit(PAGE_PEOPLE);
-          }}
-          placeholder={view === "events" ? "Search events…" : "Search name, email, event…"}
-          className="w-full sm:max-w-xs"
-        />
       </Toolbar>
 
       {loading ? (
@@ -461,62 +461,34 @@ export function RegistrationsScreen() {
           </div>
         )
       ) : (
-        peopleFiltered.length ? (
-          <>
-            <p className="text-sm text-text-tertiary">
-              {search
-                ? `${peopleFiltered.length.toLocaleString()} match`
-                : `${regs.length.toLocaleString()} ${regs.length === 1 ? "registration" : "registrations"}`}
-            </p>
-            <div className="overflow-hidden rounded-xl border border-border bg-surface-subtle">
-              <div className="divide-y divide-border">
-                {peopleFiltered.slice(0, peopleLimit).map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => setPeopleOpenId(r.id)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-hover"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {r.name || "Unnamed"}
-                      </p>
-                      <p className="truncate text-xs text-text-secondary">
-                        {r.email || "No email"} · {eventNames[r.eventId] || "—"}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={SOURCE_MAP[r.source]?.variant || "neutral"}
-                      className="hidden sm:inline-flex"
-                    >
-                      {r.source}
-                    </Badge>
-                    <StatusPill status={r.status} map={REGISTRATION_STATUS_MAP} />
-                  </button>
-                ))}
+        <>
+          <DataTable
+            columns={peopleColumns}
+            data={peopleFiltered.slice(0, peopleLimit)}
+            getRowKey={(r) => r.id}
+            onRowClick={(r) => setPeopleOpenId(r.id)}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={Users}
+                  title="No one matches your search"
+                  description="Try a different name, email, or event."
+                />
               </div>
+            }
+          />
+          {peopleFiltered.length > peopleLimit ? (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                onClick={() => setPeopleLimit((l) => l + PAGE_PEOPLE)}
+              >
+                Show more ({peopleFiltered.length - peopleLimit} left)
+              </Button>
             </div>
-            {peopleFiltered.length > peopleLimit ? (
-              <div className="flex justify-center">
-                <Button
-                  variant="outline"
-                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                  onClick={() => setPeopleLimit((l) => l + PAGE_PEOPLE)}
-                >
-                  Show more ({peopleFiltered.length - peopleLimit} left)
-                </Button>
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <div className="rounded-xl border border-border bg-surface-subtle">
-            <EmptyState
-              icon={Users}
-              title="No one matches your search"
-              description="Try a different name, email, or event."
-            />
-          </div>
-        )
+          ) : null}
+        </>
       )}
 
       <AddRegistrantDialog

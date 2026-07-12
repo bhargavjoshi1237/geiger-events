@@ -4,10 +4,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   CalendarDays,
+  Check,
   Loader2,
   Plus,
   ShieldBan,
   ShieldCheck,
+  StickyNote,
   Trash2,
 } from "lucide-react";
 
@@ -17,6 +19,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
@@ -31,6 +41,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
@@ -43,6 +59,7 @@ import {
   CONTACT_STATUS_MAP,
   CONTACT_STATUS_VALUES,
   GUEST_STATUS_MAP,
+  SEGMENT_COLOR_MAP,
   formatDate,
   formatDateTime,
   initials,
@@ -64,8 +81,10 @@ export function ContactDrawer({
   projectId,
   userId,
   attendedEvents = [],
+  segments = [],
   onPatch,
   onDelete,
+  onToggleSegment,
   onClose,
 }) {
   return (
@@ -77,8 +96,10 @@ export function ContactDrawer({
             projectId={projectId}
             userId={userId}
             attendedEvents={attendedEvents}
+            segments={segments}
             onPatch={onPatch}
             onDelete={onDelete}
+            onToggleSegment={onToggleSegment}
           />
         ) : null}
       </SheetContent>
@@ -91,9 +112,36 @@ function ContactDrawerBody({
   projectId,
   userId,
   attendedEvents,
+  segments,
   onPatch,
   onDelete,
+  onToggleSegment,
 }) {
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+
+  // Quick note — persists onto the contact's metadata.notes so it also shows up
+  // in the cross-contact Notes feed.
+  const addQuickNote = () => {
+    const body = noteText.trim();
+    if (!body) {
+      toast.error("Write a note first.");
+      return;
+    }
+    const note = {
+      id: crypto.randomUUID(),
+      body,
+      createdAt: new Date().toISOString(),
+      createdBy: userId || null,
+    };
+    onPatch(contact.id, {
+      metadata: { ...contact.metadata, notes: [note, ...(contact.notes || [])] },
+    });
+    setNoteText("");
+    setNoteOpen(false);
+    toast.success("Note added.");
+  };
+
   return (
     <div className="flex h-full flex-col">
       <SheetHeader className="border-b border-border">
@@ -101,21 +149,25 @@ function ContactDrawerBody({
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface-card text-sm font-semibold text-foreground">
             {initials(contact.name, contact.email) || "?"}
           </div>
-          <div className="min-w-0">
-            <SheetTitle className="flex items-center gap-2 truncate">
-              <span className="truncate">{contact.name || "Unnamed"}</span>
-              <StatusPill status={contact.status} map={CONTACT_STATUS_MAP} />
+          <div className="min-w-0 flex-1">
+            <SheetTitle className="truncate">
+              {contact.name || "Unnamed"}
             </SheetTitle>
             <SheetDescription className="truncate">
               {contact.email || "No email"}
             </SheetDescription>
           </div>
+          <StatusPill
+            status={contact.status}
+            map={CONTACT_STATUS_MAP}
+            className="ml-auto shrink-0"
+          />
         </div>
       </SheetHeader>
 
       <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col gap-0">
         <div className="scrollbar-subtle overflow-x-auto px-4 pt-4 pb-3">
-          <TabsList>
+          <TabsList className="w-full">
             {[
               { value: "overview", label: "Overview" },
               { value: "tags-notes", label: "Tags & Notes" },
@@ -123,7 +175,7 @@ function ContactDrawerBody({
               { value: "consent", label: "Consent" },
               { value: "events", label: "Events" },
             ].map((t) => (
-              <TabsTrigger key={t.value} value={t.value}>
+              <TabsTrigger key={t.value} value={t.value} className="flex-1">
                 {t.label}
               </TabsTrigger>
             ))}
@@ -150,37 +202,125 @@ function ContactDrawerBody({
       </Tabs>
 
       <div className="flex items-center justify-between border-t border-border p-4">
-        <Button
-          size="sm"
-          variant="ghost"
-          className={cn(
-            contact.blocked
-              ? "text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-300"
-              : "text-amber-300 hover:bg-amber-500/10 hover:text-amber-300",
-          )}
-          onClick={() =>
-            onPatch(contact.id, { blocked: !contact.blocked })
-          }
-        >
-          {contact.blocked ? (
-            <>
-              <ShieldCheck className="h-4 w-4" /> Unblock
-            </>
-          ) : (
-            <>
-              <ShieldBan className="h-4 w-4" /> Block
-            </>
-          )}
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
-          onClick={() => onDelete(contact)}
-        >
-          <Trash2 className="h-4 w-4" /> Delete
-        </Button>
+        <div className="flex items-center gap-2">
+          {onToggleSegment ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              >
+                <Plus className="h-4 w-4" /> Add to segment
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-56 border-border bg-surface-subtle text-foreground"
+            >
+              {segments?.length ? (
+                segments.map((seg) => {
+                  const inSeg = (seg.manualIds || []).includes(contact.id);
+                  return (
+                    <DropdownMenuItem
+                      key={seg.id}
+                      className="cursor-pointer gap-2 focus:bg-surface-hover"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        onToggleSegment(contact.id, seg.id);
+                      }}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
+                          SEGMENT_COLOR_MAP[seg.color] || SEGMENT_COLOR_MAP.slate,
+                        )}
+                      />
+                      <span className="flex-1 truncate">{seg.name}</span>
+                      {inSeg ? (
+                        <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                      ) : null}
+                    </DropdownMenuItem>
+                  );
+                })
+              ) : (
+                <div className="px-2 py-1.5 text-xs text-text-tertiary">
+                  No segments yet.
+                </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          ) : null}
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={() => setNoteOpen(true)}
+          >
+            <StickyNote className="h-4 w-4" /> Note
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            className={cn(
+              contact.blocked
+                ? "text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-300"
+                : "text-muted-foreground hover:bg-surface-active hover:text-foreground",
+            )}
+            onClick={() => onPatch(contact.id, { blocked: !contact.blocked })}
+          >
+            {contact.blocked ? (
+              <>
+                <ShieldCheck className="h-4 w-4" /> Unblock
+              </>
+            ) : (
+              <>
+                <ShieldBan className="h-4 w-4" /> Block
+              </>
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
+            onClick={() => onDelete(contact)}
+          >
+            <Trash2 className="h-4 w-4" /> Delete
+          </Button>
+        </div>
       </div>
+
+      <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add note</DialogTitle>
+            <DialogDescription>
+              Leave an internal note on {contact.name || "this contact"}. It shows
+              up on their profile and in the Notes feed.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Write a note…"
+            rows={4}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNoteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={addQuickNote}
+            >
+              <StickyNote className="h-4 w-4" /> Add note
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -237,7 +377,7 @@ function OverviewTab({ contact, onPatch }) {
           <Field
             key={f.key}
             label={f.label}
-            className={f.key === "name" ? "col-span-2" : undefined}
+            className={f.key === "name" || f.key === "location" ? "col-span-2" : undefined}
           >
             <Input
               value={draft[f.key] || ""}

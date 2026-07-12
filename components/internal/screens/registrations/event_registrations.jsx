@@ -371,18 +371,6 @@ export function EventRegistrationsDetail({
             )}
           >
             {t.label}
-            {t.count > 0 ? (
-              <span
-                className={cn(
-                  "rounded-full px-1.5 text-[11px] tabular-nums",
-                  tab === t.key
-                    ? "bg-surface-active text-foreground"
-                    : "bg-surface-card text-text-tertiary",
-                )}
-              >
-                {t.count}
-              </span>
-            ) : null}
           </button>
         ))}
         </div>
@@ -397,56 +385,7 @@ export function EventRegistrationsDetail({
         />
       </div>
 
-      <Toolbar>
-        {selectedVisible.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-text-secondary">
-              {selectedVisible.length} selected
-            </span>
-            {tab === "Pending" ? (
-              <>
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => runBulk("Confirmed")}
-                >
-                  <Check className="h-4 w-4" /> Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                  onClick={() => runBulk("Declined")}
-                >
-                  <X className="h-4 w-4" /> Decline
-                </Button>
-              </>
-            ) : null}
-            {tab === "Waitlisted" ? (
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => runBulk("Confirmed")}
-              >
-                <ArrowUp className="h-4 w-4" /> Promote
-              </Button>
-            ) : null}
-            {tab === "Confirmed" ? (
-              <Button
-                size="sm"
-                className="bg-sky-500/90 text-white hover:bg-sky-500"
-                onClick={() => runBulk("Checked-in")}
-              >
-                <Check className="h-4 w-4" /> Check in
-              </Button>
-            ) : null}
-          </div>
-        ) : (
-          <span className="text-sm text-text-tertiary">
-            {filtered.length} {filtered.length === 1 ? "person" : "people"}
-          </span>
-        )}
-      </Toolbar>
+    
 
       <DataTable
         columns={columns}
@@ -460,7 +399,7 @@ export function EventRegistrationsDetail({
               title={
                 tab === "all"
                   ? "No registrations yet"
-                  : `No ${tabs.find((t) => t.key === tab)?.label.toLowerCase()} registrations`
+                  : `No ${tabs.find((t) => t.key === tab)?.label.toLowerCase()} Registrations`
               }
               description={
                 tab === "all"

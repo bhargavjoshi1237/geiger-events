@@ -155,7 +155,15 @@ function CreateRecordDialog({ open, onOpenChange, singular, kinds, onCreate }) {
 
 // --- Per-record edit page ----------------------------------------------------
 
-function RecordEditPage({ record, singular, kinds, EditForm, onBack, onSave }) {
+function RecordEditPage({
+  record,
+  singular,
+  kinds,
+  EditForm,
+  onBack,
+  onSave,
+  hideHeaderActive = false,
+}) {
   const [name, setName] = useState(record.name);
   const [active, setActive] = useState(record.active);
   const [config, setConfig] = useState(record.config || {});
@@ -202,10 +210,12 @@ function RecordEditPage({ record, singular, kinds, EditForm, onBack, onSave }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            {active ? "Active" : "Inactive"}
-            <Switch checked={active} onCheckedChange={setActive} />
-          </label>
+          {hideHeaderActive ? null : (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              {active ? "Active" : "Inactive"}
+              <Switch checked={active} onCheckedChange={setActive} />
+            </label>
+          )}
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={saving}
@@ -218,7 +228,13 @@ function RecordEditPage({ record, singular, kinds, EditForm, onBack, onSave }) {
       </div>
 
       <div className="mt-6">
-        <EditForm record={record} config={config} setConfig={setConfig} />
+        <EditForm
+          record={record}
+          config={config}
+          setConfig={setConfig}
+          active={active}
+          setActive={setActive}
+        />
       </div>
     </SecondaryScreenWrapper>
   );
@@ -240,6 +256,8 @@ export function RecordsScreen({
   EditForm,
   headerExtra,
   data,
+  hideHeaderActive = false,
+  summaryRight = false,
 }) {
   const api = data || TICKETING_DATA;
   const [records, setRecords] = useState([]);
@@ -339,6 +357,7 @@ export function RecordsScreen({
         EditForm={EditForm}
         onBack={() => setOpenId(null)}
         onSave={handleSave}
+        hideHeaderActive={hideHeaderActive}
       />
     );
   }
@@ -406,10 +425,17 @@ export function RecordsScreen({
                     </span>
                   ) : null}
                 </div>
-                <p className="mt-0.5 truncate text-xs text-text-secondary">
-                  {summarize ? summarize(record) : ""}
-                </p>
+                {summarize && !summaryRight ? (
+                  <p className="mt-0.5 truncate text-xs text-text-secondary">
+                    {summarize(record)}
+                  </p>
+                ) : null}
               </div>
+              {summarize && summaryRight ? (
+                <p className="hidden shrink-0 whitespace-nowrap text-xs text-text-secondary sm:block">
+                  {summarize(record)}
+                </p>
+              ) : null}
               <div onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

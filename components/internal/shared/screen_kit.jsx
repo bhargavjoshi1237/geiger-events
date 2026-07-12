@@ -272,7 +272,33 @@ export function SectionCard({
   className,
   contentClassName,
   bodyPadding = true,
+  bare = false,
 }) {
+  // Box-less variant: title + description over a divider, no border/background.
+  if (bare) {
+    return (
+      <section className={cn("text-foreground", className)}>
+        {title || action ? (
+          <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+            <div className="min-w-0">
+              {title ? (
+                <h3 className="text-base font-semibold capitalize text-foreground">
+                  {title}
+                </h3>
+              ) : null}
+              {description ? (
+                <p className="mt-0.5 text-sm text-text-secondary">{description}</p>
+              ) : null}
+            </div>
+            {action ? <div className="shrink-0">{action}</div> : null}
+          </div>
+        ) : null}
+        <div className={cn(bodyPadding ? "pt-4" : "", contentClassName)}>
+          {children}
+        </div>
+      </section>
+    );
+  }
   return (
     <Card
       className={cn(
@@ -366,7 +392,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-3 px-6 py-16 text-center",
+        "flex flex-col h-full items-center justify-center gap-3 px-6 py-16 text-center",
         className,
       )}
     >

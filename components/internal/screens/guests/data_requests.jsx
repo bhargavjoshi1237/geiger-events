@@ -298,7 +298,6 @@ export function DataRequestsScreen() {
           getRowKey={(r) => r.id}
           empty={
             <EmptyState
-              icon={ShieldAlert}
               title={filtersActive ? "No requests match" : "No data requests"}
               description={
                 filtersActive

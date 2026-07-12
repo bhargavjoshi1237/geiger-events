@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  ChevronDown,
+  ChevronUp,
   Copy,
   FileText,
   GripVertical,
@@ -16,7 +18,6 @@ import {
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
   DataTable,
-  EditorSectionHeader,
   EmptyState,
   Field,
   ScreenHeader,
@@ -32,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -92,6 +93,12 @@ function shortId() {
   return `f_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const BUILDER_TABS = [
+  { key: "fields", label: "Fields" },
+  { key: "access", label: "Access" },
+  { key: "confirmation", label: "Confirmation" },
+];
+
 // ---------------------------------------------------------------------------
 // Builder — a single form, tabbed (Fields / Access / Confirmation).
 // ---------------------------------------------------------------------------
@@ -103,6 +110,7 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
     confirmation: { ...DEFAULT_CONFIRMATION, ...(form.settings?.confirmation || {}) },
   });
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState("fields");
 
   const setSetting = (key) => (value) =>
     setSettings((s) => ({ ...s, [key]: value }));
@@ -148,23 +156,31 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
 
   return (
     <MainScreenWrapper>
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          onClick={onBack}
-        >
-          <ArrowLeft className="h-4 w-4" /> All forms
-        </Button>
-      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-2 w-fit gap-1.5 text-muted-foreground hover:bg-surface-active hover:text-foreground"
+        onClick={onBack}
+      >
+        <ArrowLeft className="h-4 w-4" /> All forms
+      </Button>
 
-      <EditorSectionHeader
-        title={form.name}
-        description={form.description || "Build the fields, access rules, and confirmation for this form."}
-        action={
-          <div className="flex items-center gap-2">
-            <StatusPill status={form.status} map={FORM_STATUS_MAP} />
+      {/* Form header — same shell as the registration detail screen. */}
+      <div className="space-y-4 border-b border-border pb-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                {form.name}
+              </h1>
+              <StatusPill status={form.status} map={FORM_STATUS_MAP} />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {form.description ||
+                "Build the fields, access rules, and confirmation for this form."}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               variant="outline"
               className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
@@ -183,18 +199,31 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
               {saving ? "Saving…" : "Save form"}
             </Button>
           </div>
-        }
-      />
+        </div>
+      </div>
 
-      <Tabs defaultValue="fields">
-        <TabsList>
-          <TabsTrigger value="fields">Fields</TabsTrigger>
-          <TabsTrigger value="access">Access</TabsTrigger>
-          <TabsTrigger value="confirmation">Confirmation</TabsTrigger>
-        </TabsList>
+      {/* Fields / Access / Confirmation switch — copied from the RSVP screen. */}
+      <div className="flex w-fit flex-wrap items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
+        {BUILDER_TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              tab === t.key
+                ? "bg-surface-hover text-foreground"
+                : "text-text-secondary hover:text-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Fields + conditional logic (Conditional Questions, Group). */}
-        <TabsContent value="fields" className="space-y-4">
+      {/* Fields + conditional logic (Conditional Questions, Group). */}
+      {tab === "fields" ? (
+        <div className="space-y-4">
           <SectionCard
             title="Questions"
             description="Drag-free reorder with the arrows. Add a 'show when' rule to make a question conditional."
@@ -216,25 +245,25 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
                     className="rounded-lg border border-border bg-surface-card p-3"
                   >
                     <div className="flex items-start gap-2">
-                      <div className="mt-2 flex flex-col text-text-tertiary">
+                      <div className="mt-7 flex flex-col items-center gap-0.5 text-text-tertiary">
                         <button
                           type="button"
-                          aria-label="Move up"
-                          className="hover:text-foreground disabled:opacity-30"
+                          aria-label="Move question up"
+                          className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
                           disabled={i === 0}
                           onClick={() => moveField(i, -1)}
                         >
-                          ▲
+                          <ChevronUp className="h-4 w-4" />
                         </button>
-                        <GripVertical className="h-4 w-4" />
+                        <GripVertical className="h-4 w-4 opacity-60" aria-hidden />
                         <button
                           type="button"
-                          aria-label="Move down"
-                          className="hover:text-foreground disabled:opacity-30"
+                          aria-label="Move question down"
+                          className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
                           disabled={i === fields.length - 1}
                           onClick={() => moveField(i, 1)}
                         >
-                          ▼
+                          <ChevronDown className="h-4 w-4" />
                         </button>
                       </div>
 
@@ -373,10 +402,12 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
               />
             )}
           </SectionCard>
-        </TabsContent>
+        </div>
+      ) : null}
 
-        {/* Access — token-gated, member-only, group, autofill, deadlines. */}
-        <TabsContent value="access" className="space-y-4">
+      {/* Access — token-gated, member-only, group, autofill, deadlines. */}
+      {tab === "access" ? (
+        <div className="space-y-4">
           <SectionCard title="Who can register" description="Gate who's allowed to use this form.">
             <SettingsList>
               <SettingRow
@@ -424,10 +455,12 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
               </Field>
             </div>
           </SectionCard>
-        </TabsContent>
+        </div>
+      ) : null}
 
-        {/* Confirmation page. */}
-        <TabsContent value="confirmation" className="space-y-4">
+      {/* Confirmation page. */}
+      {tab === "confirmation" ? (
+        <div className="space-y-4">
           <SectionCard
             title="Confirmation page"
             description="What registrants see right after they sign up."
@@ -462,8 +495,8 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
               </SettingsList>
             </div>
           </SectionCard>
-        </TabsContent>
-      </Tabs>
+        </div>
+      ) : null}
     </MainScreenWrapper>
   );
 }

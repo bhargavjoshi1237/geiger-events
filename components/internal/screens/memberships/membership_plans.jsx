@@ -5,6 +5,7 @@ import { BadgeCheck } from "lucide-react";
 
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -42,7 +43,9 @@ function summarize(r) {
       ? "Free"
       : `${currency(price)}${c.billingPeriod && c.billingPeriod !== "one-time" ? `/${c.billingPeriod}` : ""}`;
   const disc = Number(c.discountPercent) || 0;
-  return [priceStr, disc ? `${disc}% member discount` : "no discount"].join(" · ");
+  const parts = [priceStr, disc ? `${disc}% member discount` : "no discount"];
+  if (c.applyToAllEvents) parts.push("All events");
+  return parts.join(" · ");
 }
 
 function MembershipPlanEditForm({ config, setConfig }) {
@@ -54,45 +57,65 @@ function MembershipPlanEditForm({ config, setConfig }) {
         title="Pricing"
         description="What members pay, and how often."
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Price">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm text-text-secondary">$</span>
-              <Input
-                type="number"
-                min={0}
-                inputMode="decimal"
-                value={config.price ?? 0}
-                onChange={(e) => set({ price: Number(e.target.value) || 0 })}
-                className="tabular-nums"
-                placeholder="0"
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Price">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-text-secondary">$</span>
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="decimal"
+                  value={config.price ?? 0}
+                  onChange={(e) => set({ price: Number(e.target.value) || 0 })}
+                  className="tabular-nums"
+                  placeholder="0"
+                />
+              </div>
+            </Field>
+            <Field label="Billing">
+              <Select
+                value={config.billingPeriod || "yearly"}
+                onValueChange={(v) => set({ billingPeriod: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BILLING_PERIOD_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          {/* Member discount spans full width, with its scope switch inline. */}
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-surface-card px-3.5 py-3">
+            <Num
+              label="Member discount"
+              hint="Applied to ticket prices for members."
+              value={config.discountPercent ?? 0}
+              onChange={(v) => set({ discountPercent: v })}
+              unit="%"
+            />
+            <label className="flex cursor-pointer items-center gap-3">
+              <div className="text-right">
+                <p className="text-sm font-medium text-foreground">
+                  Apply to all events
+                </p>
+                <p className="text-xs text-text-secondary">
+                  On applies it everywhere (rare); off is per-event.
+                </p>
+              </div>
+              <Switch
+                checked={!!config.applyToAllEvents}
+                onCheckedChange={(v) => set({ applyToAllEvents: v })}
               />
-            </div>
-          </Field>
-          <Field label="Billing">
-            <Select
-              value={config.billingPeriod || "yearly"}
-              onValueChange={(v) => set({ billingPeriod: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BILLING_PERIOD_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Num
-            label="Member discount"
-            hint="Applied to ticket prices for members."
-            value={config.discountPercent ?? 0}
-            onChange={(v) => set({ discountPercent: v })}
-            unit="%"
-          />
+            </label>
+          </div>
         </div>
       </SectionCard>
 

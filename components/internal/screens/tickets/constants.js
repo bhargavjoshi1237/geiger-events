@@ -237,6 +237,7 @@ export const defaultMembershipPlanConfig = () => ({
   billingPeriod: "yearly", // one-time | monthly | yearly
   benefits: [], // string perks
   discountPercent: 0, // member discount on tickets
+  applyToAllEvents: false, // on = discount applies to every event; off = per-event opt-in
   description: "",
 });
 

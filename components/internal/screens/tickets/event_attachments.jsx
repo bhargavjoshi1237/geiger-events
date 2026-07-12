@@ -12,7 +12,6 @@ import {
   Package,
   ShieldAlert,
   Coins,
-  BadgeCheck,
   Loader2,
   Plus,
 } from "lucide-react";
@@ -39,7 +38,6 @@ const ATTACH_MODULES = [
   { module: "pricing_rule", label: "Dynamic Pricing", icon: TrendingUp, tab: "Dynamic Pricing" },
   { module: "currency", label: "Multi-currency", icon: Coins, tab: "Multi-currency" },
   { module: "resale_rule", label: "Anti-scalping & Resale", icon: ShieldAlert, tab: "Anti-scalping & Resale" },
-  { module: "membership", label: "Memberships", icon: BadgeCheck, tab: "Membership Plans" },
   { module: "order_policy", label: "Orders & Attendees", icon: ShoppingBag, tab: "Orders & Attendees" },
   { module: "invoice_profile", label: "Invoices & Receipts", icon: FileText, tab: "Invoices & Receipts" },
 ];

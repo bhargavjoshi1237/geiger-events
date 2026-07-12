@@ -49,13 +49,13 @@ const KINDS = [
 function summarize(r) {
   const c = r.config || {};
   if (r.kind === "coupon")
-    return `${c.code || "no code"} · ${c.discountType === "flat" ? `$${c.value}` : `${c.value}%`} off`;
+    return `${c.code || "no code"} | ${c.discountType === "flat" ? `$${c.value}` : `${c.value}%`} off`;
   if (r.kind === "group")
-    return `${c.mode === "manual" ? "Manual" : "Auto"} · ${c.percent}% at ${c.minQty}+`;
+    return `${c.mode === "manual" ? "Manual" : "Auto"} | ${c.percent}% at ${c.minQty}+`;
   if (r.kind === "earlybird")
     return `${c.percent}% off until ${c.until || "—"}`;
   if (r.kind === "affiliate")
-    return `${c.code || "no code"} · ${c.partner || "unassigned"}`;
+    return `${c.code || "no code"} | ${c.partner || "unassigned"}`;
   return "";
 }
 
@@ -226,6 +226,7 @@ export function DiscountsScreen() {
       kinds={KINDS}
       summarize={summarize}
       EditForm={DiscountEditForm}
+      summaryRight
     />
   );
 }

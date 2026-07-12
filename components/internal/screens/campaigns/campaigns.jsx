@@ -61,7 +61,7 @@ import {
   softDeleteCampaign,
   listAssets,
 } from "@/lib/supabase/campaigns";
-import { listSegments, applySegment } from "@/lib/supabase/segments";
+import { listSegments, isSegmentMember } from "@/lib/supabase/segments";
 import { listContacts, listGuests } from "@/lib/supabase/contacts";
 import {
   CAMPAIGN_STATUS_MAP,
@@ -316,7 +316,7 @@ export function CampaignsScreen({ preset }) {
       if (!segmentId) return contacts.length;
       const seg = segmentById[segmentId];
       if (!seg) return 0;
-      return contacts.filter((c) => applySegment(seg.rules, c, ctx)).length;
+      return contacts.filter((c) => isSegmentMember(seg, c, ctx)).length;
     },
     [contacts, segmentById, ctx],
   );

@@ -194,16 +194,18 @@ export function WhosGoingScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <FilterDropdown
-          value={windowFilter}
-          onValueChange={setWindowFilter}
-          options={UPCOMING_WINDOW_OPTIONS}
-        />
-        <FilterDropdown
-          value={eventFilter}
-          onValueChange={setEventFilter}
-          options={eventFilterOptions}
-        />
+        <div className="flex items-center gap-2">
+          <FilterDropdown
+            value={windowFilter}
+            onValueChange={setWindowFilter}
+            options={UPCOMING_WINDOW_OPTIONS}
+          />
+          <FilterDropdown
+            value={eventFilter}
+            onValueChange={setEventFilter}
+            options={eventFilterOptions}
+          />
+        </div>
         <SearchInput
           value={search}
           onChange={setSearch}

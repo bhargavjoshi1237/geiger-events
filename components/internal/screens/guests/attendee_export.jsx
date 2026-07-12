@@ -10,7 +10,6 @@ import {
   EmptyState,
   Field,
   ScreenHeader,
-  SectionCard,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,28 +30,39 @@ import {
   todayISO,
 } from "./constants";
 
-// Exportable columns. `default` seeds the initial field selection.
+// Exportable columns. `default` seeds the initial field selection; `group`
+// buckets them under a label in the picker (export order still follows this
+// array).
 const FIELDS = [
-  { key: "name", header: "Name", value: (r) => r.name, default: true },
-  { key: "email", header: "Email", value: (r) => r.email, default: true },
-  { key: "phone", header: "Phone", value: (r) => r.phone, default: true },
-  { key: "event", header: "Event", value: (r) => r.eventName, default: true },
-  { key: "date", header: "Date", value: (r) => r.eventDate, default: true },
-  { key: "time", header: "Time", value: (r) => r.eventTime, default: false },
-  { key: "venue", header: "Venue", value: (r) => r.eventVenue, default: false },
-  { key: "city", header: "City", value: (r) => r.eventCity, default: false },
-  { key: "status", header: "Status", value: (r) => r.status, default: true },
-  { key: "partySize", header: "Party size", value: (r) => r.partySize, default: false },
-  { key: "dietary", header: "Dietary", value: (r) => r.dietary, default: false },
-  { key: "accessibility", header: "Accessibility", value: (r) => r.accessibility, default: false },
-  { key: "tags", header: "Tags", value: (r) => (r.tags || []).join("; "), default: false },
-  { key: "company", header: "Company", value: (r) => r.company, default: false },
-  { key: "title", header: "Title", value: (r) => r.title, default: false },
-  { key: "location", header: "Location", value: (r) => r.location, default: false },
-  { key: "registeredAt", header: "Registered", value: (r) => formatDate(r.registeredAt), default: false },
+  { key: "name", header: "Name", value: (r) => r.name, default: true, group: "person" },
+  { key: "email", header: "Email", value: (r) => r.email, default: true, group: "person" },
+  { key: "phone", header: "Phone", value: (r) => r.phone, default: true, group: "person" },
+  { key: "event", header: "Event", value: (r) => r.eventName, default: true, group: "event" },
+  { key: "date", header: "Date", value: (r) => r.eventDate, default: true, group: "event" },
+  { key: "time", header: "Time", value: (r) => r.eventTime, default: false, group: "event" },
+  { key: "venue", header: "Venue", value: (r) => r.eventVenue, default: false, group: "event" },
+  { key: "city", header: "City", value: (r) => r.eventCity, default: false, group: "event" },
+  { key: "status", header: "Status", value: (r) => r.status, default: true, group: "registration" },
+  { key: "partySize", header: "Party size", value: (r) => r.partySize, default: false, group: "registration" },
+  { key: "dietary", header: "Dietary", value: (r) => r.dietary, default: false, group: "registration" },
+  { key: "accessibility", header: "Accessibility", value: (r) => r.accessibility, default: false, group: "registration" },
+  { key: "tags", header: "Tags", value: (r) => (r.tags || []).join("; "), default: false, group: "person" },
+  { key: "company", header: "Company", value: (r) => r.company, default: false, group: "person" },
+  { key: "title", header: "Title", value: (r) => r.title, default: false, group: "person" },
+  { key: "location", header: "Location", value: (r) => r.location, default: false, group: "person" },
+  { key: "registeredAt", header: "Registered", value: (r) => formatDate(r.registeredAt), default: false, group: "registration" },
 ];
 
-const PREVIEW_LIMIT = 8;
+// Ordered groups for the field picker.
+const FIELD_GROUPS = [
+  { key: "person", label: "Attendee" },
+  { key: "event", label: "Event" },
+  { key: "registration", label: "Registration" },
+];
+
+// Show enough rows to fill the screen height beside the field picker without
+// pushing the page into a scroll.
+const PREVIEW_LIMIT = 12;
 
 export function AttendeeExportScreen() {
   const [rows, setRows] = useState([]);
@@ -138,6 +148,10 @@ export function AttendeeExportScreen() {
       return next;
     });
 
+  const allSelected = selected.size === FIELDS.length;
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(FIELDS.map((f) => f.key)));
+
   const scopeLabel =
     EXPORT_SCOPE_OPTIONS.find((o) => o.value === scope)?.label || "attendees";
 
@@ -210,126 +224,140 @@ export function AttendeeExportScreen() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading attendees…
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,380px)_1fr]">
-          <div className="space-y-4">
-            <SectionCard title="Scope">
-              <div className="grid gap-4">
-                <Field label="Include">
-                  <Select value={scope} onValueChange={setScope}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EXPORT_SCOPE_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">
+          <div className="space-y-5">
+            <Field label="Include">
+              <Select value={scope} onValueChange={setScope}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPORT_SCOPE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {scope === "event" ? (
+              <Field label="Event">
+                <Select value={eventId} onValueChange={setEventId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an event" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eventOptions.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            ) : null}
+
+            {scope === "location" ? (
+              <Field label="Venue / location">
+                <Select value={location} onValueChange={setLocation}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locationOptions.map((loc) => (
+                      <SelectItem key={loc} value={loc}>
+                        {loc}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            ) : null}
+
+            {scope === "status" ? (
+              <Field label="Status">
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            ) : null}
+
+            {scope === "range" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="From">
+                  <Input
+                    type="date"
+                    value={from}
+                    onChange={(e) => setFrom(e.target.value)}
+                  />
                 </Field>
-
-                {scope === "event" ? (
-                  <Field label="Event">
-                    <Select value={eventId} onValueChange={setEventId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose an event" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {eventOptions.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                ) : null}
-
-                {scope === "location" ? (
-                  <Field label="Venue / location">
-                    <Select value={location} onValueChange={setLocation}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a location" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {locationOptions.map((loc) => (
-                          <SelectItem key={loc} value={loc}>
-                            {loc}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                ) : null}
-
-                {scope === "status" ? (
-                  <Field label="Status">
-                    <Select value={status} onValueChange={setStatus}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {statusOptions.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                ) : null}
-
-                {scope === "range" ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="From">
-                      <Input
-                        type="date"
-                        value={from}
-                        onChange={(e) => setFrom(e.target.value)}
-                      />
-                    </Field>
-                    <Field label="To">
-                      <Input
-                        type="date"
-                        value={to}
-                        onChange={(e) => setTo(e.target.value)}
-                      />
-                    </Field>
-                  </div>
-                ) : null}
+                <Field label="To">
+                  <Input
+                    type="date"
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                  />
+                </Field>
               </div>
-            </SectionCard>
+            ) : null}
 
-            <SectionCard title="Fields">
-              <div className="grid grid-cols-2 gap-2">
-                {FIELDS.map((f) => (
-                  <label
-                    key={f.key}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface-hover"
+            {/* Fields — card-less, matching the Include block above. */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Fields
+                </label>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-text-tertiary tabular-nums">
+                    {selected.size} Selected
+                  </span>
+                  <span className="h-4 w-px bg-border" aria-hidden />
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    className="text-xs font-medium text-text-secondary transition-colors hover:text-foreground"
                   >
-                    <Checkbox
-                      checked={selected.has(f.key)}
-                      onCheckedChange={() => toggleField(f.key)}
-                    />
-                    {f.header}
-                  </label>
+                    {allSelected ? "Clear" : "Select all"}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {FIELD_GROUPS.map((g) => (
+                  <div key={g.key}>
+                    <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+                      {g.label}
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                      {FIELDS.filter((f) => f.group === g.key).map((f) => (
+                        <label
+                          key={f.key}
+                          className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-foreground transition-colors hover:bg-surface-hover"
+                        >
+                          <Checkbox
+                            checked={selected.has(f.key)}
+                            onCheckedChange={() => toggleField(f.key)}
+                          />
+                          {f.header}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
-            </SectionCard>
+            </div>
           </div>
 
-          <SectionCard
-            title="Preview"
-            action={
-              <span className="text-sm text-text-secondary">
-                {filtered.length.toLocaleString()}{" "}
-                {filtered.length === 1 ? "row" : "rows"} ·{" "}
-                {activeFields.length}{" "}
-                {activeFields.length === 1 ? "column" : "columns"}
-              </span>
-            }
-          >
+          <div className="space-y-3 lg:border-l lg:border-border lg:pl-6">
             {filtered.length && activeFields.length ? (
               <>
                 <DataTable
@@ -351,21 +379,23 @@ export function AttendeeExportScreen() {
                 ) : null}
               </>
             ) : (
-              <EmptyState
-                icon={Users}
-                title={
-                  activeFields.length
-                    ? "No attendees in this scope"
-                    : "Pick at least one field"
-                }
-                description={
-                  activeFields.length
-                    ? "Widen the scope or choose a different event, venue or date range."
-                    : "Select the columns you want in the export."
-                }
-              />
+              <div className="rounded-xl h-full border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={Users}
+                  title={
+                    activeFields.length
+                      ? "No attendees in this scope"
+                      : "Pick at least one field"
+                  }
+                  description={
+                    activeFields.length
+                      ? "Widen the scope or choose a different event, venue or date range."
+                      : "Select the columns you want in the export."
+                  }
+                />
+              </div>
             )}
-          </SectionCard>
+          </div>
         </div>
       )}
     </MainScreenWrapper>

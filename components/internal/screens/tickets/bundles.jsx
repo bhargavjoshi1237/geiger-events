@@ -41,6 +41,8 @@ function BundleEditForm({ config, setConfig }) {
   const [tickets, setTickets] = useState([]);
   const set = (patch) => setConfig({ ...config, ...patch });
   const items = Array.isArray(config.items) ? config.items : [];
+  // Tickets already chosen in the bundle — hidden from the other item pickers.
+  const usedIds = new Set(items.map((it) => it.ticketTypeId).filter(Boolean));
 
   useEffect(() => {
     let alive = true;
@@ -73,7 +75,11 @@ function BundleEditForm({ config, setConfig }) {
       >
         {items.length ? (
           <div className="space-y-3">
-            {items.map((it, idx) => (
+            {items.map((it, idx) => {
+              const available = tickets.filter(
+                (t) => t.id === it.ticketTypeId || !usedIds.has(t.id),
+              );
+              return (
               <div
                 key={idx}
                 className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface-card p-3"
@@ -87,15 +93,15 @@ function BundleEditForm({ config, setConfig }) {
                       <SelectValue placeholder="Pick a ticket…" />
                     </SelectTrigger>
                     <SelectContent>
-                      {tickets.length ? (
-                        tickets.map((t) => (
+                      {available.length ? (
+                        available.map((t) => (
                           <SelectItem key={t.id} value={t.id}>
                             {t.name}
                           </SelectItem>
                         ))
                       ) : (
                         <SelectItem value="none" disabled>
-                          No tickets yet
+                          {tickets.length ? "All tickets added" : "No tickets yet"}
                         </SelectItem>
                       )}
                     </SelectContent>
@@ -118,7 +124,8 @@ function BundleEditForm({ config, setConfig }) {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm text-text-secondary">
@@ -137,11 +144,12 @@ function BundleEditForm({ config, setConfig }) {
       </SectionCard>
 
       <SectionCard
+        bare
         title="Pricing"
         description="Charge one bundle price, or the sum of the included tickets."
-      >
-        <Field label="Pricing mode">
+        action={
           <Segmented
+            className="w-fit"
             value={config.pricingMode || "fixed"}
             onChange={(v) => set({ pricingMode: v })}
             options={[
@@ -149,9 +157,10 @@ function BundleEditForm({ config, setConfig }) {
               { value: "sum", label: "Sum of items" },
             ]}
           />
-        </Field>
+        }
+      >
         {config.pricingMode !== "sum" ? (
-          <div className="mt-4">
+          <div>
             <Field label="Bundle price">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm text-text-secondary">$</span>
@@ -161,7 +170,7 @@ function BundleEditForm({ config, setConfig }) {
                   inputMode="decimal"
                   value={config.price ?? 0}
                   onChange={(e) => set({ price: Number(e.target.value) || 0 })}
-                  className="w-32 tabular-nums"
+                  className="w-full tabular-nums"
                   placeholder="0"
                 />
               </div>
@@ -170,7 +179,7 @@ function BundleEditForm({ config, setConfig }) {
         ) : null}
       </SectionCard>
 
-      <SectionCard title="Details">
+      <SectionCard bare title="Details">
         <Field
           label="Description"
           hint="Shown to buyers under the bundle name."

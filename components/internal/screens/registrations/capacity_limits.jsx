@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Gauge, Loader2, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, Gauge, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -14,6 +14,7 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -23,10 +24,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { listEvents, updateEvent, updateEventMeta } from "@/lib/supabase/events";
 import { listRegistrations } from "@/lib/supabase/registrations";
 import { useProject } from "@/context/project-context";
-import { countRegs, PipelineBar, PipelineChips } from "./pipeline";
+import { EVENT_TYPE_MAP_LITE, formatDate } from "./constants";
+import { countRegs, PipelineBar } from "./pipeline";
+
+// Sort orders for the capacity list — the right-hand toolbar filter.
+const SORT_OPTIONS = [
+  { value: "fill-desc", label: "Fullest first" },
+  { value: "fill-asc", label: "Emptiest first" },
+  { value: "remaining-desc", label: "Most seats left" },
+  { value: "capacity-desc", label: "Largest capacity" },
+  { value: "name-asc", label: "Name (A–Z)" },
+];
 
 function AdjustDialog({ row, open, onOpenChange, onSave }) {
   const [capacity, setCapacity] = useState(row?.capacity ?? 0);
@@ -82,11 +94,69 @@ function AdjustDialog({ row, open, onOpenChange, onSave }) {
   );
 }
 
+// One event's capacity as a clickable card — same shell as the RSVP event card,
+// wired to open the adjust dialog and show fill against the effective cap.
+function CapacityCard({ row, onAdjust }) {
+  const { counts, effective, fill, over, buffer } = row;
+  return (
+    <button
+      type="button"
+      onClick={() => onAdjust(row)}
+      className="group flex w-full items-center gap-4 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+    >
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-text-secondary transition-colors group-hover:text-foreground">
+        <CalendarDays className="h-5 w-5" />
+      </div>
+      <div className="w-px self-stretch bg-border" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="truncate font-medium text-foreground">{row.name}</span>
+              {row.type ? (
+                <Badge variant={EVENT_TYPE_MAP_LITE[row.type] || "neutral"}>
+                  {row.type}
+                </Badge>
+              ) : null}
+              {over ? (
+                <span className="text-[11px] font-medium uppercase tracking-wide text-red-400">
+                  Full
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              {formatDate(row.date)}
+              {buffer ? ` · +${buffer} buffer` : ""}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="text-right">
+              <span
+                className={`text-sm font-semibold tabular-nums ${over ? "text-red-400" : "text-foreground"}`}
+              >
+                {counts.seats}
+                <span className="font-normal text-text-secondary">
+                  /{effective || "∞"}
+                </span>
+              </span>
+              <p className="text-[11px] text-text-tertiary tabular-nums">
+                {over ? "Full" : `${fill}% full`}
+              </p>
+            </div>
+          </div>
+        </div>
+        <PipelineBar counts={counts} capacity={effective} size="lg" />
+      </div>
+    </button>
+  );
+}
+
 export function CapacityLimitsScreen() {
   const [events, setEvents] = useState([]);
   const [regs, setRegs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("fill-desc");
   const [adjust, setAdjust] = useState(null);
   const { projectId } = useProject();
 
@@ -136,8 +206,22 @@ export function CapacityLimitsScreen() {
           over: effective > 0 && counts.seats >= effective,
         };
       })
-      .sort((a, b) => b.fill - a.fill);
-  }, [events, countsByEvent, search]);
+      .sort((a, b) => {
+        switch (sort) {
+          case "fill-asc":
+            return a.fill - b.fill;
+          case "remaining-desc":
+            return b.remaining - a.remaining;
+          case "capacity-desc":
+            return b.effective - a.effective;
+          case "name-asc":
+            return a.name.localeCompare(b.name);
+          case "fill-desc":
+          default:
+            return b.fill - a.fill;
+        }
+      });
+  }, [events, countsByEvent, search, sort]);
 
   const stats = useMemo(() => {
     const atCap = rows.filter((r) => r.over).length;
@@ -179,12 +263,20 @@ export function CapacityLimitsScreen() {
 
       <Toolbar>
         <span />
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search events…"
-          className="w-full sm:max-w-xs"
-        />
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search events…"
+            className="w-full sm:max-w-xs"
+          />
+          <FilterDropdown
+            value={sort}
+            onValueChange={setSort}
+            options={SORT_OPTIONS}
+            height="h-9"
+          />
+        </div>
       </Toolbar>
 
       {loading ? (
@@ -193,51 +285,9 @@ export function CapacityLimitsScreen() {
           Loading capacity…
         </div>
       ) : rows.length ? (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3">
           {rows.map((r) => (
-            <div
-              key={r.id}
-              className="flex flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{r.name}</p>
-                  <p className="mt-0.5 text-xs text-text-secondary">
-                    {r.counts.Waitlisted} waitlisted
-                    {r.buffer ? ` · +${r.buffer} buffer` : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-2xl font-bold tabular-nums ${r.over ? "text-red-400" : "text-foreground"}`}
-                  >
-                    {r.fill}%
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Adjust ${r.name}`}
-                    className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                    onClick={() => setAdjust(r)}
-                  >
-                    <SlidersHorizontal className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <PipelineBar counts={r.counts} capacity={r.effective} size="lg" />
-              <div className="flex items-center justify-between">
-                <PipelineChips counts={r.counts} />
-                <span className="shrink-0 text-xs font-medium tabular-nums">
-                  {r.over ? (
-                    <span className="text-red-400">Full</span>
-                  ) : (
-                    <span className="text-text-secondary">
-                      {r.remaining} left of {r.effective || "∞"}
-                    </span>
-                  )}
-                </span>
-              </div>
-            </div>
+            <CapacityCard key={r.id} row={r} onAdjust={setAdjust} />
           ))}
         </div>
       ) : (

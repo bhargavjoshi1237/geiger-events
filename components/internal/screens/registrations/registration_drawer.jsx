@@ -86,47 +86,6 @@ export function RegistrationDrawer({
         </SheetHeader>
 
         <div className="flex-1 space-y-5 overflow-y-auto p-4">
-          {/* Quick actions for the common transitions. */}
-          <div className="flex flex-wrap gap-2">
-            {reg.status === "Pending" ? (
-              <>
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => onStatusChange(reg, "Confirmed")}
-                >
-                  <Check className="h-4 w-4" /> Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                  onClick={() => onStatusChange(reg, "Declined")}
-                >
-                  <X className="h-4 w-4" /> Decline
-                </Button>
-              </>
-            ) : null}
-            {reg.status === "Confirmed" ? (
-              <Button
-                size="sm"
-                className="bg-sky-500/90 text-white hover:bg-sky-500"
-                onClick={() => onStatusChange(reg, "Checked-in")}
-              >
-                <Check className="h-4 w-4" /> Check in
-              </Button>
-            ) : null}
-            {reg.status === "Waitlisted" ? (
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => onStatusChange(reg, "Confirmed")}
-              >
-                <Check className="h-4 w-4" /> Promote
-              </Button>
-            ) : null}
-          </div>
-
           <div className="grid grid-cols-2 gap-x-3 gap-y-4 text-sm">
             <DetailItem label="Event" value={eventName} />
             <DetailItem label="Source">
@@ -207,7 +166,7 @@ export function RegistrationDrawer({
           ) : null}
         </div>
 
-        <div className="flex items-center justify-end border-t border-border p-4">
+        <div className="flex items-center justify-between gap-2 border-t border-border p-4">
           <Button
             size="sm"
             variant="ghost"
@@ -216,6 +175,47 @@ export function RegistrationDrawer({
           >
             <Trash2 className="h-4 w-4" /> Remove
           </Button>
+
+          {/* Contextual transition for the current status. */}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {reg.status === "Pending" ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                  onClick={() => onStatusChange(reg, "Declined")}
+                >
+                  <X className="h-4 w-4" /> Decline
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={() => onStatusChange(reg, "Confirmed")}
+                >
+                  <Check className="h-4 w-4" /> Approve
+                </Button>
+              </>
+            ) : null}
+            {reg.status === "Confirmed" ? (
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => onStatusChange(reg, "Checked-in")}
+              >
+                <Check className="h-4 w-4" /> Check in
+              </Button>
+            ) : null}
+            {reg.status === "Waitlisted" ? (
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => onStatusChange(reg, "Confirmed")}
+              >
+                <Check className="h-4 w-4" /> Promote
+              </Button>
+            ) : null}
+          </div>
         </div>
       </SheetContent>
     </Sheet>

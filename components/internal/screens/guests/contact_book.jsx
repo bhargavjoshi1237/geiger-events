@@ -63,6 +63,7 @@ import {
   updateContact,
   softDeleteContact,
 } from "@/lib/supabase/contacts";
+import { listSegments, updateSegment } from "@/lib/supabase/segments";
 import { getUser } from "@/lib/supabase/user";
 import { downloadCsv } from "@/components/internal/screens/registrations/csv";
 import {
@@ -91,6 +92,7 @@ export function ContactBookScreen() {
   const [contacts, setContacts] = useState([]);
   const [events, setEvents] = useState([]);
   const [regs, setRegs] = useState([]);
+  const [segments, setSegments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -117,11 +119,13 @@ export function ContactBookScreen() {
       listContacts(projectId),
       listEvents(projectId),
       listRegistrations(projectId),
-    ]).then(([cs, evs, rs]) => {
+      listSegments(projectId),
+    ]).then(([cs, evs, rs, sg]) => {
       if (!alive) return;
       setContacts(cs ?? []);
       setEvents(evs ?? []);
       setRegs(rs ?? []);
+      setSegments(sg ?? []);
       setLoading(false);
     });
     getUser().then((u) => alive && setUserId(u?.id || null));
@@ -272,6 +276,24 @@ export function ContactBookScreen() {
     toast.success(`Removed ${contact.name || "contact"}.`);
     softDeleteContact(contact.id).then((ok) => {
       if (ok === false) toast.error("Couldn't delete on the server.");
+    });
+  };
+
+  // Manually add/remove a contact to a segment (stored in the segment's
+  // manualIds; membership ORs these with the rule matches).
+  const handleToggleSegment = (contactId, segmentId) => {
+    const seg = segments.find((s) => s.id === segmentId);
+    if (!seg) return;
+    const has = (seg.manualIds || []).includes(contactId);
+    const manualIds = has
+      ? seg.manualIds.filter((x) => x !== contactId)
+      : [...(seg.manualIds || []), contactId];
+    setSegments((prev) =>
+      prev.map((s) => (s.id === segmentId ? { ...s, manualIds } : s)),
+    );
+    toast.success(has ? `Removed from ${seg.name}.` : `Added to ${seg.name}.`);
+    updateSegment(segmentId, { manualIds }).then((res) => {
+      if (res === false) toast.error("Couldn't update the segment.");
     });
   };
 
@@ -644,8 +666,10 @@ export function ContactBookScreen() {
         projectId={projectId}
         userId={userId}
         attendedEvents={attendedEvents}
+        segments={segments}
         onPatch={handlePatch}
         onDelete={(c) => setDeleteTarget(c)}
+        onToggleSegment={handleToggleSegment}
         onClose={() => setOpenId(null)}
       />
 

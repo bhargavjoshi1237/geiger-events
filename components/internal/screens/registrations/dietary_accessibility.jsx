@@ -4,12 +4,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Accessibility,
-  ArrowDown,
-  ArrowUp,
   Check,
-  CircleDot,
+  ChevronDown,
+  ChevronUp,
   Download,
-  ListChecks,
+  GripVertical,
   Loader2,
   MailQuestion,
   MessageSquare,
@@ -85,7 +84,7 @@ const TABS = [
 // ===========================================================================
 // Needs report (existing behaviour, now a tab).
 // ===========================================================================
-function NeedsReportTab({ regs, events, eventNames, questions, registerExport, tabSwitch }) {
+function NeedsReportTab({ regs, events, eventNames, questions, registerExport }) {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
 
@@ -255,16 +254,6 @@ function NeedsReportTab({ regs, events, eventNames, questions, registerExport, t
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <FilterDropdown
-          value={eventFilter}
-          onValueChange={setEventFilter}
-          options={eventFilterOptions}
-          height="h-9"
-        />
-        {tabSwitch}
-      </div>
-
       <StatGrid stats={stats} columns={3} />
 
       <SectionCard
@@ -334,12 +323,20 @@ function NeedsReportTab({ regs, events, eventNames, questions, registerExport, t
           <Accessibility className="h-4 w-4 text-text-tertiary" />
           {filtered.length} {filtered.length === 1 ? "person" : "people"} with needs
         </span>
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search name or need…"
-          className="w-full sm:max-w-xs"
-        />
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search name or need…"
+            className="w-full sm:max-w-xs"
+          />
+          <FilterDropdown
+            value={eventFilter}
+            onValueChange={setEventFilter}
+            options={eventFilterOptions}
+            height="h-9"
+          />
+        </div>
       </Toolbar>
 
       <DataTable
@@ -367,7 +364,7 @@ function NeedsReportTab({ regs, events, eventNames, questions, registerExport, t
 // ===========================================================================
 // Requests inbox (post-purchase free-text queries).
 // ===========================================================================
-function RequestsTab({ config, onConfigChange, requests, setRequests, events, eventNames, registerExport, tabSwitch }) {
+function RequestsTab({ config, onConfigChange, requests, setRequests, events, eventNames, registerExport }) {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -598,7 +595,6 @@ function RequestsTab({ config, onConfigChange, requests, setRequests, events, ev
             placeholder="Search requests…"
             className="w-full sm:max-w-xs"
           />
-          {tabSwitch}
         </div>
       </Toolbar>
 
@@ -627,7 +623,7 @@ function RequestsTab({ config, onConfigChange, requests, setRequests, events, ev
 // ===========================================================================
 // Inquiry builder (radio / multiselect question set for ticket forms).
 // ===========================================================================
-function InquiryTab({ config, onSave, tabSwitch }) {
+function InquiryTab({ config, onSave }) {
   const [questions, setQuestions] = useState(config.questions || []);
   const [title, setTitle] = useState(config.inquiryTitle || "");
   const [description, setDescription] = useState(config.inquiryDescription || "");
@@ -707,8 +703,6 @@ function InquiryTab({ config, onSave, tabSwitch }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end">{tabSwitch}</div>
-
       <SectionCard
         title="Introduction"
         description="Optional heading and copy shown above the inquiry in the ticket form."
@@ -748,32 +742,31 @@ function InquiryTab({ config, onSave, tabSwitch }) {
         {questions.length ? (
           <div className="space-y-3">
             {questions.map((q, i) => {
-              const TypeIcon = q.type === "multiselect" ? ListChecks : CircleDot;
               return (
                 <div
                   key={q.id}
                   className="rounded-lg border border-border bg-surface-card p-3"
                 >
                   <div className="flex items-start gap-2">
-                    <div className="mt-2 flex flex-col text-text-tertiary">
+                    <div className="mt-7 flex flex-col items-center gap-0.5 text-text-tertiary">
                       <button
                         type="button"
-                        aria-label="Move up"
-                        className="hover:text-foreground disabled:opacity-30"
+                        aria-label="Move question up"
+                        className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
                         disabled={i === 0}
                         onClick={() => moveQuestion(i, -1)}
                       >
-                        <ArrowUp className="h-4 w-4" />
+                        <ChevronUp className="h-4 w-4" />
                       </button>
-                      <TypeIcon className="my-0.5 h-4 w-4" />
+                      <GripVertical className="h-4 w-4 opacity-60" aria-hidden />
                       <button
                         type="button"
-                        aria-label="Move down"
-                        className="hover:text-foreground disabled:opacity-30"
+                        aria-label="Move question down"
+                        className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
                         disabled={i === questions.length - 1}
                         onClick={() => moveQuestion(i, 1)}
                       >
-                        <ArrowDown className="h-4 w-4" />
+                        <ChevronDown className="h-4 w-4" />
                       </button>
                     </div>
 
@@ -968,8 +961,8 @@ export function DietaryAccessibilityScreen() {
     return false;
   };
 
-  // Icon-only Export (for the active tab) + segmented tab switch — rendered
-  // inline on each tab's toolbar row so it lines up with that tab's filters.
+  // Icon-only Export (for the active tab) + segmented tab switch — rendered in
+  // the screen header's actions slot, to the right of the title.
   const tabSwitch = (
     <div className="flex items-center gap-2">
       {exportHandler ? (
@@ -1009,6 +1002,7 @@ export function DietaryAccessibilityScreen() {
       <ScreenHeader
         title="Dietary & Accessibility"
         description="Plan for every dietary and accessibility need — a catering & venue-ops report, an attendee request inbox, and a ticket-form inquiry."
+        actions={tabSwitch}
       />
 
       {loading || !config ? (
@@ -1025,7 +1019,6 @@ export function DietaryAccessibilityScreen() {
               eventNames={eventNames}
               questions={config.questions}
               registerExport={setExportHandler}
-              tabSwitch={tabSwitch}
             />
           ) : null}
 
@@ -1038,12 +1031,11 @@ export function DietaryAccessibilityScreen() {
               events={events}
               eventNames={eventNames}
               registerExport={setExportHandler}
-              tabSwitch={tabSwitch}
             />
           ) : null}
 
           {tab === "inquiry" ? (
-            <InquiryTab config={config} onSave={saveInquiry} tabSwitch={tabSwitch} />
+            <InquiryTab config={config} onSave={saveInquiry} />
           ) : null}
         </>
       )}

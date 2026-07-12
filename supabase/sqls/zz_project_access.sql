@@ -651,6 +651,16 @@ begin
     (p_event_id, v_project, coalesce(p_name, ''), coalesce(p_email, ''), coalesce(p_ticket, 'General Admission'), coalesce(p_price, 0), v_qty, v_total, coalesce(p_meta, '{}'::jsonb), p_stripe_session_id, p_stripe_payment_intent_id)
   returning id into v_order;
 
+  -- Auto-create a passwordless members-portal account for the buyer (both free
+  -- and paid paths funnel here). Skips empty emails; never overwrites a set name.
+  if coalesce(p_email, '') <> '' then
+    insert into events.portal_members (email, name)
+    values (lower(p_email), coalesce(p_name, ''))
+    on conflict (lower(email)) do update
+      set name = case when events.portal_members.name = ''
+                      then excluded.name else events.portal_members.name end;
+  end if;
+
   update events.events as e
     set sold = e.sold + v_qty,
         revenue = e.revenue + v_total,

@@ -360,8 +360,7 @@ function TicketMixWidget({ events = [] }) {
 
 // --- Conversion funnel (radar chart — dots) ----------------------------------
 
-function ConversionFunnelWidget({ events = [] }) {
-  const [eventScope, setEventScope] = useState([]);
+function ConversionFunnelWidget() {
   const top = CONVERSION_FUNNEL[0].value;
   const bottom = CONVERSION_FUNNEL[CONVERSION_FUNNEL.length - 1].value;
   const overall = Math.round((bottom / top) * 100);
@@ -383,16 +382,9 @@ function ConversionFunnelWidget({ events = [] }) {
         title="Registration Funnel"
         subtitle="Share of page views reaching each step toward a ticket."
         action={
-          <div className="flex items-center gap-3">
-            <EventScopeSelect
-              events={events}
-              selected={eventScope}
-              onChange={setEventScope}
-            />
-            <div className="flex shrink-0 flex-col items-end">
-              <span className="text-3xl font-bold leading-none text-white">{overall}%</span>
-              <span className="mt-1 text-[11px] text-text-secondary">view → ticket</span>
-            </div>
+          <div className="flex shrink-0 flex-col items-end">
+            <span className="text-3xl font-bold leading-none text-white">{overall}%</span>
+            <span className="mt-1 text-[11px] text-text-secondary">view → ticket</span>
           </div>
         }
       />
@@ -699,10 +691,12 @@ function GeneralStatsCard() {
 // stay put until the backend is wired, but the control drives the scope state.
 function EventScopeSelect({ events, selected, onChange }) {
   const all = selected.length === 0;
+  // Clip a single event's name to 5 chars + ellipsis so the trigger stays compact.
+  const clip = (s) => (s.length > 5 ? `${s.slice(0, 5)}…` : s);
   const label = all
-    ? "All events"
+    ? "All"
     : selected.length === 1
-      ? events.find((e) => e.id === selected[0])?.name || "1 event"
+      ? clip(events.find((e) => e.id === selected[0])?.name || "1 event")
       : `${selected.length} events`;
 
   const toggle = (id) =>
@@ -826,7 +820,7 @@ export function EventsOverviewScreen() {
       {/* Attendee lifecycle: funnel + two gauges (equal ratio) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="h-[300px]">
-          <ConversionFunnelWidget events={events} />
+          <ConversionFunnelWidget />
         </div>
         <div className="h-[300px]">
           <GaugeWidget

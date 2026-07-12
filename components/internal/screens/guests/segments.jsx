@@ -61,7 +61,7 @@ import {
   createSegment,
   updateSegment,
   softDeleteSegment,
-  applySegment,
+  isSegmentMember,
 } from "@/lib/supabase/segments";
 import { getUser } from "@/lib/supabase/user";
 import {
@@ -128,14 +128,14 @@ export function SegmentsScreen() {
     [attendingEmails, eventsByEmail],
   );
 
-  const countMembers = (rules) =>
-    contacts.filter((c) => applySegment(rules, c, ctx)).length;
+  const countMembers = (segment) =>
+    contacts.filter((c) => isSegmentMember(segment, c, ctx)).length;
 
   const stats = useMemo(() => {
-    const counts = segments.map((s) => countMembers(s.rules));
+    const counts = segments.map((s) => countMembers(s));
     const largest = counts.length ? Math.max(...counts) : 0;
     const reachable = contacts.filter((c) =>
-      segments.some((s) => applySegment(s.rules, c, ctx)),
+      segments.some((s) => isSegmentMember(s, c, ctx)),
     ).length;
     const avg = counts.length
       ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length)
@@ -202,7 +202,7 @@ export function SegmentsScreen() {
   };
 
   const members = membersOf
-    ? contacts.filter((c) => applySegment(membersOf.rules, c, ctx))
+    ? contacts.filter((c) => isSegmentMember(membersOf, c, ctx))
     : [];
 
   return (
@@ -227,12 +227,12 @@ export function SegmentsScreen() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading segments…
         </div>
       ) : segments.length ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3">
           {segments.map((seg) => (
             <SegmentCard
               key={seg.id}
               segment={seg}
-              count={countMembers(seg.rules)}
+              count={countMembers(seg)}
               onView={() => setMembersOf(seg)}
               onEdit={() => openEdit(seg)}
               onDelete={() => setDeleteTarget(seg)}
@@ -344,83 +344,93 @@ export function SegmentsScreen() {
 }
 
 function SegmentCard({ segment, count, onView, onEdit, onDelete }) {
+  const rules = segment.rules || [];
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "inline-block h-2.5 w-2.5 rounded-full border",
-                SEGMENT_COLOR_MAP[segment.color] || SEGMENT_COLOR_MAP.slate,
-              )}
-            />
-            <p className="truncate font-medium text-foreground">{segment.name}</p>
-          </div>
-          {segment.description ? (
-            <p className="mt-1 line-clamp-2 text-xs text-text-secondary">
-              {segment.description}
-            </p>
-          ) : null}
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 shrink-0 text-text-secondary hover:text-foreground"
-              aria-label="Segment actions"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="border-border bg-surface-subtle text-foreground"
-          >
-            <DropdownMenuItem className="focus:bg-surface-hover" onClick={onView}>
-              <Users className="h-4 w-4" /> View members
-            </DropdownMenuItem>
-            <DropdownMenuItem className="focus:bg-surface-hover" onClick={onEdit}>
-              <Pencil className="h-4 w-4" /> Edit rules
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-border" />
-            <DropdownMenuItem
-              className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-              onClick={onDelete}
-            >
-              <Trash2 className="h-4 w-4" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <div className="group flex w-full items-center gap-4 rounded-xl border border-border bg-surface-subtle p-4 transition-colors hover:border-border-strong hover:bg-surface-hover">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-text-secondary transition-colors group-hover:text-foreground">
+        <ListChecks className="h-5 w-5" />
       </div>
-
-      <div className="flex flex-wrap gap-1">
-        {(segment.rules || []).slice(0, 3).map((r, i) => (
-          <Badge key={i} variant="neutral">
-            {FIELD_BY_VALUE[r.field]?.label || r.field}
-          </Badge>
-        ))}
-        {(segment.rules || []).length > 3 ? (
-          <span className="text-xs text-text-tertiary">
-            +{segment.rules.length - 3}
-          </span>
-        ) : null}
-        {(segment.rules || []).length === 0 ? (
-          <span className="text-xs text-text-tertiary">All contacts</span>
-        ) : null}
-      </div>
+      <div className="w-px self-stretch bg-border" />
 
       <button
         type="button"
         onClick={onView}
-        className="mt-auto flex items-center justify-between rounded-lg border border-border bg-surface-card px-3 py-2 text-left transition-colors hover:bg-surface-hover"
+        className="flex min-w-0 flex-1 items-center justify-between gap-4 text-left"
       >
-        <span className="text-sm text-text-secondary">Members</span>
-        <span className="text-sm font-semibold text-foreground tabular-nums">
-          {count.toLocaleString()}
-        </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
+                SEGMENT_COLOR_MAP[segment.color] || SEGMENT_COLOR_MAP.slate,
+              )}
+            />
+            <span className="truncate font-medium text-foreground">
+              {segment.name}
+            </span>
+          </div>
+          {segment.description ? (
+            <p className="mt-0.5 line-clamp-1 text-xs text-text-secondary">
+              {segment.description}
+            </p>
+          ) : null}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {rules.slice(0, 3).map((r, i) => (
+              <Badge key={i} variant="neutral">
+                {FIELD_BY_VALUE[r.field]?.label || r.field}
+              </Badge>
+            ))}
+            {rules.length > 3 ? (
+              <span className="text-xs text-text-tertiary">
+                +{rules.length - 3}
+              </span>
+            ) : null}
+            {rules.length === 0 ? (
+              <span className="text-xs text-text-tertiary">All contacts</span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="shrink-0 text-right">
+          <span className="text-lg font-semibold text-foreground tabular-nums">
+            {count.toLocaleString()}
+          </span>
+          <p className="text-[11px] text-text-tertiary">
+            {count === 1 ? "member" : "members"}
+          </p>
+        </div>
       </button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 shrink-0 text-text-secondary hover:text-foreground"
+            aria-label="Segment actions"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="border-border bg-surface-subtle text-foreground"
+        >
+          <DropdownMenuItem className="focus:bg-surface-hover" onClick={onView}>
+            <Users className="h-4 w-4" /> View members
+          </DropdownMenuItem>
+          <DropdownMenuItem className="focus:bg-surface-hover" onClick={onEdit}>
+            <Pencil className="h-4 w-4" /> Edit rules
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="bg-border" />
+          <DropdownMenuItem
+            className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4" /> Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
