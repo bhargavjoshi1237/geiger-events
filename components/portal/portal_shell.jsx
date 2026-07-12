@@ -22,20 +22,96 @@ const NAV = [
 
 export function PortalShell({ member: initialMember }) {
   const [member, setMember] = useState(initialMember);
-  const [tab, setTab] = useState("home");
+  // Land on Memberships when returning from a membership Stripe Checkout.
+  const [tab, setTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("membership_session")) return "memberships";
+    }
+    return "home";
+  });
   const [data, setData] = useState(null);
+  const [plans, setPlans] = useState({ plans: [], paymentsEnabled: false });
+  const [busyPlanId, setBusyPlanId] = useState(null);
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-  useEffect(() => {
-    let alive = true;
+  const loadData = () =>
     fetch("/api/portal/data")
       .then((r) => r.json())
-      .then((d) => alive && setData(d))
-      .catch(() => alive && setData({ orders: [], memberships: [], tickets: [] }));
-    return () => {
-      alive = false;
-    };
+      .then(setData)
+      .catch(() => setData({ orders: [], memberships: [], tickets: [] }));
+
+  const loadPlans = () =>
+    fetch("/api/portal/membership/plans")
+      .then((r) => r.json())
+      .then((d) => setPlans({ plans: d.plans || [], paymentsEnabled: !!d.paymentsEnabled }))
+      .catch(() => {});
+
+  useEffect(() => {
+    loadData();
+    loadPlans();
   }, []);
+
+  // Confirm a membership Stripe Checkout on return, then clean the URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("membership_session");
+    const canceled = params.get("membership_canceled");
+    const cleanUrl = () =>
+      window.history.replaceState({}, "", `${basePath}/login`);
+    if (canceled) {
+      toast.info("Checkout canceled.");
+      cleanUrl();
+      return;
+    }
+    if (!sessionId) return;
+    fetch("/api/portal/membership/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.enrolled) {
+          toast.success(`You're now a member of ${d.planName || "the plan"}.`);
+          loadData();
+          loadPlans();
+        } else {
+          toast.error(d.error || "We couldn't confirm your membership.");
+        }
+      })
+      .catch(() => toast.error("We couldn't confirm your membership."))
+      .finally(cleanUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const buyMembership = async (plan) => {
+    if (!plan || busyPlanId) return;
+    setBusyPlanId(plan.id);
+    try {
+      const returnUrl = `${window.location.origin}${basePath}/login`;
+      const r = await fetch("/api/portal/membership/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: plan.id, returnUrl }),
+      });
+      const d = await r.json();
+      if (d.url) {
+        window.location.href = d.url; // to Stripe
+        return;
+      }
+      if (d.enrolled) {
+        toast.success(`You're now a member of ${d.planName || plan.name}.`);
+        await Promise.all([loadData(), loadPlans()]);
+      } else {
+        toast.error(d.error || "Couldn't start checkout.");
+      }
+    } catch {
+      toast.error("Couldn't start checkout.");
+    } finally {
+      setBusyPlanId(null);
+    }
+  };
 
   const signOut = async () => {
     await fetch("/api/portal/logout", { method: "POST" }).catch(() => {});
@@ -61,13 +137,28 @@ export function PortalShell({ member: initialMember }) {
     }
     switch (tab) {
       case "home":
-        return <PortalHome member={member} data={data} onNavigate={setTab} />;
+        return (
+          <PortalHome
+            member={member}
+            data={data}
+            onNavigate={setTab}
+            availablePlans={(plans.plans || []).filter((p) => !p.held).length}
+          />
+        );
       case "tickets":
         return <PortalTickets tickets={data.tickets} />;
       case "orders":
         return <PortalOrders orders={data.orders} />;
       case "memberships":
-        return <PortalMemberships memberships={data.memberships} />;
+        return (
+          <PortalMemberships
+            memberships={data.memberships}
+            plans={plans.plans}
+            paymentsEnabled={plans.paymentsEnabled}
+            busyPlanId={busyPlanId}
+            onBuy={buyMembership}
+          />
+        );
       case "account":
         return <PortalAccount member={member} onMemberChange={setMember} />;
       default:

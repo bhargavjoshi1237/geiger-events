@@ -83,7 +83,7 @@ function NextEventHero({ ticket, onOpenTicket }) {
   );
 }
 
-export function PortalHome({ member, data, onNavigate }) {
+export function PortalHome({ member, data, onNavigate, availablePlans = 0 }) {
   const { orders = [], memberships = [], tickets = [] } = data || {};
 
   const nextTicket = useMemo(() => {
@@ -132,6 +132,30 @@ export function PortalHome({ member, data, onNavigate }) {
         <StatTile icon={BadgeCheck} label="Memberships" value={stats.memberships} />
         <StatTile icon={Wallet} label="Total spent" value={money(stats.spent)} />
       </div>
+
+      {availablePlans > 0 && stats.memberships === 0 ? (
+        <button
+          type="button"
+          onClick={() => onNavigate("memberships")}
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <BadgeCheck className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Become a member
+              </p>
+              <p className="text-xs text-text-secondary">
+                Unlock member pricing and perks — {availablePlans}{" "}
+                {availablePlans === 1 ? "plan" : "plans"} available.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-primary" />
+        </button>
+      ) : null}
 
       {recentOrders.length ? (
         <section>
