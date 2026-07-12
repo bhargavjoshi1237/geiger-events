@@ -2,11 +2,17 @@
 
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, Ticket, QrCode, CalendarPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/internal/shared/screen_kit";
+
+const FEATURES = [
+  { icon: Ticket, label: "All your tickets in one place" },
+  { icon: QrCode, label: "Scan to get in at the door" },
+  { icon: CalendarPlus, label: "Add events to your calendar" },
+];
 
 async function postJson(url, body) {
   const res = await fetch(url, {
@@ -71,13 +77,22 @@ export function AuthFlow({ initialSetupToken = null }) {
   };
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-5 rounded-2xl border border-border bg-surface-subtle p-6">
-        <div className="space-y-1">
-          <h1 className="text-lg font-semibold text-foreground">Geiger Events</h1>
-          <p className="text-sm text-text-secondary">
-            Your tickets, orders, and memberships.
-          </p>
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-4">
+      <div
+        className="pointer-events-none absolute -top-40 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
+        aria-hidden
+      />
+      <div className="relative w-full max-w-sm space-y-5 rounded-2xl border border-border bg-surface-subtle p-6 shadow-2xl shadow-black/30">
+        <div className="space-y-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-base font-bold text-primary-foreground">
+            G
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-lg font-semibold text-foreground">Geiger Events</h1>
+            <p className="text-sm text-text-secondary">
+              Your tickets, orders, and memberships.
+            </p>
+          </div>
         </div>
 
         {step === "email" && (
@@ -99,6 +114,14 @@ export function AuthFlow({ initialSetupToken = null }) {
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
             </Button>
+            <ul className="space-y-2 border-t border-border pt-4">
+              {FEATURES.map((f) => (
+                <li key={f.label} className="flex items-center gap-2.5 text-xs text-text-secondary">
+                  <f.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  {f.label}
+                </li>
+              ))}
+            </ul>
           </form>
         )}
 
