@@ -108,6 +108,9 @@ import {
   ApiWebhooksScreen,
   CustomDomainsScreen,
 } from "./settings/screens";
+import { AdCampaignsScreen, BudgetsScreen } from "./advertising/screens";
+import { ConnectionsScreen } from "./advertising/connections";
+import { InsightsScreen } from "./advertising/insights";
 import { ScheduledReportsScreen } from "./analytics/screens";
 import { SegmentationScreen } from "./campaigns/segmentation";
 import { EmailTemplateBuilderScreen } from "./campaigns/email_template_builder";
@@ -299,6 +302,15 @@ export const SCREEN_REGISTRY = {
   // Analytics area — only Scheduled Reports is a record set
   // (events.analytics_records); the rest are dashboards (ComingSoon).
   "Scheduled Reports": ScheduledReportsScreen,
+
+  // Advertising area — the layman-friendly wrapper over the ad platforms. Ad
+  // Campaigns and Budgets are record managers (events.advertising_records,
+  // module discriminator); Connections links the four platforms; Insights is a
+  // dashboard aggregated from the campaign records. See screens/advertising/.
+  Connections: ConnectionsScreen,
+  "Ad Campaigns": AdCampaignsScreen,
+  Budgets: BudgetsScreen,
+  Insights: InsightsScreen,
 };
 
 export function getScreen(title) {

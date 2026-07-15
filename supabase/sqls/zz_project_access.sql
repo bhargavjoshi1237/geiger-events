@@ -51,6 +51,7 @@ alter table events.workflows           add column if not exists project_id uuid 
 alter table events.event_wall          add column if not exists project_id uuid references public.projects(id) on delete cascade;
 alter table events.venues              add column if not exists project_id uuid references public.projects(id) on delete cascade;
 alter table events.conference_records  add column if not exists project_id uuid references public.projects(id) on delete cascade;
+alter table events.advertising_records add column if not exists project_id uuid references public.projects(id) on delete cascade;
 alter table events.community_records   add column if not exists project_id uuid references public.projects(id) on delete cascade;
 alter table events.settings_records    add column if not exists project_id uuid references public.projects(id) on delete cascade;
 alter table events.analytics_records   add column if not exists project_id uuid references public.projects(id) on delete cascade;
@@ -72,6 +73,7 @@ delete from events.workflows          where project_id is null;
 delete from events.event_wall         where project_id is null;
 delete from events.venues             where project_id is null;
 delete from events.conference_records where project_id is null;
+delete from events.advertising_records where project_id is null;
 delete from events.community_records  where project_id is null;
 delete from events.settings_records   where project_id is null;
 delete from events.analytics_records  where project_id is null;
@@ -84,6 +86,7 @@ alter table events.workflows          alter column project_id set not null;
 alter table events.event_wall         alter column project_id set not null;
 alter table events.venues             alter column project_id set not null;
 alter table events.conference_records alter column project_id set not null;
+alter table events.advertising_records alter column project_id set not null;
 alter table events.community_records  alter column project_id set not null;
 alter table events.settings_records   alter column project_id set not null;
 alter table events.analytics_records  alter column project_id set not null;
@@ -99,6 +102,7 @@ create index if not exists events_registration_forms_project_idx on events.regis
 create index if not exists events_workflows_project_idx          on events.workflows (project_id) where deleted_at is null;
 create index if not exists events_venues_project_idx             on events.venues (project_id) where deleted_at is null;
 create index if not exists events_conference_records_project_idx on events.conference_records (project_id) where deleted_at is null;
+create index if not exists events_advertising_records_project_idx on events.advertising_records (project_id) where deleted_at is null;
 create index if not exists events_community_records_project_idx  on events.community_records (project_id) where deleted_at is null;
 create index if not exists events_settings_records_project_idx   on events.settings_records (project_id) where deleted_at is null;
 create index if not exists events_analytics_records_project_idx  on events.analytics_records (project_id) where deleted_at is null;
@@ -217,6 +221,16 @@ create policy venues_public_read on events.venues
 drop policy if exists events_conference_records_demo_all on events.conference_records;
 drop policy if exists conference_records_member_all on events.conference_records;
 create policy conference_records_member_all on events.conference_records
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+-- advertising_records (Advertising area) ------------------------------------
+-- Reusable connection/campaign/budget records, scoped to the owning project.
+-- Member-only: no public surface (managed in the dashboard).
+drop policy if exists events_advertising_records_demo_all on events.advertising_records;
+drop policy if exists advertising_records_member_all on events.advertising_records;
+create policy advertising_records_member_all on events.advertising_records
   for all to authenticated
   using (events.can_access_project(project_id))
   with check (events.can_access_project(project_id));
@@ -561,6 +575,7 @@ $$;
 drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer);
 drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb);
 drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text);
+drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text, text);
 
 create or replace function events.buy_ticket(
   p_event_id uuid,
@@ -573,7 +588,8 @@ create or replace function events.buy_ticket(
   p_meta jsonb default '{}'::jsonb,
   p_stripe_session_id text default null,
   p_stripe_payment_intent_id text default null,
-  p_tier_id text default null
+  p_tier_id text default null,
+  p_slot_id text default null
 )
 returns table (ok boolean, order_id uuid, sold integer, capacity integer, remaining integer, created boolean)
 language plpgsql
@@ -589,6 +605,10 @@ declare
   v_tier jsonb;
   v_tier_qty integer;
   v_tier_sold integer;
+  v_slot jsonb;
+  v_slot_cap integer;
+  v_slot_sold integer;
+  v_meta_out jsonb;
   v_total numeric;
   v_order uuid;
   v_project uuid;
@@ -643,6 +663,25 @@ begin
     end if;
   end if;
 
+  -- Per-slot inventory: reject when the booked slot's capacity would be
+  -- exceeded. Slot definitions live in metadata.slots; per-slot sold counts in
+  -- metadata.slotsSold (keyed by slot id), bumped below under the same lock. A
+  -- slot capacity of 0 = unlimited, mirroring the tier/event convention.
+  if p_slot_id is not null then
+    select s.val into v_slot
+      from jsonb_array_elements(coalesce(v_meta->'slots', '[]'::jsonb)) as s(val)
+      where s.val->>'id' = p_slot_id
+      limit 1;
+    if v_slot is not null then
+      v_slot_cap := coalesce((v_slot->>'capacity')::integer, 0);
+      v_slot_sold := coalesce((v_meta->'slotsSold'->>p_slot_id)::integer, 0);
+      if v_slot_cap > 0 and v_slot_sold + v_qty > v_slot_cap then
+        return query select false, null::uuid, v_sold, v_cap, greatest(0, v_effcap - v_sold), false;
+        return;
+      end if;
+    end if;
+  end if;
+
   v_total := (coalesce(p_price, 0) + coalesce(p_addons, 0)) * v_qty;
 
   insert into events.event_orders
@@ -661,19 +700,28 @@ begin
                       then excluded.name else events.portal_members.name end;
   end if;
 
+  -- Bump the per-tier and per-slot sold counters under the same row lock, built
+  -- off the freshly-read v_meta so neither editor round-trip clobbers the other.
+  v_meta_out := coalesce(v_meta, '{}'::jsonb);
+  if p_tier_id is not null then
+    v_meta_out := jsonb_set(
+      v_meta_out,
+      array['ticketSold', p_tier_id],
+      to_jsonb(coalesce((v_meta->'ticketSold'->>p_tier_id)::integer, 0) + v_qty),
+      true);
+  end if;
+  if p_slot_id is not null then
+    v_meta_out := jsonb_set(
+      v_meta_out,
+      array['slotsSold', p_slot_id],
+      to_jsonb(coalesce((v_meta->'slotsSold'->>p_slot_id)::integer, 0) + v_qty),
+      true);
+  end if;
+
   update events.events as e
     set sold = e.sold + v_qty,
         revenue = e.revenue + v_total,
-        -- Bump the per-tier sold counter under the same row lock (no-op when no
-        -- tier was passed) so per-tier inventory stays consistent with sold.
-        metadata = case
-          when p_tier_id is not null then jsonb_set(
-            coalesce(e.metadata, '{}'::jsonb),
-            array['ticketSold', p_tier_id],
-            to_jsonb(coalesce((e.metadata->'ticketSold'->>p_tier_id)::integer, 0) + v_qty),
-            true)
-          else e.metadata
-        end
+        metadata = v_meta_out
     where e.id = p_event_id
     returning e.sold, e.capacity into v_sold, v_cap;
 
@@ -681,7 +729,7 @@ begin
 end;
 $$;
 
-grant execute on function events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text, text)
+grant execute on function events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text, text, text)
   to anon, authenticated;
 grant execute on function events.register(uuid, uuid, text, text, text, integer, jsonb, text, text, jsonb, boolean, boolean, text, boolean)
   to anon, authenticated;

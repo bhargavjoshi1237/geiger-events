@@ -94,6 +94,7 @@ import {
   Box,
   FileSearch,
   BadgeDollarSign,
+  Link2,
 } from "lucide-react";
 
 // Sidebar navigation for Geiger Events.
@@ -157,7 +158,6 @@ export const workspaceNav = [
     subItems: [
       { title: "Smart Custom Proposals", icon: FileText },
       { title: "Instant Book", icon: Zap },
-      { title: "Advertising", icon: BadgeDollarSign },
     ],
   },
 
@@ -301,6 +301,21 @@ export const workspaceNav = [
       { title: "Drip Sequences", icon: Workflow },
       { title: "Send Scheduling", icon: Clock },
       { title: "Deliverability", icon: MailX },
+    ],
+  },
+
+  {
+    // Paid-ads wrapper — a layman-friendly control surface over the ad platforms
+    // (Google AdSense, Facebook Marketplace, Google Ads, Meta Ads). Connections
+    // links the platforms; Ad Campaigns / Budgets are reusable records; Insights
+    // aggregates their performance. Backed by events.advertising_records.
+    title: "Advertising",
+    icon: BadgeDollarSign,
+    subItems: [
+      { title: "Connections", icon: Link2 },
+      { title: "Ad Campaigns", icon: Megaphone },
+      { title: "Budgets", icon: Wallet },
+      { title: "Insights", icon: BarChart3 },
     ],
   },
 
