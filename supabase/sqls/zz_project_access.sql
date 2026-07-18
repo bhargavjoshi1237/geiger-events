@@ -576,6 +576,7 @@ drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integ
 drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb);
 drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text);
 drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text, text);
+drop function if exists events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text, text, text);
 
 create or replace function events.buy_ticket(
   p_event_id uuid,
@@ -589,7 +590,8 @@ create or replace function events.buy_ticket(
   p_stripe_session_id text default null,
   p_stripe_payment_intent_id text default null,
   p_tier_id text default null,
-  p_slot_id text default null
+  p_slot_id text default null,
+  p_discount_code text default null
 )
 returns table (ok boolean, order_id uuid, sold integer, capacity integer, remaining integer, created boolean)
 language plpgsql
@@ -608,6 +610,12 @@ declare
   v_slot jsonb;
   v_slot_cap integer;
   v_slot_sold integer;
+  v_disc_attached jsonb;
+  v_disc_id uuid;
+  v_disc_config jsonb;
+  v_disc_applies text;
+  v_disc_base numeric;
+  v_disc_amt numeric;
   v_meta_out jsonb;
   v_total numeric;
   v_order uuid;
@@ -684,6 +692,48 @@ begin
 
   v_total := (coalesce(p_price, 0) + coalesce(p_addons, 0)) * v_qty;
 
+  -- Discount code: validate the code against THIS event's attached coupons and
+  -- reduce the total authoritatively (a client-supplied amount is never trusted).
+  -- appliesTo (metadata.discountSettings) decides the base: tickets-only vs the
+  -- whole order. The applied discount is recorded on the order metadata so the
+  -- portal/receipt can show it and usage counting works.
+  if coalesce(p_discount_code, '') <> '' then
+    v_disc_attached := v_meta->'attached'->'discount';
+    if v_disc_attached is not null and jsonb_typeof(v_disc_attached) = 'array' then
+      select r.id, r.config
+        into v_disc_id, v_disc_config
+        from events.ticketing_records r
+        where r.module = 'discount'
+          and r.kind = 'coupon'
+          and r.active is true
+          and r.deleted_at is null
+          and r.id::text in (select jsonb_array_elements_text(v_disc_attached))
+          and upper(btrim(coalesce(r.config->>'code', ''))) = upper(btrim(p_discount_code))
+        limit 1;
+      if v_disc_id is not null then
+        v_disc_applies := coalesce(v_meta->'discountSettings'->>'appliesTo', 'order');
+        v_disc_base := case
+          when v_disc_applies = 'tickets' then coalesce(p_price, 0) * v_qty
+          else (coalesce(p_price, 0) + coalesce(p_addons, 0)) * v_qty
+        end;
+        if coalesce(v_disc_config->>'discountType', 'percent') = 'flat' then
+          v_disc_amt := least(coalesce((v_disc_config->>'value')::numeric, 0), v_disc_base);
+        else
+          v_disc_amt := round(v_disc_base * coalesce((v_disc_config->>'value')::numeric, 0) / 100, 2);
+        end if;
+        v_disc_amt := greatest(0, least(v_disc_amt, v_total));
+        v_total := v_total - v_disc_amt;
+        p_meta := coalesce(p_meta, '{}'::jsonb) || jsonb_build_object(
+          'discount', jsonb_build_object(
+            'id', v_disc_id::text,
+            'code', upper(btrim(p_discount_code)),
+            'type', coalesce(v_disc_config->>'discountType', 'percent'),
+            'value', coalesce((v_disc_config->>'value')::numeric, 0),
+            'amount', v_disc_amt));
+      end if;
+    end if;
+  end if;
+
   insert into events.event_orders
     (event_id, project_id, buyer_name, buyer_email, ticket_name, ticket_price, quantity, total, metadata, stripe_session_id, stripe_payment_intent_id)
   values
@@ -729,7 +779,7 @@ begin
 end;
 $$;
 
-grant execute on function events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text, text, text)
+grant execute on function events.buy_ticket(uuid, text, text, text, numeric, integer, numeric, jsonb, text, text, text, text, text)
   to anon, authenticated;
 grant execute on function events.register(uuid, uuid, text, text, text, integer, jsonb, text, text, jsonb, boolean, boolean, text, boolean)
   to anon, authenticated;

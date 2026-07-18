@@ -19,6 +19,9 @@ import {
   Ticket,
   BadgeCheck,
   Package,
+  CalendarClock,
+  ShoppingBag,
+  Percent,
   CreditCard,
   ClipboardList,
   MailCheck,
@@ -36,6 +39,10 @@ import {
   Accessibility,
   ScanLine,
   DoorOpen,
+  Timer,
+  Heart,
+  KeyRound,
+  Armchair,
 } from "lucide-react";
 
 import {
@@ -64,6 +71,15 @@ import { RecurringEventsSection } from "./recurring_clone";
 import { ScheduleSection } from "./schedule";
 import { GuestsSection } from "./guests";
 import { OfferingsSection } from "./offerings";
+import { SlotsSection } from "./slots";
+import { PurchasablesSection } from "./purchasables";
+import { EventDiscountsSection } from "./event_discounts";
+import { EventEarlybirdSection } from "./event_earlybird";
+import { EventDonationSection } from "./event_donation";
+import { EventAccessCodesSection } from "./event_access_codes";
+import { EventReservedSection } from "./event_reserved";
+import { EventGroupSection } from "./event_group";
+import { EventBundlesSection } from "./event_bundles";
 import { PaymentsSection } from "./payments";
 import { RsvpOptionsSection } from "./rsvp";
 import { CoHostsAdminsSection } from "./people";
@@ -201,6 +217,27 @@ export const NAV_GROUPS = [
         ownHeader: true,
       },
       {
+        key: "slots",
+        label: "Slots",
+        icon: CalendarClock,
+        desc: "Let buyers book a time slot at checkout — each with its own capacity, price, and rules.",
+        ownHeader: true,
+      },
+      {
+        key: "purchasables",
+        label: "Purchasables",
+        icon: ShoppingBag,
+        desc: "Conditional add-ons shown after ticket details — surfaced only when your rules (slot, ticket, quantity…) match.",
+        ownHeader: true,
+      },
+      {
+        key: "discounts",
+        label: "Discounts",
+        icon: Percent,
+        desc: "Let buyers redeem discount codes at checkout — only the codes you attach here work on this event.",
+        ownHeader: true,
+      },
+      {
         key: "payments",
         label: "Payments",
         icon: CreditCard,
@@ -220,6 +257,54 @@ export const NAV_GROUPS = [
         icon: SlidersHorizontal,
         desc: "Turn project-wide ticketing features (early-bird, donations, reserved seating…) on for this event.",
         ownHeader: true,
+      },
+      {
+        key: "earlybird",
+        label: "Early-bird",
+        icon: Timer,
+        desc: "Discount the ticket price during a limited window.",
+        ownHeader: true,
+        showIf: (e) => !!e.ticketRules?.earlybird,
+      },
+      {
+        key: "donation",
+        label: "Donations",
+        icon: Heart,
+        desc: "Ask buyers to add a donation at checkout.",
+        ownHeader: true,
+        showIf: (e) => !!e.ticketRules?.donation,
+      },
+      {
+        key: "accesscode",
+        label: "Access Codes",
+        icon: KeyRound,
+        desc: "Hide tickets behind a code buyers unlock on the page.",
+        ownHeader: true,
+        showIf: (e) => !!e.ticketRules?.accessCode,
+      },
+      {
+        key: "reserved",
+        label: "Reserved Seating",
+        icon: Armchair,
+        desc: "Hold back a block of tickets from public sale.",
+        ownHeader: true,
+        showIf: (e) => !!e.ticketRules?.reservedSeating,
+      },
+      {
+        key: "group",
+        label: "Group Orders",
+        icon: Users,
+        desc: "Buy a block and dispense a ticket to each attendee's email.",
+        ownHeader: true,
+        showIf: (e) => !!e.ticketRules?.groupPurchase,
+      },
+      {
+        key: "bundles",
+        label: "Bundles",
+        icon: Package,
+        desc: "Sell several tickets together as one purchase.",
+        ownHeader: true,
+        showIf: (e) => !!e.ticketRules?.bundles,
       },
       {
         key: "memberships",
@@ -386,6 +471,15 @@ export const SECTIONS = {
   guidelines: GuidelinesSection,
   tickets: EventTicketsSection,
   offerings: OfferingsSection,
+  slots: SlotsSection,
+  purchasables: PurchasablesSection,
+  discounts: EventDiscountsSection,
+  earlybird: EventEarlybirdSection,
+  donation: EventDonationSection,
+  accesscode: EventAccessCodesSection,
+  reserved: EventReservedSection,
+  group: EventGroupSection,
+  bundles: EventBundlesSection,
   payments: PaymentsSection,
   ticketlinks: TicketAttachmentsSection,
   ticketrules: TicketRulesSection,

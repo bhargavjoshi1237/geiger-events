@@ -827,8 +827,8 @@ export function EventsOverviewScreen() {
             title="Sell-Through Rate"
             subtitle="Seats sold vs. capacity."
             value={SELL_THROUGH.value}
-            caption="sold"
-            footnote={`${SELL_THROUGH.sold.toLocaleString()} of ${SELL_THROUGH.capacity.toLocaleString()} seats`}
+            caption="Sold"
+            footnote={`${SELL_THROUGH.sold.toLocaleString()} of ${SELL_THROUGH.capacity.toLocaleString()} Seats`}
             events={events}
           />
         </div>
@@ -837,8 +837,8 @@ export function EventsOverviewScreen() {
             title="Attendance Rate"
             subtitle="Checked in vs. registered."
             value={ATTENDANCE.value}
-            caption="checked in"
-            footnote={`${ATTENDANCE.attended.toLocaleString()} of ${ATTENDANCE.registered.toLocaleString()} showed up`}
+            caption="Checked In"
+            footnote={`${ATTENDANCE.attended.toLocaleString()} of ${ATTENDANCE.registered.toLocaleString()} Showed Up`}
             events={events}
           />
         </div>

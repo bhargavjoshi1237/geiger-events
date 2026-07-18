@@ -45,6 +45,17 @@ export async function GET(request) {
   const qty = Number(meta.quantity) || 1;
   const event = await getEvent(meta.eventId);
 
+  // Group attendees travel in their own metadata key (see /api/checkout).
+  let attendees = null;
+  if (meta.attendees) {
+    try {
+      const parsed = JSON.parse(meta.attendees);
+      if (Array.isArray(parsed) && parsed.length) attendees = parsed;
+    } catch {
+      attendees = null;
+    }
+  }
+
   const res = await buyTicket({
     eventId: meta.eventId,
     name: meta.name,
@@ -55,6 +66,14 @@ export async function GET(request) {
     quantity: qty,
     addons: Number(meta.addons) || 0,
     selections: extra.selections || null,
+    purchasables: extra.purchasables || null,
+    slot: extra.slot || null,
+    slotId: meta.slotId || null,
+    discountCode: meta.discountCode || null,
+    donation: Number(meta.donation) || 0,
+    attendees,
+    bundleId: meta.bundleId || null,
+    accessCode: meta.accessCode || null,
     stripeSessionId: session.id,
     stripePaymentIntentId: session.payment_intent,
   });
@@ -92,7 +111,11 @@ export async function GET(request) {
       await linkTicketAnswers(meta.clientRef, regRes.registration.id);
     }
 
-    const total = (Number(meta.price) || 0) * qty + (Number(meta.addons) || 0) * qty;
+    // Use Stripe's actual charged amount so the receipt reflects any discount.
+    const total =
+      typeof session.amount_total === "number"
+        ? session.amount_total / 100
+        : (Number(meta.price) || 0) * qty + (Number(meta.addons) || 0) * qty;
     await sendSuiteEmail({
       template: "events.ticket_purchase_confirmation",
       to: meta.email,

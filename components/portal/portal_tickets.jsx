@@ -209,6 +209,12 @@ function TicketDialog({ ticket, onClose, onMessage, onRequestRefund }) {
             <div className="space-y-2 rounded-xl border border-border bg-surface-card p-4 text-sm">
               <Row label="Order">{ticket.orderCode}</Row>
               {ticket.createdAt ? <Row label="Purchased">{fmtDate(ticket.createdAt)}</Row> : null}
+              {ticket.slot ? (
+                <Row label="Slot">
+                  {ticket.slot.label}
+                  {ticket.slot.band ? ` · ${ticket.slot.band}` : ""}
+                </Row>
+              ) : null}
               {ticket.offerings?.length ? (
                 <div>
                   <p className="text-text-secondary">Add-ons</p>
@@ -219,6 +225,66 @@ function TicketDialog({ ticket, onClose, onMessage, onRequestRefund }) {
                       </li>
                     ))}
                   </ul>
+                </div>
+              ) : null}
+              {ticket.purchasables?.length ? (
+                <div>
+                  <p className="text-text-secondary">Purchasables</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {ticket.purchasables.map((p, i) => (
+                      <li key={i} className="flex justify-between text-xs text-foreground">
+                        <span>
+                          {p?.name || "Add-on"}
+                          {p?.quantity > 1 ? ` × ${p.quantity}` : ""}
+                        </span>
+                        {p?.total > 0 ? (
+                          <span className="tabular-nums text-text-secondary">
+                            {money(p.total)}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {ticket.bundle ? (
+                <div>
+                  <p className="text-text-secondary">Bundle · {ticket.bundle.name}</p>
+                  {Array.isArray(ticket.bundle.items) ? (
+                    <ul className="mt-1 space-y-0.5">
+                      {ticket.bundle.items.map((it, i) => (
+                        <li key={i} className="text-xs text-foreground">
+                          {it?.name || "Ticket"}
+                          {it?.qty > 1 ? ` × ${it.qty}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
+              {ticket.group?.size ? (
+                <Row label="Group order">1 of {ticket.group.size}</Row>
+              ) : null}
+              {ticket.discount ? (
+                <div className="flex items-center justify-between text-emerald-400">
+                  <span>Discount ({ticket.discount.code})</span>
+                  <span className="tabular-nums">−{money(ticket.discount.amount)}</span>
+                </div>
+              ) : null}
+              {/* Order-level amounts only on single-buyer orders — group rows show
+                  each attendee's own share as the total. */}
+              {!ticket.group && ticket.earlybird?.amount > 0 ? (
+                <div className="flex items-center justify-between text-emerald-400">
+                  <span>Early bird</span>
+                  <span className="tabular-nums">−{money(ticket.earlybird.amount)}</span>
+                </div>
+              ) : null}
+              {!ticket.group && ticket.donation?.amount > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-text-secondary">
+                    Donation{ticket.donation.cause ? ` · ${ticket.donation.cause}` : ""}
+                  </span>
+                  <span className="tabular-nums text-foreground">{money(ticket.donation.amount)}</span>
                 </div>
               ) : null}
               <div className="mt-1 flex items-center justify-between border-t border-border pt-2 font-semibold text-foreground">

@@ -26,6 +26,8 @@ import {
   Gauge,
   Image as ImgIcon,
   Users,
+  Heart,
+  KeyRound,
   Phone,
   Mail,
   Navigation,
@@ -55,6 +57,40 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  slotBookingEnabled,
+  slotBookingRequired,
+  eventSlots,
+} from "@/lib/events/slots";
+import {
+  hasPurchasables,
+  visiblePurchasables,
+  purchasablesUnitTotal,
+  buildPurchasableSelections,
+} from "@/lib/events/purchasables";
+import {
+  validateEventDiscount,
+  discountBase,
+  discountAmountFor,
+} from "@/lib/supabase/discounts";
+import { validateEventAccessCode } from "@/lib/supabase/access_codes";
+import {
+  earlybirdEnabled,
+  earlybirdReduction,
+  earlybirdLabel,
+} from "@/lib/events/earlybird";
+import { donationEnabled, donationConfig } from "@/lib/events/donation";
+import {
+  groupPurchaseEnabled,
+  groupConfig,
+  groupAllowsTicket,
+  groupDiscountAmount,
+} from "@/lib/events/group";
+import { ticketAvailable } from "@/lib/events/reserved";
+import { gatedTicketIds, accessCodesEnabled } from "@/lib/events/access_codes";
+import { eventBundles, bundlePrice, bundleTicketCount } from "@/lib/events/bundles";
+import { SlotPicker, TicketAddonsStep } from "./ticket_addons_step";
+import { TIER_COLOR_OPTIONS } from "../tickets/constants";
 import { EVENT_TYPE_MAP, formatDate, initials } from "./sample_data";
 import { defaultPageDesign, resolveFont } from "./page_design";
 import {
@@ -110,6 +146,29 @@ const TYPE_ICON = { "In-person": MapPin, Online: Video, Hybrid: Globe };
 // own glyph instead of a flat text badge.
 const AMENITY_ICON = Object.fromEntries(AMENITIES.map((a) => [a.key, a.icon]));
 
+// Accent dot class for a tier color token (falls back to the first option).
+const tierAccentDot = (color) =>
+  TIER_COLOR_OPTIONS.find((c) => c.value === color)?.dotClass ||
+  TIER_COLOR_OPTIONS[0].dotClass;
+
+// Group the storefront ticket list by the event's tier groups (ordered by rank).
+// Returns null when no groups are configured so the caller renders a flat list.
+function groupTickets(event, tickets) {
+  const groups = Array.isArray(event.ticketGroups) ? [...event.ticketGroups] : [];
+  if (!groups.length) return null;
+  groups.sort(
+    (a, b) =>
+      (a.rank ?? 1) - (b.rank ?? 1) || (a.name || "").localeCompare(b.name || ""),
+  );
+  const idSet = new Set(groups.map((g) => g.tierId));
+  const sections = groups
+    .map((g) => ({ ...g, items: tickets.filter((t) => t.groupId === g.tierId) }))
+    .filter((s) => s.items.length);
+  const ungrouped = tickets.filter((t) => !t.groupId || !idSet.has(t.groupId));
+  if (!sections.length) return null; // everything ungrouped → flat list
+  return { sections, ungrouped };
+}
+
 function eventBase(event) {
   if (event.sold > 0 && event.revenue > 0) {
     return Math.max(5, Math.round(event.revenue / event.sold / 5) * 5);
@@ -129,6 +188,11 @@ function buildTickets(event, resolved) {
         ? event.tickets
         : null;
   if (source) {
+    // groupId lives on the raw metadata.tickets entries; the resolved RPC rows
+    // don't carry it, so map it in by ticket id for grouped storefront display.
+    const groupById = new Map(
+      (Array.isArray(event.tickets) ? event.tickets : []).map((t) => [t.id, t.groupId ?? null]),
+    );
     return source
       .filter((t) => (t.rules?.visibility || "public") !== "hidden")
       .map((t) => ({
@@ -138,6 +202,7 @@ function buildTickets(event, resolved) {
         qty: Number(t.qty) || 0,
         note: t.description || "",
         ticketTypeId: t.ticketTypeId ?? null,
+        groupId: t.groupId ?? groupById.get(t.id) ?? null,
         rules: t.rules && typeof t.rules === "object" ? t.rules : {},
       }));
   }
@@ -219,8 +284,21 @@ function TicketCheckout({
   // requests master switch). Null until fetched; may be null if unconfigured.
   daConfig,
 }) {
-  const [step, setStep] = useState("details"); // details | done | error
+  const [step, setStep] = useState("details"); // details | addons | done | error
   const [qty, setQty] = useState(1);
+  // Booked slot id + chosen conditional purchasables ({ [id]: bool | count }).
+  const [slotId, setSlotId] = useState(null);
+  const [purSelections, setPurSelections] = useState({});
+  // Discount code: the typed input, the validated result, and a busy flag while
+  // checking. appliedDiscount = { id, code, discountType, value } | null.
+  const [discountInput, setDiscountInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [discountBusy, setDiscountBusy] = useState(false);
+  // Optional donation (once, not × qty) + custom-amount entry.
+  const [donationAmount, setDonationAmount] = useState(0);
+  const [donationCustom, setDonationCustom] = useState("");
+  // Group purchasing: one { name, email } per seat when buying a block.
+  const [attendees, setAttendees] = useState([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -281,31 +359,111 @@ function TicketCheckout({
   }, [open, ticket?.ticketTypeId]);
 
   const price = ticket?.price || 0;
+  const ticketId = ticket?.id != null ? String(ticket.id) : null;
+  // A bundle "ticket" carries a bundleId; its price/rules are fixed (no
+  // early-bird / group / per-ticket discount stacking).
+  const isBundle = !!ticket?.bundleId;
 
-  // Offerings (add-ons / choices) available for the selected ticket.
-  const offerings = (Array.isArray(event.offerings) ? event.offerings : [])
-    .filter((o) => o.enabled && Array.isArray(o.options) && o.options.length)
-    .filter(
-      (o) =>
-        o.appliesTo === "all" ||
-        (Array.isArray(o.appliesTo) && o.appliesTo.includes(ticket?.name)),
-    );
+  // Early-bird: the buyer sees the in-window reduced price, but the ORIGINAL
+  // price is what's sent — the server (Stripe route + buy_ticket) re-derives the
+  // reduction from its own clock so the two never double-reduce.
+  const ebOn = !isBundle && earlybirdEnabled(event);
+  const ebReduction = ebOn ? earlybirdReduction(event, price) : 0;
+  const effPrice = Math.max(0, price - ebReduction);
+
+  // Slot booking: buyer picks one of the event's bookable slots for this ticket.
+  const slotBookingOn = slotBookingEnabled(event);
+  const slotRequired = slotBookingRequired(event);
+  const bookableSlots = slotBookingOn
+    ? eventSlots(event, { ticketId: ticketId ?? undefined }).filter((s) => s.enabled !== false)
+    : [];
+  const selectedSlot = bookableSlots.find((s) => s.id === slotId) || null;
+  const slotDelta = selectedSlot ? Number(selectedSlot.priceDelta) || 0 : 0;
+
+  // Purchasables supersede the legacy inline Offerings when configured — the two
+  // never render together, so a buyer sees exactly one add-on surface.
+  const usePurchasables = hasPurchasables(event);
+
+  // Offerings (add-ons / choices) available for the selected ticket. Suppressed
+  // when the event uses the newer purchasables.
+  const offerings = usePurchasables
+    ? []
+    : (Array.isArray(event.offerings) ? event.offerings : [])
+        .filter((o) => o.enabled && Array.isArray(o.options) && o.options.length)
+        .filter(
+          (o) =>
+            o.appliesTo === "all" ||
+            (Array.isArray(o.appliesTo) && o.appliesTo.includes(ticket?.name)),
+        );
 
   const optionPrice = (o, id) => {
     const opt = o.options.find((x) => x.id === id);
     return opt ? Number(opt.price) || 0 : 0;
   };
-  // Per-ticket add-on total from the current selections.
-  const addonUnit = offerings.reduce((sum, o) => {
+  // Per-ticket offerings total from the current selections.
+  const offeringsUnit = offerings.reduce((sum, o) => {
     const sel = selections[o.id];
     if (o.selectionType === "single") return sum + (sel ? optionPrice(o, sel) : 0);
     const arr = Array.isArray(sel) ? sel : [];
     return sum + arr.reduce((s, id) => s + optionPrice(o, id), 0);
   }, 0);
 
-  const total = (price + addonUnit) * qty;
+  // Conditional purchasables visible for the current slot / ticket / quantity.
+  const purSelectedIds = Object.entries(purSelections)
+    .filter(([, v]) => (typeof v === "number" ? v > 0 : !!v))
+    .map(([k]) => k);
+  const visiblePurs = usePurchasables
+    ? visiblePurchasables(event, {
+        slot: selectedSlot,
+        ticketId,
+        ticketName: ticket?.name,
+        qty,
+        isMember: false,
+        selectedIds: purSelectedIds,
+      })
+    : [];
+  const purUnit = purchasablesUnitTotal(visiblePurs, purSelections);
+
+  // Per-ticket add-on total = offerings + purchasables + the slot's price delta,
+  // all folded into buy_ticket's p_addons so subtotal = (price + addonUnit) × qty.
+  const addonUnit = offeringsUnit + purUnit + slotDelta;
+  const subtotal = (effPrice + addonUnit) * qty;
+
+  // Discount codes: shown only when enabled AND the organiser attached a coupon.
+  const discountEnabled =
+    !isBundle &&
+    event.discountSettings?.enabled !== false &&
+    Array.isArray(event.attached?.discount) &&
+    event.attached.discount.length > 0;
+  const discountAppliesTo = event.discountSettings?.appliesTo || "order";
+  const discountAmount = appliedDiscount
+    ? discountAmountFor(
+        appliedDiscount,
+        discountBase({ price: effPrice, qty, addonUnit }, discountAppliesTo),
+      )
+    : 0;
+
+  // Group purchasing: buying a block (qty ≥ minSeats) switches on per-attendee
+  // dispensing + the group discount.
+  const groupOn = !isBundle && groupPurchaseEnabled(event) && groupAllowsTicket(event, ticketId);
+  const gCfg = groupConfig(event);
+  const isGroup = groupOn && qty >= gCfg.minSeats;
+  const groupDiscount = isGroup ? groupDiscountAmount(event, effPrice * qty) : 0;
+
+  // Donations: an optional amount added to the total once (never × qty).
+  const donationOn = !isBundle && donationEnabled(event);
+  const donCfg = donationConfig(event);
+
+  const total = Math.max(0, subtotal - discountAmount - groupDiscount) + donationAmount;
   const isFree = total === 0;
-  const maxQty = Math.min(Math.max(1, remaining || 1), 10);
+  // Group orders can exceed the default 10 cap up to the configured maximum.
+  const hardMax = groupOn ? (gCfg.maxSeats > 0 ? gCfg.maxSeats : 50) : 10;
+  const availCap = ticketAvailable(event, { id: ticketId, qty: ticket?.qty }, event.ticketSold || {});
+  const maxQty = Math.min(
+    Math.max(1, remaining || 1),
+    Number.isFinite(availCap) ? Math.max(1, availCap) : hardMax,
+    hardMax,
+  );
   const accentStyle = { backgroundColor: accent.color, color: accent.text };
 
   const selectSingle = (o, optId) =>
@@ -350,6 +508,33 @@ function TicketCheckout({
       })
       .filter(Boolean);
 
+  // Readable records of the chosen purchasables + booked slot for the order.
+  const buildPurchasables = () => buildPurchasableSelections(visiblePurs, purSelections);
+  // One { name, email } per seat when this is a group order (else null).
+  const buildAttendees = () =>
+    isGroup
+      ? Array.from({ length: qty }, (_, i) => ({
+          name: (attendees[i]?.name || "").trim(),
+          email: (attendees[i]?.email || "").trim(),
+        }))
+      : null;
+  const setAttendee = (i, field, value) =>
+    setAttendees((prev) => {
+      const next = [...prev];
+      next[i] = { ...(next[i] || {}), [field]: value };
+      return next;
+    });
+  const slotRecord = () =>
+    selectedSlot
+      ? {
+          id: selectedSlot.id,
+          label: selectedSlot.label,
+          band: selectedSlot.band,
+          start: selectedSlot.start || "",
+          priceDelta: Number(selectedSlot.priceDelta) || 0,
+        }
+      : null;
+
   // Reset to a fresh purchase whenever the dialog opens (render-phase reset —
   // React's recommended alternative to a setState-in-effect). A buyer just
   // back from Stripe opens straight to the done/error step instead.
@@ -368,8 +553,16 @@ function TicketCheckout({
         setQty(resumeResult.quantity || 1);
         setBusy(false);
         setSelections({});
+        setPurSelections({});
+        setSlotId(null);
+        setDiscountInput("");
+        setAppliedDiscount(null);
+        setDiscountBusy(false);
         setAnswers({});
         setTicketAnswers({});
+        setDonationAmount(0);
+        setDonationCustom("");
+        setAttendees([]);
       } else {
         setStep("details");
         setQty(1);
@@ -379,9 +572,17 @@ function TicketCheckout({
         setErrorMsg("");
         setBusy(false);
         setSelections({});
+        setPurSelections({});
+        setSlotId(null);
+        setDiscountInput("");
+        setAppliedDiscount(null);
+        setDiscountBusy(false);
         setAnswers({});
         setTicketAnswers({});
         setRegStatus(null);
+        setDonationAmount(0);
+        setDonationCustom("");
+        setAttendees([]);
       }
     }
   }
@@ -515,6 +716,14 @@ function TicketCheckout({
       quantity: qty,
       addons: addonUnit,
       selections: buildSelections(),
+      purchasables: buildPurchasables(),
+      slot: slotRecord(),
+      slotId: selectedSlot?.id ?? null,
+      discountCode: appliedDiscount?.code ?? null,
+      donation: donationAmount,
+      attendees: buildAttendees(),
+      bundleId: ticket?.bundleId ?? null,
+      accessCode: ticket?.accessCode ?? null,
     });
     if (res.ok) {
       // The order is recorded; also write the person-coming record so they
@@ -582,6 +791,14 @@ function TicketCheckout({
           name,
           email,
           selections: buildSelections(),
+          purchasables: buildPurchasables(),
+          slot: slotRecord(),
+          slotId: selectedSlot?.id ?? null,
+          discountCode: appliedDiscount?.code ?? null,
+          donation: donationAmount,
+          attendees: buildAttendees(),
+          bundleId: ticket?.bundleId ?? null,
+          accessCode: ticket?.accessCode ?? null,
           answers,
           formId: event.formId || null,
           clientRef,
@@ -606,21 +823,36 @@ function TicketCheckout({
     }
   };
 
-  const submitDetails = async () => {
+  const validateDetails = () => {
     if (!name.trim()) {
       toast.error("Please enter your name.");
-      return;
+      return false;
     }
     if (!email.includes("@")) {
       toast.error("Please enter a valid email.");
-      return;
+      return false;
+    }
+    // Require a slot only when some slot actually applies to this ticket (an
+    // all-restricted ticket with no bookable slot must not dead-end checkout).
+    if (slotRequired && bookableSlots.length && !selectedSlot) {
+      toast.error("Please choose a time slot.");
+      return false;
+    }
+    // Group orders need a valid email for every seat being dispensed.
+    if (isGroup) {
+      for (let i = 0; i < qty; i += 1) {
+        if (!(attendees[i]?.email || "").includes("@")) {
+          toast.error(`Enter a valid email for attendee ${i + 1}.`);
+          return false;
+        }
+      }
     }
     const missing = offerings.find(
       (o) => o.required && o.selectionType === "single" && !selections[o.id],
     );
     if (missing) {
       toast.error(`Please choose an option for ${missing.name}.`);
-      return;
+      return false;
     }
     const missingQ = regQuestions.find((q) => {
       if (!q.required) return false;
@@ -629,7 +861,7 @@ function TicketCheckout({
     });
     if (missingQ) {
       toast.error(`Please answer "${missingQ.label}".`);
-      return;
+      return false;
     }
     const missingInq = inquiryQuestions.find((q) => {
       if (!q.required) return false;
@@ -639,7 +871,7 @@ function TicketCheckout({
     });
     if (missingInq) {
       toast.error(`Please answer "${missingInq.label}".`);
-      return;
+      return false;
     }
     // Required ticket questions must be answered for every seat.
     for (let seat = 0; seat < qty; seat++) {
@@ -652,9 +884,15 @@ function TicketCheckout({
             ? `Please answer "${missingT.label}" for attendee ${seat + 1}.`
             : `Please answer "${missingT.label}".`,
         );
-        return;
+        return false;
       }
     }
+    return true;
+  };
+
+  // Complete the purchase: waitlist re-book guard, then the approval / free /
+  // paid branch. Called from the details step (no add-ons) or the add-ons step.
+  const proceed = async () => {
     // Policy: if this guest is already waitlisted, don't let them book again.
     if (live && blockWaitlistedRebook) {
       setBusy(true);
@@ -683,6 +921,65 @@ function TicketCheckout({
     }
   };
 
+  // Details "Continue": validate, then slide to the add-ons step when there are
+  // conditional purchasables to show, otherwise complete the purchase directly.
+  const submitDetails = () => {
+    if (!validateDetails()) return;
+    if (usePurchasables && visiblePurs.length) {
+      setStep("addons");
+      return;
+    }
+    proceed();
+  };
+
+  // Add-ons "Continue": enforce any required purchasables, then complete.
+  const confirmAddons = () => {
+    const missingReq = visiblePurs.find((p) => {
+      if (!p.required) return false;
+      const v = purSelections[p.id];
+      return typeof v === "number" ? v <= 0 : !v;
+    });
+    if (missingReq) {
+      toast.error(`Please add ${missingReq.name}.`);
+      return;
+    }
+    proceed();
+  };
+
+  // Purchasable selection handlers for the add-ons step.
+  const togglePurchasable = (id) =>
+    setPurSelections((s) => ({ ...s, [id]: !s[id] }));
+  const setPurchasableQty = (id, value) =>
+    setPurSelections((s) => ({ ...s, [id]: Math.max(0, Number(value) || 0) }));
+
+  // Validate + apply a discount code (server-checked against attached coupons).
+  const applyDiscount = async () => {
+    const code = discountInput.trim();
+    if (!code) return;
+    setDiscountBusy(true);
+    const res = live
+      ? await validateEventDiscount(event.id, code)
+      : { ok: true, id: "preview", code: code.toUpperCase(), discountType: "percent", value: 10 };
+    setDiscountBusy(false);
+    if (res.ok) {
+      setAppliedDiscount(res);
+      toast.success(`Code ${res.code} applied.`);
+    } else {
+      setAppliedDiscount(null);
+      toast.error(
+        res.reason === "limit"
+          ? "This code has reached its limit."
+          : res.reason === "not_allowed"
+            ? "This event doesn't accept that code."
+            : "That code isn't valid.",
+      );
+    }
+  };
+  const removeDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountInput("");
+  };
+
   const headerLabel =
     step === "done"
       ? regStatus === "Pending"
@@ -692,7 +989,9 @@ function TicketCheckout({
           : "Order confirmed"
       : step === "error"
         ? "Checkout"
-        : "Get tickets";
+        : step === "addons"
+          ? "Add-ons"
+          : "Get tickets";
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -707,8 +1006,18 @@ function TicketCheckout({
         {/* Body scrolls within the fixed-height dialog; the header stays put.
             Scrollbar hidden (suite convention) so it doesn't clutter the form. */}
         <div className="flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Step: details */}
-        {step === "details" ? (
+        {/* Steps: details + add-ons — a horizontal slide track (details slides
+            left, purchasables slide in from the right). */}
+        {step === "details" || step === "addons" ? (
+          <div className="w-full overflow-hidden">
+          <div
+            className="flex transition-transform duration-300 ease-out"
+            style={{
+              width: "200%",
+              transform: step === "addons" ? "translateX(-50%)" : "translateX(0)",
+            }}
+          >
+          <div className="w-1/2 shrink-0 px-0.5">
           <div className="grid gap-4">
             {approvedResume ? (
               <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
@@ -741,6 +1050,21 @@ function TicketCheckout({
               <QtyStepper qty={qty} setQty={setQty} max={maxQty} accent={accent} />
             </div>
 <div className="border-t border-border"></div>
+            {bookableSlots.length ? (
+              <>
+                <SlotPicker
+                  slots={bookableSlots}
+                  slotsSold={event.slotsSold || {}}
+                  ticketId={ticketId}
+                  qty={qty}
+                  selectedId={slotId}
+                  onSelect={setSlotId}
+                  accent={accent}
+                  label={event.slotBooking?.label}
+                />
+                <div className="border-t border-border"></div>
+              </>
+            ) : null}
             {offerings.length ? (
               <div className="space-y-4 ">
                 {offerings.map((o) => (
@@ -1067,21 +1391,179 @@ function TicketCheckout({
               </div>
             ) : null}
 
+            {/* Group purchasing: one attendee per seat, each emailed their own
+                ticket. Shown once the buyer takes a qualifying block. */}
+            {isGroup ? (
+              <div className="space-y-3 border-t border-border pt-4">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    Who are these {qty} tickets for?
+                  </p>
+                  <p className="mt-0.5 text-xs text-text-secondary">
+                    Each attendee gets their own ticket emailed to them.
+                    {gCfg.discountPercent > 0 ? ` Group discount: ${gCfg.discountPercent}% off.` : ""}
+                  </p>
+                </div>
+                {Array.from({ length: qty }).map((_, i) => (
+                  <div key={i} className="grid gap-2 sm:grid-cols-2">
+                    <Input
+                      placeholder={`Attendee ${i + 1} name`}
+                      value={attendees[i]?.name || ""}
+                      onChange={(e) => setAttendee(i, "name", e.target.value)}
+                    />
+                    <Input
+                      type="email"
+                      placeholder={`Attendee ${i + 1} email`}
+                      value={attendees[i]?.email || ""}
+                      onChange={(e) => setAttendee(i, "email", e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {/* Optional donation — added to the total once, not per ticket. */}
+            {donationOn ? (
+              <div className="space-y-2 border-t border-border pt-4">
+                <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Heart className="h-4 w-4 text-muted-foreground" />
+                  {donCfg.prompt || (donCfg.cause ? `Support ${donCfg.cause}` : "Add a donation")}
+                  {donCfg.required ? <span className="text-red-400">*</span> : null}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {donCfg.suggestedAmounts.map((amt) => {
+                    const active = !donationCustom && donationAmount === amt;
+                    return (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          setDonationCustom("");
+                          setDonationAmount(active ? 0 : amt);
+                        }}
+                        style={active ? { borderColor: accent.color } : undefined}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-sm font-medium tabular-nums transition-colors",
+                          active
+                            ? "bg-surface-card text-foreground"
+                            : "border-border bg-transparent text-muted-foreground hover:bg-surface-card",
+                        )}
+                      >
+                        ${amt}
+                      </button>
+                    );
+                  })}
+                  {donCfg.allowCustom ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-text-secondary">$</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        inputMode="decimal"
+                        value={donationCustom}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setDonationCustom(v);
+                          setDonationAmount(Math.max(0, Number(v) || 0));
+                        }}
+                        placeholder="Other"
+                        className="h-8 w-24 tabular-nums"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+                {donCfg.minAmount > 0 ? (
+                  <p className="text-xs text-text-tertiary">Minimum donation ${donCfg.minAmount}.</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {discountEnabled ? (
+              <div className="border-t border-border pt-4">
+                {appliedDiscount ? (
+                  <div className="flex items-center justify-between rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+                    <span className="flex items-center gap-2 text-sm text-foreground">
+                      <Check className="h-4 w-4 text-emerald-400" />
+                      <span className="font-mono">{appliedDiscount.code}</span> applied
+                    </span>
+                    <button
+                      type="button"
+                      onClick={removeDiscount}
+                      className="text-xs text-text-secondary hover:text-red-400"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={discountInput}
+                      onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          applyDiscount();
+                        }
+                      }}
+                      placeholder="Discount code"
+                      className="uppercase"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={discountBusy || !discountInput.trim()}
+                      onClick={applyDiscount}
+                      className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    >
+                      {discountBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             <div className="border-t border-border pt-4">
-              {addonUnit > 0 ? (
+              {addonUnit > 0 || discountAmount > 0 || ebReduction > 0 || groupDiscount > 0 || donationAmount > 0 ? (
                 <div className="mb-2 space-y-1 text-xs text-text-secondary">
                   <div className="flex justify-between">
                     <span>
-                      Tickets ({qty} × ${price})
+                      Tickets ({qty} × ${effPrice})
                     </span>
-                    <span className="tabular-nums">${price * qty}</span>
+                    <span className="tabular-nums">${effPrice * qty}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>
-                      Add-ons ({qty} × ${addonUnit})
-                    </span>
-                    <span className="tabular-nums">${addonUnit * qty}</span>
-                  </div>
+                  {ebReduction > 0 ? (
+                    <div className="flex justify-between text-emerald-400">
+                      <span>Early bird ({earlybirdLabel(event)})</span>
+                      <span className="tabular-nums">−${ebReduction * qty}</span>
+                    </div>
+                  ) : null}
+                  {addonUnit > 0 ? (
+                    <div className="flex justify-between">
+                      <span>
+                        Add-ons ({qty} × ${addonUnit})
+                      </span>
+                      <span className="tabular-nums">${addonUnit * qty}</span>
+                    </div>
+                  ) : null}
+                  {discountAmount > 0 ? (
+                    <div className="flex justify-between text-emerald-400">
+                      <span>Discount ({appliedDiscount.code})</span>
+                      <span className="tabular-nums">−${discountAmount}</span>
+                    </div>
+                  ) : null}
+                  {groupDiscount > 0 ? (
+                    <div className="flex justify-between text-emerald-400">
+                      <span>Group discount ({gCfg.discountPercent}%)</span>
+                      <span className="tabular-nums">−${groupDiscount}</span>
+                    </div>
+                  ) : null}
+                  {donationAmount > 0 ? (
+                    <div className="flex justify-between">
+                      <span>Donation</span>
+                      <span className="tabular-nums">${donationAmount}</span>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               <div className="flex items-center justify-between">
@@ -1099,6 +1581,10 @@ function TicketCheckout({
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : usePurchasables && visiblePurs.length ? (
+                <>
+                  Continue <ChevronRight className="h-4 w-4" />
+                </>
               ) : requiresApproval && !approvedResume ? (
                 "Request to register"
               ) : isFree ? (
@@ -1109,11 +1595,90 @@ function TicketCheckout({
                 </>
               )}
             </Button>
+            {!isFree &&
+            !(requiresApproval && !approvedResume) &&
+            !(usePurchasables && visiblePurs.length) ? (
+              <p className="flex items-center justify-center gap-1.5 text-xs text-text-tertiary">
+                <Lock className="h-3 w-3" /> Payments are securely processed by Stripe.
+              </p>
+            ) : null}
+          </div>
+          </div>
+
+          {/* Panel 2: conditional purchasables (slides in from the right). */}
+          <div className="w-1/2 shrink-0 px-0.5">
+          <div className="grid gap-4">
+            <TicketAddonsStep
+              purchasables={visiblePurs}
+              selections={purSelections}
+              onToggle={togglePurchasable}
+              onQty={setPurchasableQty}
+              accent={accent}
+            />
+            <div className="border-t border-border pt-4">
+              <div className="mb-2 space-y-1 text-xs text-text-secondary">
+                <div className="flex justify-between">
+                  <span>
+                    Tickets ({qty} × ${price})
+                  </span>
+                  <span className="tabular-nums">${price * qty}</span>
+                </div>
+                {addonUnit > 0 ? (
+                  <div className="flex justify-between">
+                    <span>Extras</span>
+                    <span className="tabular-nums">${addonUnit * qty}</span>
+                  </div>
+                ) : null}
+                {discountAmount > 0 ? (
+                  <div className="flex justify-between text-emerald-400">
+                    <span>Discount ({appliedDiscount.code})</span>
+                    <span className="tabular-nums">−${discountAmount}</span>
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-text-secondary">Total</span>
+                <span className="text-lg font-bold tabular-nums text-white">
+                  {total === 0 ? "Free" : `$${total}`}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                disabled={busy}
+                onClick={() => setStep("details")}
+              >
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Button>
+              <Button
+                style={accentStyle}
+                className="flex-1 hover:opacity-90"
+                disabled={busy}
+                onClick={confirmAddons}
+              >
+                {busy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : requiresApproval && !approvedResume ? (
+                  "Request to register"
+                ) : isFree ? (
+                  "Complete registration"
+                ) : (
+                  <>
+                    Continue to payment <ChevronRight className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </div>
             {!isFree && !(requiresApproval && !approvedResume) ? (
               <p className="flex items-center justify-center gap-1.5 text-xs text-text-tertiary">
                 <Lock className="h-3 w-3" /> Payments are securely processed by Stripe.
               </p>
             ) : null}
+          </div>
+          </div>
+          </div>
           </div>
         ) : null}
 
@@ -1580,9 +2145,55 @@ export function EventPublicPageContent({ event, design, live = false }) {
   // sales, questions). null until fetched — buildTickets falls back to the raw
   // metadata.tickets entries meanwhile.
   const [resolvedTickets, setResolvedTickets] = useState(null);
-  const tickets = buildTickets(event, resolvedTickets);
+  // Access-code unlocking: gated (hidden) tickets list only after the buyer
+  // enters a valid code, which then rides to buy_ticket for re-validation.
+  const gatedIds = gatedTicketIds(event);
+  const [unlockedCodes, setUnlockedCodes] = useState({}); // { [ticketId]: code }
+  const [codeInput, setCodeInput] = useState("");
+  const [codeBusy, setCodeBusy] = useState(false);
+  const priceById = Object.fromEntries(
+    (Array.isArray(event.tickets) ? event.tickets : []).map((t) => [String(t.id), Number(t.price) || 0]),
+  );
+  const baseTickets = buildTickets(event, resolvedTickets)
+    .filter((t) => !gatedIds.has(String(t.id)) || unlockedCodes[String(t.id)])
+    .map((t) =>
+      gatedIds.has(String(t.id)) && unlockedCodes[String(t.id)]
+        ? { ...t, accessCode: unlockedCodes[String(t.id)] }
+        : t,
+    );
+  // Bundles render as extra purchasable options alongside the tickets.
+  const bundleOptions = eventBundles(event).map((b) => ({
+    id: null,
+    bundleId: b.id,
+    name: b.name,
+    price: bundlePrice(b, priceById),
+    qty: 0,
+    note: b.description || `${bundleTicketCount(b)} tickets together`,
+  }));
+  const tickets = [...baseTickets, ...bundleOptions];
+  // Tier grouping for the storefront list (null when no groups → flat list).
+  const ticketGroups = groupTickets(event, tickets);
   const [selected, setSelected] = useState(Math.min(1, tickets.length - 1));
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  const applyAccessCode = async () => {
+    const code = codeInput.trim();
+    if (!code) return;
+    setCodeBusy(true);
+    const res = await validateEventAccessCode(event.id, code);
+    setCodeBusy(false);
+    if (res.ok && res.ticketIds.length) {
+      setUnlockedCodes((prev) => {
+        const next = { ...prev };
+        for (const id of res.ticketIds) next[String(id)] = res.code || code;
+        return next;
+      });
+      setCodeInput("");
+      toast.success("Tickets unlocked.");
+    } else {
+      toast.error("That code isn't valid for this event.");
+    }
+  };
   // After a live purchase the RPC returns the new sold count; reflect it so the
   // remaining counter and sold-out state update without a page reload.
   const [soldOverride, setSoldOverride] = useState(null);
@@ -2042,52 +2653,110 @@ export function EventPublicPageContent({ event, design, live = false }) {
                 <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
                   Select ticket
                 </p>
-                {tickets.map((t, i) => {
-                  const isActive = selected === i;
-                  return (
-                    <button
-                      key={t.name}
-                      type="button"
-                      onClick={() => setSelected(i)}
-                      style={isActive ? { borderColor: accent.color } : undefined}
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
-                        isActive
-                          ? "bg-surface-card"
-                          : "border-border bg-transparent hover:bg-surface-card",
-                      )}
-                    >
-                      <span
-                        style={
-                          isActive
-                            ? { backgroundColor: accent.color, borderColor: accent.color }
-                            : undefined
+                {accessCodesEnabled(event) && gatedIds.size > 0 ? (
+                  <div className="flex items-center gap-2 pb-1">
+                    <Input
+                      value={codeInput}
+                      onChange={(e) => setCodeInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          applyAccessCode();
                         }
+                      }}
+                      placeholder="Have an access code?"
+                      className="h-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={codeBusy || !codeInput.trim()}
+                      onClick={applyAccessCode}
+                      className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    >
+                      {codeBusy ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <KeyRound className="h-4 w-4" /> Unlock
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : null}
+                {(() => {
+                  const renderOption = (t) => {
+                    const i = tickets.indexOf(t);
+                    const isActive = selected === i;
+                    return (
+                      <button
+                        key={t.id || t.name}
+                        type="button"
+                        onClick={() => setSelected(i)}
+                        style={isActive ? { borderColor: accent.color } : undefined}
                         className={cn(
-                          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                          isActive ? "" : "border-[#444]",
+                          "flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
+                          isActive
+                            ? "bg-surface-card"
+                            : "border-border bg-transparent hover:bg-surface-card",
                         )}
                       >
-                        {isActive ? (
-                          <Check className="h-3 w-3" style={{ color: accent.text }} />
-                        ) : null}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium text-foreground">
-                          {t.name}
+                        <span
+                          style={
+                            isActive
+                              ? { backgroundColor: accent.color, borderColor: accent.color }
+                              : undefined
+                          }
+                          className={cn(
+                            "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                            isActive ? "" : "border-[#444]",
+                          )}
+                        >
+                          {isActive ? (
+                            <Check className="h-3 w-3" style={{ color: accent.text }} />
+                          ) : null}
                         </span>
-                        {t.note ? (
-                          <span className="block text-xs text-text-secondary">
-                            {t.note}
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-medium text-foreground">
+                            {t.name}
                           </span>
-                        ) : null}
-                      </span>
-                      <span className="shrink-0 text-sm font-semibold tabular-nums text-white">
-                        {t.price === 0 ? "Free" : `$${t.price}`}
-                      </span>
-                    </button>
+                          {t.note ? (
+                            <span className="block text-xs text-text-secondary">
+                              {t.note}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="shrink-0 text-sm font-semibold tabular-nums text-white">
+                          {t.price === 0 ? "Free" : `$${t.price}`}
+                        </span>
+                      </button>
+                    );
+                  };
+                  if (!ticketGroups) {
+                    return <div className="space-y-2">{tickets.map(renderOption)}</div>;
+                  }
+                  return (
+                    <div className="space-y-4">
+                      {ticketGroups.sections.map((g) => (
+                        <div key={g.tierId} className="space-y-2">
+                          <p className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                            <span
+                              className={cn("h-2 w-2 rounded-full", tierAccentDot(g.color))}
+                            />
+                            {g.name}
+                          </p>
+                          {g.items.map(renderOption)}
+                        </div>
+                      ))}
+                      {ticketGroups.ungrouped.length ? (
+                        <div className="space-y-2">
+                          {ticketGroups.ungrouped.map(renderOption)}
+                        </div>
+                      ) : null}
+                    </div>
                   );
-                })}
+                })()}
               </div>
 
               <div className="space-y-3 border-t border-border p-4">

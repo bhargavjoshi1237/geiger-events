@@ -178,7 +178,12 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
               the whole page. The thin scrollbar is hidden to match the suite's
               chrome-free scroll surfaces. */}
           <nav className="space-y-5 lg:h-full lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {NAV_GROUPS.map((group, gi) => (
+              {NAV_GROUPS.map((group, gi) => {
+              // Feature-gated items (Ticket Rules tabs) only show once their rule
+              // is on; a group whose items all filter out is hidden entirely.
+              const items = group.items.filter((i) => !i.showIf || i.showIf(form));
+              if (!items.length) return null;
+              return (
               <div key={group.group || `g${gi}`}>
                 {group.group ? (
                   <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
@@ -186,7 +191,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
                   </p>
                 ) : null}
                 <div className="space-y-0.5">
-                  {group.items.map((item) => {
+                  {items.map((item) => {
                     const Icon = item.icon;
                     const isActive = active === item.key;
                     return (
@@ -213,7 +218,8 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
                   })}
                 </div>
               </div>
-              ))}
+              );
+              })}
           </nav>
         </aside>
       </div>
