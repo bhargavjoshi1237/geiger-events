@@ -6,9 +6,24 @@ import { Loader2, LogOut, ShieldCheck, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, SectionCard, ScreenHeader } from "@/components/internal/shared/screen_kit";
+import { Field, ScreenHeader } from "@/components/internal/shared/screen_kit";
 import { SecondaryScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { initials } from "./portal_kit";
+
+// Simple flat section: a divider, heading + hint, then the controls — no card.
+function Section({ title, description, children }) {
+  return (
+    <section className="border-t border-border pt-6">
+      <div className="mb-4 max-w-md">
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        {description ? (
+          <p className="mt-1 text-xs text-text-secondary">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 async function postJson(url, body) {
   const res = await fetch(url, {
@@ -92,7 +107,7 @@ export function PortalAccount({ member, onMemberChange }) {
         </div>
       </div>
 
-      <SectionCard title="Profile" description="How your name appears on tickets and receipts.">
+      <Section title="Profile" description="How your name appears on tickets and receipts.">
         <form onSubmit={saveProfile} className="grid gap-4 sm:grid-cols-2">
           <Field label="Full name">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
@@ -114,9 +129,9 @@ export function PortalAccount({ member, onMemberChange }) {
             </Button>
           </div>
         </form>
-      </SectionCard>
+      </Section>
 
-      <SectionCard title="Password" description="Change the password you use to sign in.">
+      <Section title="Password" description="Change the password you use to sign in.">
         <form onSubmit={changePassword} className="grid gap-4 sm:grid-cols-2">
           <Field label="Current password" className="sm:col-span-2 sm:max-w-xs">
             <Input
@@ -157,9 +172,9 @@ export function PortalAccount({ member, onMemberChange }) {
             </Button>
           </div>
         </form>
-      </SectionCard>
+      </Section>
 
-      <SectionCard title="Sessions" description="Sign out of this device, or everywhere at once.">
+      <Section title="Sessions" description="Sign out of this device, or everywhere at once.">
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -180,7 +195,7 @@ export function PortalAccount({ member, onMemberChange }) {
             Sign out of all devices
           </Button>
         </div>
-      </SectionCard>
+      </Section>
     </SecondaryScreenWrapper>
   );
 }

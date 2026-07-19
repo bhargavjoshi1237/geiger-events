@@ -402,9 +402,9 @@ export function EmptyState({
         </div>
       ) : null}
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-sm font-semibold text-foreground capitalize">{title}</p>
         {description ? (
-          <p className="mx-auto max-w-sm text-sm text-text-secondary">{description}</p>
+          <p className="mx-auto max-w-sm text-sm text-text-secondary capitalize">{description}</p>
         ) : null}
       </div>
       {action ? <div className="mt-1">{action}</div> : null}

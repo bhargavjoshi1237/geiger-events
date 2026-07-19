@@ -1,7 +1,16 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- portal renders remote Supabase cover URLs; next/image adds no value here */
 
 import React, { useMemo, useState } from "react";
-import { ShoppingBag, Receipt, MessageSquare } from "lucide-react";
+import {
+  ShoppingBag,
+  Receipt,
+  MessageSquare,
+  CalendarDays,
+  CalendarClock,
+  User,
+  MapPin,
+} from "lucide-react";
 
 import {
   EmptyState,
@@ -18,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Card, Cover, money, fmtDate } from "./portal_kit";
+import { TicketStubRow, money, fmtDate } from "./portal_kit";
 import { RefundPanel, REFUND_STATUS } from "./portal_tickets";
 
 const ORDER_STATUS = {
@@ -35,81 +44,111 @@ const STATUS_FILTER = [
 ];
 
 function OrderCard({ o, onOpen }) {
+  const meta = [
+    { label: ORDER_STATUS[o.status]?.label || o.status },
+    { label: fmtDate(o.createdAt) },
+    { label: o.orderCode, muted: true },
+    o.refund ? { label: REFUND_STATUS[o.refund.status]?.label || "Refund", muted: true } : null,
+  ].filter(Boolean);
+
   return (
-    <Card onClick={() => onOpen(o)} className="flex items-center gap-4 p-0">
-      <Cover url={o.coverUrl} name={o.eventName} className="h-16 w-16 shrink-0 rounded-l-xl" />
-      <div className="min-w-0 flex-1 py-3">
-        <p className="truncate text-sm font-semibold text-foreground">{o.eventName}</p>
-        <p className="mt-0.5 text-xs text-text-secondary">
-          {o.ticket || "Admission"} × {o.quantity} · {fmtDate(o.createdAt)}
-        </p>
-        <p className="mt-0.5 font-mono text-[11px] text-text-tertiary">{o.orderCode}</p>
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-1 pr-4">
-        <StatusPill status={o.status} map={ORDER_STATUS} />
-        <span className="text-sm tabular-nums text-foreground">{money(o.total)}</span>
-        {o.refund ? <StatusPill status={o.refund.status} map={REFUND_STATUS} /> : null}
-      </div>
-    </Card>
+    <TicketStubRow
+      onClick={() => onOpen(o)}
+      image={o.coverUrl}
+      name={o.eventName}
+      description={`${o.ticket || "Admission"} × ${o.quantity}`}
+      meta={meta}
+      stubValue={money(o.total)}
+      stubLabel="total"
+    />
   );
 }
 
 function ReceiptDialog({ order, onClose, onMessage, onRequestRefund }) {
   return (
     <Dialog open={Boolean(order)} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-md gap-0 overflow-y-auto p-0">
         {order ? (
           <>
-            <DialogHeader>
-              <DialogTitle>Order receipt</DialogTitle>
-            </DialogHeader>
-
-            <div className="rounded-xl border border-border bg-surface-card p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">
+            <DialogHeader className="border-b border-border p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-subtle text-muted-foreground">
+                  {order.coverUrl ? (
+                    <img src={order.coverUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <Receipt className="h-5 w-5" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="truncate text-left text-base">
                     {order.eventName}
-                  </p>
+                  </DialogTitle>
                   <p className="mt-0.5 font-mono text-[11px] text-text-tertiary">
                     {order.orderCode}
                   </p>
                 </div>
-                <StatusPill status={order.status} map={ORDER_STATUS} />
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-5 p-5">
+              {/* Itemised breakdown — receipt with a torn total line */}
+              <div className="overflow-hidden rounded-xl border border-border bg-surface-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                    Summary
+                  </span>
+                  <StatusPill status={order.status} map={ORDER_STATUS} />
+                </div>
+                <div className="space-y-2.5 px-4 py-3.5">
+                  <Line
+                    label={`${order.ticket || "Admission"} × ${order.quantity}`}
+                    value={money(order.unitPrice * order.quantity)}
+                  />
+                </div>
+                <div className="border-t border-dashed border-border" />
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <span className="text-sm font-medium text-text-secondary">Total paid</span>
+                  <span className="text-lg font-semibold tabular-nums text-foreground">
+                    {money(order.total)}
+                  </span>
+                </div>
               </div>
 
-              <div className="my-4 h-px bg-border" />
+              {/* Details */}
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+                <DetailRow icon={CalendarDays} label="Purchased">
+                  {fmtDate(order.createdAt)}
+                </DetailRow>
+                {order.eventDate ? (
+                  <DetailRow icon={CalendarClock} label="Event date">
+                    {fmtDate(order.eventDate)}
+                  </DetailRow>
+                ) : null}
+                {order.buyerName ? (
+                  <DetailRow icon={User} label="Buyer">
+                    {order.buyerName}
+                  </DetailRow>
+                ) : null}
+                {order.city ? (
+                  <DetailRow icon={MapPin} label="Location">
+                    {order.city}
+                  </DetailRow>
+                ) : null}
+              </dl>
 
-              <Line
-                label={`${order.ticket || "Admission"} × ${order.quantity}`}
-                value={money(order.unitPrice * order.quantity)}
-              />
-              <div className="my-3 h-px bg-border" />
-              <div className="flex items-center justify-between text-sm font-semibold text-foreground">
-                <span>Total</span>
-                <span className="tabular-nums">{money(order.total)}</span>
+              {/* Actions */}
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onMessage(order)}
+                  className="w-full border-border bg-surface-card text-foreground hover:bg-surface-hover"
+                >
+                  <MessageSquare className="h-4 w-4" /> Message organiser
+                </Button>
+                <RefundPanel ticket={order} onRequestRefund={onRequestRefund} />
               </div>
             </div>
-
-            <dl className="grid grid-cols-2 gap-3 text-sm">
-              <Meta label="Purchased">{fmtDate(order.createdAt)}</Meta>
-              {order.eventDate ? <Meta label="Event date">{fmtDate(order.eventDate)}</Meta> : null}
-              {order.buyerName ? <Meta label="Buyer">{order.buyerName}</Meta> : null}
-              {order.city ? <Meta label="Location">{order.city}</Meta> : null}
-            </dl>
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onMessage(order)}
-                className="border-border bg-surface-card text-foreground hover:bg-surface-hover"
-              >
-                <MessageSquare className="h-4 w-4" /> Message organiser
-              </Button>
-            </div>
-
-            <RefundPanel ticket={order} onRequestRefund={onRequestRefund} />
           </>
         ) : null}
       </DialogContent>
@@ -119,18 +158,23 @@ function ReceiptDialog({ order, onClose, onMessage, onRequestRefund }) {
 
 function Line({ label, value }) {
   return (
-    <div className="flex items-center justify-between text-sm text-muted-foreground">
+    <div className="flex items-center justify-between text-sm text-text-secondary">
       <span>{label}</span>
       <span className="tabular-nums text-foreground">{value}</span>
     </div>
   );
 }
 
-function Meta({ label, children }) {
+function DetailRow({ icon: Icon, label, children }) {
   return (
-    <div>
-      <dt className="text-xs text-text-tertiary">{label}</dt>
-      <dd className="text-foreground">{children}</dd>
+    <div className="flex items-start gap-2.5">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface-card text-text-tertiary">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0">
+        <dt className="text-[11px] uppercase tracking-wide text-text-tertiary">{label}</dt>
+        <dd className="truncate text-sm text-foreground">{children}</dd>
+      </div>
     </div>
   );
 }

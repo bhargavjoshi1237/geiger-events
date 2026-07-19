@@ -55,7 +55,7 @@ function NamedList({ label, placeholder, items, onChange }) {
           ))}
         </div>
       ) : (
-        <p className="text-xs text-text-tertiary">No {label.toLowerCase()} yet.</p>
+        <p className="text-xs text-text-tertiary capitalize">No {label.toLowerCase()} yet.</p>
       )}
     </div>
   );

@@ -58,8 +58,25 @@ const emptyDraft = (mod) => ({
 
 // --- Create dialog -----------------------------------------------------------
 
-function CreateRecordDialog({ mod, open, onOpenChange, onCreate }) {
+function CreateRecordDialog({ mod, projectId, open, onOpenChange, onCreate }) {
   const [draft, setDraft] = useState(() => emptyDraft(mod));
+  const Icon = mod.icon;
+  // FieldControl needs projectId for the audience picker (event scope + targeting).
+  const values = { ...draft, projectId };
+  // Split essentials from the (taller) composite pickers (audience, access) so
+  // each of those gets its own full-width block below the basics.
+  const RICH_TYPES = new Set(["audience", "access"]);
+  const basicFields = mod.createFields.filter((f) => !RICH_TYPES.has(f.type));
+  const richFields = mod.createFields.filter((f) => RICH_TYPES.has(f.type));
+
+  const onFieldValue = (field) => (val) =>
+    setDraft((d) => ({ ...d, ...fieldPatch(field, d, val) }));
+
+  // Reset the draft whenever the dialog closes (cancel or submit).
+  const close = (o) => {
+    if (!o) setDraft(emptyDraft(mod));
+    onOpenChange(o);
+  };
 
   const submit = () => {
     if (!draft.name.trim()) {
@@ -72,44 +89,82 @@ function CreateRecordDialog({ mod, open, onOpenChange, onCreate }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-background">
-        <DialogHeader>
-          <DialogTitle>{mod.createLabel}</DialogTitle>
-          <DialogDescription>
-            Set the essentials now — you can fill in the rest in the editor.
-          </DialogDescription>
+    <Dialog open={open} onOpenChange={close}>
+      <DialogContent className="max-w-lg gap-0 overflow-hidden bg-background p-0">
+        <DialogHeader className="flex-row items-center gap-3 space-y-0 border-b border-border p-5 text-left">
+          {Icon ? (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-subtle text-foreground">
+              <Icon className="h-5 w-5" />
+            </div>
+          ) : null}
+          <div className="min-w-0 space-y-0.5">
+            <DialogTitle className="text-base capitalize">{mod.createLabel}</DialogTitle>
+            <DialogDescription className="text-xs">
+              Set the essentials now — you can fill in the rest in the editor.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          {mod.createFields.map((field) => (
-            <Field key={field.key} label={field.label} hint={field.hint}>
-              <FieldControl
-                field={field}
-                value={readField(field, draft)}
-                onValue={(val) =>
-                  setDraft((d) => ({ ...d, ...fieldPatch(field, d, val) }))
-                }
-              />
-            </Field>
-          ))}
-        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+        >
+          <div className="max-h-[60vh] overflow-y-auto">
+            {basicFields.length ? (
+              <div className="grid gap-4 p-5">
+                {basicFields.map((field) => (
+                  <Field key={field.key} label={field.label} hint={field.hint}>
+                    <FieldControl
+                      field={field}
+                      value={readField(field, draft)}
+                      values={values}
+                      onValue={onFieldValue(field)}
+                    />
+                  </Field>
+                ))}
+              </div>
+            ) : null}
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={submit}
-          >
-            {mod.createLabel}
-          </Button>
-        </DialogFooter>
+            {richFields.map((field) => (
+              <div
+                key={field.key}
+                className="space-y-3 border-t border-border bg-surface-subtle/30 p-5"
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">{field.label}</p>
+                  {field.hint ? (
+                    <p className="mt-0.5 text-xs text-text-secondary">{field.hint}</p>
+                  ) : null}
+                </div>
+                <FieldControl
+                  field={field}
+                  value={readField(field, draft)}
+                  values={values}
+                  onValue={onFieldValue(field)}
+                />
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="border-t border-border bg-surface-subtle/40 px-5 py-4">
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={() => close(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" /> <span className="capitalize">{mod.createLabel}</span>
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
@@ -127,6 +182,10 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
   }
 
   const isRich = mod.detail.depth === "rich";
+  // Optional rich header card for a module's detail (e.g. the Speaker profile
+  // hero). When present it owns the title/status, so the top bar keeps only the
+  // back link + actions.
+  const Hero = mod.detail.hero || null;
   const nav = useMemo(() => (isRich ? mod.detail.nav : []), [isRich, mod]);
   const active = isRich
     ? nav.some((i) => i.key === rawSection)
@@ -165,12 +224,14 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
             <ArrowLeft className="h-3.5 w-3.5" />
             {mod.title}
           </button>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-              {form.name || `Untitled ${mod.singular.toLowerCase()}`}
-            </h1>
-            <StatusPill status={form.status} map={mod.statusMap} />
-          </div>
+          {!Hero ? (
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                {form.name || `Untitled ${mod.singular.toLowerCase()}`}
+              </h1>
+              <StatusPill status={form.status} map={mod.statusMap} />
+            </div>
+          ) : null}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Button
@@ -188,6 +249,8 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
           </Button>
         </div>
       </div>
+
+      {Hero ? <Hero record={form} commit={commit} /> : null}
 
       {isRich ? (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px]">
@@ -236,10 +299,11 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
           </aside>
         </div>
       ) : (
-        <div className="mx-auto w-full max-w-3xl space-y-6">
+        <div className="mx-auto w-full max-w-3xl space-y-10 pt-2">
           {mod.detail.panels.map((panel) => (
             <FieldSection
               key={panel.title}
+              bare
               title={panel.title}
               description={panel.description}
               fields={panel.fields}
@@ -436,12 +500,17 @@ export function RecordsScreen({ mod, api }) {
         title={mod.title}
         description={mod.description}
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> {mod.createLabel}
-          </Button>
+          <div className="flex items-center gap-2">
+            {mod.settingsAction ? (
+              <mod.settingsAction api={api} projectId={projectId} />
+            ) : null}
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> <span className="capitalize">{mod.createLabel}</span>
+            </Button>
+          </div>
         }
       />
 
@@ -511,7 +580,7 @@ export function RecordsScreen({ mod, api }) {
                       className="bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={() => setCreateOpen(true)}
                     >
-                      <Plus className="h-4 w-4" /> {mod.createLabel}
+                      <Plus className="h-4 w-4" /> <span className="capitalize">{mod.createLabel}</span>
                     </Button>
                   )
                 }
@@ -523,6 +592,7 @@ export function RecordsScreen({ mod, api }) {
 
       <CreateRecordDialog
         mod={mod}
+        projectId={projectId}
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreate={handleCreate}

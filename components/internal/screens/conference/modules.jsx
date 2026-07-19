@@ -21,12 +21,43 @@ import {
   ClipboardList,
   CalendarClock,
   Video,
+  Clapperboard,
+  Radio,
+  Users,
+  Building2,
+  Share2,
+  StickyNote,
+  Wifi,
+  PlayCircle,
+  CalendarDays,
+  MonitorPlay,
+  Network,
+  CirclePlay,
+  Captions,
+  ClipboardCheck,
+  CalendarCheck,
+  ListChecks,
+  Target,
+  Send,
 } from "lucide-react";
 
 import { CoverImageCard } from "@/components/internal/shared/records/record_fields";
 import { uploadConferenceImage } from "@/lib/supabase/storage";
 import {
+  EventLinkField,
+  EventMultiField,
+  RecordingVideoField,
+  RecordingShareField,
+  SpeakerHero,
+  PortalProgressHero,
+  SessionMultiField,
+  AgendaAssignHero,
+} from "./detail_fields";
+import { describeSpec } from "@/lib/audience/resolve";
+import { accessSummary, DEFAULT_ACCESS } from "@/components/internal/shared/records/access_control";
+import {
   nameCol,
+  avatarNameCol,
   statusCol,
   pillCol,
   textCol,
@@ -54,19 +85,37 @@ import {
   CERTIFICATE_STATUS_MAP,
   SESSION_STATUS_MAP,
   RECORDING_STATUS_MAP,
+  BACKSTAGE_STATUS_MAP,
+  ROOM_STATUS_MAP,
+  ROOM_KIND_MAP,
   TIER_MAP,
+  WEBINAR_STATUS_MAP,
+  BREAKOUT_STATUS_MAP,
+  BREAKOUT_KIND_MAP,
+  SPONSOR_ROOM_STATUS_MAP,
+  SPONSOR_ROOM_KIND_MAP,
+  PORTAL_STATUS_MAP,
+  SIMULIVE_STATUS_MAP,
+  SIMULIVE_MODE_MAP,
+  CAPTION_STATUS_MAP,
+  CAPTION_MODE_MAP,
+  AGENDA_ASSIGN_STATUS_MAP,
+  AGENDA_DELIVERY_OPTIONS,
 } from "./constants";
 
-// The eight Conference modules, expressed declaratively. The shared kit
-// (conference_kit.jsx) renders the list (columns/stats/filters/create) and the
+// The Conference modules, expressed declaratively. The shared records kit
+// (records_kit.jsx) renders the list (columns/stats/filters/create) and the
 // adaptive detail (rich = section nav + fields/render; light = field panels).
 // Every module is backed by events.conference_records, discriminated by `key`.
+// Bespoke screens (Agenda Builder, Floor Plan & Booths, Mobile Event App) live in
+// their own files. Assign Agenda is a module here that reuses the "session"
+// records; Floor Plan reuses the "booth" records.
 
 // --- Builders ----------------------------------------------------------------
 // Column/stat/filter/field factories are shared (see records/builders.jsx).
 // Only the media section (uses this area's uploader) is local.
 
-const mediaSection = (label, title, aspect) => ({
+const mediaSection = (label, title, aspect, frameClassName) => ({
   key: "media",
   label,
   icon: ImageIcon,
@@ -78,6 +127,7 @@ const mediaSection = (label, title, aspect) => ({
       upload={uploadConferenceImage}
       title={title}
       aspect={aspect}
+      frameClassName={frameClassName}
     />
   ),
 });
@@ -102,7 +152,7 @@ export const MODULES = {
     statusMap: SPEAKER_STATUS_MAP,
     filters: [statusFilter(SPEAKER_STATUS_MAP)],
     columns: [
-      nameCol((r) => [r.config.title, r.config.company].filter(Boolean).join(" · ")),
+      avatarNameCol((r) => [r.config.title, r.config.company].filter(Boolean).join(" · ")),
       statusCol(SPEAKER_STATUS_MAP),
       textCol("topics", "Topics", (r) => (r.config.topics || []).slice(0, 3).join(", ")),
       textCol("featured", "Featured", (r) => (r.config.featured ? "★ Featured" : "")),
@@ -121,10 +171,11 @@ export const MODULES = {
       nameField("Full name", "e.g. Ada Lovelace"),
       c("title", "Title / role", "text", { placeholder: "e.g. Principal Engineer" }),
       c("company", "Company", "text", { placeholder: "e.g. Analytical Engines" }),
-      statusField(SPEAKER_STATUS_MAP),
+      { ...statusField(SPEAKER_STATUS_MAP), type: "tabs" },
     ],
     detail: {
       depth: "rich",
+      hero: SpeakerHero,
       nav: [
         {
           key: "profile",
@@ -133,7 +184,7 @@ export const MODULES = {
           desc: "Name, role, status, and contact details.",
           fields: [
             nameField("Full name"),
-            statusField(SPEAKER_STATUS_MAP),
+            { ...statusField(SPEAKER_STATUS_MAP), type: "tabs" },
             c("title", "Title / role"),
             c("company", "Company"),
             c("email", "Email", "email", { placeholder: "name@example.com" }),
@@ -169,7 +220,7 @@ export const MODULES = {
             c("website", "Website", "text", { placeholder: "https://…" }),
           ],
         },
-        mediaSection("Headshot", "Headshot", "aspect-[4/3]"),
+        mediaSection("Headshot", "Headshot", "aspect-square", "max-w-[200px]"),
       ],
     },
   },
@@ -408,10 +459,13 @@ export const MODULES = {
       statusField(VENUE_LEAD_STATUS_MAP),
     ],
     detail: {
-      depth: "light",
-      panels: [
+      depth: "rich",
+      nav: [
         {
-          title: "Venue lead",
+          key: "details",
+          label: "Details",
+          icon: SquarePen,
+          desc: "Location, capacity, status, and the quoted price.",
           fields: [
             nameField("Venue name"),
             statusField(VENUE_LEAD_STATUS_MAP),
@@ -422,7 +476,10 @@ export const MODULES = {
           ],
         },
         {
-          title: "Contact & notes",
+          key: "contact",
+          label: "Contact & notes",
+          icon: Contact,
+          desc: "Who to reach and any notes on this lead.",
           fields: [
             c("contactName", "Contact name"),
             c("contactEmail", "Email", "email", { placeholder: "name@example.com" }),
@@ -476,10 +533,13 @@ export const MODULES = {
       c("city", "City", "text", { placeholder: "e.g. Amsterdam" }),
     ],
     detail: {
-      depth: "light",
-      panels: [
+      depth: "rich",
+      nav: [
         {
-          title: "Option details",
+          key: "details",
+          label: "Option details",
+          icon: SquarePen,
+          desc: "Type, location, status, and the nightly rate.",
           fields: [
             nameField("Name"),
             statusField(HOUSING_STATUS_MAP),
@@ -490,7 +550,10 @@ export const MODULES = {
           ],
         },
         {
-          title: "Inventory",
+          key: "inventory",
+          label: "Inventory",
+          icon: ClipboardList,
+          desc: "Rooms held vs. booked, plus the booking link.",
           fields: [
             c("roomsBlocked", "Rooms blocked", "number", { placeholder: "e.g. 40" }),
             c("roomsBooked", "Rooms booked", "number", { placeholder: "e.g. 12" }),
@@ -705,27 +768,31 @@ export const MODULES = {
     singular: "Recording",
     icon: Video,
     description:
-      "The on-demand library — session recordings with their video link, status, and viewing stats.",
+      "The on-demand library — a journal of session recordings. Attach the events they came from, drop in an external video link, and publish a shareable replay page.",
     createLabel: "Add recording",
-    searchPlaceholder: "Search recordings, sessions…",
-    search: (r) => `${r.name} ${r.config.session || ""}`,
+    searchPlaceholder: "Search recordings, sessions, speakers…",
+    search: (r) => `${r.name} ${r.config.session || ""} ${r.config.speaker || ""}`,
     statusMap: RECORDING_STATUS_MAP,
     filters: [statusFilter(RECORDING_STATUS_MAP)],
     columns: [
-      nameCol((r) => r.config.session),
+      nameCol((r) => [r.config.session, r.config.speaker].filter(Boolean).join(" · ")),
       textCol("duration", "Duration", (r) => r.config.duration),
       textCol("views", "Views", (r) => (Number(r.config.views) || 0).toLocaleString()),
+      textCol("shared", "Sharing", (r) => (r.config.public ? "Public link" : "Private")),
       statusCol(RECORDING_STATUS_MAP),
     ],
     stats: (records) => [
       { label: "Recordings", value: String(records.length), footer: "In the library" },
       { label: "Published", value: String(count(records, (r) => r.status === "Published")), footer: "Live to watch" },
-      { label: "Processing", value: String(count(records, (r) => r.status === "Processing")), footer: "Being encoded" },
+      { label: "Public links", value: String(count(records, (r) => r.config.public)), footer: "Shared replays" },
       { label: "Total views", value: String(sum(records, (r) => r.config.views)), footer: "All recordings" },
     ],
     defaults: {
       status: "Draft",
-      config: { session: "", videoUrl: "", duration: "", views: 0, description: "" },
+      config: {
+        session: "", speaker: "", videoUrl: "", duration: "", views: 0,
+        recordedAt: "", description: "", eventIds: [], tags: [], public: false,
+      },
     },
     createFields: [
       nameField("Title", "e.g. Opening Keynote"),
@@ -733,20 +800,897 @@ export const MODULES = {
       c("videoUrl", "Video URL", "text", { placeholder: "https://…" }),
     ],
     detail: {
-      depth: "light",
-      panels: [
+      depth: "rich",
+      nav: [
         {
-          title: "Recording details",
+          key: "details",
+          label: "Details",
+          icon: SquarePen,
+          desc: "Title, status, and the session this recording captured.",
           fields: [
             nameField("Title"),
             statusField(RECORDING_STATUS_MAP),
             c("session", "Session"),
-            c("videoUrl", "Video URL", "text", { placeholder: "https://…" }),
+            c("speaker", "Speaker"),
+            c("recordedAt", "Recorded on", "text", { placeholder: "e.g. 2026-07-18" }),
             c("duration", "Duration", "text", { placeholder: "e.g. 42:15" }),
+            c("views", "Views", "number", { placeholder: "e.g. 1200" }),
+            c("tags", "Tags", "list", { placeholder: "Add a tag…" }),
+            c("description", "Description", "textarea", { placeholder: "Summary shown in the library and on the public page…" }),
+          ],
+        },
+        {
+          key: "video",
+          label: "Video",
+          icon: PlayCircle,
+          desc: "The external video link — Geiger plays it client-side and never hosts it.",
+          render: ({ record, commit }) => <RecordingVideoField record={record} commit={commit} />,
+        },
+        {
+          key: "events",
+          label: "Events",
+          icon: CalendarDays,
+          desc: "Which events this recording belongs to.",
+          render: ({ record, commit }) => <EventMultiField record={record} commit={commit} />,
+        },
+        {
+          key: "sharing",
+          label: "Sharing",
+          icon: Share2,
+          desc: "Publish a public replay page anyone can open with the link.",
+          render: ({ record, commit }) => <RecordingShareField record={record} commit={commit} />,
+        },
+        mediaSection("Thumbnail", "Thumbnail", "aspect-video"),
+      ],
+    },
+  },
+
+  // -------------------------------------------------------- Speaker Backstage ---
+  backstage: {
+    key: "backstage",
+    title: "Speaker Backstage",
+    singular: "Backstage room",
+    icon: Clapperboard,
+    description:
+      "The green room for each session — line up speakers, run tech checks, and keep the run-of-show handy so nobody goes live unprepared.",
+    createLabel: "Add backstage room",
+    searchPlaceholder: "Search sessions, speakers, stage managers…",
+    search: (r) => `${r.name} ${r.config.sessionTitle || ""} ${(r.config.speakers || []).join(" ")} ${r.config.stageManager || ""}`,
+    statusMap: BACKSTAGE_STATUS_MAP,
+    filters: [statusFilter(BACKSTAGE_STATUS_MAP)],
+    columns: [
+      nameCol((r) => r.config.sessionTitle),
+      textCol("speakers", "Speakers", (r) => (r.config.speakers || []).length || ""),
+      textCol("callTime", "Call time", (r) => r.config.callTime),
+      textCol("ready", "Tech check", (r) => {
+        const checks = ["techMic", "techCamera", "techScreen", "techInternet"];
+        const done = checks.filter((k) => r.config[k]).length;
+        return `${done}/4`;
+      }),
+      statusCol(BACKSTAGE_STATUS_MAP),
+    ],
+    stats: (records) => [
+      { label: "Rooms", value: String(records.length), footer: "Green rooms" },
+      { label: "Standing by", value: String(count(records, (r) => r.status === "Standing by")), footer: "Ready to go live" },
+      { label: "On air", value: String(count(records, (r) => r.status === "On air")), footer: "Live now" },
+      { label: "Speakers", value: String(sum(records, (r) => (r.config.speakers || []).length)), footer: "Backstage" },
+    ],
+    defaults: {
+      status: "Green room",
+      config: {
+        eventId: "", sessionTitle: "", callTime: "", stageManager: "", joinUrl: "",
+        speakers: [], techMic: false, techCamera: false, techScreen: false,
+        techInternet: false, runOfShow: "", producerNotes: "",
+      },
+    },
+    createFields: [
+      nameField("Room name", "e.g. Main Stage — Backstage"),
+      c("sessionTitle", "Session", "text", { placeholder: "e.g. Opening Keynote" }),
+      c("callTime", "Call time", "text", { placeholder: "e.g. 08:30" }),
+    ],
+    detail: {
+      depth: "rich",
+      nav: [
+        {
+          key: "room",
+          label: "Room",
+          icon: Clapperboard,
+          desc: "The session this backstage covers and who's running it.",
+          fields: [
+            nameField("Room name"),
+            statusField(BACKSTAGE_STATUS_MAP),
+            c("sessionTitle", "Session"),
+            c("callTime", "Call time", "text", { placeholder: "e.g. 08:30" }),
+            c("stageManager", "Stage manager", "text", { placeholder: "Who's calling the show" }),
+          ],
+        },
+        {
+          key: "event",
+          label: "Event",
+          icon: CalendarDays,
+          desc: "Link this backstage to its event.",
+          render: ({ record, commit }) => (
+            <EventLinkField record={record} commit={commit} description="The event this session runs at." />
+          ),
+        },
+        {
+          key: "lineup",
+          label: "Line-up",
+          icon: Users,
+          desc: "Speakers backstage and the private join link they use.",
+          fields: [
+            c("speakers", "Speakers on deck", "list", { placeholder: "Add a speaker…" }),
+            c("joinUrl", "Backstage join link", "text", { placeholder: "https://… (private green-room URL)" }),
+          ],
+        },
+        {
+          key: "tech",
+          label: "Tech check",
+          icon: Wifi,
+          desc: "Confirm each speaker's setup before they go live.",
+          fields: [
+            c("techMic", "Microphone tested", "switch"),
+            c("techCamera", "Camera tested", "switch"),
+            c("techScreen", "Screen share tested", "switch"),
+            c("techInternet", "Connection stable", "switch"),
+          ],
+        },
+        {
+          key: "runofshow",
+          label: "Run of show",
+          icon: StickyNote,
+          desc: "The beat-by-beat plan and any private producer notes.",
+          fields: [
+            c("runOfShow", "Run of show", "textarea", { rows: 8, placeholder: "00:00 Intro · 02:00 Keynote · 32:00 Q&A…" }),
+            c("producerNotes", "Producer notes", "textarea", { placeholder: "Cues, reminders, backup plans…" }),
+          ],
+        },
+      ],
+    },
+  },
+
+  // --------------------------------------------------------- Livestream Rooms ---
+  room: {
+    key: "room",
+    title: "Livestream Rooms",
+    singular: "Room",
+    icon: Radio,
+    description:
+      "Where sessions stream from — an on-site room, a digital broadcast, or both. Track capacity, the stream source, and the watch link.",
+    createLabel: "Add room",
+    searchPlaceholder: "Search rooms, locations, providers…",
+    search: (r) => `${r.name} ${r.config.location || ""} ${r.config.streamProvider || ""}`,
+    statusMap: ROOM_STATUS_MAP,
+    filters: [
+      statusFilter(ROOM_STATUS_MAP),
+      configFilter("kind", ["Digital", "On-site", "Hybrid"], "All types"),
+    ],
+    columns: [
+      nameCol((r) => r.config.location || r.config.streamProvider),
+      pillCol("kind", "Type", (r) => r.config.kind, ROOM_KIND_MAP),
+      textCol("capacity", "Capacity", (r) => (Number(r.config.capacity) || 0).toLocaleString()),
+      textCol("scheduledFor", "Scheduled", (r) => r.config.scheduledFor),
+      statusCol(ROOM_STATUS_MAP),
+    ],
+    stats: (records) => [
+      { label: "Rooms", value: String(records.length), footer: "On-site & digital" },
+      { label: "Live now", value: String(count(records, (r) => r.status === "Live")), footer: "Streaming" },
+      { label: "Digital", value: String(count(records, (r) => r.config.kind === "Digital" || r.config.kind === "Hybrid")), footer: "Broadcasting" },
+      { label: "Seats", value: String(sum(records, (r) => r.config.capacity)), footer: "Total capacity" },
+    ],
+    defaults: {
+      status: "Offline",
+      config: {
+        kind: "Digital", eventId: "", capacity: 0, location: "", scheduledFor: "",
+        streamProvider: "", streamUrl: "", watchUrl: "", description: "",
+      },
+    },
+    createFields: [
+      nameField("Room name", "e.g. Main Stage"),
+      c("kind", "Type", "select", { options: optionsFrom(["Digital", "On-site", "Hybrid"]) }),
+      c("capacity", "Capacity", "number", { placeholder: "e.g. 500" }),
+    ],
+    detail: {
+      depth: "rich",
+      nav: [
+        {
+          key: "room",
+          label: "Room",
+          icon: Radio,
+          desc: "What kind of room this is and when it runs.",
+          fields: [
+            nameField("Room name"),
+            statusField(ROOM_STATUS_MAP),
+            c("kind", "Type", "select", { options: optionsFrom(["Digital", "On-site", "Hybrid"]) }),
+            c("capacity", "Capacity", "number", { placeholder: "e.g. 500" }),
+            c("scheduledFor", "Scheduled for", "text", { placeholder: "e.g. Day 1 · 09:00" }),
+          ],
+        },
+        {
+          key: "event",
+          label: "Event",
+          icon: CalendarDays,
+          desc: "Link this room to its event.",
+          render: ({ record, commit }) => (
+            <EventLinkField record={record} commit={commit} description="The event streaming from this room." />
+          ),
+        },
+        {
+          key: "location",
+          label: "Location",
+          icon: Building2,
+          desc: "For on-site or hybrid rooms — where the physical room is.",
+          fields: [
+            c("location", "Location", "text", { placeholder: "e.g. Hall B, Level 2" }),
+          ],
+        },
+        {
+          key: "stream",
+          label: "Stream",
+          icon: Wifi,
+          desc: "The broadcast source and the public watch link.",
+          fields: [
+            c("streamProvider", "Provider", "text", { placeholder: "e.g. YouTube Live, Zoom, RTMP" }),
+            c("streamUrl", "Stream / ingest URL", "text", { placeholder: "rtmp://… or the studio link" }),
+            c("watchUrl", "Watch link", "text", { placeholder: "https://… (what attendees open)" }),
+            c("description", "Notes", "textarea", { placeholder: "AV setup, backup stream, moderator…" }),
+          ],
+        },
+      ],
+    },
+  },
+
+  // ----------------------------------------------------------- Webinar Rooms ---
+  webinar: {
+    key: "webinar",
+    title: "Webinar Rooms",
+    singular: "Webinar",
+    icon: MonitorPlay,
+    description:
+      "Scheduled virtual sessions with registration, a live stream, and an on-demand replay — the online counterpart to a stage.",
+    createLabel: "Add webinar",
+    searchPlaceholder: "Search webinars, presenters, platforms…",
+    search: (r) => `${r.name} ${r.config.presenter || ""} ${r.config.platform || ""}`,
+    statusMap: WEBINAR_STATUS_MAP,
+    filters: [
+      statusFilter(WEBINAR_STATUS_MAP),
+      configFilter("platform", ["Zoom", "YouTube Live", "Google Meet", "Teams", "Custom"], "All platforms"),
+    ],
+    columns: [
+      nameCol((r) => [r.config.platform, r.config.presenter].filter(Boolean).join(" · ")),
+      textCol("scheduledFor", "Scheduled", (r) => r.config.scheduledFor),
+      textCol("registration", "Registered", (r) => `${Number(r.config.registered) || 0} / ${Number(r.config.capacity) || 0}`),
+      statusCol(WEBINAR_STATUS_MAP),
+    ],
+    stats: (records) => {
+      const registered = sum(records, (r) => r.config.registered);
+      const attended = sum(records, (r) => r.config.attended);
+      return [
+        { label: "Webinars", value: String(records.length), footer: "All statuses" },
+        { label: "Live now", value: String(count(records, (r) => r.status === "Live")), footer: "Streaming" },
+        { label: "Registered", value: String(registered), footer: "Across webinars" },
+        { label: "Show rate", value: pct(registered ? (attended / registered) * 100 : 0), footer: "Attended vs registered" },
+      ];
+    },
+    defaults: {
+      status: "Draft",
+      config: {
+        platform: "Zoom", presenter: "", eventId: "", scheduledFor: "", duration: "",
+        capacity: 0, registered: 0, attended: 0, requiresRegistration: true,
+        registrationUrl: "", joinUrl: "", replayUrl: "", description: "",
+      },
+    },
+    createFields: [
+      nameField("Webinar title", "e.g. Product Deep-Dive"),
+      c("platform", "Platform", "select", { options: optionsFrom(["Zoom", "YouTube Live", "Google Meet", "Teams", "Custom"]) }),
+      c("presenter", "Presenter", "text", { placeholder: "e.g. Ada Lovelace" }),
+    ],
+    detail: {
+      depth: "rich",
+      nav: [
+        {
+          key: "overview",
+          label: "Overview",
+          icon: MonitorPlay,
+          desc: "What this webinar is, when it runs, and who's presenting.",
+          fields: [
+            nameField("Webinar title"),
+            statusField(WEBINAR_STATUS_MAP),
+            c("platform", "Platform", "select", { options: optionsFrom(["Zoom", "YouTube Live", "Google Meet", "Teams", "Custom"]) }),
+            c("presenter", "Presenter"),
+            c("scheduledFor", "Scheduled for", "text", { placeholder: "e.g. Day 1 · 14:00" }),
+            c("duration", "Duration", "text", { placeholder: "e.g. 60 min" }),
+            c("capacity", "Capacity", "number", { placeholder: "e.g. 500" }),
+            c("description", "Description", "textarea", { placeholder: "What attendees will learn…" }),
+          ],
+        },
+        {
+          key: "registration",
+          label: "Registration",
+          icon: ClipboardCheck,
+          desc: "Whether attendees register up front and how many have.",
+          fields: [
+            c("requiresRegistration", "Requires registration", "switch", { hint: "Attendees sign up before they can join." }),
+            c("registrationUrl", "Registration link", "text", { placeholder: "https://…" }),
+            c("registered", "Registered", "number", { placeholder: "e.g. 320" }),
+            c("attended", "Attended", "number", { placeholder: "e.g. 210" }),
+          ],
+        },
+        {
+          key: "stream",
+          label: "Stream & replay",
+          icon: Wifi,
+          desc: "The live join link and the on-demand replay.",
+          fields: [
+            c("joinUrl", "Join link", "text", { placeholder: "https://… (live room)" }),
+            c("replayUrl", "Replay link", "text", { placeholder: "https://… (on-demand)" }),
+          ],
+        },
+        {
+          key: "event",
+          label: "Event",
+          icon: CalendarDays,
+          desc: "Link this webinar to its event.",
+          render: ({ record, commit }) => (
+            <EventLinkField record={record} commit={commit} description="The event this webinar belongs to." />
+          ),
+        },
+        mediaSection("Cover", "Cover image", "aspect-video"),
+      ],
+    },
+  },
+
+  // ---------------------------------------------------------- Breakout Rooms ---
+  breakout: {
+    key: "breakout",
+    title: "Breakout Rooms",
+    singular: "Breakout room",
+    icon: Network,
+    description:
+      "Small-group spaces that run alongside a main session — discussions, workshops, and networking tables with their own facilitator.",
+    createLabel: "Add breakout room",
+    searchPlaceholder: "Search rooms, topics, facilitators…",
+    search: (r) => `${r.name} ${r.config.topic || ""} ${r.config.facilitator || ""} ${r.config.parentSession || ""}`,
+    statusMap: BREAKOUT_STATUS_MAP,
+    filters: [
+      statusFilter(BREAKOUT_STATUS_MAP),
+      configFilter("kind", ["Discussion", "Workshop", "Networking", "Roundtable"], "All types"),
+    ],
+    columns: [
+      nameCol((r) => r.config.topic),
+      pillCol("kind", "Type", (r) => r.config.kind, BREAKOUT_KIND_MAP),
+      textCol("facilitator", "Facilitator", (r) => r.config.facilitator),
+      textCol("seats", "Seats", (r) => `${Number(r.config.joined) || 0} / ${Number(r.config.capacity) || 0}`),
+      statusCol(BREAKOUT_STATUS_MAP),
+    ],
+    stats: (records) => {
+      const cap = sum(records, (r) => r.config.capacity);
+      const joined = sum(records, (r) => r.config.joined);
+      return [
+        { label: "Rooms", value: String(records.length), footer: "All types" },
+        { label: "Open", value: String(count(records, (r) => r.status === "Open")), footer: "Accepting people" },
+        { label: "Participants", value: String(joined), footer: "Across rooms" },
+        { label: "Fill", value: pct(cap ? (joined / cap) * 100 : 0), footer: "Of capacity" },
+      ];
+    },
+    defaults: {
+      status: "Draft",
+      config: {
+        kind: "Discussion", topic: "", facilitator: "", parentSession: "", capacity: 0,
+        joined: 0, duration: "", joinUrl: "", autoAssign: false, description: "",
+      },
+    },
+    createFields: [
+      nameField("Room name", "e.g. Table 4 — Scaling Teams"),
+      c("kind", "Type", "select", { options: optionsFrom(["Discussion", "Workshop", "Networking", "Roundtable"]) }),
+      c("facilitator", "Facilitator", "text", { placeholder: "Who leads the room" }),
+    ],
+    detail: {
+      depth: "rich",
+      nav: [
+        {
+          key: "room",
+          label: "Room",
+          icon: Network,
+          desc: "What this room is about and how long it runs.",
+          fields: [
+            nameField("Room name"),
+            statusField(BREAKOUT_STATUS_MAP),
+            c("kind", "Type", "select", { options: optionsFrom(["Discussion", "Workshop", "Networking", "Roundtable"]) }),
+            c("topic", "Topic", "text", { placeholder: "What this room discusses" }),
+            c("duration", "Duration", "text", { placeholder: "e.g. 25 min" }),
+          ],
+        },
+        {
+          key: "facilitator",
+          label: "Facilitator & session",
+          icon: Presentation,
+          desc: "Who leads the room and the main session it splits from.",
+          fields: [
+            c("facilitator", "Facilitator", "text", { placeholder: "Who leads the room" }),
+            c("parentSession", "Parent session", "text", { placeholder: "The main session this splits from" }),
+          ],
+        },
+        {
+          key: "capacity",
+          label: "Capacity",
+          icon: Users,
+          desc: "How many people the room holds and how they're placed.",
+          fields: [
+            c("capacity", "Capacity", "number", { placeholder: "e.g. 12" }),
+            c("joined", "Joined", "number", { placeholder: "e.g. 8" }),
+            c("autoAssign", "Auto-assign attendees", "switch", { hint: "Spread attendees across rooms automatically." }),
+          ],
+        },
+        {
+          key: "access",
+          label: "Access & notes",
+          icon: Wifi,
+          desc: "The join link and any prep notes for the room.",
+          fields: [
+            c("joinUrl", "Join link", "text", { placeholder: "https://… (room URL)" }),
+            c("description", "Notes", "textarea", { placeholder: "Prompt, format, materials…" }),
+          ],
+        },
+      ],
+    },
+  },
+
+  // ----------------------------------------------------------- Sponsor Rooms ---
+  sponsor_room: {
+    key: "sponsor_room",
+    title: "Sponsor Rooms",
+    singular: "Sponsor room",
+    icon: Building2,
+    description:
+      "A sponsor's branded virtual space — a booth, lounge, or demo room with reps on hand, downloadable resources, and a call-to-action that captures leads.",
+    createLabel: "Add sponsor room",
+    searchPlaceholder: "Search rooms, sponsors…",
+    search: (r) => `${r.name} ${r.config.sponsor || ""} ${r.config.tier || ""} ${r.config.kind || ""}`,
+    statusMap: SPONSOR_ROOM_STATUS_MAP,
+    filters: [
+      statusFilter(SPONSOR_ROOM_STATUS_MAP),
+      configFilter("tier", TIER_VALUES, "All tiers"),
+    ],
+    columns: [
+      nameCol((r) => r.config.sponsor),
+      pillCol("tier", "Tier", (r) => r.config.tier, TIER_MAP),
+      pillCol("kind", "Type", (r) => r.config.kind, SPONSOR_ROOM_KIND_MAP),
+      textCol("leads", "Leads", (r) => (Number(r.config.leadsCaptured) || 0).toLocaleString()),
+      statusCol(SPONSOR_ROOM_STATUS_MAP),
+    ],
+    stats: (records) => [
+      { label: "Rooms", value: String(records.length), footer: "All sponsors" },
+      { label: "Live", value: String(count(records, (r) => r.status === "Live")), footer: "Open now" },
+      { label: "Leads", value: String(sum(records, (r) => r.config.leadsCaptured)), footer: "Captured" },
+      { label: "Visits", value: String(sum(records, (r) => r.config.visits)), footer: "Total traffic" },
+    ],
+    defaults: {
+      status: "Draft",
+      config: {
+        sponsor: "", tier: "Gold", kind: "Virtual booth", eventId: "", reps: [], resources: [],
+        ctaLabel: "", ctaUrl: "", videoUrl: "", leadsCaptured: 0, visits: 0, description: "",
+      },
+    },
+    createFields: [
+      nameField("Room name", "e.g. Northwind Labs Lounge"),
+      c("sponsor", "Sponsor", "text", { placeholder: "e.g. Northwind Labs" }),
+      c("tier", "Tier", "select", { options: optionsFrom(TIER_VALUES) }),
+    ],
+    detail: {
+      depth: "rich",
+      nav: [
+        {
+          key: "details",
+          label: "Details",
+          icon: SquarePen,
+          desc: "The sponsor, their tier, and what kind of room this is.",
+          fields: [
+            nameField("Room name"),
+            statusField(SPONSOR_ROOM_STATUS_MAP),
+            c("sponsor", "Sponsor"),
+            c("tier", "Tier", "select", { options: optionsFrom(TIER_VALUES) }),
+            c("kind", "Type", "select", { options: optionsFrom(["Virtual booth", "Lounge", "Demo room", "Meeting room"]) }),
+          ],
+        },
+        {
+          key: "content",
+          label: "Booth content",
+          icon: Gift,
+          desc: "The pitch, downloadable resources, and the call-to-action.",
+          fields: [
+            c("description", "Description", "textarea", { placeholder: "What this sponsor offers attendees…" }),
+            c("resources", "Resources", "list", { placeholder: "Add a resource link or title…" }),
+            c("ctaLabel", "CTA label", "text", { placeholder: "e.g. Book a demo" }),
+            c("ctaUrl", "CTA link", "text", { placeholder: "https://…" }),
+          ],
+        },
+        {
+          key: "reps",
+          label: "Reps & leads",
+          icon: Users,
+          desc: "Who's staffing the room and how it's performing.",
+          fields: [
+            c("reps", "Reps on hand", "list", { placeholder: "Add a rep…" }),
+            c("leadsCaptured", "Leads captured", "number", { placeholder: "e.g. 48" }),
+            c("visits", "Visits", "number", { placeholder: "e.g. 1200" }),
+          ],
+        },
+        {
+          key: "video",
+          label: "Video",
+          icon: PlayCircle,
+          desc: "A looping promo or demo video for the room.",
+          render: ({ record, commit }) => <RecordingVideoField record={record} commit={commit} />,
+        },
+        {
+          key: "event",
+          label: "Event",
+          icon: CalendarDays,
+          desc: "Link this room to its event.",
+          render: ({ record, commit }) => (
+            <EventLinkField record={record} commit={commit} description="The event this sponsor room runs at." />
+          ),
+        },
+        mediaSection("Banner", "Banner", "aspect-[16/9]"),
+      ],
+    },
+  },
+
+  // ----------------------------------------------------------- Speaker Portal ---
+  portal_invite: {
+    key: "portal_invite",
+    title: "Speaker Portal",
+    singular: "Portal invite",
+    icon: Contact,
+    description:
+      "Invite speakers to a self-service portal where they submit their bio, headshot, slides, A/V form, and availability — track every submission to done.",
+    createLabel: "Invite speaker",
+    searchPlaceholder: "Search speakers, sessions…",
+    search: (r) => `${r.name} ${r.config.email || ""} ${r.config.sessionTitle || ""}`,
+    statusMap: PORTAL_STATUS_MAP,
+    filters: [statusFilter(PORTAL_STATUS_MAP)],
+    columns: [
+      avatarNameCol((r) => r.config.sessionTitle),
+      textCol("progress", "Progress", (r) => {
+        const keys = ["bioSubmitted", "headshotSubmitted", "slidesSubmitted", "avFormSubmitted", "availabilityConfirmed"];
+        return `${keys.filter((k) => r.config[k]).length}/5`;
+      }),
+      textCol("deadline", "Deadline", (r) => r.config.deadline),
+      statusCol(PORTAL_STATUS_MAP),
+    ],
+    stats: (records) => {
+      const keys = ["bioSubmitted", "headshotSubmitted", "slidesSubmitted", "avFormSubmitted", "availabilityConfirmed"];
+      const totalTasks = records.length * keys.length;
+      const doneTasks = sum(records, (r) => keys.filter((k) => r.config[k]).length);
+      return [
+        { label: "Invites", value: String(records.length), footer: "Speakers invited" },
+        { label: "Approved", value: String(count(records, (r) => r.status === "Approved")), footer: "Fully done" },
+        { label: "Overdue", value: String(count(records, (r) => r.status === "Overdue")), footer: "Past deadline" },
+        { label: "Completion", value: pct(totalTasks ? (doneTasks / totalTasks) * 100 : 0), footer: "Of all tasks" },
+      ];
+    },
+    defaults: {
+      status: "Not started",
+      config: {
+        email: "", sessionTitle: "", deadline: "", portalUrl: "",
+        bioSubmitted: false, headshotSubmitted: false, slidesSubmitted: false,
+        avFormSubmitted: false, availabilityConfirmed: false, bioText: "", notes: "",
+      },
+    },
+    createFields: [
+      nameField("Speaker name", "e.g. Grace Hopper"),
+      c("email", "Email", "email", { placeholder: "name@example.com" }),
+      c("sessionTitle", "Session", "text", { placeholder: "e.g. Keynote" }),
+    ],
+    detail: {
+      depth: "rich",
+      hero: PortalProgressHero,
+      nav: [
+        {
+          key: "invite",
+          label: "Invite",
+          icon: Contact,
+          desc: "Who's invited, their session, and the submission deadline.",
+          fields: [
+            nameField("Speaker name"),
+            { ...statusField(PORTAL_STATUS_MAP), type: "tabs" },
+            c("email", "Email", "email", { placeholder: "name@example.com" }),
+            c("sessionTitle", "Session"),
+            c("deadline", "Deadline", "text", { placeholder: "e.g. 2026-06-01" }),
+            c("portalUrl", "Portal link", "text", { placeholder: "https://… (their private portal)" }),
+          ],
+        },
+        {
+          key: "checklist",
+          label: "Checklist",
+          icon: ClipboardCheck,
+          desc: "Tick each item off as the speaker submits it.",
+          fields: [
+            c("bioSubmitted", "Bio submitted", "switch"),
+            c("headshotSubmitted", "Headshot submitted", "switch"),
+            c("slidesSubmitted", "Slides submitted", "switch"),
+            c("avFormSubmitted", "A/V form submitted", "switch"),
+            c("availabilityConfirmed", "Availability confirmed", "switch"),
+          ],
+        },
+        {
+          key: "materials",
+          label: "Materials",
+          icon: BookOpen,
+          desc: "The bio they provided and any coordination notes.",
+          fields: [
+            c("bioText", "Speaker bio", "textarea", { rows: 6, placeholder: "The bio the speaker submitted…" }),
+            c("notes", "Notes", "textarea", { placeholder: "Follow-ups, missing items, reminders…" }),
+          ],
+        },
+        mediaSection("Headshot", "Headshot", "aspect-square", "max-w-[200px]"),
+      ],
+    },
+  },
+
+  // ------------------------------------------------------ Simulive & On-demand ---
+  simulive: {
+    key: "simulive",
+    title: "Simulive & On-demand",
+    singular: "Broadcast",
+    icon: CirclePlay,
+    description:
+      "Pre-recorded content that plays as if it were live at a set premiere time, plus the on-demand library attendees can watch any time.",
+    createLabel: "Add broadcast",
+    searchPlaceholder: "Search broadcasts, sessions, speakers…",
+    search: (r) => `${r.name} ${r.config.session || ""} ${r.config.speaker || ""} ${r.config.mode || ""}`,
+    statusMap: SIMULIVE_STATUS_MAP,
+    filters: [
+      statusFilter(SIMULIVE_STATUS_MAP),
+      configFilter("mode", ["Simulive", "On-demand", "Encore"], "All modes"),
+    ],
+    columns: [
+      nameCol((r) => [r.config.session, r.config.speaker].filter(Boolean).join(" · ")),
+      pillCol("mode", "Mode", (r) => r.config.mode, SIMULIVE_MODE_MAP),
+      textCol("access", "Access", (r) => accessSummary(r.config.access)),
+      textCol("premiereAt", "Premiere", (r) => r.config.premiereAt),
+      textCol("views", "Views", (r) => (Number(r.config.views) || 0).toLocaleString()),
+      statusCol(SIMULIVE_STATUS_MAP),
+    ],
+    stats: (records) => [
+      { label: "Broadcasts", value: String(records.length), footer: "All modes" },
+      { label: "Premiering", value: String(count(records, (r) => r.status === "Premiering")), footer: "As-live now" },
+      { label: "Available", value: String(count(records, (r) => r.status === "Available")), footer: "On demand" },
+      { label: "Total views", value: String(sum(records, (r) => r.config.views)), footer: "Across broadcasts" },
+    ],
+    defaults: {
+      status: "Draft",
+      config: {
+        mode: "Simulive", videoUrl: "", premiereAt: "", duration: "", gated: false,
+        views: 0, session: "", speaker: "", eventId: "", captionsOn: false, description: "",
+        access: DEFAULT_ACCESS,
+      },
+    },
+    createFields: [
+      nameField("Title", "e.g. Opening Keynote (Encore)"),
+      c("mode", "Mode", "select", { options: optionsFrom(["Simulive", "On-demand", "Encore"]) }),
+      c("videoUrl", "Content", "text", {
+        placeholder: "https://… (YouTube, Vimeo, or .mp4)",
+        hint: "Geiger streams the content from this link — it isn't re-hosted.",
+      }),
+      c("access", "Access", "access", { hint: "Choose how attendees unlock this content." }),
+    ],
+    detail: {
+      depth: "rich",
+      nav: [
+        {
+          key: "details",
+          label: "Details",
+          icon: SquarePen,
+          desc: "What plays, in which mode, and when it premieres.",
+          fields: [
+            nameField("Title"),
+            statusField(SIMULIVE_STATUS_MAP),
+            c("mode", "Mode", "select", { options: optionsFrom(["Simulive", "On-demand", "Encore"]) }),
+            c("session", "Session", "text", { placeholder: "e.g. Main Stage · Day 1" }),
+            c("speaker", "Speaker"),
+            c("premiereAt", "Premiere time", "text", { placeholder: "e.g. Day 2 · 10:00" }),
+            c("duration", "Duration", "text", { placeholder: "e.g. 42:15" }),
+            c("description", "Description", "textarea", { placeholder: "Shown alongside the player…" }),
+          ],
+        },
+        {
+          key: "video",
+          label: "Video",
+          icon: PlayCircle,
+          desc: "The external video link — Geiger plays it client-side and never hosts it.",
+          render: ({ record, commit }) => <RecordingVideoField record={record} commit={commit} />,
+        },
+        {
+          key: "access",
+          label: "Access",
+          icon: ClipboardCheck,
+          desc: "How attendees unlock this content — free, membership, purchase, or rental.",
+          fields: [
+            c("access", "Access model", "access"),
+            c("captionsOn", "Captions available", "switch", { hint: "Show closed captions on the player." }),
             c("views", "Views", "number", { placeholder: "e.g. 1200" }),
           ],
         },
-        { title: "Description", fields: [c("description", "Description", "textarea", { placeholder: "Summary shown in the library…" })] },
+        {
+          key: "event",
+          label: "Event",
+          icon: CalendarDays,
+          desc: "Link this broadcast to its event.",
+          render: ({ record, commit }) => (
+            <EventLinkField record={record} commit={commit} description="The event this broadcast belongs to." />
+          ),
+        },
+        mediaSection("Thumbnail", "Thumbnail", "aspect-video"),
+      ],
+    },
+  },
+
+  // ------------------------------------------------- Captions & Transcription ---
+  caption: {
+    key: "caption",
+    title: "Captions & Transcription",
+    singular: "Caption job",
+    icon: Captions,
+    description:
+      "Live captions and transcripts for each session — the language coverage, the provider, and the finished transcript to download.",
+    createLabel: "Add caption job",
+    searchPlaceholder: "Search sessions, providers, languages…",
+    search: (r) => `${r.name} ${r.config.session || ""} ${r.config.provider || ""} ${(r.config.languages || []).join(" ")}`,
+    statusMap: CAPTION_STATUS_MAP,
+    filters: [
+      statusFilter(CAPTION_STATUS_MAP),
+      configFilter("mode", ["Live CART", "AI auto", "Post-edited"], "All modes"),
+    ],
+    columns: [
+      nameCol((r) => r.config.session),
+      pillCol("mode", "Mode", (r) => r.config.mode, CAPTION_MODE_MAP),
+      textCol("languages", "Languages", (r) => (r.config.languages || []).length || ""),
+      textCol("accuracy", "Accuracy", (r) => (r.config.accuracy ? `${r.config.accuracy}%` : "")),
+      statusCol(CAPTION_STATUS_MAP),
+    ],
+    stats: (records) => {
+      const langs = new Set(
+        records.flatMap((r) => (r.config.languages || []).map((l) => l.trim().toLowerCase())).filter(Boolean),
+      );
+      return [
+        { label: "Jobs", value: String(records.length), footer: "All sessions" },
+        { label: "Live", value: String(count(records, (r) => r.status === "Live")), footer: "Captioning now" },
+        { label: "Ready", value: String(count(records, (r) => r.status === "Ready")), footer: "Transcripts done" },
+        { label: "Languages", value: String(langs.size), footer: "Covered" },
+      ];
+    },
+    defaults: {
+      status: "Requested",
+      config: {
+        session: "", mode: "AI auto", provider: "", sourceLanguage: "English",
+        languages: [], accuracy: "", wordCount: 0, transcriptUrl: "",
+        downloadable: false, eventId: "", notes: "",
+      },
+    },
+    createFields: [
+      nameField("Job name", "e.g. Keynote — Live captions"),
+      c("session", "Session", "text", { placeholder: "e.g. Opening Keynote" }),
+      c("mode", "Mode", "select", { options: optionsFrom(["Live CART", "AI auto", "Post-edited"]) }),
+    ],
+    detail: {
+      depth: "light",
+      panels: [
+        {
+          title: "Caption job",
+          fields: [
+            nameField("Job name"),
+            statusField(CAPTION_STATUS_MAP),
+            c("session", "Session"),
+            c("mode", "Mode", "select", { options: optionsFrom(["Live CART", "AI auto", "Post-edited"]) }),
+            c("provider", "Provider", "text", { placeholder: "e.g. Verbit, Otter, in-house" }),
+          ],
+        },
+        {
+          title: "Languages & quality",
+          fields: [
+            c("sourceLanguage", "Source language", "text", { placeholder: "e.g. English" }),
+            c("languages", "Caption languages", "list", { placeholder: "Add a language…" }),
+            c("accuracy", "Accuracy", "number", { placeholder: "e.g. 98" }),
+          ],
+        },
+        {
+          title: "Output",
+          fields: [
+            c("transcriptUrl", "Transcript link", "text", { placeholder: "https://…" }),
+            c("wordCount", "Word count", "number", { placeholder: "e.g. 8400" }),
+            c("downloadable", "Downloadable by attendees", "switch", { hint: "Let attendees download the transcript." }),
+            c("notes", "Notes", "textarea", { placeholder: "Glossary, speaker names, corrections…" }),
+          ],
+        },
+      ],
+    },
+  },
+
+  // ------------------------------------------------------------ Assign Agenda ---
+  agenda_assignment: {
+    key: "agenda_assignment",
+    title: "Assign Agenda",
+    singular: "Agenda",
+    icon: CalendarCheck,
+    description:
+      "Curate a set of sessions and assign it to a controlled group of guests — everyone or a subset by segment, tag, ticket, offering, add-on, status, or specific people, just like Community.",
+    createLabel: "Create agenda",
+    searchPlaceholder: "Search agendas…",
+    search: (r) => `${r.name} ${r.config.description || ""}`,
+    statusMap: AGENDA_ASSIGN_STATUS_MAP,
+    filters: [statusFilter(AGENDA_ASSIGN_STATUS_MAP)],
+    columns: [
+      nameCol((r) => r.config.description),
+      textCol("sessions", "Sessions", (r) => (r.config.sessionIds || []).length || ""),
+      textCol("audience", "Audience", (r) => describeSpec(r.config.audience)),
+      statusCol(AGENDA_ASSIGN_STATUS_MAP),
+    ],
+    stats: (records) => [
+      { label: "Agendas", value: String(records.length), footer: "All statuses" },
+      { label: "Published", value: String(count(records, (r) => r.status === "Published")), footer: "Assigned live" },
+      { label: "Sessions assigned", value: String(sum(records, (r) => (r.config.sessionIds || []).length)), footer: "Across agendas" },
+      { label: "Drafts", value: String(count(records, (r) => r.status === "Draft")), footer: "Not yet live" },
+    ],
+    defaults: {
+      status: "Draft",
+      config: {
+        sessionIds: [],
+        audience: { eventId: "", emails: [] },
+        description: "",
+        deliverVia: "In-app",
+        scheduledFor: "",
+        notify: false,
+      },
+    },
+    createFields: [
+      nameField("Agenda name", "e.g. VIP Track"),
+      c("audience", "Audience", "audience", {
+        hint: "Everyone, or a subset — by event, ticket, offering, add-on, tag, segment, status, or specific people.",
+        full: true,
+      }),
+    ],
+    detail: {
+      depth: "rich",
+      hero: AgendaAssignHero,
+      nav: [
+        {
+          key: "details",
+          label: "Agenda",
+          icon: SquarePen,
+          desc: "Name it, set where it is in its lifecycle, and describe what it's for.",
+          fields: [
+            nameField("Agenda name"),
+            { ...statusField(AGENDA_ASSIGN_STATUS_MAP), type: "tabs" },
+            c("description", "Description", "textarea", { placeholder: "What this agenda is and who it's for…" }),
+          ],
+        },
+        {
+          key: "sessions",
+          label: "Sessions",
+          icon: ListChecks,
+          desc: "Curate the sessions this agenda includes.",
+          render: ({ record, commit }) => <SessionMultiField record={record} commit={commit} />,
+        },
+        {
+          key: "audience",
+          label: "Audience",
+          icon: Target,
+          desc: "Choose the controlled group this agenda is assigned to.",
+          fields: [c("audience", "", "audience", { full: true })],
+        },
+        {
+          key: "delivery",
+          label: "Delivery",
+          icon: Send,
+          desc: "How and when assigned guests receive this agenda.",
+          fields: [
+            c("deliverVia", "Deliver via", "select", { options: optionsFrom(AGENDA_DELIVERY_OPTIONS) }),
+            c("scheduledFor", "Send at", "text", { placeholder: "e.g. 2026-06-01 09:00 (leave blank to send now)" }),
+            c("notify", "Notify guests when published", "switch", { hint: "Push a notification when this agenda goes live." }),
+          ],
+        },
       ],
     },
   },

@@ -18,7 +18,8 @@ function ProjectResolver() {
   useEffect(() => {
     if (loading) return;
     if (projects.length === 0) {
-      router.replace("/login");
+      // Workspace intent: /login must not hijack a member cookie to /members.
+      router.replace("/login?workspace=1");
       return;
     }
     const id = pickDefaultProjectId(projects);

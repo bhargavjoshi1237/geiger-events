@@ -13,6 +13,8 @@ import PortalOrders from "./portal_orders";
 import PortalMemberships from "./portal_memberships";
 import PortalMessages from "./portal_messages";
 import PortalNotifications from "./portal_notifications";
+import PortalCommunity from "./portal_community";
+import PortalQa from "./portal_qa";
 import PortalAccount from "./portal_account";
 
 export function PortalShell({ member: initialMember }) {
@@ -197,6 +199,12 @@ export function PortalShell({ member: initialMember }) {
     }
     if (tab === "notifications") {
       return <PortalNotifications items={notifications.items} loading={false} />;
+    }
+    if (tab === "community") {
+      return <PortalCommunity member={member} />;
+    }
+    if (tab === "qa") {
+      return <PortalQa member={member} />;
     }
     if (tab === "account") {
       return <PortalAccount member={member} onMemberChange={setMember} />;

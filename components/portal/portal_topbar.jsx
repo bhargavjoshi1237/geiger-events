@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 import { Bell, LogOut, Sun, Moon, CircleUserRound, LifeBuoy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -21,15 +21,23 @@ import {
 import { initials } from "./portal_kit";
 
 const surfaceStyle = {
-  backgroundColor: "var(--surface-dialog)",
+  backgroundColor: "var(--surface-subtle)",
   borderColor: "var(--border)",
   color: "var(--foreground)",
 };
 const itemStyle =
-  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm cursor-default transition-colors outline-none hover:bg-surface-active focus:bg-surface-active text-muted-foreground hover:text-foreground focus:text-foreground";
+  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm cursor-default transition-colors outline-none hover:bg-surface-hover focus:bg-surface-hover text-muted-foreground hover:text-foreground focus:text-foreground";
 
 function AccountMenu({ member, onNavigate, onSignOut }) {
   const { theme, setTheme } = useTheme();
+  // Real profile photo if the member has one; Radix falls back to initials on 404.
+  const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const pfpUrl =
+    member?.metadata?.avatarUrl ||
+    member?.metadata?.avatar ||
+    (member?.id && supaUrl
+      ? `${supaUrl}/storage/v1/object/public/pfp/${member.id}/latest.jpg`
+      : null);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -40,8 +48,9 @@ function AccountMenu({ member, onNavigate, onSignOut }) {
           aria-label="Account menu"
         >
           <Avatar className="size-full">
-            <AvatarFallback className="border-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-[10px] font-semibold text-white">
-              {initials(member?.name, member?.email)}
+            {pfpUrl && <AvatarImage src={pfpUrl} alt={member?.name || "Member"} />}
+            <AvatarFallback className="border-0 bg-surface-strong text-sm font-semibold text-foreground">
+              {initials(member?.name, member?.email).charAt(0)}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -57,8 +66,9 @@ function AccountMenu({ member, onNavigate, onSignOut }) {
           <DropdownMenuLabel className="p-0">
             <div className="flex items-center gap-3">
               <Avatar className="size-10 border border-border">
-                <AvatarFallback className="border-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-xs font-semibold text-white">
-                  {initials(member?.name, member?.email)}
+                {pfpUrl && <AvatarImage src={pfpUrl} alt={member?.name || "Member"} />}
+                <AvatarFallback className="border-0 bg-surface-strong text-base font-semibold text-foreground">
+                  {initials(member?.name, member?.email).charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex min-w-0 flex-1 flex-col">
@@ -114,10 +124,10 @@ function AccountMenu({ member, onNavigate, onSignOut }) {
           <DropdownMenuSeparator className="my-1 bg-surface-hover" />
 
           <DropdownMenuItem
-            className={`${itemStyle} group hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive`}
+            className={`${itemStyle} group hover:bg-red-500/10 hover:text-red-400 focus:bg-red-500/10 focus:text-red-400`}
             onSelect={onSignOut}
           >
-            <LogOut className="size-4 group-hover:text-red-400" />
+            <LogOut className="size-4 group-hover:text-red-400 group-focus:text-red-400" />
             <span>Sign out</span>
           </DropdownMenuItem>
         </div>
@@ -139,19 +149,39 @@ function AccountMenu({ member, onNavigate, onSignOut }) {
 export function PortalTopbar({ member, basePath, unread = 0, onNavigate, onSignOut }) {
   return (
     <header className="relative z-20 flex h-14 w-full shrink-0 items-center justify-between border-b border-border bg-background px-4">
-      <div className="flex items-center gap-2">
-        <SidebarTrigger className="md:hidden" />
+      {/* Brand — mirrors the shared @geiger/ui Topbar: logo in a sized link, then
+          a wordmark separated by a border-l divider (desktop). */}
+      <div className="flex items-center gap-1.5">
+        <SidebarTrigger className="-ml-2 text-foreground md:hidden" />
+        <a
+          href={basePath || "/"}
+          aria-label="Home"
+          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded transition-colors hover:bg-surface-active md:-ml-1.5 md:flex"
+        >
+          <Image
+            src={`${basePath}/logo1.svg`}
+            alt=""
+            width={20}
+            height={20}
+            className="geiger-logo -mr-0.5 h-5 w-5"
+            priority
+          />
+        </a>
+        <div className="hidden items-center pl-2 md:flex md:border-l md:border-border">
+          <span className="ml-1 text-sm font-semibold text-foreground">Geiger Events</span>
+        </div>
+      </div>
+
+      {/* Mobile — centered logo + wordmark, matching the suite topbar. */}
+      <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 md:hidden">
         <Image
           src={`${basePath}/logo1.svg`}
-          alt="Geiger Events"
+          alt=""
           width={20}
           height={20}
-          className="geiger-logo"
-          priority
+          className="geiger-logo h-5 w-5"
         />
-        <div className="flex items-center gap-2 border-border pl-1 md:border-l md:pl-2">
-          <span className="text-sm font-semibold text-foreground">Geiger Events</span>
-        </div>
+        <span className="text-sm font-semibold text-foreground">Geiger Events</span>
       </div>
 
       <div className="flex items-center gap-1">

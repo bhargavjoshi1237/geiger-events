@@ -32,8 +32,10 @@ $$;
 
 create table if not exists events.conference_records (
   id uuid primary key default gen_random_uuid(),
-  -- Discriminator: speaker | sponsor | package | booth | venue_lead | housing |
-  -- paper | certificate.
+  -- Discriminator (free text, no constraint — new modules need no migration):
+  -- speaker | sponsor | package | booth | venue_lead | housing | paper |
+  -- certificate | session | recording | backstage | room | webinar | breakout |
+  -- sponsor_room | portal_invite | simulive | caption | agenda_pin | mobile_app.
   module text not null,
   name text not null default 'Untitled',
   status text not null default 'Draft',

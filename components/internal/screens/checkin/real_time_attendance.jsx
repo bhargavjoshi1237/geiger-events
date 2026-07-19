@@ -12,26 +12,30 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
-import { useProject } from "@/context/project-context";
+import { useOptionalProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listRegistrations } from "@/lib/supabase/registrations";
 import { listAttendanceByProject } from "@/lib/supabase/checkin";
+import { DEMO_ATTENDANCE } from "./demo_attendance";
 import { formatDate } from "./constants";
 
 const REFRESH_MS = 15000;
 
-export function RealTimeAttendanceScreen() {
-  const { projectId } = useProject();
-  const [events, setEvents] = useState([]);
-  const [regs, setRegs] = useState([]);
-  const [attendance, setAttendance] = useState([]);
-  const [loading, setLoading] = useState(true);
+// `demo` seeds the board from bundled sample data and skips fetching/polling, so
+// it can run as a live playground on the public landing page (no session there).
+export function RealTimeAttendanceScreen({ demo = false }) {
+  const projectId = useOptionalProject()?.projectId ?? null;
+  const [events, setEvents] = useState(demo ? DEMO_ATTENDANCE.events : []);
+  const [regs, setRegs] = useState(demo ? DEMO_ATTENDANCE.regs : []);
+  const [attendance, setAttendance] = useState(demo ? DEMO_ATTENDANCE.attendance : []);
+  const [loading, setLoading] = useState(!demo);
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const timer = useRef(null);
 
   // Attendance-only refresh so live counts update without re-pulling everything.
   const refreshAttendance = async () => {
+    if (demo) return;
     setRefreshing(true);
     const rows = await listAttendanceByProject(projectId);
     setAttendance(rows ?? []);
@@ -39,6 +43,7 @@ export function RealTimeAttendanceScreen() {
   };
 
   useEffect(() => {
+    if (demo) return;
     let alive = true;
     Promise.all([
       listEvents(projectId),
@@ -60,7 +65,7 @@ export function RealTimeAttendanceScreen() {
       alive = false;
       if (timer.current) clearInterval(timer.current);
     };
-  }, [projectId]);
+  }, [projectId, demo]);
 
   // checked-in (unique, status "in") + confirmed registration counts per event,
   // plus the raw in-status rows per event for the gate/session breakdown.

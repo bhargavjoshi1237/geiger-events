@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- portal renders remote Supabase cover URLs; next/image adds no value here */
 
 import React, { useEffect, useState } from "react";
-import { CalendarPlus, MapPin } from "lucide-react";
+import { CalendarPlus, MapPin, Ticket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { buildEventICS, directionsUrl, downloadICS } from "@/lib/portal/calendar";
@@ -153,6 +153,97 @@ export function Card({ children, className = "", onClick }) {
       } ${className}`}
     >
       {children}
+    </div>
+  );
+}
+
+// Torn-ticket stub, a 1:1 port of the event editor's TicketStub: a body (icon
+// chip, name, description, pipe-separated meta line, optional menu), a perforated
+// divider with punched notch cut-outs, and a right-hand price stub. Clicking
+// anywhere fires onClick. `image` shows a cover thumbnail in the chip; otherwise
+// the ticket icon. `meta` is [{ label, muted? }].
+export function TicketStubRow({
+  image,
+  icon: Icon = Ticket,
+  name,
+  description,
+  meta = [],
+  menu,
+  stubValue,
+  stubLabel = "price",
+  onClick,
+  className = "",
+}) {
+  const clickable = typeof onClick === "function";
+  return (
+    <div
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick(e);
+              }
+            }
+          : undefined
+      }
+      className={`group relative flex overflow-hidden rounded-xl bg-surface-card text-left transition-colors ${
+        clickable ? "cursor-pointer hover:bg-surface-active" : ""
+      } ${className}`}
+    >
+      {/* Main body */}
+      <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
+        <div className="flex items-center gap-2.5">
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-surface-subtle text-muted-foreground">
+            {image ? (
+              <img src={image} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <Icon className="h-3.5 w-3.5" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium text-foreground">{name || "Untitled"}</p>
+            {description ? (
+              <p className="mt-0.5 truncate text-xs text-text-secondary">{description}</p>
+            ) : null}
+          </div>
+          {menu ? (
+            <div onClick={(e) => e.stopPropagation()} className="-mr-1 -mt-1 shrink-0">
+              {menu}
+            </div>
+          ) : null}
+        </div>
+        {meta.length ? (
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-text-secondary">
+            {meta.map((item, idx) => (
+              <React.Fragment key={`${item.label}-${idx}`}>
+                {idx > 0 ? (
+                  <span aria-hidden className="text-text-tertiary/40">|</span>
+                ) : null}
+                <span className={item.muted ? "text-text-tertiary" : undefined}>
+                  {item.label}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Perforation with notch cut-outs punched to the canvas colour */}
+      <div className="relative w-px shrink-0 self-stretch">
+        <div className="absolute inset-y-4 left-0 border-l border-dashed border-border" />
+        <span className="absolute -top-1.5 left-0 h-3 w-3 -translate-x-1/2 rounded-full bg-background" />
+        <span className="absolute -bottom-1.5 left-0 h-3 w-3 -translate-x-1/2 rounded-full bg-background" />
+      </div>
+
+      {/* Price stub */}
+      <div className="flex w-24 shrink-0 flex-col items-center justify-center gap-0.5 p-3">
+        <span className="text-lg font-semibold tabular-nums text-foreground">{stubValue}</span>
+        <span className="text-[10px] uppercase tracking-wide text-text-tertiary">{stubLabel}</span>
+      </div>
     </div>
   );
 }

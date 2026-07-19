@@ -9,7 +9,6 @@ import {
   Megaphone,
   Compass,
   MessagesSquare,
-  Presentation,
   Settings,
   LayoutTemplate,
   UserCheck,
@@ -344,41 +343,81 @@ export const workspaceNav = [
     icon: MessagesSquare,
     subItems: [
       { title: "Event Chat", icon: MessageSquare },
+      { title: "Messages", icon: Send },
       { title: "Polls", icon: Vote },
       { title: "Surveys", icon: ClipboardList },
       { title: "Q&A", icon: HelpCircle },
       { title: "Meeting Scheduler", icon: CalendarClock },
-      { title: "Direct Messaging", icon: Send },
       { title: "Announcements", icon: Megaphone },
       { title: "Discussion Boards", icon: MessageCircle },
     ],
   },
 
   {
-    title: "Conference",
-    icon: Presentation,
+    // The Conference domain, split into five focused areas (was one 21-item
+    // group). All screens/data/permissions are unchanged — titles still match
+    // SCREEN_REGISTRY keys exactly; only the sidebar grouping differs.
+    // Program — the "what's on" layer: the schedule, the submissions that feed
+    // it, each attendee's personal itinerary, and the credits earned.
+    title: "Program",
+    icon: CalendarClock,
     subItems: [
       { title: "Agenda Builder", icon: ClipboardList },
+      { title: "Call for Papers", icon: FileText },
+      { title: "Assign Agenda", icon: CalendarCheck },
+      { title: "CEU & Certificates", icon: Award },
+    ],
+  },
+
+  {
+    // Speakers — the roster, their self-service submission portal, and the
+    // green-room / run-of-show ops.
+    title: "Speakers",
+    icon: Mic,
+    subItems: [
       { title: "Speakers", icon: Mic },
-      { title: "Sponsors", icon: Handshake },
-      { title: "Recordings & Replay", icon: Video },
+      { title: "Speaker Portal", icon: Contact },
       { title: "Speaker Backstage", icon: Clapperboard },
+    ],
+  },
+
+  {
+    // Sponsors & Expo — the commercial + exhibitor floor: who's paying, what
+    // they get, and where they sit (virtual rooms and the physical booth map).
+    title: "Sponsors & Expo",
+    icon: Handshake,
+    subItems: [
+      { title: "Sponsors", icon: Handshake },
+      { title: "Sponsorship Packages", icon: Package },
+      { title: "Sponsor Rooms", icon: Building2 },
+      { title: "Expo Booths", icon: Store },
+      { title: "Floor Plan & Booths", icon: LayoutGrid },
+    ],
+  },
+
+  {
+    // Broadcast & On-demand — online delivery: live/virtual rooms, replays,
+    // accessibility, and the app that surfaces it all.
+    title: "Broadcast & On-demand",
+    icon: Radio,
+    subItems: [
       { title: "Livestream Rooms", icon: Radio },
       { title: "Webinar Rooms", icon: MonitorPlay },
       { title: "Breakout Rooms", icon: Network },
-      { title: "Expo Booths", icon: Store },
-      { title: "Sponsor Rooms", icon: Building2 },
+      { title: "Simulive & On-demand", icon: CirclePlay },
+      { title: "Recordings & Replay", icon: Video },
+      { title: "Captions & Transcription", icon: Captions },
+      { title: "Mobile Event App", icon: Smartphone },
+    ],
+  },
+
+  {
+    // Logistics — physical-event operations kept out of the digital areas above.
+    title: "Logistics",
+    icon: Plane,
+    subItems: [
       { title: "Venue Sourcing", icon: MapPin },
       { title: "Housing & Travel", icon: Plane },
-      { title: "Call for Papers", icon: FileText },
-      { title: "Speaker Portal", icon: Contact },
-      { title: "Sponsorship Packages", icon: Package },
-      { title: "Floor Plan & Booths", icon: LayoutGrid },
-      { title: "My Agenda", icon: CalendarCheck },
-      { title: "Mobile Event App", icon: Smartphone },
-      { title: "CEU & Certificates", icon: Award },
-      { title: "Simulive & On-demand", icon: CirclePlay },
-      { title: "Captions & Transcription", icon: Captions },
     ],
   },
 

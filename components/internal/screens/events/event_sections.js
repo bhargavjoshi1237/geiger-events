@@ -43,6 +43,9 @@ import {
   Heart,
   KeyRound,
   Armchair,
+  MessagesSquare,
+  Mic,
+  Handshake,
 } from "lucide-react";
 
 import {
@@ -90,6 +93,11 @@ import { TicketAttachmentsSection } from "../tickets/event_attachments";
 import { EventTicketsSection } from "../tickets/event_tickets";
 import { TicketRulesSection } from "../tickets/event_ticket_rules";
 import { EventMembershipsSection } from "./event_memberships";
+import { EventCommunicationSection } from "./event_communication";
+import {
+  EventSpeakersSection,
+  EventSponsorsSection,
+} from "./event_conference";
 import {
   CheckinOptionsSection,
   GatesZonesSection,
@@ -168,6 +176,20 @@ export const NAV_GROUPS = [
         label: "Guests",
         icon: Users,
         desc: "Feature speakers and special guests on your public event page.",
+        ownHeader: true,
+      },
+      {
+        key: "speakers",
+        label: "Speakers",
+        icon: Mic,
+        desc: "Attach speakers from your Conference roster to this event's line-up.",
+        ownHeader: true,
+      },
+      {
+        key: "sponsors",
+        label: "Sponsors",
+        icon: Handshake,
+        desc: "Attach the sponsors backing this event — shown on the page and in reporting.",
         ownHeader: true,
       },
     ],
@@ -375,6 +397,18 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    group: "Communication",
+    items: [
+      {
+        key: "communication",
+        label: "Communication",
+        icon: MessagesSquare,
+        desc: "A group chat for this event's ticket buyers — opens when you publish and grows as tickets sell. Attendees use it from their members portal.",
+        ownHeader: true,
+      },
+    ],
+  },
+  {
     group: "Sharing",
     items: [
       {
@@ -466,6 +500,8 @@ export const SECTIONS = {
   description: RichDescriptionsSection,
   schedule: ScheduleSection,
   guests: GuestsSection,
+  speakers: EventSpeakersSection,
+  sponsors: EventSponsorsSection,
   location: LocationTimeSection,
   map: MapDirectionsSection,
   guidelines: GuidelinesSection,
@@ -484,6 +520,7 @@ export const SECTIONS = {
   ticketlinks: TicketAttachmentsSection,
   ticketrules: TicketRulesSection,
   memberships: EventMembershipsSection,
+  communication: EventCommunicationSection,
   rsvp: RsvpOptionsSection,
   questions: CustomQuestionsSection,
   regsettings: RegistrationSettingsSection,

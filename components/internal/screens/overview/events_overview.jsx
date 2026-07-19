@@ -59,7 +59,7 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { RollingNumber, StatsBar } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "./filter_dropdown";
 import { cn } from "@/lib/utils";
-import { useProject } from "@/context/project-context";
+import { useOptionalProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 
 const CHART_COLORS = {
@@ -309,11 +309,7 @@ function TicketMixWidget({ events = [] }) {
         subtitle="Distribution across ticket types."
         action={
           <div className="flex items-center gap-2">
-            <EventScopeSelect
-              events={events}
-              selected={eventScope}
-              onChange={setEventScope}
-            />
+            
             <FilterDropdown
               value={selectedType}
               onValueChange={setSelectedType}
@@ -749,7 +745,9 @@ function EventScopeSelect({ events, selected, onChange }) {
 // --- Screen ------------------------------------------------------------------
 
 export function EventsOverviewScreen() {
-  const { projectId } = useProject();
+  // useOptionalProject so this screen can also mount on the public landing page
+  // (as a live playground) with no ProjectProvider above it.
+  const projectId = useOptionalProject()?.projectId ?? null;
   const [events, setEvents] = useState([]);
 
   useEffect(() => {

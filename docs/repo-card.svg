@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" fill="none">
+  <defs>
+    <radialGradient id="glow" cx="78%" cy="18%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.07"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="head" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#c9c9c9"/>
+    </linearGradient>
+    <pattern id="grid" width="46" height="46" patternUnits="userSpaceOnUse">
+      <path d="M46 0H0V46" fill="none" stroke="#ffffff" stroke-opacity="0.025" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <!-- canvas -->
+  <rect width="1280" height="640" fill="#161616"/>
+  <rect width="1280" height="640" fill="url(#grid)"/>
+  <rect width="1280" height="640" fill="url(#glow)"/>
+
+  <!-- oversized watermark mark, cropped right -->
+  <g transform="translate(742,36) scale(1.99)" opacity="0.05">
+    <path d="M427.054 1.17427C431.046 1.15338 464.984 0.670938 466.079 1.40804C466.298 4.01125 464.421 3.92073 463.267 6.18971C450.436 31.3381 435.978 55.3181 422.003 79.8289L339.669 223C327.843 243.287 317.065 263.871 304.413 283.952L285.161 283.494C273.521 283.311 254.97 282.561 244.096 284C255.18 269.451 265.622 246.845 275.646 231.004C280.056 224.033 284.971 216.613 289.146 209.596C302.879 186.047 316.389 162.368 329.675 138.564C346.203 109.513 363.065 80.653 380.256 51.9898C390.11 35.4483 398.71 17.3651 409.366 1.55774C415.08 1.29513 421.301 1.29165 427.054 1.17427Z" fill="#ffffff"/>
+    <path d="M218.309 1.31216L224 1.15608L193.641 50.3271L170.178 91.0997L136.561 149.51L124.008 172.428L103.37 206.726L77.2097 251.035L57.3197 283.677L6.18221 283.433L0 284.156L22.4687 244.331L54.6016 189.816L75.3213 152.467L94.3273 119.376L144.096 31L161 1.15608L218.309 1.31216Z" fill="#ffffff"/>
+    <path d="M344.758 0L345.096 0.735049C326.643 33.9528 307.753 66.9251 288.428 99.6433C284.236 106.683 278.484 114.061 274.613 121.064C265.581 137.399 256.332 153.496 247.097 169.697L208.592 236.882C199.377 253.009 192.444 267.92 180.666 282.525C163.285 284.093 142.445 282.6 123.432 284L123.098 283.728C123.005 282.163 127.788 276.233 129.062 273.917C135.826 261.605 142.61 249.297 149.637 237.134L240.526 79.7429C249.025 64.9272 257.723 50.1984 266.187 35.3414C268.992 30.4177 277.596 15 285.096 0.735052C305.596 0.735046 325.596 0.735049 344.131 0.1168L344.758 0Z" fill="#ffffff"/>
+  </g>
+
+  <!-- top lockup: mark + wordmark -->
+  <g transform="translate(90,84) scale(0.161)">
+    <path d="M427.054 1.17427C431.046 1.15338 464.984 0.670938 466.079 1.40804C466.298 4.01125 464.421 3.92073 463.267 6.18971C450.436 31.3381 435.978 55.3181 422.003 79.8289L339.669 223C327.843 243.287 317.065 263.871 304.413 283.952L285.161 283.494C273.521 283.311 254.97 282.561 244.096 284C255.18 269.451 265.622 246.845 275.646 231.004C280.056 224.033 284.971 216.613 289.146 209.596C302.879 186.047 316.389 162.368 329.675 138.564C346.203 109.513 363.065 80.653 380.256 51.9898C390.11 35.4483 398.71 17.3651 409.366 1.55774C415.08 1.29513 421.301 1.29165 427.054 1.17427Z" fill="#ffffff"/>
+    <path d="M218.309 1.31216L224 1.15608L193.641 50.3271L170.178 91.0997L136.561 149.51L124.008 172.428L103.37 206.726L77.2097 251.035L57.3197 283.677L6.18221 283.433L0 284.156L22.4687 244.331L54.6016 189.816L75.3213 152.467L94.3273 119.376L144.096 31L161 1.15608L218.309 1.31216Z" fill="#ffffff"/>
+    <path d="M344.758 0L345.096 0.735049C326.643 33.9528 307.753 66.9251 288.428 99.6433C284.236 106.683 278.484 114.061 274.613 121.064C265.581 137.399 256.332 153.496 247.097 169.697L208.592 236.882C199.377 253.009 192.444 267.92 180.666 282.525C163.285 284.093 142.445 282.6 123.432 284L123.098 283.728C123.005 282.163 127.788 276.233 129.062 273.917C135.826 261.605 142.61 249.297 149.637 237.134L240.526 79.7429C249.025 64.9272 257.723 50.1984 266.187 35.3414C268.992 30.4177 277.596 15 285.096 0.735052C305.596 0.735046 325.596 0.735049 344.131 0.1168L344.758 0Z" fill="#ffffff"/>
+  </g>
+  <text x="170" y="121" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="600" letter-spacing="0.2" fill="#e7e7e7">Geiger Events</text>
+
+  <!-- headline -->
+  <text x="88" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-1.5" fill="url(#head)">Create events. Sell tickets.</text>
+  <text x="88" y="340" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-1.5" fill="url(#head)">Run the door.</text>
+
+  <!-- tagline -->
+  <text x="90" y="402" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="400" fill="#a3a3a3">Beautiful pages, fast ticketing, guest CRM, and reliable QR check-in&#8201;&#8212;&#8201;without enterprise pricing.</text>
+
+  <!-- footer divider -->
+  <line x1="90" y1="546" x2="1190" y2="546" stroke="#333333" stroke-width="1"/>
+  <text x="90" y="586" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="500" letter-spacing="0.3" fill="#737373">Ticketing&#160;&#160;·&#160;&#160;Check-in&#160;&#160;·&#160;&#160;Community&#160;&#160;·&#160;&#160;Campaigns&#160;&#160;·&#160;&#160;Payments</text>
+  <text x="1190" y="586" text-anchor="end" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="500" letter-spacing="0.3" fill="#737373">Part of the Geiger Studio suite</text>
+</svg>

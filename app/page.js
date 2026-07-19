@@ -7,12 +7,9 @@ import {
   MapPin,
   BarChart3,
   Bell,
-  Workflow,
-  QrCode,
   ShieldCheck,
   LayoutGrid,
   LineChart,
-  Sparkles,
   Quote,
 } from "lucide-react";
 import Footer from "@/components/ui/footer";
@@ -24,6 +21,11 @@ import {
 } from "@/components/ui/accordion";
 import { Header } from "@/components/header";
 import EventsPlaygroundShowcase from "@/components/EventsPlaygroundShowcase";
+import {
+  FloorPlanPlayground,
+  InsightsPlayground,
+  MobileAppPlayground,
+} from "@/components/landing/spotlight_playgrounds";
 
 export const metadata = {
   title: "Events - Geiger Studio",
@@ -47,37 +49,37 @@ function pickRandomShowcaseBackground() {
 
 const utilityCards = [
   {
-    title: "Ticketing & registration",
+    title: "Ticketing & Registration",
     description:
       "Sell tickets, collect RSVPs, and manage capacity without leaving your workspace.",
     icon: Ticket,
   },
   {
-    title: "Schedules & agendas",
+    title: "Schedules & Agendas",
     description:
       "Build multi-track agendas, sessions, and timelines that update in real time.",
     icon: CalendarDays,
   },
   {
-    title: "Attendee management",
+    title: "Attendee Management",
     description:
       "Track guests, check-ins, and communications from a single source of truth.",
     icon: Users,
   },
   {
-    title: "Venues & logistics",
+    title: "Venues & Logistics",
     description:
       "Map rooms, resources, and vendors so nothing falls through the cracks.",
     icon: MapPin,
   },
   {
-    title: "Live insights",
+    title: "Live Insights",
     description:
       "Watch attendance, engagement, and revenue as your event unfolds.",
     icon: BarChart3,
   },
   {
-    title: "Reminders & updates",
+    title: "Reminders & Updates",
     description:
       "Keep attendees and your team in sync with timely notifications.",
     icon: Bell,
@@ -93,25 +95,26 @@ const stats = [
   { value: "98%", label: "On-time check-ins" },
 ];
 
-// Alternating text/visual spotlights that tell the end-to-end story.
+// Alternating text/playground spotlights that tell the end-to-end story. Each
+// carries a live, focused 1:1 preview of the real app surface it describes.
 const spotlights = [
   {
-    eyebrow: "Operations",
-    title: "The operational backbone for every event",
-    body: "Bring registration, ticketing, agendas, and staffing into one connected workspace. Every change flows through instantly, so your team plans from a single source of truth instead of ten spreadsheets.",
-    icon: Workflow,
+    eyebrow: "Plan the room",
+    title: "Design Your Floor Before Anyone Arrives",
+    body: "Lay out the exhibitor floor visually — drag booths into place, colour-coded by status, and watch occupancy and floor value update as you go. The same booth data your sales team manages, seen as a living map.",
+    playground: FloorPlanPlayground,
   },
   {
-    eyebrow: "Live day",
-    title: "Streamlined execution on the day it matters",
-    body: "Check guests in, scan tickets, and swap sessions on the fly. Geiger Events keeps front-of-house, staff, and the schedule in sync while doors are open — no scramble, no manual reconciliation.",
-    icon: QrCode,
+    eyebrow: "Measure what works",
+    title: "See Exactly What's Driving Ticket Sales",
+    body: "Every paid channel — Google, Meta, and more — rolls up into one dashboard: spend, impressions, clicks, and conversions side by side. Know what's earning its budget without stitching together five ad managers.",
+    playground: InsightsPlayground,
   },
   {
-    eyebrow: "For your team",
-    title: "Less admin. More moments.",
-    body: "Attendees register, update, and self-serve without a queue at the desk. Organizers spend less time chasing logistics and more time on the experience your guests actually came for.",
-    icon: Sparkles,
+    eyebrow: "In every pocket",
+    title: "Your Whole Event, In An App",
+    body: "Give attendees a branded mobile app — agenda, speakers, maps, networking, and live rooms — configured in minutes and previewed as you build. No developers, no app-store wrangling, just your event in their hands.",
+    playground: MobileAppPlayground,
   },
 ];
 
@@ -119,7 +122,7 @@ const spotlights = [
 const capabilityGroups = [
   {
     kicker: "Real-time visibility",
-    heading: "Understand how your event is performing in real time",
+    heading: "Understand How Your Event Is Performing In Real Time",
     cta: { label: "Book a demo", href: "#" },
     cards: [
       {
@@ -153,7 +156,7 @@ const capabilityGroups = [
   },
   {
     kicker: "Built for scale",
-    heading: "Infrastructure that makes scale feel simple",
+    heading: "Infrastructure That Makes Scale Feel Simple",
     cta: { label: "Talk to our team", href: "#" },
     cards: [
       {
@@ -213,25 +216,6 @@ const faqs = [
   },
 ];
 
-// Neutral visual panel standing in for a product screenshot in each spotlight.
-function SpotlightVisual({ icon: Icon }) {
-  return (
-    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-sm border border-border bg-[#191919]">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808020_1px,transparent_1px),linear-gradient(to_bottom,#80808020_1px,transparent_1px)] bg-[size:28px_28px]" />
-      <div className="absolute left-5 top-5 flex gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-border" />
-        <span className="h-2.5 w-2.5 rounded-full bg-border" />
-        <span className="h-2.5 w-2.5 rounded-full bg-border" />
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-border bg-background">
-          <Icon className="h-9 w-9 text-muted-foreground" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function EventsLandingPage() {
   const dashboardHref = "/org";
   const showcaseBg = pickRandomShowcaseBackground();
@@ -246,18 +230,19 @@ export default function EventsLandingPage() {
         <section className="mx-auto mb-10 mt-10 flex w-full max-w-6xl items-start justify-start px-4 sm:mt-16 sm:px-6">
           <div className="max-w-3xl">
             <h1 className="mb-4 text-2xl font-semibold text-white sm:text-3xl">
-              Plan, run, and relive every event in one place.
+              Sell Out Your Next Event.
             </h1>
             <p className="mb-6 max-w-xl text-sm text-muted-foreground sm:text-base">
-              Geiger Events combines planning, ticketing, and live operations
-              with practical team workflows. Build schedules, manage attendees,
-              and keep everyone aligned from first idea to final wrap-up.
+              Geiger Events gives creators and small teams a beautiful event
+              page, fast ticketing, and reliable check-in — the power of an
+              enterprise platform, without the price. Launch in minutes and
+              start selling today.
             </p>
             <Link
               href={dashboardHref}
               className="inline-flex h-10 items-center gap-2 rounded-full bg-zinc-100 px-6 text-sm font-medium text-zinc-950 transition-colors hover:bg-white sm:text-base"
             >
-              Go to Dashboard
+              Create your first event
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -298,7 +283,7 @@ export default function EventsLandingPage() {
 
         {/* Alternating spotlights — the end-to-end narrative. */}
         <section className="mx-auto mt-14 flex w-full max-w-6xl flex-col gap-14 px-4 sm:mt-20 sm:gap-20 sm:px-6">
-          {spotlights.map(({ eyebrow, title, body, icon }, index) => (
+          {spotlights.map(({ eyebrow, title, body, playground: Playground }, index) => (
             <div
               key={title}
               className={`flex flex-col items-center gap-8 md:gap-12 ${
@@ -306,7 +291,7 @@ export default function EventsLandingPage() {
               }`}
             >
               <div className="w-full md:w-1/2">
-                <SpotlightVisual icon={icon} />
+                <Playground />
               </div>
               <div className="w-full md:w-1/2">
                 <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -426,7 +411,7 @@ export default function EventsLandingPage() {
               Open source from day one
             </h3>
             <h2 className="mb-8 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-3xl font-black tracking-tighter text-transparent drop-shadow-lg sm:mb-10 sm:text-5xl lg:text-6xl">
-              TRY GEIGER NOW
+              Try Geiger Now
             </h2>
             <div className="flex w-full max-w-md flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
               <Link

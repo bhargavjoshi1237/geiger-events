@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { getUser, invalidateUserCache } from "@/lib/supabase/user";
 import { createClient } from "@/lib/supabase/client";
-import { useProject } from "@/context/project-context";
+import { useOptionalProject } from "@/context/project-context";
 import { Button } from "@/components/ui/button";
 
 const itemBaseStyle =
@@ -41,7 +41,8 @@ const itemHoverStyle =
 export function ProfileDropdown({ children }) {
   const [user, setUser] = useState(null);
   const { theme, setTheme } = useTheme();
-  const { project } = useProject();
+  // Tolerate rendering outside a ProjectProvider (e.g. the public landing header).
+  const project = useOptionalProject()?.project ?? null;
 
   useEffect(() => {
     getUser().then((u) => {

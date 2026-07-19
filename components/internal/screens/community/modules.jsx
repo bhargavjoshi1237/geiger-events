@@ -15,6 +15,7 @@ import {
   c,
   optionsFrom,
 } from "@/components/internal/shared/records/builders";
+import { describeSpec } from "@/lib/audience/resolve";
 
 // Community modules (backed by events.community_records). Simple engagement
 // records — created here, surfaced on the event page / app. Real-time surfaces
@@ -36,8 +37,21 @@ const ANNOUNCEMENT_STATUS_MAP = {
   Sent: { label: "Sent", variant: "success", dotClass: "bg-emerald-400" },
 };
 
-const AUDIENCES = ["All attendees", "Speakers", "Sponsors", "Staff"];
 const CHANNELS = ["In-app", "Email", "Push", "SMS"];
+
+// The audience picker, shared by every module's create dialog + editor. Pick an
+// event to unlock ticket/offering/add-on targeting, or keep it project-wide.
+const AUDIENCE_HINT =
+  "Everyone, or a subset — by event, ticket type, offering, add-on, tag, segment, or specific people.";
+const audienceField = (hint = AUDIENCE_HINT) =>
+  c("audience", "Audience", "audience", { hint, full: true });
+
+// Summarize a record's config.audience (an audience spec, or legacy
+// { eventId, emails } / string) for the list column.
+function audienceLabel(aud) {
+  if (!aud) return "Everyone";
+  return describeSpec(aud);
+}
 
 export const MODULES = {
   poll: {
@@ -62,10 +76,13 @@ export const MODULES = {
       { label: "Total votes", value: String(sum(records, (r) => r.config.votes)), footer: "Across polls" },
       { label: "Closed", value: String(count(records, (r) => r.status === "Closed")), footer: "Finished" },
     ],
-    defaults: { status: "Draft", config: { options: [], votes: 0, event: "" } },
+    defaults: {
+      status: "Draft",
+      config: { options: [], votes: 0, event: "", audience: { eventId: "", emails: [] } },
+    },
     createFields: [
       nameField("Question", "e.g. Which topic next?"),
-      c("event", "Event", "text", { placeholder: "e.g. Summit 2026" }),
+      audienceField(),
     ],
     detail: {
       depth: "light",
@@ -75,11 +92,15 @@ export const MODULES = {
           fields: [
             nameField("Question"),
             statusField(POLL_STATUS_MAP),
-            c("event", "Event"),
             c("votes", "Votes", "number", { placeholder: "e.g. 0" }),
           ],
         },
         { title: "Options", fields: [c("options", "Options", "list", { placeholder: "Add an option…" })] },
+        {
+          title: "Audience",
+          description: "Who can see and vote on this poll.",
+          fields: [c("audience", "", "audience", { full: true })],
+        },
       ],
     },
   },
@@ -92,11 +113,11 @@ export const MODULES = {
     description: "Longer feedback forms — questions, audience, and collected responses.",
     createLabel: "Add survey",
     searchPlaceholder: "Search surveys…",
-    search: (r) => `${r.name} ${r.config.audience || ""}`,
+    search: (r) => r.name,
     statusMap: SURVEY_STATUS_MAP,
     filters: [statusFilter(SURVEY_STATUS_MAP)],
     columns: [
-      nameCol((r) => r.config.audience),
+      nameCol((r) => audienceLabel(r.config.audience)),
       textCol("questions", "Questions", (r) => (r.config.questions || []).length || ""),
       textCol("responses", "Responses", (r) => (Number(r.config.responses) || 0).toLocaleString()),
       statusCol(SURVEY_STATUS_MAP),
@@ -107,11 +128,11 @@ export const MODULES = {
       { label: "Responses", value: String(sum(records, (r) => r.config.responses)), footer: "Across surveys" },
       { label: "Closed", value: String(count(records, (r) => r.status === "Closed")), footer: "Finished" },
     ],
-    defaults: { status: "Draft", config: { questions: [], responses: 0, audience: "All attendees" } },
-    createFields: [
-      nameField("Survey title", "e.g. Post-event feedback"),
-      c("audience", "Audience", "select", { options: optionsFrom(AUDIENCES) }),
-    ],
+    defaults: {
+      status: "Draft",
+      config: { questions: [], responses: 0, audience: { eventId: "", emails: [] } },
+    },
+    createFields: [nameField("Survey title", "e.g. Post-event feedback"), audienceField()],
     detail: {
       depth: "light",
       panels: [
@@ -120,9 +141,13 @@ export const MODULES = {
           fields: [
             nameField("Survey title"),
             statusField(SURVEY_STATUS_MAP),
-            c("audience", "Audience", "select", { options: optionsFrom(AUDIENCES) }),
             c("responses", "Responses", "number", { placeholder: "e.g. 0" }),
           ],
+        },
+        {
+          title: "Audience",
+          description: "Who this survey targets.",
+          fields: [c("audience", "", "audience", { full: true })],
         },
         { title: "Questions", fields: [c("questions", "Questions", "list", { placeholder: "Add a question…" })] },
       ],
@@ -144,7 +169,7 @@ export const MODULES = {
       configFilter("channel", CHANNELS, "All channels"),
     ],
     columns: [
-      nameCol((r) => r.config.audience),
+      nameCol((r) => audienceLabel(r.config.audience)),
       textCol("channel", "Channel", (r) => r.config.channel),
       statusCol(ANNOUNCEMENT_STATUS_MAP),
     ],
@@ -156,11 +181,12 @@ export const MODULES = {
     ],
     defaults: {
       status: "Draft",
-      config: { body: "", audience: "All attendees", channel: "In-app", scheduledFor: "" },
+      config: { body: "", audience: { eventId: "", emails: [] }, channel: "In-app", scheduledFor: "" },
     },
     createFields: [
       nameField("Title", "e.g. Doors open at 9am"),
       c("channel", "Channel", "select", { options: optionsFrom(CHANNELS) }),
+      audienceField("Who receives this announcement — everyone or a targeted subset."),
     ],
     detail: {
       depth: "light",
@@ -170,10 +196,14 @@ export const MODULES = {
           fields: [
             nameField("Title"),
             statusField(ANNOUNCEMENT_STATUS_MAP),
-            c("audience", "Audience", "select", { options: optionsFrom(AUDIENCES) }),
             c("channel", "Channel", "select", { options: optionsFrom(CHANNELS) }),
             c("scheduledFor", "Scheduled for", "text", { placeholder: "e.g. 2026-07-12 09:00" }),
           ],
+        },
+        {
+          title: "Audience",
+          description: "Who receives this announcement.",
+          fields: [c("audience", "", "audience", { full: true })],
         },
         { title: "Message", fields: [c("body", "Message", "textarea", { rows: 6, placeholder: "What do you want to tell everyone?" })] },
       ],

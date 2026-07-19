@@ -24,8 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Card,
-  Cover,
+  TicketStubRow,
   SectionTitle,
   TicketQr,
   CalendarButton,
@@ -45,36 +44,24 @@ export const REFUND_STATUS = {
 };
 
 function TicketCard({ t, onOpen }) {
+  const dateLabel = t.eventDate ? fmtDate(t.eventDate) : "Date TBA";
+  const meta = [
+    { label: `${t.quantity} ticket${t.quantity > 1 ? "s" : ""}` },
+    { label: t.eventTime ? `${dateLabel} · ${t.eventTime}` : dateLabel },
+    t.venue || t.city ? { label: [t.venue, t.city].filter(Boolean).join(", ") } : null,
+    t.refund ? { label: REFUND_STATUS[t.refund.status]?.label || "Refund", muted: true } : null,
+  ].filter(Boolean);
+
   return (
-    <Card onClick={() => onOpen(t)} className="flex items-center gap-4 p-0">
-      <Cover
-        url={t.coverUrl}
-        name={t.eventName}
-        className="h-20 w-20 shrink-0 rounded-l-xl"
-      />
-      <div className="min-w-0 flex-1 py-3 pr-4">
-        <p className="truncate text-sm font-semibold text-foreground">
-          {t.eventName}
-        </p>
-        <p className="mt-1 flex items-center gap-1.5 text-xs text-text-secondary">
-          <CalendarDays className="h-3.5 w-3.5" />
-          {t.eventDate ? fmtDate(t.eventDate) : "Date TBA"}
-          {t.eventTime ? ` · ${t.eventTime}` : ""}
-        </p>
-        {t.venue || t.city ? (
-          <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-text-tertiary">
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
-            {[t.venue, t.city].filter(Boolean).join(", ")}
-          </p>
-        ) : null}
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-1 pr-4 text-right">
-        <span className="rounded-full border border-border bg-surface-subtle px-2 py-0.5 text-xs text-muted-foreground">
-          {t.ticket || "Admission"} ×{t.quantity}
-        </span>
-        {t.refund ? <StatusPill status={t.refund.status} map={REFUND_STATUS} /> : null}
-      </div>
-    </Card>
+    <TicketStubRow
+      onClick={() => onOpen(t)}
+      image={t.coverUrl}
+      name={t.eventName}
+      description={t.ticket || "Admission"}
+      meta={meta}
+      stubValue={Number(t.total) > 0 ? money(t.total) : "Free"}
+      stubLabel="paid"
+    />
   );
 }
 

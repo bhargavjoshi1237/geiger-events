@@ -15,15 +15,20 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   cn,
 } from "@geiger/ui";
 import { getUser } from "@/lib/supabase/user";
 import { removeEventImage, pathFromPublicUrl } from "@/lib/supabase/storage";
+import { AudienceField } from "@/components/internal/shared/audience/audience_field";
+import { AccessControlField } from "./access_control";
 
 // Declarative field rendering shared by the Conference create dialog, the light
 // single-panel editors, and the rich sectioned editors. A field spec is:
 //   { key, label, type, scope, options?, placeholder?, hint?, full? }
-//   type:  text | email | number | textarea | select | switch | list
+//   type:  text | email | number | textarea | select | tabs | switch | list
 //   scope: "root" (record.name/status/coverUrl) | "config" (record.config[key])
 
 // Read a field's current value off a record/draft.
@@ -107,9 +112,27 @@ export function ChipsInput({ value, onChange, placeholder }) {
 // --- Single field control ----------------------------------------------------
 
 // Renders one field's control. `value` is the current value; `onValue(val)` gets
-// the new raw value (the caller maps it to a patch via fieldPatch).
-export function FieldControl({ field, value, onValue }) {
+// the new raw value (the caller maps it to a patch via fieldPatch). `values` is
+// the whole record/draft — used by controls that need record context (e.g. the
+// audience builder needs the record's projectId).
+export function FieldControl({ field, value, onValue, values }) {
   switch (field.type) {
+    case "audience":
+      return (
+        <AudienceField
+          projectId={values?.projectId}
+          value={value}
+          onChange={onValue}
+        />
+      );
+    case "access":
+      return (
+        <AccessControlField
+          projectId={values?.projectId}
+          value={value}
+          onChange={onValue}
+        />
+      );
     case "textarea":
       return (
         <Textarea
@@ -153,6 +176,19 @@ export function FieldControl({ field, value, onValue }) {
           </SelectContent>
         </Select>
       );
+    case "tabs":
+      // A segmented selector (shadcn/@geiger Tabs used as a control, no panels).
+      return (
+        <Tabs value={value ?? ""} onValueChange={onValue}>
+          <TabsList className="w-full">
+            {(field.options || []).map((o) => (
+              <TabsTrigger key={o.value} value={o.value}>
+                {o.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      );
     case "switch":
       return (
         <div className="flex h-9 items-center">
@@ -179,13 +215,13 @@ export function FieldControl({ field, value, onValue }) {
 }
 
 // A field that spans the full width of the two-column grid (multi-line inputs).
-const FULL_TYPES = new Set(["textarea", "list"]);
+const FULL_TYPES = new Set(["textarea", "list", "audience", "access", "tabs"]);
 
 // --- Section of fields (a titled card with a 2-col grid) ---------------------
 
-export function FieldSection({ title, description, action, fields, values, onPatch }) {
+export function FieldSection({ title, description, action, fields, values, onPatch, bare = false }) {
   return (
-    <SectionCard title={title} description={description} action={action}>
+    <SectionCard title={title} description={description} action={action} bare={bare}>
       <div className="grid gap-4 sm:grid-cols-2">
         {fields.map((field) => {
           const full = field.full ?? FULL_TYPES.has(field.type);
@@ -200,6 +236,7 @@ export function FieldSection({ title, description, action, fields, values, onPat
                 field={field}
                 value={readField(field, values)}
                 onValue={(val) => onPatch(fieldPatch(field, values, val))}
+                values={values}
               />
             </Field>
           );
@@ -211,7 +248,7 @@ export function FieldSection({ title, description, action, fields, values, onPat
 
 // --- Cover image (headshot / logo) -------------------------------------------
 
-export function CoverImageCard({ record, commit, upload, title = "Cover image", description, aspect = "aspect-[16/9]" }) {
+export function CoverImageCard({ record, commit, upload, title = "Cover image", description, aspect = "aspect-[16/9]", frameClassName }) {
   const cover = record.coverUrl || "";
   const [me, setMe] = useState(null);
   const [resolved, setResolved] = useState(false);
@@ -269,7 +306,12 @@ export function CoverImageCard({ record, commit, upload, title = "Cover image", 
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
       {cover ? (
         <div className="space-y-3">
-          <div className="relative overflow-hidden rounded-xl border border-border">
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-xl border border-border",
+              frameClassName,
+            )}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={cover} alt="" className={cn(aspect, "w-full object-cover")} />
           </div>
@@ -302,6 +344,7 @@ export function CoverImageCard({ record, commit, upload, title = "Cover image", 
           className={cn(
             aspect,
             "flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card text-sm text-text-secondary transition-colors hover:bg-surface-hover disabled:opacity-60",
+            frameClassName,
           )}
         >
           {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}

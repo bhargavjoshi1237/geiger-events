@@ -8,8 +8,9 @@ import {
   ShoppingBag,
   BadgeCheck,
   MessagesSquare,
+  Users,
+  HelpCircle,
   Bell,
-  User,
   PanelLeft,
 } from "lucide-react";
 
@@ -43,15 +44,18 @@ const GROUPS = [
     ],
   },
   {
+    label: "Community",
+    items: [
+      { key: "community", label: "Community", icon: Users },
+      { key: "qa", label: "Q&A", icon: HelpCircle },
+    ],
+  },
+  {
     label: "Support",
     items: [
       { key: "messages", label: "Messages", icon: MessagesSquare },
       { key: "notifications", label: "Notifications", icon: Bell },
     ],
-  },
-  {
-    label: "You",
-    items: [{ key: "account", label: "Account", icon: User }],
   },
 ];
 
@@ -76,9 +80,9 @@ export function PortalSidebar({ tab, onTab, counts = {}, basePath }) {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="py-1">
+      <SidebarContent className="gap-0 py-1">
         {GROUPS.map((group, i) => (
-          <SidebarGroup key={group.label || i}>
+          <SidebarGroup key={group.label || i} className="py-1">
             {group.label ? (
               <SidebarGroupLabel className="text-[11px] uppercase tracking-wider text-text-tertiary">
                 {group.label}

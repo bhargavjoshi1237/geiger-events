@@ -195,3 +195,10 @@ export function useProject() {
   }
   return ctx;
 }
+
+// Non-throwing variant for shared components (e.g. the topbar profile menu) that
+// render both inside the workspace (with a provider) and on public pages like the
+// landing page (without one). Returns null when there's no ProjectProvider above.
+export function useOptionalProject() {
+  return useContext(ProjectContext) ?? null;
+}

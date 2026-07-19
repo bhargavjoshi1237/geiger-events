@@ -1,4 +1,5 @@
 import { EventsOverviewScreen } from "./overview/events_overview";
+import { OrganiserInboxScreen } from "./messages/organiser_inbox";
 import { EventsHomeScreen } from "./events/events_home";
 import { AllEventsScreen } from "./events/all_events";
 import { TemplatesScreen } from "./events/templates";
@@ -96,18 +97,25 @@ import {
   CertificatesScreen,
   AgendaBuilderScreen,
   RecordingsScreen,
+  SpeakerBackstageScreen,
+  LivestreamRoomsScreen,
+  WebinarRoomsScreen,
+  BreakoutRoomsScreen,
+  SponsorRoomsScreen,
+  SpeakerPortalScreen,
+  SimuliveOnDemandScreen,
+  CaptionsTranscriptionScreen,
+  AssignAgendaScreen,
+  FloorPlanScreen,
+  MobileAppScreen,
 } from "./conference/screens";
 import {
   PollsScreen,
   SurveysScreen,
   AnnouncementsScreen,
 } from "./community/screens";
-import {
-  TeamMembersScreen,
-  RolesPermissionsScreen,
-  ApiWebhooksScreen,
-  CustomDomainsScreen,
-} from "./settings/screens";
+import { EventChatScreen } from "./community/event_chat";
+import { QaThreadsScreen } from "./community/qa_threads";
 import { AdCampaignsScreen, BudgetsScreen } from "./advertising/screens";
 import { ConnectionsScreen } from "./advertising/connections";
 import { InsightsScreen } from "./advertising/insights";
@@ -117,6 +125,8 @@ import { EmailTemplateBuilderScreen } from "./campaigns/email_template_builder";
 import { DripSequencesScreen } from "./campaigns/drip_sequences";
 import { DeliverabilityScreen } from "./campaigns/deliverability";
 import { PersonalizationScreen } from "./campaigns/personalization";
+import { TeamMembersScreen } from "./settings/team_members";
+import { RolesPermissionsScreen } from "./settings/roles_permissions";
 
 /**
  * Maps a sidebar nav title to its screen component. Titles must exactly match
@@ -131,6 +141,11 @@ import { PersonalizationScreen } from "./campaigns/personalization";
 export const SCREEN_REGISTRY = {
   // Overview
   Overview: EventsOverviewScreen,
+
+  // Messages — the organiser inbox for members-portal support threads. Buyers
+  // start conversations from their portal (about a ticket/order); organisers
+  // read and reply here. See lib/supabase/messages.js.
+  Messages: OrganiserInboxScreen,
 
   // Events area (workspace-level only)
   Events: EventsHomeScreen,
@@ -272,10 +287,14 @@ export const SCREEN_REGISTRY = {
   Personalization: PersonalizationScreen,
   "Push Notifications": PushNotificationsScreen,
 
-  // Conference area. Eight reusable record managers backed by the shared
-  // events.conference_records table (module discriminator), rendered by the
-  // config-driven conference kit. Rich editors: Speakers, Sponsors, Call for
-  // Papers; the rest are single-panel. See screens/conference/.
+  // Conference domain — split in the sidebar into five areas (Program, Speakers,
+  // Sponsors & Expo, Broadcast & On-demand, Logistics), but ONE screen family:
+  // reusable record managers backed by the shared events.conference_records table
+  // (module discriminator), rendered by the config-driven conference kit, plus
+  // three bespoke screens (Agenda Builder, Floor Plan & Booths, Mobile Event
+  // App). Registry keys are grouping-agnostic — they match the sub-item
+  // titles regardless of which sidebar area they now live under. Rich editors get
+  // a section nav; the rest are single-panel. See screens/conference/.
   Speakers: SpeakersScreen,
   Sponsors: SponsorsScreen,
   "Sponsorship Packages": SponsorshipPackagesScreen,
@@ -286,18 +305,33 @@ export const SCREEN_REGISTRY = {
   "CEU & Certificates": CertificatesScreen,
   "Agenda Builder": AgendaBuilderScreen,
   "Recordings & Replay": RecordingsScreen,
+  "Speaker Backstage": SpeakerBackstageScreen,
+  "Livestream Rooms": LivestreamRoomsScreen,
+  "Webinar Rooms": WebinarRoomsScreen,
+  "Breakout Rooms": BreakoutRoomsScreen,
+  "Sponsor Rooms": SponsorRoomsScreen,
+  "Speaker Portal": SpeakerPortalScreen,
+  "Simulive & On-demand": SimuliveOnDemandScreen,
+  "Captions & Transcription": CaptionsTranscriptionScreen,
+  // Assign Agenda — a record module (curate sessions + assign to a targeted
+  // guest audience, Community-style). Floor Plan & Mobile App are bespoke files.
+  "Assign Agenda": AssignAgendaScreen,
+  "Floor Plan & Booths": FloorPlanScreen,
+  "Mobile Event App": MobileAppScreen,
 
-  // Community area — engagement records (events.community_records).
+  // Community area — engagement records (events.community_records) + live chat.
+  "Event Chat": EventChatScreen,
+  "Q&A": QaThreadsScreen,
   Polls: PollsScreen,
   Surveys: SurveysScreen,
   Announcements: AnnouncementsScreen,
 
-  // Settings area — workspace config records (events.settings_records). Usage
-  // stays a read-only dashboard (ComingSoon for now).
+  // Settings area — Team & Members (people, groups, invites, activity) and
+  // Roles & Permissions (role matrix over WORKSPACE_PERMISSIONS). Both read
+  // through lib/supabase/team.js + roles.js; the remaining sub-items (API &
+  // Webhooks, Usage, Custom Domains) are ComingSoon for now.
   "Team & Members": TeamMembersScreen,
   "Roles & Permissions": RolesPermissionsScreen,
-  "API & Webhooks": ApiWebhooksScreen,
-  "Custom Domains": CustomDomainsScreen,
 
   // Analytics area — only Scheduled Reports is a record set
   // (events.analytics_records); the rest are dashboards (ComingSoon).

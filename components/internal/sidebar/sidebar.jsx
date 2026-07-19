@@ -20,6 +20,13 @@ import { NotificationsDropdown } from "../topbar/dialogue/notifications_dropdown
 import { roleHasPermission, tabPermissionKey } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
 
+// Persist the sidebar's scroll offset across tab switches. A tab change is a
+// route navigation that can remount the sidebar and reset its scroll to the top;
+// we stash the last offset in a module-scoped variable (survives the remount)
+// and restore it before paint, so a long nav list stays where the user left it.
+const SIDEBAR_SCROLL_ID = "workspace-sidebar-scroll";
+let savedSidebarScroll = 0;
+
 function MobileSidebarHeader() {
   const { isMobile, toggleSidebar } = useSidebar();
 
@@ -59,6 +66,18 @@ export function AppSidebar({
   const { toggleSidebar } = useSidebar();
   const [expandedItems, setExpandedItems] = React.useState({});
 
+  // Restore the saved scroll offset before paint (no flicker) whenever the
+  // sidebar (re)mounts after a tab switch, and keep it in sync as the user
+  // scrolls. SidebarContent forwards props to its scroll div, so we address it
+  // by id rather than a ref.
+  React.useLayoutEffect(() => {
+    const el = document.getElementById(SIDEBAR_SCROLL_ID);
+    if (el) el.scrollTop = savedSidebarScroll;
+  }, []);
+  const handleSidebarScroll = (e) => {
+    savedSidebarScroll = e.currentTarget.scrollTop;
+  };
+
   const visibleNav = workspaceNav.filter((item) =>
     roleHasPermission(roles, roleId, tabPermissionKey(item.title)),
   );
@@ -76,7 +95,11 @@ export function AppSidebar({
       className="bg-sidebar border-r border-sidebar-border text-sidebar-foreground"
     >
       <MobileSidebarHeader />
-      <SidebarContent className="py-1 space-y-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <SidebarContent
+        id={SIDEBAR_SCROLL_ID}
+        onScroll={handleSidebarScroll}
+        className="py-1 space-y-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>

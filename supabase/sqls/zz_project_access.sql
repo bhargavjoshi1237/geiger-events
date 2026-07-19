@@ -471,6 +471,126 @@ create policy checkin_leads_member_all on events.checkin_leads
   using (events.can_access_project(project_id))
   with check (events.can_access_project(project_id));
 
+-- members-portal support threads (buyer ↔ organiser messaging) ----------------
+-- The buyer side is written by the portal's server routes (service role, which
+-- bypasses RLS). The organiser reads and replies from the dashboard, so scope
+-- these to the thread's project: an org member sees their project's inbox. A
+-- thread with a null project_id (no order/event context we could route) is
+-- invisible here — the portal routing attaches a project where it can.
+drop policy if exists portal_threads_member_all on events.portal_threads;
+create policy portal_threads_member_all on events.portal_threads
+  for all to authenticated
+  using (project_id is not null and events.can_access_project(project_id))
+  with check (project_id is not null and events.can_access_project(project_id));
+
+-- Messages inherit their thread's project scope.
+drop policy if exists portal_thread_messages_member_all on events.portal_thread_messages;
+create policy portal_thread_messages_member_all on events.portal_thread_messages
+  for all to authenticated
+  using (
+    exists (
+      select 1 from events.portal_threads t
+      where t.id = events.portal_thread_messages.thread_id
+        and t.project_id is not null
+        and events.can_access_project(t.project_id)
+    )
+  )
+  with check (
+    exists (
+      select 1 from events.portal_threads t
+      where t.id = events.portal_thread_messages.thread_id
+        and t.project_id is not null
+        and events.can_access_project(t.project_id)
+    )
+  );
+
+-- Community chat (channels / participants / messages) ------------------------
+-- Two participant kinds share a channel: organisers (org members via
+-- can_access_project) and portal members (a scoped realtime JWT carrying
+-- member_id, matched by events.chat_channel_member). Organisers read+write
+-- (moderation); members read (via the realtime subscription) rows for channels
+-- they belong to. Member writes go through service-role portal routes, so the
+-- with_check clauses only need to admit organisers.
+drop policy if exists chat_channels_access on events.chat_channels;
+create policy chat_channels_access on events.chat_channels
+  for all to authenticated
+  using (events.can_access_project(project_id) or events.chat_channel_member(id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists chat_participants_access on events.chat_participants;
+create policy chat_participants_access on events.chat_participants
+  for all to authenticated
+  using (
+    exists (
+      select 1 from events.chat_channels c
+      where c.id = events.chat_participants.channel_id
+        and events.can_access_project(c.project_id)
+    )
+    or events.chat_channel_member(events.chat_participants.channel_id)
+  )
+  with check (
+    exists (
+      select 1 from events.chat_channels c
+      where c.id = events.chat_participants.channel_id
+        and events.can_access_project(c.project_id)
+    )
+  );
+
+drop policy if exists chat_messages_access on events.chat_messages;
+create policy chat_messages_access on events.chat_messages
+  for all to authenticated
+  using (
+    exists (
+      select 1 from events.chat_channels c
+      where c.id = events.chat_messages.channel_id
+        and events.can_access_project(c.project_id)
+    )
+    or events.chat_channel_member(events.chat_messages.channel_id)
+  )
+  with check (
+    exists (
+      select 1 from events.chat_channels c
+      where c.id = events.chat_messages.channel_id
+        and events.can_access_project(c.project_id)
+    )
+  );
+
+alter table events.chat_channels     enable row level security;
+alter table events.chat_participants enable row level security;
+alter table events.chat_messages     enable row level security;
+
+-- Team & Members / Roles & Permissions (Settings area) ----------------------
+-- Four project-scoped tables (roles, project_members, member_groups,
+-- member_activity). Member-only: no public surface (managed in the dashboard).
+-- Swap the open demo policies created in team.sql for org-scoped ones.
+drop policy if exists events_roles_demo_all on events.roles;
+drop policy if exists roles_member_all on events.roles;
+create policy roles_member_all on events.roles
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_project_members_demo_all on events.project_members;
+drop policy if exists project_members_member_all on events.project_members;
+create policy project_members_member_all on events.project_members
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_member_groups_demo_all on events.member_groups;
+drop policy if exists member_groups_member_all on events.member_groups;
+create policy member_groups_member_all on events.member_groups
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
+drop policy if exists events_member_activity_demo_all on events.member_activity;
+drop policy if exists member_activity_member_all on events.member_activity;
+create policy member_activity_member_all on events.member_activity
+  for all to authenticated
+  using (events.can_access_project(project_id))
+  with check (events.can_access_project(project_id));
+
 -- ---------------------------------------------------------------------------
 -- 4. Stamp project_id inside the public-facing RPCs so anonymous RSVP/checkout
 --    rows land in the right project. Both are SECURITY DEFINER and derive the
@@ -748,6 +868,9 @@ begin
     on conflict (lower(email)) do update
       set name = case when events.portal_members.name = ''
                       then excluded.name else events.portal_members.name end;
+
+    -- Community: ensure the event chat exists and enrol this buyer.
+    perform events.add_ticket_buyer_to_chat(p_event_id, lower(p_email), coalesce(p_name, ''));
   end if;
 
   -- Bump the per-tier and per-slot sold counters under the same row lock, built

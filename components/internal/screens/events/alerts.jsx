@@ -48,6 +48,8 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
+import { AudienceField } from "@/components/internal/shared/audience/audience_field";
+import { normalizeSpec, isEmptyFilters, describeSpec } from "@/lib/audience/resolve";
 
 // Per-event organizer alerts. Each rule — persisted in the event's metadata bag
 // (`metadata.alerts`) via useEventConfig, like tickets/schedule — asks to email
@@ -63,8 +65,10 @@ import { useEventConfig } from "@/lib/events/use-event-config";
 //   • activity    → fires on each new registration (or batched into a daily
 //     digest when `digest` is true) or when the Nth registration lands.
 // Recipients = the event's co-hosts/admins when `notifyTeam`, plus any
-// `extraEmails`. Dedupe with a persisted `lastFiredAt` stamp. Delivery goes
-// through the shared `sendSuiteEmail({ template: "event-alert", to, data })`.
+// `extraEmails`, plus — when set — the buyers a targeted audience spec resolves
+// to (`audience`, see lib/audience/resolve.js; resolve it at fire time via
+// resolveAudienceEmails). Dedupe with a persisted `lastFiredAt` stamp. Delivery
+// goes through the shared `sendSuiteEmail({ template: "event-alert", to, data })`.
 
 // Trigger catalog — key → { label, category, icon, param kind, and a `clause`
 // that renders the human-readable "when" phrase for a saved rule. `param` drives
@@ -212,10 +216,17 @@ function parseEmails(str) {
     .map((s) => s.trim())
     .filter((s) => s.includes("@"));
 }
+// Whether an alert carries a real targeted-buyer audience (vs an empty/absent one).
+function audienceActive(spec) {
+  if (!spec) return false;
+  const s = normalizeSpec(spec);
+  return s.mode === "all" || !isEmptyFilters(s.filters) || s.include.length > 0;
+}
 function recipientLabel(r) {
   const parts = [];
   if (r.notifyTeam) parts.push("Co-hosts & admins");
   parts.push(...parseEmails(r.extraEmails));
+  if (audienceActive(r.audience)) parts.push(describeSpec(r.audience));
   return parts.length ? parts.join(" · ") : "No recipients";
 }
 function alertSummary(r) {
@@ -224,6 +235,7 @@ function alertSummary(r) {
   const recipients = r.notifyTeam
     ? ["co-hosts & admins", ...parseEmails(r.extraEmails)]
     : parseEmails(r.extraEmails);
+  if (audienceActive(r.audience)) recipients.push(describeSpec(r.audience).toLowerCase());
   const who = recipients.length ? recipients.join(", ") : "no one yet";
   const line = `Email ${who} ${t.clause(r)}`;
   return line.charAt(0).toUpperCase() + line.slice(1);
@@ -237,6 +249,7 @@ const EMPTY_DRAFT = {
   digest: false,
   notifyTeam: true,
   extraEmails: "",
+  audience: null,
   enabled: true,
 };
 
@@ -361,11 +374,15 @@ export function AlertsSection({ event, headerItem }) {
       <AlertDialog
         open={addOpen}
         onOpenChange={setAddOpen}
+        projectId={event.projectId}
+        eventId={event.id}
         onSave={addAlert}
       />
       <AlertDialog
         open={!!editing}
         onOpenChange={(o) => !o && setEditing(null)}
+        projectId={event.projectId}
+        eventId={event.id}
         initial={editing?.alert}
         onSave={(alert) => {
           updateAlert(editing.index, alert);
@@ -378,9 +395,10 @@ export function AlertsSection({ event, headerItem }) {
 
 // Create or edit a single alert — pick a trigger, fill its one parameter, choose
 // recipients, and see a live plain-English preview of what will be emailed.
-function AlertDialog({ open, onOpenChange, initial, onSave }) {
+function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [alsoEmail, setAlsoEmail] = useState(false);
+  const [alsoAudience, setAlsoAudience] = useState(false);
 
   // Re-seed whenever the dialog opens (render-phase reset).
   const [prevOpen, setPrevOpen] = useState(open);
@@ -390,11 +408,20 @@ function AlertDialog({ open, onOpenChange, initial, onSave }) {
       const seed = initial ? { ...EMPTY_DRAFT, ...initial } : EMPTY_DRAFT;
       setDraft(seed);
       setAlsoEmail(Boolean(parseEmails(seed.extraEmails).length));
+      setAlsoAudience(audienceActive(seed.audience));
     }
   }
 
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
   const t = TRIGGERS[draft.trigger];
+
+  // Turning on buyer targeting seeds an event-scoped "all attendees" rule.
+  const toggleAudience = (v) => {
+    setAlsoAudience(v);
+    if (v && !draft.audience) {
+      set("audience")(normalizeSpec({ scope: "event", eventId, mode: "all" }));
+    }
+  };
 
   const submit = () => {
     if (!t) return;
@@ -407,11 +434,12 @@ function AlertDialog({ open, onOpenChange, initial, onSave }) {
       return;
     }
     const extraEmails = alsoEmail ? draft.extraEmails : "";
-    if (!draft.notifyTeam && !parseEmails(extraEmails).length) {
+    const audience = alsoAudience ? draft.audience : null;
+    if (!draft.notifyTeam && !parseEmails(extraEmails).length && !audienceActive(audience)) {
       toast.error("Choose at least one recipient.");
       return;
     }
-    onSave({ ...draft, extraEmails });
+    onSave({ ...draft, extraEmails, audience });
     onOpenChange(false);
   };
 
@@ -475,6 +503,20 @@ function AlertDialog({ open, onOpenChange, initial, onSave }) {
                   value={draft.extraEmails}
                   onChange={(e) => set("extraEmails")(e.target.value)}
                   placeholder="ops@acme.com, me@acme.com"
+                />
+              ) : null}
+              <label className="flex items-center gap-2.5 text-sm text-foreground">
+                <Checkbox
+                  checked={alsoAudience}
+                  onCheckedChange={(v) => toggleAudience(Boolean(v))}
+                />
+                Also send to a targeted set of buyers
+              </label>
+              {alsoAudience ? (
+                <AudienceField
+                  projectId={projectId}
+                  value={draft.audience}
+                  onChange={set("audience")}
                 />
               ) : null}
             </div>

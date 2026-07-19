@@ -140,7 +140,7 @@ export function TicketAttachmentsSection({ event, headerItem }) {
                 </div>
               ) : (
                 <div className="flex flex-col items-start gap-2">
-                  <p className="text-sm text-text-secondary">
+                  <p className="text-sm text-text-secondary capitalize">
                     No {m.label.toLowerCase()} records yet.
                   </p>
                   <Button

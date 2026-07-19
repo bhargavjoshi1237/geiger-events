@@ -12,8 +12,9 @@ import {
   StatusPill,
   EmptyState,
 } from "@/components/internal/shared/screen_kit";
-import { useProject } from "@/context/project-context";
+import { useOptionalProject } from "@/context/project-context";
 import { advertisingApi } from "@/lib/supabase/advertising";
+import { DEMO_CAMPAIGNS } from "./demo_insights";
 import {
   AD_PLATFORMS,
   PLATFORM_MAP,
@@ -26,13 +27,15 @@ const num = (r, key) => Number(r.config?.[key]) || 0;
 
 // Read-only performance dashboard aggregated from the campaign records. All
 // figures are computed from stored data with useMemo — a live platform sync would
-// simply keep those campaign numbers fresh.
-export function InsightsScreen() {
-  const [campaigns, setCampaigns] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const { projectId } = useProject();
+// simply keep those campaign numbers fresh. `demo` seeds bundled sample campaigns
+// and skips the fetch so it can run as a live playground on the public landing.
+export function InsightsScreen({ demo = false }) {
+  const [campaigns, setCampaigns] = useState(demo ? DEMO_CAMPAIGNS : []);
+  const [loading, setLoading] = useState(!demo);
+  const projectId = useOptionalProject()?.projectId ?? null;
 
   useEffect(() => {
+    if (demo) return;
     let alive = true;
     advertisingApi.list(projectId, "campaign").then((rows) => {
       if (!alive) return;
@@ -42,7 +45,7 @@ export function InsightsScreen() {
     return () => {
       alive = false;
     };
-  }, [projectId]);
+  }, [projectId, demo]);
 
   const totals = useMemo(() => {
     return campaigns.reduce(

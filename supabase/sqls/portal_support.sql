@@ -33,10 +33,22 @@ create table if not exists events.portal_threads (
   last_message_at timestamptz not null default now(),
   -- Whether the member has unread organiser replies (cleared when they open it).
   member_unread   boolean not null default false,
+  -- Whether the organiser has unread member messages (cleared when they open it
+  -- in the dashboard inbox). Mirror of member_unread for the other side.
+  organiser_unread boolean not null default false,
+  -- Buyer identity denormalized onto the thread so the dashboard inbox can show
+  -- who wrote in WITHOUT a read policy on the service-role-only portal_members.
+  member_email    text,
+  member_name     text,
   metadata        jsonb not null default '{}'::jsonb,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+
+-- Back-fill columns on older copies (idempotent).
+alter table events.portal_threads add column if not exists organiser_unread boolean not null default false;
+alter table events.portal_threads add column if not exists member_email text;
+alter table events.portal_threads add column if not exists member_name text;
 
 create index if not exists portal_threads_member_idx
   on events.portal_threads (member_id, last_message_at desc);

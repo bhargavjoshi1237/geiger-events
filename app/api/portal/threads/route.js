@@ -25,6 +25,7 @@ export async function POST(request) {
   const thread = await createThread({
     memberId: member.id,
     email: member.email,
+    name: member.name,
     subject,
     body,
     orderId: orderId || null,

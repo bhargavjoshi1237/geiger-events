@@ -2,6 +2,7 @@
 
 import React from "react";
 
+import { cn } from "@/lib/utils";
 import { StatusPill } from "@/components/internal/shared/screen_kit";
 
 // Shared builders for record-manager module configs (see an area's modules.jsx).
@@ -50,6 +51,46 @@ export const nameCol = (meta) => ({
       ) : null}
     </div>
   ),
+});
+// Name cell with a leading avatar: the record's cover image (headshot/logo) when
+// set, otherwise the name's first initial. `shape` picks a round avatar
+// (speakers) or a rounded square (logos).
+export const avatarNameCol = (meta, { shape = "circle" } = {}) => ({
+  key: "name",
+  header: "Name",
+  render: (r) => {
+    const radius = shape === "circle" ? "rounded-full" : "rounded-md";
+    const initial = (r.name || "?").trim().charAt(0).toUpperCase() || "?";
+    return (
+      <div className="flex items-center gap-3">
+        {r.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={r.coverUrl}
+            alt=""
+            className={cn("h-9 w-9 shrink-0 border border-border object-cover", radius)}
+          />
+        ) : (
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center border border-border bg-surface-card text-xs font-semibold text-muted-foreground",
+              radius,
+            )}
+          >
+            {initial}
+          </span>
+        )}
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate font-medium text-foreground">
+            {r.name || "Untitled"}
+          </span>
+          {meta ? (
+            <span className="truncate text-xs text-text-secondary">{meta(r) || "—"}</span>
+          ) : null}
+        </div>
+      </div>
+    );
+  },
 });
 export const statusCol = (map) => ({
   key: "status",

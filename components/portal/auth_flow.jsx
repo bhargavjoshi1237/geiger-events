@@ -28,7 +28,7 @@ async function postJson(url, body) {
 // Email-first members auth. Steps: email -> password | setup-prompt -> check-email;
 // a ?setup= token enters at set-password. First password / reset always goes
 // through a one-time emailed link (ownership proof).
-export function AuthFlow({ initialSetupToken = null }) {
+export function AuthFlow({ initialSetupToken = null, workspace = false }) {
   const [step, setStep] = useState(initialSetupToken ? "set-password" : "email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,6 +36,9 @@ export function AuthFlow({ initialSetupToken = null }) {
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+  // Where a successful sign-in lands: back to the internal workspace when the
+  // visitor came from there, otherwise the members portal.
+  const successUrl = `${basePath}${workspace ? "/project" : "/members"}`;
 
   const submitEmail = async (e) => {
     e.preventDefault();
@@ -54,7 +57,7 @@ export function AuthFlow({ initialSetupToken = null }) {
     const { ok, data } = await postJson("/api/portal/login", { email, password });
     setBusy(false);
     if (!ok) return toast.error(data.error || "Incorrect email or password.");
-    window.location.href = `${basePath}/members`;
+    window.location.href = successUrl;
   };
 
   const sendSetup = async () => {
@@ -74,7 +77,7 @@ export function AuthFlow({ initialSetupToken = null }) {
     });
     setBusy(false);
     if (!ok) return toast.error(data.error || "This link is invalid or expired.");
-    window.location.href = `${basePath}/members`;
+    window.location.href = successUrl;
   };
 
   return (
@@ -98,7 +101,9 @@ export function AuthFlow({ initialSetupToken = null }) {
           <div className="space-y-1">
             <h1 className="text-lg font-semibold text-foreground">Geiger Events</h1>
             <p className="text-sm text-text-secondary">
-              Your tickets, orders, and memberships.
+              {workspace
+                ? "Sign in to open your workspace."
+                : "Your tickets, orders, and memberships."}
             </p>
           </div>
         </div>
@@ -122,14 +127,16 @@ export function AuthFlow({ initialSetupToken = null }) {
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
             </Button>
-            <ul className="space-y-2 border-t border-border pt-4">
-              {FEATURES.map((f) => (
-                <li key={f.label} className="flex items-center gap-2.5 text-xs text-text-secondary">
-                  <f.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  {f.label}
-                </li>
-              ))}
-            </ul>
+            {!workspace ? (
+              <ul className="space-y-2 border-t border-border pt-4">
+                {FEATURES.map((f) => (
+                  <li key={f.label} className="flex items-center gap-2.5 text-xs text-text-secondary">
+                    <f.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    {f.label}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </form>
         )}
 
