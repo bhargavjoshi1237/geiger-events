@@ -94,6 +94,8 @@ import {
   FileSearch,
   BadgeDollarSign,
   Link2,
+  ArrowLeftRight,
+  Receipt,
 } from "lucide-react";
 
 // Sidebar navigation for Geiger Events.
@@ -227,6 +229,25 @@ export const workspaceNav = [
       { title: "Taxes", icon: Scale },
       { title: "Orders & Attendees", icon: ShoppingBag },
       { title: "Invoices & Receipts", icon: FileText },
+    ],
+  },
+
+  {
+    // Orders — the operational cockpit for everything after checkout: viewing
+    // orders, issuing full/partial refunds, cancellations, the money ledger,
+    // receipts/invoices, and disputes. The Tickets area keeps the refund/order
+    // *policy* config; this is the ops surface. Backed by events.event_orders +
+    // order_refunds / order_events / order_disputes. Refunds record-only for now
+    // (Stripe-ready hook in events.issue_order_refund).
+    title: "Orders",
+    icon: ShoppingBag,
+    subItems: [
+      { title: "All Orders", icon: ShoppingBag },
+      { title: "Refunds & Cancellations", icon: RotateCcw },
+      { title: "Transactions", icon: ArrowLeftRight },
+      { title: "Billing & Receipts", icon: Receipt },
+      { title: "Disputes & Chargebacks", icon: Scale },
+      { title: "Order Settings", icon: Settings },
     ],
   },
 

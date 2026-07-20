@@ -48,6 +48,12 @@ import { PaymentPlansScreen } from "./tickets/payment_plans";
 import { TransfersScreen } from "./tickets/transfers";
 import { GroupPurchasingScreen } from "./tickets/group_purchasing";
 import { TaxesScreen } from "./tickets/taxes";
+import { AllOrdersScreen } from "./orders/all_orders";
+import { RefundsCenterScreen } from "./orders/refunds_center";
+import { TransactionsScreen } from "./orders/transactions";
+import { BillingReceiptsScreen } from "./orders/billing_receipts";
+import { DisputesScreen } from "./orders/disputes";
+import { OrderSettingsScreen } from "./orders/order_settings";
 import { MembershipPlansScreen } from "./memberships/membership_plans";
 import { MembersScreen } from "./memberships/members";
 import { MembershipSettingsScreen } from "./memberships/membership_settings";
@@ -187,6 +193,20 @@ export const SCREEN_REGISTRY = {
   Taxes: TaxesScreen,
   "Orders & Attendees": OrdersAttendeesScreen,
   "Invoices & Receipts": InvoiceProfilesScreen,
+
+  // Orders area (own sidebar section) — the operational cockpit. All Orders is
+  // the cross-event orders table + detail drawer (top-level Orders routes here
+  // too, like Workflows → All Workflows). The rest are refund/transaction/
+  // billing/dispute ops + a module settings screen. Backed by lib/supabase/
+  // orders.js, order_refunds.js, order_events.js, order_disputes.js. The Tickets
+  // area keeps the refund/order *policy* config; these are the ops surfaces.
+  Orders: AllOrdersScreen,
+  "All Orders": AllOrdersScreen,
+  "Refunds & Cancellations": RefundsCenterScreen,
+  Transactions: TransactionsScreen,
+  "Billing & Receipts": BillingReceiptsScreen,
+  "Disputes & Chargebacks": DisputesScreen,
+  "Order Settings": OrderSettingsScreen,
 
   // Memberships area (own sidebar section). Plans are reusable records
   // (ticketing_records module 'membership'); Members is the enrollment roster;
