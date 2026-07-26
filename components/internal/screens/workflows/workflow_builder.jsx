@@ -18,7 +18,7 @@ import { Field, StatusPill } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
 import {
   Select,
   SelectContent,

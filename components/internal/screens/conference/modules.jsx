@@ -76,7 +76,6 @@ import {
 } from "@/components/internal/shared/records/builders";
 import {
   SPEAKER_STATUS_MAP,
-  SPONSOR_STATUS_MAP,
   PACKAGE_STATUS_MAP,
   BOOTH_STATUS_MAP,
   VENUE_LEAD_STATUS_MAP,
@@ -130,6 +129,18 @@ const mediaSection = (label, title, aspect, frameClassName) => ({
       frameClassName={frameClassName}
     />
   ),
+});
+
+// An inline image field for a create dialog / detail section (no media tab).
+const imageField = (label, hint, aspect) => ({
+  key: "coverUrl",
+  label,
+  hint,
+  type: "image",
+  scope: "root",
+  upload: uploadConferenceImage,
+  aspect,
+  placeholder: `Upload a ${label.toLowerCase()}`,
 });
 
 const TIER_VALUES = Object.keys(TIER_MAP);
@@ -226,41 +237,42 @@ export const MODULES = {
   },
 
   // -------------------------------------------------------------- Sponsors ---
+  // Sponsors are deliberately status- and tier-free: a sponsor is just the
+  // company, its logo, what it does, and the amount committed.
   sponsor: {
     key: "sponsor",
     title: "Sponsors",
     singular: "Sponsor",
     icon: Handshake,
     description:
-      "Companies backing your events — track tiers, amounts, contacts, and the benefits they receive.",
+      "Companies backing your events — their logo, a short description, the amount committed, and who to contact.",
     createLabel: "Add sponsor",
     searchPlaceholder: "Search sponsors, contacts…",
-    search: (r) => `${r.name} ${r.config.contactName || ""} ${r.config.tier || ""}`,
-    statusMap: SPONSOR_STATUS_MAP,
-    filters: [
-      statusFilter(SPONSOR_STATUS_MAP),
-      configFilter("tier", TIER_VALUES, "All tiers"),
-    ],
+    search: (r) =>
+      `${r.name} ${r.config.contactName || ""} ${r.config.description || ""}`,
+    filters: [],
     columns: [
-      nameCol((r) => r.config.contactName),
-      pillCol("tier", "Tier", (r) => r.config.tier, TIER_MAP),
-      statusCol(SPONSOR_STATUS_MAP),
+      avatarNameCol((r) => r.config.description, { shape: "square" }),
+      textCol("contact", "Contact", (r) => r.config.contactName),
       moneyCol("amount", "Amount", (r) => r.config.amount),
     ],
     stats: (records) => [
-      { label: "Sponsors", value: String(records.length), footer: "All statuses" },
-      { label: "Confirmed", value: String(count(records, (r) => r.status === "Confirmed")), footer: "Signed on" },
+      { label: "Sponsors", value: String(records.length), footer: "In this project" },
       { label: "Sponsorship", value: currency(sum(records, (r) => r.config.amount)), footer: "Total committed" },
-      { label: "Platinum", value: String(count(records, (r) => r.config.tier === "Platinum")), footer: "Top tier" },
+      { label: "Average", value: currency(records.length ? sum(records, (r) => r.config.amount) / records.length : 0), footer: "Per sponsor" },
+      { label: "With a logo", value: String(count(records, (r) => !!r.coverUrl)), footer: "Ready for the event page" },
     ],
     defaults: {
-      status: "Prospect",
-      config: { tier: "Gold", amount: 0, contactName: "", contactEmail: "", website: "", description: "", benefits: [] },
+      // Not surfaced anywhere — the column is NOT NULL, so keep it constant.
+      status: "Active",
+      config: { amount: 0, contactName: "", contactEmail: "", website: "", description: "", benefits: [] },
     },
     createFields: [
       nameField("Company name", "e.g. Northwind Labs"),
-      c("tier", "Tier", "select", { options: optionsFrom(TIER_VALUES) }),
-      statusField(SPONSOR_STATUS_MAP),
+      c("description", "Description", "textarea", {
+        placeholder: "What they do, and what the sponsorship covers…",
+      }),
+      imageField("Logo", "Shown on the event page and in sponsor reporting.", "aspect-[16/9]"),
     ],
     detail: {
       depth: "rich",
@@ -269,12 +281,13 @@ export const MODULES = {
           key: "details",
           label: "Details",
           icon: SquarePen,
-          desc: "Tier, status, and the committed amount.",
+          desc: "The company, what they do, and the committed amount.",
           fields: [
             nameField("Company name"),
-            c("tier", "Tier", "select", { options: optionsFrom(TIER_VALUES) }),
-            statusField(SPONSOR_STATUS_MAP),
             c("amount", "Amount", "number", { placeholder: "e.g. 15000" }),
+            c("description", "Description", "textarea", {
+              placeholder: "What they do, and what the sponsorship covers…",
+            }),
           ],
         },
         {
@@ -293,10 +306,7 @@ export const MODULES = {
           label: "Benefits",
           icon: Gift,
           desc: "What this sponsorship includes.",
-          fields: [
-            c("description", "Description", "textarea", { placeholder: "What this sponsor gets…" }),
-            c("benefits", "Benefits", "list", { placeholder: "Add a benefit…" }),
-          ],
+          fields: [c("benefits", "Benefits", "list", { placeholder: "Add a benefit…" })],
         },
         mediaSection("Logo", "Logo", "aspect-[16/9]"),
       ],

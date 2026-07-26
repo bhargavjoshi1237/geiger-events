@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2, Info, Plus, X } from "lucide-react";
+import { Loader2, Info, Plus, X, ArrowRight } from "lucide-react";
 
 import {
   EditorSectionHeader,
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getCheckinSettings } from "@/lib/supabase/checkin";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { newId } from "./sample_data";
@@ -44,16 +45,27 @@ function useCheckinGlobals() {
   return config;
 }
 
-// A note shown when a feature is off globally.
+// A note shown when a feature is off globally, with a jump to the screen that
+// owns the project-wide switch — `feature` is that screen's exact sidebar title.
 function GlobalOffHint({ feature }) {
+  const { setTab } = useWorkspaceUrl();
   return (
-    <div className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-card px-4 py-3">
-      <Info className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" />
-      <p className="text-sm text-text-secondary">
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-4 py-3">
+      <Info className="h-4 w-4 shrink-0 text-text-tertiary" />
+      <p className="min-w-0 flex-1 text-sm text-text-secondary">
         Turn on <span className="font-medium text-foreground">{feature}</span> for
         the whole project first — under the Check-in sidebar — then enable it here
         for this event.
       </p>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setTab(feature)}
+        className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+      >
+        Open {feature}
+        <ArrowRight className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

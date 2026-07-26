@@ -8,17 +8,27 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NotificationsDropdown } from "./dialogue/notifications_dropdown";
 import { ProfileDropdown } from "./dialogue/profile_dropdown";
 import { SupabaseActivityLine } from "./supabase_activity_line";
+import { workspaceNav } from "../sidebar/sidebar_nav";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 // Suite topbar from @geiger/ui, wired with this product's name + data-bound slots.
+// The search field is the shared command palette over the sidebar nav — picking a
+// result switches the workspace tab, exactly as clicking that sidebar entry would.
 export function Topbar() {
+  const { setTab } = useWorkspaceUrl();
+
   return (
     <SuiteTopbar
       label="Events"
       logoSrc={`${BASE_PATH}/logo1.svg`}
       homeHref={BASE_PATH || "/"}
       helpHref="/docs"
+      searchPlaceholder="Search Events..."
+      searchNav={workspaceNav}
+      searchRecentsKey="geiger:events:search-recents"
+      onSearchSelect={(item) => setTab(item.title)}
       sidebarTrigger={
         <SidebarTrigger className="md:hidden -ml-2 text-foreground" />
       }

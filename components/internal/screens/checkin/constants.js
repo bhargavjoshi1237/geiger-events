@@ -99,7 +99,10 @@ export const defaultMultiGate = () => ({
   zones: [], // [{ id, name }]
 });
 
-export const defaultBadge = () => ({ defaultTemplate: "classic" });
+// Saved pass designs. `templates` is the real store — an array of the shape
+// documented in lib/passes/render.js, each optionally bound to ticket tiers by
+// name. `defaultTemplate` is kept as the preset a first template seeds from.
+export const defaultBadge = () => ({ defaultTemplate: "classic", templates: [] });
 
 // Merge a stored slice over its defaults. `feature` is a config key.
 export const withDefaults = (config, feature) => ({
@@ -158,20 +161,78 @@ export const KIOSK_MODE_OPTIONS = [
   { value: "tablet", label: "Tablet (self-service)" },
 ];
 
-// --- Badge templates ---------------------------------------------------------
+// --- Pass design presets -----------------------------------------------------
+// Seeds for a new saved template, not a fixed set of four. `design` is a partial
+// of the template shape in lib/passes/render.js; sub-objects replace wholesale.
 
 export const BADGE_TEMPLATES = [
-  { value: "classic", label: "Classic", desc: "Name, role, and event — centered." },
-  { value: "compact", label: "Compact", desc: "Tight layout for small badges." },
-  { value: "qr", label: "QR-forward", desc: "Large QR for fast scanning." },
-  { value: "vip", label: "VIP", desc: "Bold accent band with tier." },
+  {
+    value: "classic",
+    label: "Classic",
+    desc: "Name, company, and event on a standard badge.",
+    design: {
+      stock: { preset: "name-badge", wMm: 88.9, hMm: 57.15 },
+      qr: { sizeMm: 18, position: "bottom-right" },
+      fields: { eventName: true, name: true, company: true, tier: false, ticketCode: true, date: false, qr: true },
+    },
+  },
+  {
+    value: "compact",
+    label: "Compact",
+    desc: "Tight card layout — name and code only.",
+    design: {
+      stock: { preset: "cr80", wMm: 85.6, hMm: 54 },
+      qr: { sizeMm: 15, position: "bottom-right" },
+      fields: { eventName: false, name: true, company: false, tier: false, ticketCode: true, date: false, qr: true },
+    },
+  },
+  {
+    value: "qr",
+    label: "QR-forward",
+    desc: "Large centred code for fast scanning.",
+    design: {
+      stock: { preset: "lanyard-portrait", wMm: 85.73, hMm: 136.53 },
+      qr: { sizeMm: 45, position: "bottom-center" },
+      fields: { eventName: true, name: true, company: false, tier: false, ticketCode: true, date: false, qr: true },
+    },
+  },
+  {
+    value: "vip",
+    label: "VIP",
+    desc: "Dark stock with the tier called out.",
+    design: {
+      accent: "#f5c451",
+      bg: "#141414",
+      textColor: "#f5f5f5",
+      stock: { preset: "lanyard-portrait", wMm: 85.73, hMm: 136.53 },
+      qr: { sizeMm: 32, position: "bottom-center" },
+      fields: { eventName: true, name: true, company: true, tier: true, ticketCode: true, date: false, qr: true },
+    },
+  },
 ];
 
-export const BADGE_EXPORT_FORMATS = [
-  { value: "pdf", label: "PDF (print sheet)" },
-  { value: "png", label: "PNG (per badge)" },
-  { value: "zip", label: "ZIP (all PNGs)" },
-];
+// A fresh saved template seeded from a preset. Mints a real UUID so the local
+// row and the persisted one share an id.
+export const newPassTemplate = (preset = "classic", overrides = {}) => {
+  const seed = BADGE_TEMPLATES.find((t) => t.value === preset) || BADGE_TEMPLATES[0];
+  return {
+    id: crypto.randomUUID(),
+    name: seed.label,
+    isDefault: false,
+    tiers: [],
+    accent: "#6366f1",
+    bg: "#ffffff",
+    textColor: "#111111",
+    showLogo: false,
+    logoUrl: "",
+    stock: { preset: "name-badge", wMm: 88.9, hMm: 57.15 },
+    sheet: { page: "a4", marginMm: 10, gutterMm: 4, cropMarks: false },
+    qr: { sizeMm: 18, position: "bottom-right" },
+    fields: { eventName: true, name: true, company: true, tier: false, ticketCode: true, date: false, qr: true },
+    ...seed.design,
+    ...overrides,
+  };
+};
 
 // --- Per-event check-in config default (events.metadata.checkin) --------------
 

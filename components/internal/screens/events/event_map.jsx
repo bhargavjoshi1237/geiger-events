@@ -418,13 +418,14 @@ export function hasNearby(map, ...metas) {
 // Number of rows shown before a group collapses (when `collapse` is on).
 const COLLAPSE_LIMIT = 3;
 
-// One group column. With `collapse`, only the first few rows show; the rest sit
-// behind a faded "Show all" toggle that reveals them on click.
-function NearbyGroup({ group, collapse }) {
+// One group column. With `collapse`, only the first `limit` rows show; the rest
+// sit behind a faded "Show all" toggle that reveals them on click.
+function NearbyGroup({ group, collapse, limit = COLLAPSE_LIMIT }) {
   const [expanded, setExpanded] = useState(false);
   const items = group.items;
-  const hidden = collapse && items.length > COLLAPSE_LIMIT;
-  const visible = hidden && !expanded ? items.slice(0, COLLAPSE_LIMIT) : items;
+  const cap = Math.max(1, limit);
+  const hidden = collapse && items.length > cap;
+  const visible = hidden && !expanded ? items.slice(0, cap) : items;
   return (
     <div>
       <p className="mb-1 text-xs font-medium uppercase tracking-wider text-text-secondary">
@@ -466,10 +467,45 @@ function NearbyGroup({ group, collapse }) {
 export function NearbyList({ groups = [], className, collapse = false }) {
   const shown = groups.filter((g) => g.items?.length);
   if (!shown.length) return null;
+
+  // Uncollapsed, groups have wildly different item counts and a grid leaves a
+  // tall hole beside every short one — column flow packs them tight instead.
+  if (!collapse) {
+    return (
+      <div className={cn("gap-4 sm:columns-2 [&>*]:mb-4", className)}>
+        {shown.map((g) => (
+          <div key={g.label} className="break-inside-avoid">
+            <NearbyGroup group={g} collapse={false} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Collapsed, every full group is exactly COLLAPSE_LIMIT rows tall, so a real
+  // grid pairs evenly — provided the short groups sink to the end.
+  const ordered = [...shown].sort(
+    (a, b) =>
+      Number(a.items.length < COLLAPSE_LIMIT) -
+      Number(b.items.length < COLLAPSE_LIMIT),
+  );
+  // A short group in the bottom row would leave a hole beside its partner, so
+  // both are cut to the shorter one's height; the rest go behind "Show all".
+  const lastRowStart = ordered.length - (ordered.length % 2 === 0 ? 2 : 1);
+  const lastRow = ordered.slice(lastRowStart);
+  const tailLimit =
+    lastRow.length === 2
+      ? Math.min(COLLAPSE_LIMIT, ...lastRow.map((g) => g.items.length))
+      : COLLAPSE_LIMIT;
   return (
-    <div className={cn("grid gap-4 sm:grid-cols-2", className)}>
-      {shown.map((g) => (
-        <NearbyGroup key={g.label} group={g} collapse={collapse} />
+    <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2", className)}>
+      {ordered.map((g, i) => (
+        <NearbyGroup
+          key={g.label}
+          group={g}
+          collapse
+          limit={i >= lastRowStart ? tailLimit : COLLAPSE_LIMIT}
+        />
       ))}
     </div>
   );

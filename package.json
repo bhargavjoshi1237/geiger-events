@@ -11,7 +11,7 @@
     "db:push:articles": "node scripts/run-sqls.js --articles"
   },
   "dependencies": {
-    "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#master",
+    "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#1784f2462c473c2ca76aebe115d15b17800f28a2",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.106.2",
     "@xyflow/react": "^12.11.1",

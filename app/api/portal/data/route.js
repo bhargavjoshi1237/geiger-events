@@ -3,6 +3,7 @@ import { getSessionMember } from "@/lib/portal/session";
 import {
   listMemberOrders,
   listMemberMemberships,
+  listMemberEntitlements,
   ticketsFromOrders,
 } from "@/lib/portal/reads";
 import { listMemberRefunds } from "@/lib/portal/refunds";
@@ -21,9 +22,17 @@ export async function GET() {
   // Fold the member's latest refund status onto each order it belongs to.
   const withRefund = orders.map((o) => ({ ...o, refund: refunds[o.id] || null }));
 
+  // Entitlements are looked up per order, so this runs after the orders are
+  // known and only over orders that are already scoped to this member.
+  const entitlements = await listMemberEntitlements(withRefund);
+
   return NextResponse.json({
     orders: withRefund,
     memberships,
-    tickets: ticketsFromOrders(withRefund),
+    entitlements,
+    tickets: ticketsFromOrders(withRefund).map((t) => ({
+      ...t,
+      entitlements: entitlements[t.id] || [],
+    })),
   });
 }

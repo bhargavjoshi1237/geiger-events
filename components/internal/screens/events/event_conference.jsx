@@ -12,10 +12,7 @@ import { useEventConfig } from "@/lib/events/use-event-config";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { conferenceApi } from "@/lib/supabase/conference";
-import {
-  SPEAKER_STATUS_MAP,
-  SPONSOR_STATUS_MAP,
-} from "../conference/constants";
+import { SPEAKER_STATUS_MAP } from "../conference/constants";
 import { initials } from "./sample_data";
 
 // Event-editor sections that attach reusable Conference records (speakers /
@@ -35,6 +32,8 @@ function AttachRecordsSection({
   tabTitle,
   fallbackTitle,
   fallbackDesc,
+  // Headshots read as circles, logos as rounded squares.
+  shape = "circle",
 }) {
   const { projectId } = useProject();
   const { setTab } = useWorkspaceUrl();
@@ -126,11 +125,24 @@ function AttachRecordsSection({
                     <img
                       src={r.coverUrl}
                       alt=""
-                      className="h-10 w-10 shrink-0 rounded-full border border-border object-cover"
+                      className={cn(
+                        "h-10 w-10 shrink-0 border border-border object-cover",
+                        shape === "circle" ? "rounded-full" : "rounded-md",
+                      )}
                     />
                   ) : (
-                    <Avatar className="h-10 w-10 shrink-0 border border-border">
-                      <AvatarFallback className="bg-surface-subtle text-xs text-muted-foreground">
+                    <Avatar
+                      className={cn(
+                        "h-10 w-10 shrink-0 border border-border",
+                        shape === "circle" ? "" : "rounded-md",
+                      )}
+                    >
+                      <AvatarFallback
+                        className={cn(
+                          "bg-surface-subtle text-xs text-muted-foreground",
+                          shape === "circle" ? "" : "rounded-md",
+                        )}
+                      >
                         {Icon ? <Icon className="h-4 w-4" /> : initials(r.name || "?")}
                       </AvatarFallback>
                     </Avatar>
@@ -143,7 +155,10 @@ function AttachRecordsSection({
                       <p className="truncate text-xs text-text-secondary">{subtitle(r)}</p>
                     ) : null}
                   </div>
-                  <StatusPill status={r.status} map={statusMap} />
+                  {/* Sponsors track no status, so they pass no map. */}
+                  {statusMap ? (
+                    <StatusPill status={r.status} map={statusMap} />
+                  ) : null}
                   <div className="flex items-center self-center">
                     <Switch
                       checked={on}
@@ -185,14 +200,12 @@ export function EventSponsorsSection({ event, headerItem }) {
       headerItem={headerItem}
       module="sponsor"
       metaKey="sponsorIds"
-      statusMap={SPONSOR_STATUS_MAP}
+      shape="square"
       icon={Handshake}
       tabTitle="Sponsors"
       fallbackTitle="Sponsors"
       fallbackDesc="Attach sponsors backing this event — shown on the event page and in sponsor reporting."
-      subtitle={(r) =>
-        [r.config?.tier, r.config?.contactName].filter(Boolean).join(" · ")
-      }
+      subtitle={(r) => r.config?.description || r.config?.contactName || ""}
     />
   );
 }

@@ -466,7 +466,11 @@ export function OverviewSection({
             <div className="space-y-2.5 text-sm">
               <GlanceRow
                 icon={CalendarClock}
-                label={`${formatDate(event.date)} · ${event.time}`}
+                label={
+                  [formatDate(event.date), event.time]
+                    .filter(Boolean)
+                    .join(" · ") || "No date set"
+                }
               />
               <GlanceRow
                 icon={MapPin}

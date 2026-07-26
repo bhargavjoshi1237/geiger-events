@@ -1,0 +1,143 @@
+"use client";
+
+import { passSvg, resolveTemplate } from "@/lib/passes/render";
+import { zipStore } from "@/lib/passes/zip";
+
+// Raster export. The SVG the preview and printer already use goes into an
+// Image, onto a canvas, and out as a PNG — no rasterizing dependency.
+
+const DPI = 300;
+
+const slug = (s) =>
+  String(s || "pass")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48) || "pass";
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Give the download a tick to start before the URL goes away.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// An SVG loaded into an <img> can't fetch external resources, so a remote logo
+// has to become a data URI before export. Returns "" when it can't be read
+// (usually a missing CORS header) and the caller warns.
+export async function inlineLogo(url) {
+  if (!url) return "";
+  if (url.startsWith("data:")) return url;
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) return "";
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error("[passes.inlineLogo]", e);
+    return "";
+  }
+}
+
+function svgToPngBlob(svg) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("PNG encoding failed"))),
+        "image/png",
+      );
+    };
+    img.onerror = () => reject(new Error("The pass couldn't be rendered to an image."));
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  });
+}
+
+// One PNG for the previewed pass. Returns null on success or an error message.
+export async function exportPassPng({ template, event, attendee, qrSettings }) {
+  // Inlined whenever a URL is set: the renderer decides where it's used (badge
+  // corner, QR centre, or neither), so gating here would desync export from
+  // what the preview shows.
+  const logoHref = await inlineLogo(template.logoUrl);
+  try {
+    const svg = passSvg(template, { event, attendee, qrSettings, logoHref }, { dpi: DPI });
+    const blob = await svgToPngBlob(svg);
+    downloadBlob(blob, `${slug(event?.name)}-${slug(attendee?.name)}.png`);
+    return template.logoUrl && !logoHref
+      ? "Exported, but the logo couldn't be loaded — check that its host allows cross-origin reads."
+      : null;
+  } catch (e) {
+    console.error("[passes.png]", e);
+    return e.message || "Couldn't export the PNG.";
+  }
+}
+
+// Every pass as a PNG inside one ZIP. onProgress(done, total) drives the button
+// label so a long run doesn't look frozen.
+export async function exportPassesZip({
+  templates,
+  event,
+  attendees,
+  qrSettings,
+  onProgress,
+}) {
+  if (!attendees.length) return "There are no passes to export.";
+
+  // Inline each template's logo once rather than per pass.
+  const logos = new Map();
+  let logoFailed = false;
+  for (const template of templates) {
+    if (!template.logoUrl) continue;
+    const href = await inlineLogo(template.logoUrl);
+    if (!href) logoFailed = true;
+    logos.set(template.id, href);
+  }
+
+  const files = [];
+  const used = new Map();
+  try {
+    for (let i = 0; i < attendees.length; i += 1) {
+      const attendee = attendees[i];
+      const template = resolveTemplate(templates, attendee.tier);
+      if (!template) continue;
+      const svg = passSvg(
+        template,
+        { event, attendee, qrSettings, logoHref: logos.get(template.id) || "" },
+        { dpi: DPI },
+      );
+      const blob = await svgToPngBlob(svg);
+
+      // Two attendees can share a name; suffix the duplicates.
+      const base = `${slug(attendee.name)}-${attendee.code || i + 1}`;
+      const seen = (used.get(base) || 0) + 1;
+      used.set(base, seen);
+      const name = seen > 1 ? `${base}-${seen}.png` : `${base}.png`;
+
+      files.push({ name, data: new Uint8Array(await blob.arrayBuffer()) });
+      onProgress?.(i + 1, attendees.length);
+    }
+
+    downloadBlob(zipStore(files), `${slug(event?.name)}-passes.zip`);
+    return logoFailed
+      ? "Exported, but a logo couldn't be loaded — check that its host allows cross-origin reads."
+      : null;
+  } catch (e) {
+    console.error("[passes.zip]", e);
+    return e.message || "Couldn't build the ZIP.";
+  }
+}

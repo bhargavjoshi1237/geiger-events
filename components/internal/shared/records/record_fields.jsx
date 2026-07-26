@@ -28,8 +28,10 @@ import { AccessControlField } from "./access_control";
 // Declarative field rendering shared by the Conference create dialog, the light
 // single-panel editors, and the rich sectioned editors. A field spec is:
 //   { key, label, type, scope, options?, placeholder?, hint?, full? }
-//   type:  text | email | number | textarea | select | tabs | switch | list
+//   type:  text | email | number | textarea | select | tabs | switch | list | image
 //   scope: "root" (record.name/status/coverUrl) | "config" (record.config[key])
+// An `image` field also carries { upload } — the area's uploader — and stores the
+// resulting public URL as its value.
 
 // Read a field's current value off a record/draft.
 export function readField(field, values) {
@@ -105,6 +107,125 @@ export function ChipsInput({ value, onChange, placeholder }) {
           ))}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// --- Inline image field ------------------------------------------------------
+
+// A compact uploader for use inside a field grid — the create dialog and any
+// detail section can carry an image without its own media tab.
+//
+// Two modes. Against a saved record it uploads straight away and the value is
+// the public URL. In the create dialog (`values.deferUploads`) there is no row
+// yet and storage RLS only admits writes for an existing owned record, so it
+// holds the File as `{ file, preview }` and the create flow uploads it once the
+// row is inserted.
+function ImageField({ field, value, onValue, values }) {
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef(null);
+  const recordId = values?.id;
+  const deferred = Boolean(values?.deferUploads);
+  const aspect = field.aspect || "aspect-[16/9]";
+  const src = typeof value === "string" ? value : value?.preview || "";
+
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (deferred) {
+      if (value?.preview) URL.revokeObjectURL(value.preview);
+      onValue({ file, preview: URL.createObjectURL(file) });
+      return;
+    }
+    if (!field.upload || !recordId) return;
+    setBusy(true);
+    const res = await field.upload(recordId, file);
+    setBusy(false);
+    if (!res?.url) {
+      toast.error("Upload failed — please try again.");
+      return;
+    }
+    const old = typeof value === "string" ? value : "";
+    onValue(res.url);
+    // Replacing an image orphans the previous file — clean it up.
+    const oldPath = pathFromPublicUrl(old);
+    if (oldPath) removeEventImage(oldPath);
+  };
+
+  const remove = () => {
+    if (value?.preview) URL.revokeObjectURL(value.preview);
+    const path = typeof value === "string" ? pathFromPublicUrl(value) : null;
+    onValue("");
+    if (path) removeEventImage(path);
+  };
+
+  return (
+    <div className="space-y-2">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onFile}
+      />
+      {src ? (
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "w-28 shrink-0 overflow-hidden rounded-lg border border-border",
+              field.frameClassName,
+            )}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt="" className={cn(aspect, "w-full object-cover")} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UploadCloud className="h-4 w-4" />
+              )}
+              {deferred ? "Change" : "Replace"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={remove}
+              className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
+            >
+              <Trash2 className="h-4 w-4" /> Remove
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={busy || (!deferred && !recordId)}
+          onClick={() => inputRef.current?.click()}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface-card px-4 py-6 text-sm text-text-secondary transition-colors hover:bg-surface-hover disabled:opacity-60"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <UploadCloud className="h-4 w-4" />
+          )}
+          {field.placeholder || "Upload an image"}
+        </button>
+      )}
     </div>
   );
 }
@@ -203,6 +324,15 @@ export function FieldControl({ field, value, onValue, values }) {
           placeholder={field.placeholder}
         />
       );
+    case "image":
+      return (
+        <ImageField
+          field={field}
+          value={value}
+          onValue={onValue}
+          values={values}
+        />
+      );
     default:
       return (
         <Input
@@ -215,7 +345,14 @@ export function FieldControl({ field, value, onValue, values }) {
 }
 
 // A field that spans the full width of the two-column grid (multi-line inputs).
-const FULL_TYPES = new Set(["textarea", "list", "audience", "access", "tabs"]);
+const FULL_TYPES = new Set([
+  "textarea",
+  "list",
+  "audience",
+  "access",
+  "tabs",
+  "image",
+]);
 
 // --- Section of fields (a titled card with a 2-col grid) ---------------------
 

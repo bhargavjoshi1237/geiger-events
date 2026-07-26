@@ -11,11 +11,7 @@ export const SPEAKER_STATUS_MAP = {
   Declined: { label: "Declined", variant: "neutral", dotClass: "bg-[#737373]" },
 };
 
-export const SPONSOR_STATUS_MAP = {
-  Confirmed: { label: "Confirmed", variant: "success", dotClass: "bg-emerald-400" },
-  Prospect: { label: "Prospect", variant: "info", dotClass: "bg-sky-400" },
-  Declined: { label: "Declined", variant: "neutral", dotClass: "bg-[#737373]" },
-};
+// Sponsors intentionally have no status — see the `sponsor` module.
 
 export const PACKAGE_STATUS_MAP = {
   Available: { label: "Available", variant: "success", dotClass: "bg-emerald-400" },

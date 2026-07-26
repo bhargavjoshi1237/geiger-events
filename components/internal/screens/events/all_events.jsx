@@ -3,9 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  Calendar as CalendarIcon,
   CalendarPlus,
-  Clock,
   Copy,
   ExternalLink,
   Loader2,
@@ -14,7 +12,6 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { format } from "date-fns";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -52,14 +49,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
 import {
   EVENTS,
   EVENT_STATUS_MAP,
@@ -111,34 +102,6 @@ const EMPTY_DRAFT = {
   capacity: "",
   visibility: "Public",
 };
-
-// The draft stores date as "YYYY-MM-DD" and time as "HH:mm" (the shapes toRow
-// persists). Convert to/from a Date for the Calendar using local parts so the
-// picked day never shifts across a timezone boundary.
-const toDateValue = (date) => {
-  if (!date) return "";
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-};
-
-const parseDateValue = (value) => {
-  if (!value) return undefined;
-  const [y, m, d] = value.split("-").map(Number);
-  if (!y || !m || !d) return undefined;
-  return new Date(y, m - 1, d);
-};
-
-// Half-hour slots ("HH:mm" value, 12-hour label) for the time Select.
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor(i / 2);
-  const min = i % 2 === 0 ? "00" : "30";
-  const value = `${String(h).padStart(2, "0")}:${min}`;
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  const label = `${hour12}:${min} ${h < 12 ? "AM" : "PM"}`;
-  return { value, label };
-});
 
 function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -220,46 +183,10 @@ function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Date">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start font-normal",
-                      !draft.date && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 size-4 text-muted-foreground" />
-                    {draft.date
-                      ? format(parseDateValue(draft.date), "PPP")
-                      : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={parseDateValue(draft.date)}
-                    onSelect={(d) => set("date")(toDateValue(d))}
-                    autoFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <EventDatePicker value={draft.date} onChange={set("date")} />
             </Field>
             <Field label="Start time">
-              <Select value={draft.time} onValueChange={set("time")}>
-                <SelectTrigger className="w-full">
-                  <Clock className="mr-2 size-4 text-muted-foreground" />
-                  <SelectValue placeholder="Select time" />
-                </SelectTrigger>
-                <SelectContent className="max-h-64">
-                  {TIME_OPTIONS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <EventTimeSelect value={draft.time} onChange={set("time")} />
             </Field>
           </div>
 

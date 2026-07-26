@@ -54,6 +54,12 @@ import { TransactionsScreen } from "./orders/transactions";
 import { BillingReceiptsScreen } from "./orders/billing_receipts";
 import { DisputesScreen } from "./orders/disputes";
 import { OrderSettingsScreen } from "./orders/order_settings";
+import { InventoryItemsScreen } from "./inventory/items";
+import { StockMovementsScreen } from "./inventory/stock_movements";
+import { EventAllocationsScreen } from "./inventory/event_allocations";
+import { IssuingDeskScreen } from "./inventory/issuing_desk";
+import { IssuingStaffScreen } from "./inventory/issuing_staff";
+import { SuppliersPurchaseOrdersScreen } from "./inventory/suppliers_purchase_orders";
 import { MembershipPlansScreen } from "./memberships/membership_plans";
 import { MembersScreen } from "./memberships/members";
 import { MembershipSettingsScreen } from "./memberships/membership_settings";
@@ -133,6 +139,7 @@ import { DeliverabilityScreen } from "./campaigns/deliverability";
 import { PersonalizationScreen } from "./campaigns/personalization";
 import { TeamMembersScreen } from "./settings/team_members";
 import { RolesPermissionsScreen } from "./settings/roles_permissions";
+import { CustomDomainsScreen } from "./settings/custom_domains";
 
 /**
  * Maps a sidebar nav title to its screen component. Titles must exactly match
@@ -207,6 +214,20 @@ export const SCREEN_REGISTRY = {
   "Billing & Receipts": BillingReceiptsScreen,
   "Disputes & Chargebacks": DisputesScreen,
   "Order Settings": OrderSettingsScreen,
+
+  // Inventory area (own sidebar section) — physical stock & merch. Items is the
+  // catalog cockpit + detail drawer (top-level Inventory routes here too, like
+  // Orders → All Orders). On-hand is derived from the append-only movement
+  // ledger; allocations commit stock to an event and carry the issuance mode
+  // (internal / ticket-entitled / add-on-backed). Backed by
+  // lib/supabase/inventory.js and inventory_purchasing.js.
+  Inventory: InventoryItemsScreen,
+  Items: InventoryItemsScreen,
+  "Stock Movements": StockMovementsScreen,
+  "Event Allocations": EventAllocationsScreen,
+  "Item Issuing": IssuingDeskScreen,
+  "Issuing Staff": IssuingStaffScreen,
+  "Suppliers & Purchase Orders": SuppliersPurchaseOrdersScreen,
 
   // Memberships area (own sidebar section). Plans are reusable records
   // (ticketing_records module 'membership'); Members is the enrollment roster;
@@ -346,12 +367,12 @@ export const SCREEN_REGISTRY = {
   Surveys: SurveysScreen,
   Announcements: AnnouncementsScreen,
 
-  // Settings area — Team & Members (people, groups, invites, activity) and
-  // Roles & Permissions (role matrix over WORKSPACE_PERMISSIONS). Both read
-  // through lib/supabase/team.js + roles.js; the remaining sub-items (API &
-  // Webhooks, Usage, Custom Domains) are ComingSoon for now.
+  // Settings area — Team & Members (people, groups, invites, activity), Roles &
+  // Permissions (role matrix over WORKSPACE_PERMISSIONS), and Custom Domains
+  // (CNAME-based domain connection). API & Webhooks and Usage are ComingSoon.
   "Team & Members": TeamMembersScreen,
   "Roles & Permissions": RolesPermissionsScreen,
+  "Custom Domains": CustomDomainsScreen,
 
   // Analytics area — only Scheduled Reports is a record set
   // (events.analytics_records); the rest are dashboards (ComingSoon).

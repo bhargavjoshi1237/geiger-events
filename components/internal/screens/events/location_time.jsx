@@ -36,6 +36,7 @@ import { EVENTS } from "./sample_data";
 import { listVenues } from "@/lib/supabase/venues";
 import { venueFullAddress } from "@/components/internal/screens/venues/constants";
 import { useEventConfig } from "@/lib/events/use-event-config";
+import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
 import {
   EventMap,
   NearbyList,
@@ -80,7 +81,6 @@ const TIMEZONES = [
 export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
   const patch = onPatch || (() => {});
   const commit = onCommit || (() => {});
-  const startLocal = `${event?.date || "2026-01-01"}T${event?.time || "18:00"}`;
   const isRemote = event?.city === "Remote";
   const [locMode, setLocMode] = useState("search");
 
@@ -96,13 +96,12 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
     };
   }, [event?.projectId]);
 
-  // Venue/address/timezone are columns (live via patch); the finer schedule
-  // fields live in the metadata bag.
+  // Venue/address/timezone and the event's date/start time are columns (live via
+  // patch); the finer schedule fields live in the metadata bag.
   const [loc, setLoc, saveLoc, saving] = useEventConfig(event, "location", {
     room: "",
     doorsOpen: event?.time || "18:00",
-    starts: startLocal,
-    ends: `${event?.date || "2026-01-01"}T22:00`,
+    ends: "",
   });
   const setLocField = (key) => (value) => setLoc({ ...loc, [key]: value });
 
@@ -179,6 +178,8 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
       address: event?.address,
       city: event?.city,
       timezone: event?.timezone,
+      date: event?.date,
+      time: event?.time,
     });
     await Promise.all([
       saveLoc(loc, { successMsg: "Location & time saved." }),
@@ -293,8 +294,22 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
 
         
 
-        
-        <div className="grid gap-4 sm:grid-cols-3 mt-6 mb-2">
+        {/* Date and start time are the event's own columns — editing them here
+            updates the header, the list, and the public page. Doors/end sit in
+            the metadata bag. */}
+        <div className="mt-6 mb-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Date">
+            <EventDatePicker
+              value={event?.date}
+              onChange={(date) => patch({ date })}
+            />
+          </Field>
+          <Field label="Starts">
+            <EventTimeSelect
+              value={event?.time}
+              onChange={(time) => patch({ time })}
+            />
+          </Field>
           <Field label="Doors open">
             <Input
               type="time"
@@ -302,14 +317,7 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
               onChange={(e) => setLocField("doorsOpen")(e.target.value)}
             />
           </Field>
-          <Field label="Starts">
-            <Input
-              type="datetime-local"
-              value={loc.starts || ""}
-              onChange={(e) => setLocField("starts")(e.target.value)}
-            />
-          </Field>
-          <Field label="Ends">
+          <Field label="Ends" hint="Optional — set for multi-day events.">
             <Input
               type="datetime-local"
               value={loc.ends || ""}

@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { CheckinSettingsScreen, RowSelect } from "./checkin_kit";
 import { QR_SIZE_OPTIONS, QR_EC_OPTIONS, QR_ENCODE_OPTIONS } from "./constants";
 
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 // A small faux-QR preview so the appearance settings read as real.
 function QrPreview({ showLogo, color }) {
   return (
@@ -31,7 +33,18 @@ function QrPreview({ showLogo, color }) {
         );
       })}
       {showLogo ? (
-        <span className="absolute inset-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-md border-2 border-white bg-primary" />
+        // The mark sits on a knocked-out plate in the brand color — logo1.svg is
+        // a white glyph, so it needs the dark plate to read on the white code.
+        <span
+          className="absolute left-1/2 top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border-2 border-white"
+          style={{ background: color || "#111111" }}
+        >
+          <img
+            src={`${BASE_PATH}/logo1.svg`}
+            alt=""
+            className="h-auto w-4"
+          />
+        </span>
       ) : null}
     </div>
   );

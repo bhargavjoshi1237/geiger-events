@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, Search } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus, Plus, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -449,7 +450,7 @@ export function DataTable({
             {columns.map((col) => (
               <TableHead
                 key={col.key}
-                className={cn( ALIGN_CLASS[col.align], col.headClassName)}
+                className={cn("px-4", ALIGN_CLASS[col.align], col.headClassName)}
               >
                 {col.header}
               </TableHead>
@@ -469,7 +470,7 @@ export function DataTable({
               {columns.map((col) => (
                 <TableCell
                   key={col.key}
-                  className={cn("px-4 py-", ALIGN_CLASS[col.align], col.className)}
+                  className={cn("px-4 py-4", ALIGN_CLASS[col.align], col.className)}
                 >
                   {col.render ? col.render(row) : row[col.key]}
                 </TableCell>
@@ -536,7 +537,42 @@ export function SettingRow({
 
 // --- Form field helpers (for dialogs) ----------------------------------------
 
-export function Field({ label, hint, htmlFor, children, className }) {
+// The outline variant sits on `bg-background`, which reads as empty next to a
+// `bg-surface-card` input — give the steppers their own resting surface and ma
+// stronger border so they're legible at rest, not only on hover.
+const STEPPER_BUTTON =
+  "border-border-strong bg-surface-card text-foreground hover:bg-surface-active";
+
+// A numeric field can opt into −/+ stepper buttons pinned to the right of its
+// control: pass `stepper` with `value`/`onValueChange` (plus optional
+// step/min/max). The value is handed back as a string so it drops straight into
+// a controlled <Input type="number" />.
+export function Field({
+  label,
+  hint,
+  htmlFor,
+  children,
+  className,
+  stepper = false,
+  value,
+  onValueChange,
+  step = 1,
+  min,
+  max,
+}) {
+  const current = Number(value) || 0;
+  const atMin = min !== undefined && current <= Number(min);
+  const atMax = max !== undefined && current >= Number(max);
+
+  const shift = (dir) => {
+    let next = current + dir * (Number(step) || 1);
+    if (min !== undefined) next = Math.max(Number(min), next);
+    if (max !== undefined) next = Math.min(Number(max), next);
+    // Keep float noise (0.1 + 0.2) out of the value.
+    next = Math.round(next * 1e6) / 1e6;
+    onValueChange?.(String(next));
+  };
+
   return (
     <div className={cn("space-y-1.5 flex flex-col gap-0.5", className)}>
       {label ? (
@@ -547,7 +583,35 @@ export function Field({ label, hint, htmlFor, children, className }) {
           {label}
         </label>
       ) : null}
-      {children}
+      {stepper ? (
+        <div className="flex items-center gap-1.5">
+          <div className="min-w-0 flex-1">{children}</div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={STEPPER_BUTTON}
+            aria-label={`Decrease ${label || "value"}`}
+            disabled={atMin}
+            onClick={() => shift(-1)}
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={STEPPER_BUTTON}
+            aria-label={`Increase ${label || "value"}`}
+            disabled={atMax}
+            onClick={() => shift(1)}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        children
+      )}
       {hint ? <p className="text-xs text-text-secondary">{hint}</p> : null}
     </div>
   );

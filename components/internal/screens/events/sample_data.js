@@ -193,7 +193,9 @@ export const VENUES = [
 ];
 
 export function formatDate(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
+  const [y, m, d] = String(iso || "").split("-").map(Number);
+  // A date can be cleared in the editor — render nothing rather than "NaN".
+  if (!y || !m || !d) return "";
   const months = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",

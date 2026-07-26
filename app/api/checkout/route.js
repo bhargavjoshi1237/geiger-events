@@ -51,6 +51,10 @@ export async function POST(request) {
     answers = null,
     formId = null,
     clientRef = null,
+    // Assigned seating: the buyer's hold token. Only the token travels — the
+    // seat ids live in events.seat_holds and buy_seats resolves them on return,
+    // which also keeps a large block inside Stripe's 500-char metadata cap.
+    seatToken = null,
     skipRegistration = false,
     returnUrl,
   } = body || {};
@@ -229,6 +233,8 @@ export async function POST(request) {
         skipReg: skipRegistration ? "1" : "",
         // Correlates the pre-payment ticket answers to the order on return.
         clientRef: clientRef || "",
+        // The seat hold token; empty for unseated events.
+        seatToken: seatToken || "",
         extra: extraJson,
       },
     });

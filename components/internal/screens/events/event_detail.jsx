@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { useIdleRecenter } from "@/lib/hooks/use-idle-recenter";
 
 import { EVENT_STATUS_MAP, formatDate } from "./sample_data";
 import { EventPublicPage } from "./event_public_page";
@@ -35,6 +36,10 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
     setForm(event);
     setDesign(event?.pageDesign || defaultPageDesign());
   }
+
+  // The section nav is long enough to scroll; once it's been left alone for a
+  // while it glides the current section back to the middle of the column.
+  const navRef = useIdleRecenter(active);
 
   const activeItem = useMemo(
     () =>
@@ -97,7 +102,9 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
             <StatusPill status={form.status} map={EVENT_STATUS_MAP} />
           </div>
           <p className="mt-1 text-sm font-medium text-muted-foreground">
-            {formatDate(form.date)} · {form.time} · {form.venue}
+            {[formatDate(form.date), form.time, form.venue]
+              .filter(Boolean)
+              .join(" · ") || "No date or venue set yet"}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -159,6 +166,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
               design={design}
               onChange={setDesign}
               onPreview={() => setPreviewOpen(true)}
+              eventId={form?.id}
             />
           ) : (
             <ActiveSection
@@ -177,7 +185,10 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
           {/* Fills the editor column and scrolls inside its own area rather than
               the whole page. The thin scrollbar is hidden to match the suite's
               chrome-free scroll surfaces. */}
-          <nav className="space-y-5 lg:h-full lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav
+            ref={navRef}
+            className="space-y-5 lg:h-full lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
               {NAV_GROUPS.map((group, gi) => {
               // Feature-gated items (Ticket Rules tabs) only show once their rule
               // is on; a group whose items all filter out is hidden entirely.
@@ -198,6 +209,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
                       <button
                         key={item.key}
                         type="button"
+                        data-active={isActive ? "true" : undefined}
                         onClick={() => setActive(item.key)}
                         className={cn(
                           "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",

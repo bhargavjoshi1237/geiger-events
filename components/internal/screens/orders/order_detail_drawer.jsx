@@ -2,7 +2,17 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Ban, Loader2, Plus, Receipt, RotateCcw, StickyNote } from "lucide-react";
+import {
+  Ban,
+  CreditCard,
+  ExternalLink,
+  Loader2,
+  Plus,
+  Receipt,
+  RotateCcw,
+  ShieldCheck,
+  StickyNote,
+} from "lucide-react";
 
 import {
   Sheet,
@@ -32,6 +42,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Field, StatusPill } from "@/components/internal/shared/screen_kit";
 
 import { listOrderEvents, addOrderEvent } from "@/lib/supabase/order_events";
+import { listAssignments } from "@/lib/supabase/seating";
 import { listRefundsForOrder, issueRefund } from "@/lib/supabase/order_refunds";
 import { cancelOrder } from "@/lib/supabase/orders";
 import {
@@ -175,6 +186,48 @@ function LineRow({ label, value, muted, strong }) {
   );
 }
 
+function stripeMoney(amount, currencyCode) {
+  if (typeof amount !== "number") return "—";
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: String(currencyCode || "usd").toUpperCase(),
+    }).format(amount / 100);
+  } catch {
+    return `${String(currencyCode || "usd").toUpperCase()} ${(amount / 100).toFixed(2)}`;
+  }
+}
+
+function StripeDetail({ label, value, mono = false }) {
+  if (value == null || value === "") return null;
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
+        {label}
+      </p>
+      <p
+        className={`mt-0.5 break-words text-xs text-foreground ${mono ? "font-mono" : ""}`}
+      >
+        {String(value)}
+      </p>
+    </div>
+  );
+}
+
+function addressText(address) {
+  if (!address || typeof address !== "object") return null;
+  return [
+    address.line1,
+    address.line2,
+    address.city,
+    address.state,
+    address.postal_code,
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 // --- Drawer ------------------------------------------------------------------
 
 // The drawer's inner content — mounted fresh per order (keyed by order.id), so
@@ -187,21 +240,26 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
   const [refundOpen, setRefundOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [note, setNote] = useState("");
+  // Assigned seats on this order, empty for a general-admission event.
+  const [seats, setSeats] = useState([]);
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listOrderEvents(order.id), listRefundsForOrder(order.id)]).then(
-      ([ev, rf]) => {
-        if (!alive) return;
-        setEvents(ev ?? []);
-        setRefunds(rf ?? []);
-        setLoading(false);
-      },
-    );
+    Promise.all([
+      listOrderEvents(order.id),
+      listRefundsForOrder(order.id),
+      order.eventId ? listAssignments(order.eventId) : Promise.resolve([]),
+    ]).then(([ev, rf, assignments]) => {
+      if (!alive) return;
+      setEvents(ev ?? []);
+      setRefunds(rf ?? []);
+      setSeats((assignments ?? []).filter((a) => a.orderId === order.id));
+      setLoading(false);
+    });
     return () => {
       alive = false;
     };
-  }, [order.id]);
+  }, [order.id, order.eventId]);
 
   const remaining = Math.max(0, (order.total || 0) - (order.refundedTotal || 0));
   const canRefund = !order.cancelledAt && remaining > 0;
@@ -213,6 +271,13 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
       label: `${order.ticket || "Ticket"} × ${order.quantity || 1}`,
       value: currency((order.price || 0) * (order.quantity || 1)),
     });
+    if (seats.length) {
+      rows.push({
+        label: `Seats: ${seats.map((a) => a.label || a.seatLabel).filter(Boolean).join(", ")}`,
+        value: "assigned",
+        muted: true,
+      });
+    }
     if (order.donation) {
       rows.push({ label: "Donation", value: currency(Number(order.donation) || 0) });
     }
@@ -223,7 +288,43 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
       rows.push({ label, value: "applied", muted: true });
     }
     return rows;
-  }, [order]);
+  }, [order, seats]);
+
+  const stripeDetails = useMemo(() => {
+    const snapshot = order.stripePaymentDetails;
+    const session = snapshot?.checkoutSession;
+    if (!session || typeof session !== "object") return null;
+    const intent =
+      session.payment_intent && typeof session.payment_intent === "object"
+        ? session.payment_intent
+        : null;
+    const charge =
+      intent?.latest_charge && typeof intent.latest_charge === "object"
+        ? intent.latest_charge
+        : null;
+    const paymentMethod =
+      intent?.payment_method && typeof intent.payment_method === "object"
+        ? intent.payment_method
+        : null;
+    const balanceTransaction =
+      charge?.balance_transaction && typeof charge.balance_transaction === "object"
+        ? charge.balance_transaction
+        : null;
+    const methodDetails = charge?.payment_method_details || {};
+    const card = paymentMethod?.card || methodDetails.card || null;
+    const billing = paymentMethod?.billing_details || charge?.billing_details || {};
+    return {
+      snapshot,
+      session,
+      intent,
+      charge,
+      paymentMethod,
+      balanceTransaction,
+      methodDetails,
+      card,
+      billing,
+    };
+  }, [order.stripePaymentDetails]);
 
   const handleRefund = async ({ amount, reasonCode, method, reason }) => {
     if (!order) return;
@@ -358,6 +459,167 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                   ) : null}
                 </div>
               </div>
+
+              {/* Persisted Stripe payment snapshot */}
+              {stripeDetails ? (
+                <div className="rounded-xl border border-border bg-surface-subtle p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-text-secondary" />
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">
+                          Stripe payment
+                        </p>
+                        <p className="text-xs text-text-tertiary">
+                          Captured {formatDateTime(stripeDetails.snapshot.capturedAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-medium capitalize text-emerald-300">
+                      {stripeDetails.intent?.status || stripeDetails.session.payment_status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <StripeDetail
+                      label="Amount received"
+                      value={stripeMoney(
+                        stripeDetails.intent?.amount_received ?? stripeDetails.session.amount_total,
+                        stripeDetails.intent?.currency || stripeDetails.session.currency,
+                      )}
+                    />
+                    <StripeDetail
+                      label="Payment method"
+                      value={
+                        stripeDetails.card
+                          ? `${stripeDetails.card.brand || "Card"} •••• ${stripeDetails.card.last4 || "—"}`
+                          : stripeDetails.paymentMethod?.type ||
+                            stripeDetails.methodDetails?.type ||
+                            "Stripe"
+                      }
+                    />
+                    <StripeDetail
+                      label="Processing fee"
+                      value={stripeMoney(
+                        stripeDetails.balanceTransaction?.fee,
+                        stripeDetails.balanceTransaction?.currency,
+                      )}
+                    />
+                    <StripeDetail
+                      label="Net"
+                      value={stripeMoney(
+                        stripeDetails.balanceTransaction?.net,
+                        stripeDetails.balanceTransaction?.currency,
+                      )}
+                    />
+                    <StripeDetail
+                      label="Paid at"
+                      value={
+                        stripeDetails.charge?.created
+                          ? formatDateTime(
+                              new Date(stripeDetails.charge.created * 1000).toISOString(),
+                            )
+                          : null
+                      }
+                    />
+                    <StripeDetail
+                      label="Card"
+                      value={
+                        stripeDetails.card
+                          ? [
+                              stripeDetails.card.funding,
+                              stripeDetails.card.country,
+                              stripeDetails.card.exp_month && stripeDetails.card.exp_year
+                                ? `exp ${stripeDetails.card.exp_month}/${stripeDetails.card.exp_year}`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")
+                          : null
+                      }
+                    />
+                    <StripeDetail label="Billing name" value={stripeDetails.billing?.name} />
+                    <StripeDetail label="Billing email" value={stripeDetails.billing?.email} />
+                    <div className="col-span-2">
+                      <StripeDetail
+                        label="Billing address"
+                        value={addressText(stripeDetails.billing?.address)}
+                      />
+                    </div>
+                    <StripeDetail
+                      label="CVC check"
+                      value={stripeDetails.card?.checks?.cvc_check}
+                    />
+                    <StripeDetail
+                      label="Postal check"
+                      value={stripeDetails.card?.checks?.address_postal_code_check}
+                    />
+                    <StripeDetail
+                      label="Risk"
+                      value={
+                        stripeDetails.charge?.outcome?.risk_level
+                          ? `${stripeDetails.charge.outcome.risk_level}${
+                              stripeDetails.charge.outcome.risk_score != null
+                                ? ` (${stripeDetails.charge.outcome.risk_score})`
+                                : ""
+                            }`
+                          : null
+                      }
+                    />
+                    <StripeDetail
+                      label="Seller message"
+                      value={stripeDetails.charge?.outcome?.seller_message}
+                    />
+                  </div>
+
+                  {stripeDetails.charge?.receipt_url ? (
+                    <a
+                      href={stripeDetails.charge.receipt_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 flex items-center gap-2 text-xs font-medium text-sky-300 hover:text-sky-200"
+                    >
+                      <Receipt className="h-3.5 w-3.5" /> View Stripe receipt
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : null}
+
+                  <div className="mt-4 border-t border-border pt-4">
+                    <div className="mb-3 flex items-center gap-2 text-xs text-text-secondary">
+                      <ShieldCheck className="h-3.5 w-3.5" /> Stripe references
+                    </div>
+                    <div className="grid gap-3">
+                      <StripeDetail label="Checkout Session" value={stripeDetails.session.id} mono />
+                      <StripeDetail label="PaymentIntent" value={stripeDetails.intent?.id} mono />
+                      <StripeDetail label="Charge" value={stripeDetails.charge?.id} mono />
+                      <StripeDetail
+                        label="PaymentMethod"
+                        value={stripeDetails.paymentMethod?.id}
+                        mono
+                      />
+                      <StripeDetail
+                        label="Balance transaction"
+                        value={stripeDetails.balanceTransaction?.id}
+                        mono
+                      />
+                    </div>
+                  </div>
+
+                  <details className="mt-4 border-t border-border pt-4">
+                    <summary className="cursor-pointer text-xs font-medium text-text-secondary hover:text-foreground">
+                      Full stored Stripe response
+                    </summary>
+                    <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-background p-3 font-mono text-[10px] leading-relaxed text-text-secondary">
+                      {JSON.stringify(stripeDetails.snapshot, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              ) : order.stripePaymentIntentId ? (
+                <div className="rounded-xl border border-dashed border-border p-4 text-xs text-text-secondary">
+                  This legacy order has Stripe references but no stored payment snapshot.
+                  New payments will include full details.
+                </div>
+              ) : null}
 
               {/* Actions */}
               <div className="flex flex-wrap gap-2">

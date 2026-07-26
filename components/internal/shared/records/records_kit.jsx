@@ -53,6 +53,9 @@ import { FieldControl, FieldSection, readField, fieldPatch } from "./record_fiel
 const emptyDraft = (mod) => ({
   name: "",
   status: mod.defaults.status,
+  // An `image` create field parks its File here as { file, preview } until the
+  // row exists (storage RLS admits writes only for a saved, owned record).
+  coverUrl: "",
   config: { ...mod.defaults.config },
 });
 
@@ -61,20 +64,25 @@ const emptyDraft = (mod) => ({
 function CreateRecordDialog({ mod, projectId, open, onOpenChange, onCreate }) {
   const [draft, setDraft] = useState(() => emptyDraft(mod));
   const Icon = mod.icon;
-  // FieldControl needs projectId for the audience picker (event scope + targeting).
-  const values = { ...draft, projectId };
-  // Split essentials from the (taller) composite pickers (audience, access) so
-  // each of those gets its own full-width block below the basics.
-  const RICH_TYPES = new Set(["audience", "access"]);
+  // FieldControl needs projectId for the audience picker (event scope + targeting)
+  // and deferUploads so an image field holds its File instead of uploading now.
+  const values = { ...draft, projectId, deferUploads: true };
+  // Split essentials from the (taller) composite pickers (audience, access,
+  // image) so each of those gets its own full-width block below the basics.
+  const RICH_TYPES = new Set(["audience", "access", "image"]);
   const basicFields = mod.createFields.filter((f) => !RICH_TYPES.has(f.type));
   const richFields = mod.createFields.filter((f) => RICH_TYPES.has(f.type));
 
   const onFieldValue = (field) => (val) =>
     setDraft((d) => ({ ...d, ...fieldPatch(field, d, val) }));
 
-  // Reset the draft whenever the dialog closes (cancel or submit).
+  // Reset the draft when the dialog is dismissed. A picked-but-unsaved image's
+  // preview URL is discarded here; on submit it's handed to the create flow.
   const close = (o) => {
-    if (!o) setDraft(emptyDraft(mod));
+    if (!o) {
+      if (draft.coverUrl?.preview) URL.revokeObjectURL(draft.coverUrl.preview);
+      setDraft(emptyDraft(mod));
+    }
     onOpenChange(o);
   };
 
@@ -229,7 +237,10 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
               <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
                 {form.name || `Untitled ${mod.singular.toLowerCase()}`}
               </h1>
-              <StatusPill status={form.status} map={mod.statusMap} />
+              {/* Modules that don't track a status (sponsors) omit the pill. */}
+              {mod.statusMap ? (
+                <StatusPill status={form.status} map={mod.statusMap} />
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -364,30 +375,50 @@ export function RecordsScreen({ mod, api }) {
 
   const stats = useMemo(() => mod.stats(records), [records, mod]);
 
-  const persistCreate = (record) => {
-    api.create(record).then((saved) => {
+  // `pending` is a create-dialog image ({ file, preview, upload }) that had to
+  // wait for the row to exist before storage RLS would accept it.
+  const persistCreate = (record, pending) => {
+    api.create(record).then(async (saved) => {
       if (!saved) {
         toast.error("Couldn't save to the server.");
-      } else {
-        setRecords((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
+        return;
       }
+      let next = saved;
+      if (pending) {
+        const res = await pending.upload(saved.id, pending.file);
+        URL.revokeObjectURL(pending.preview);
+        if (res?.url) {
+          next = { ...saved, coverUrl: res.url };
+          api.update(saved.id, { coverUrl: res.url });
+        } else {
+          toast.error("Saved, but the image couldn't be uploaded.");
+        }
+      }
+      setRecords((prev) => prev.map((r) => (r.id === next.id ? next : r)));
     });
   };
 
   const handleCreate = (draft) => {
+    // An image field defers its upload, so coverUrl may hold a File rather than
+    // a URL — the optimistic row shows the local preview until the upload lands.
+    const imageField = mod.createFields.find((f) => f.type === "image");
+    const pending =
+      draft.coverUrl?.file && imageField?.upload
+        ? { ...draft.coverUrl, upload: imageField.upload }
+        : null;
     const record = {
       id: crypto.randomUUID(),
       module: mod.key,
       name: draft.name.trim(),
       status: draft.status,
-      coverUrl: "",
+      coverUrl: pending ? pending.preview : draft.coverUrl || "",
       config: draft.config,
       createdBy: userId,
       projectId,
     };
     setRecords((prev) => [record, ...prev]);
     toast.success(`"${record.name}" added.`);
-    persistCreate(record);
+    persistCreate({ ...record, coverUrl: pending ? "" : record.coverUrl }, pending);
   };
 
   const handleUpdate = (updated) => {

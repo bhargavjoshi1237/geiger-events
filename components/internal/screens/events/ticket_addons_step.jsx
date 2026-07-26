@@ -71,7 +71,7 @@ export function SlotPicker({ slots, slotsSold, ticketId, qty, selectedId, onSele
                 }
                 className={cn(
                   "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                  selected ? "" : "border-[#444]",
+                  selected ? "" : "border-border-strong",
                 )}
               >
                 {selected ? <Check className="h-3 w-3" style={{ color: accent.text }} /> : null}
@@ -99,7 +99,7 @@ export function SlotPicker({ slots, slotsSold, ticketId, qty, selectedId, onSele
                 </span>
               </span>
               {delta ? (
-                <span className="shrink-0 text-sm font-medium tabular-nums text-white">
+                <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
                   {delta > 0 ? `+$${delta}` : `-$${Math.abs(delta)}`}
                 </span>
               ) : null}
@@ -189,7 +189,7 @@ export function TicketAddonsStep({ purchasables, selections, onToggle, onQty, ac
                 style={chosen ? { backgroundColor: accent.color, borderColor: accent.color } : undefined}
                 className={cn(
                   "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                  chosen ? "" : "border-[#444]",
+                  chosen ? "" : "border-border-strong",
                 )}
               >
                 {chosen ? <Check className="h-3 w-3" style={{ color: accent.text }} /> : null}
@@ -205,7 +205,7 @@ export function TicketAddonsStep({ purchasables, selections, onToggle, onQty, ac
               ) : null}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
-              <span className="text-sm font-medium tabular-nums text-white">
+              <span className="text-sm font-medium tabular-nums text-foreground">
                 {Number(p.price) > 0 ? `+$${Number(p.price)}` : "Free"}
                 {isQty ? <span className="text-xs text-text-tertiary"> ea</span> : null}
               </span>

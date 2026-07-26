@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useEventConfig } from "@/lib/events/use-event-config";
+import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
 
 // --- Basics (name, summary, format) ------------------------------------------
 
@@ -51,22 +52,42 @@ export function BasicsSection({ event, headerItem, onPatch }) {
             placeholder="One or two lines that sell the event."
           />
         </Field>
-        <Field label="Format">
-          <Select
-            value={event?.type || "In-person"}
-            onValueChange={(v) => patch({ type: v })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="In-person">In-person</SelectItem>
-              <SelectItem value="Online">Online</SelectItem>
-              <SelectItem value="Hybrid">Hybrid</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Format">
+            <Select
+              value={event?.type || "In-person"}
+              onValueChange={(v) => patch({ type: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="In-person">In-person</SelectItem>
+                <SelectItem value="Online">Online</SelectItem>
+                <SelectItem value="Hybrid">Hybrid</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          {/* Date/time are the same columns Location & Time edits — both write
+              `date`/`time`, so the two sections stay in step. */}
+          <Field label="Date">
+            <EventDatePicker
+              value={event?.date}
+              onChange={(date) => patch({ date })}
+            />
+          </Field>
+          <Field label="Start time">
+            <EventTimeSelect
+              value={event?.time}
+              onChange={(time) => patch({ time })}
+            />
+          </Field>
+        </div>
       </div>
+      <p className="text-xs text-text-tertiary">
+        Use <span className="font-medium text-text-secondary">Save changes</span>{" "}
+        at the top to persist these.
+      </p>
     </div>
   );
 }

@@ -70,7 +70,30 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 STRING_URI=your-direct-postgres-connection-string   # migrations only
 STRIPE_SECRET_KEY=your-stripe-secret-key
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-signing-secret
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
 ```
+
+Register the production endpoint
+`https://geiger-events.vercel.app/events/api/stripe/webhook` in Stripe for
+`checkout.session.completed` and `checkout.session.async_payment_succeeded`.
+The return page uses the same idempotent fulfillment path, but the webhook
+guarantees an order is recorded even if the buyer never returns after payment.
+
+In Stripe Dashboard, open **Developers → Workbench → Webhooks**, then:
+
+1. Choose **Create new destination** and **Events on your account**.
+2. Select `checkout.session.completed` and
+   `checkout.session.async_payment_succeeded`.
+3. Choose **Webhook** and enter the production endpoint above.
+4. Create the destination, reveal its `whsec_…` signing secret, and add it to
+   Vercel as `GEIGER_STRIPE_WEBHOOK_SECRET` for the Production environment.
+5. Redeploy, complete a Stripe Checkout payment, and confirm its delivery shows
+   HTTP `200` in the destination's **Event deliveries** tab.
+
+Stripe sandbox and live-mode destinations have different signing secrets. Use
+the live destination's secret in Production; use a separate sandbox destination
+and secret for local/preview testing.
 
 ### Database
 

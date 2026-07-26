@@ -15,6 +15,7 @@ import {
   Star,
   Check,
   Accessibility,
+  Armchair,
 } from "lucide-react";
 
 import {
@@ -61,12 +62,14 @@ import {
   VENUE_TIMEZONES,
   venueFullAddress,
 } from "./constants";
+import { SeatMapsSection } from "./seat_maps";
 
 // Right-hand editor navigation. `key` must match a SECTIONS entry below.
 export const VENUE_NAV = [
   { key: "details", label: "Details", icon: SquarePen, desc: "Name, type, status, and a short description." },
   { key: "location", label: "Location", icon: MapPin, desc: "Address, region, timezone, and how to get there." },
   { key: "capacity", label: "Capacity & amenities", icon: Gauge, desc: "How many it holds and what it offers." },
+  { key: "seatmaps", label: "Seat maps", icon: Armchair, desc: "Section, row and seat layouts events can sell from." },
   { key: "contact", label: "Contact", icon: Contact, desc: "Who to reach and where to find them online." },
   { key: "guidelines", label: "Dietary & Accessibility", icon: Accessibility, desc: "Guidelines shown on every event held here." },
   { key: "media", label: "Media", icon: ImageIcon, desc: "The cover image and photo gallery for this venue." },
@@ -737,6 +740,7 @@ export const SECTIONS = {
   details: DetailsSection,
   location: LocationSection,
   capacity: CapacitySection,
+  seatmaps: SeatMapsSection,
   contact: ContactSection,
   guidelines: GuidelinesSection,
   media: MediaSection,

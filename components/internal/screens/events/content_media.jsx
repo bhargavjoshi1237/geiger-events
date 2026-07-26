@@ -354,10 +354,12 @@ const SNIPPETS = [
 ];
 
 export function RichDescriptionsSection({ event }) {
+  // Starts empty, not pre-filled with sample copy — an unsaved default would
+  // otherwise get published verbatim as the event's description.
   const [text, setText, saveText, saving] = useEventConfig(
     event,
     "description",
-    "Join us for an evening of talks and networking.\n\nDoors open at 6:30pm. Drinks and snacks provided. Bring a friend!",
+    "",
   );
 
   return (
@@ -385,6 +387,9 @@ export function RichDescriptionsSection({ event }) {
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={12}
+              placeholder={
+                "Tell attendees what this event is and why it's worth their time.\n\nSupports **bold**, *italic*, [links](https://…), ## headings, and - bullet lists."
+              }
               className="border-0 bg-transparent px-0 focus-visible:ring-0"
             />
           </div>

@@ -39,6 +39,8 @@ export function TransactionsScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("all");
+  const [eventId, setEventId] = useState("all");
+  const [ticket, setTicket] = useState("all");
 
   useEffect(() => {
     let alive = true;
@@ -66,6 +68,24 @@ export function TransactionsScreen() {
     return m;
   }, [orders]);
 
+  const eventFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "All events" },
+      ...Object.entries(eventNames).map(([id, name]) => ({ value: id, label: name })),
+    ],
+    [eventNames],
+  );
+
+  const ticketFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "All tickets" },
+      ...[...new Set(orders.map((o) => o.ticket).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => ({ value: name, label: name })),
+    ],
+    [orders],
+  );
+
   // The ledger: every charge (order) and refund merged, newest first.
   const ledger = useMemo(() => {
     const charges = orders.map((o) => ({
@@ -74,6 +94,7 @@ export function TransactionsScreen() {
       orderId: o.id,
       name: o.name || "Unnamed",
       eventId: o.eventId,
+      ticket: o.ticket,
       method: o.stripePaymentIntentId ? "original" : "manual",
       amount: o.total,
       date: o.createdAt,
@@ -83,7 +104,8 @@ export function TransactionsScreen() {
       type: "Refund",
       orderId: r.orderId,
       name: ordersById[r.orderId]?.name || "Unnamed",
-      eventId: r.eventId,
+      eventId: r.eventId || ordersById[r.orderId]?.eventId,
+      ticket: ordersById[r.orderId]?.ticket,
       method: r.method,
       amount: -r.amount,
       date: r.createdAt,
@@ -97,16 +119,18 @@ export function TransactionsScreen() {
     const q = search.trim().toLowerCase();
     return ledger.filter((t) => {
       if (type !== "all" && t.type !== type) return false;
+      if (eventId !== "all" && t.eventId !== eventId) return false;
+      if (ticket !== "all" && t.ticket !== ticket) return false;
       if (
         q &&
-        !`${t.name} ${eventNames[t.eventId] || ""} ${orderRef(t.orderId)}`
+        !`${t.name} ${t.ticket || ""} ${eventNames[t.eventId] || ""} ${orderRef(t.orderId)}`
           .toLowerCase()
           .includes(q)
       )
         return false;
       return true;
     });
-  }, [ledger, search, type, eventNames]);
+  }, [ledger, search, type, eventId, ticket, eventNames]);
 
   const stats = useMemo(() => {
     const gross = orders.reduce((s, o) => s + o.total, 0);
@@ -176,12 +200,26 @@ export function TransactionsScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <FilterDropdown
-          value={type}
-          onValueChange={setType}
-          options={TRANSACTION_TYPE_FILTER_OPTIONS}
-          height="h-9"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterDropdown
+            value={type}
+            onValueChange={setType}
+            options={TRANSACTION_TYPE_FILTER_OPTIONS}
+            height="h-9"
+          />
+          <FilterDropdown
+            value={eventId}
+            onValueChange={setEventId}
+            options={eventFilterOptions}
+            height="h-9"
+          />
+          <FilterDropdown
+            value={ticket}
+            onValueChange={setTicket}
+            options={ticketFilterOptions}
+            height="h-9"
+          />
+        </div>
         <SearchInput
           value={search}
           onChange={setSearch}

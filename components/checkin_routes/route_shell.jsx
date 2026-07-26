@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
 // Full-screen shell shared by the staff routes (/checkin, /kiosk, /door). Dark,
 // chrome-free, with the event name, an optional live counter, and an exit that
 // clears the unlocked session.
-export function RouteShell({ title, subtitle, count, onExit, children, className }) {
+// `badge` is an optional custom pill for routes whose headline figure isn't a
+// check-in count (e.g. /issue shows items handed out).
+export function RouteShell({ title, subtitle, count, badge, onExit, children, className }) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:px-6">
@@ -20,6 +22,7 @@ export function RouteShell({ title, subtitle, count, onExit, children, className
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {badge}
           {count ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 tabular-nums">
               <Activity className="h-3.5 w-3.5" />

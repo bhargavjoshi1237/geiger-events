@@ -53,6 +53,8 @@ export function RefundsCenterScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [eventId, setEventId] = useState("all");
+  const [ticket, setTicket] = useState("all");
   const [openId, setOpenId] = useState(null);
 
   useEffect(() => {
@@ -81,11 +83,31 @@ export function RefundsCenterScreen() {
     return m;
   }, [orders]);
 
+  const eventFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "All events" },
+      ...Object.entries(eventNames).map(([id, name]) => ({ value: id, label: name })),
+    ],
+    [eventNames],
+  );
+
+  const ticketFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "All tickets" },
+      ...[...new Set(orders.map((o) => o.ticket).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => ({ value: name, label: name })),
+    ],
+    [orders],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return refunds.filter((r) => {
       if (status !== "all" && r.status !== status) return false;
       const o = ordersById[r.orderId];
+      if (eventId !== "all" && (r.eventId || o?.eventId) !== eventId) return false;
+      if (ticket !== "all" && o?.ticket !== ticket) return false;
       if (
         q &&
         !`${o?.name || ""} ${o?.email || ""} ${eventNames[r.eventId] || ""} ${orderRef(r.orderId)}`
@@ -95,7 +117,7 @@ export function RefundsCenterScreen() {
         return false;
       return true;
     });
-  }, [refunds, search, status, ordersById, eventNames]);
+  }, [refunds, search, status, eventId, ticket, ordersById, eventNames]);
 
   const stats = useMemo(() => {
     const issued = refunds.filter((r) => r.status === "Issued");
@@ -239,12 +261,26 @@ export function RefundsCenterScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <FilterDropdown
-          value={status}
-          onValueChange={setStatus}
-          options={REFUND_STATUS_FILTER_OPTIONS}
-          height="h-9"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterDropdown
+            value={status}
+            onValueChange={setStatus}
+            options={REFUND_STATUS_FILTER_OPTIONS}
+            height="h-9"
+          />
+          <FilterDropdown
+            value={eventId}
+            onValueChange={setEventId}
+            options={eventFilterOptions}
+            height="h-9"
+          />
+          <FilterDropdown
+            value={ticket}
+            onValueChange={setTicket}
+            options={ticketFilterOptions}
+            height="h-9"
+          />
+        </div>
         <SearchInput
           value={search}
           onChange={setSearch}

@@ -15,7 +15,6 @@ import {
   Lock,
   Minus,
   Plus,
-  ImageIcon,
   Globe,
   Video,
   Ticket,
@@ -24,7 +23,6 @@ import {
   ClipboardList,
   Languages,
   Gauge,
-  Image as ImgIcon,
   Users,
   Heart,
   KeyRound,
@@ -34,6 +32,7 @@ import {
   ExternalLink,
   SquareParking,
   Accessibility,
+  Armchair,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -92,7 +91,11 @@ import { eventBundles, bundlePrice, bundleTicketCount } from "@/lib/events/bundl
 import { SlotPicker, TicketAddonsStep } from "./ticket_addons_step";
 import { TIER_COLOR_OPTIONS } from "../tickets/constants";
 import { EVENT_TYPE_MAP, formatDate, initials } from "./sample_data";
-import { defaultPageDesign, resolveFont } from "./page_design";
+import {
+  defaultPageDesign,
+  defaultSidebarBlocks,
+  resolveFont,
+} from "./page_design";
 import {
   resolveTheme,
   themeStyle,
@@ -102,10 +105,14 @@ import {
   resolveSidebar,
   themeButtonStyle,
   coverOverlayStyle,
+  resolveLogo,
+  themeWebfonts,
 } from "@/lib/events/theme";
 import { PageBlock } from "./page_blocks";
 import { PageFooter } from "./page_footer";
 import { buyTicket } from "@/lib/supabase/orders";
+import { SeatPicker } from "./seat_picker";
+import { holdSeats } from "@/lib/supabase/seating";
 import { listEventTicketsResolved } from "@/lib/supabase/ticketing";
 import {
   registerForEvent,
@@ -139,8 +146,8 @@ const MONTHS = [
   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
 ];
 
-const CO_HOSTS = ["Marco Reyes", "Priya Shah"];
-const REG_QUESTIONS = ["Full name", "Dietary requirements", "T-shirt size"];
+// No invented co-hosts or registration questions — the page shows the event's
+// real team and real questions, and omits the card when there are none.
 const TYPE_ICON = { "In-person": MapPin, Online: Video, Hybrid: Globe };
 // amenity key -> lucide icon, so the venue dialog can show each amenity with its
 // own glyph instead of a flat text badge.
@@ -263,11 +270,44 @@ function SummaryRow({ icon: Icon, label, children }) {
   );
 }
 
+// Human-readable seat summary for the confirmation: groups a selection by
+// section and row and collapses consecutive seat numbers into a range.
+function seatLabelSummary(seats, sections) {
+  if (!seats?.length) return "";
+  const sectionName = new Map((sections || []).map((s) => [s.id, s.name]));
+  const groups = new Map();
+  for (const seat of seats) {
+    const key = `${seat.sectionId}|${seat.rowLabel}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(seat.seatLabel);
+  }
+  return [...groups.entries()]
+    .map(([key, labels]) => {
+      const [sectionId, rowLabel] = key.split("|");
+      const nums = labels.map((l) => Number(l)).filter((n) => Number.isFinite(n));
+      const consecutive =
+        nums.length === labels.length &&
+        nums.length > 1 &&
+        Math.max(...nums) - Math.min(...nums) === nums.length - 1;
+      const seatPart = consecutive
+        ? `Seats ${Math.min(...nums)}-${Math.max(...nums)}`
+        : `Seat${labels.length > 1 ? "s" : ""} ${labels.join(", ")}`;
+      const name = sectionName.get(sectionId);
+      return [name, rowLabel ? `Row ${rowLabel}` : null, seatPart]
+        .filter(Boolean)
+        .join(" · ");
+    })
+    .join("  |  ");
+}
+
 function TicketCheckout({
   open,
   onClose,
   event,
-  ticket,
+  // Renamed: with map-first seating the SECTION the buyer clicks decides the
+  // ticket, so `ticket` below resolves to the seat-derived one when there is a
+  // seat selection, and to the sidebar's choice otherwise.
+  ticket: baseTicket,
   remaining,
   live,
   accent,
@@ -284,7 +324,27 @@ function TicketCheckout({
   // requests master switch). Null until fetched; may be null if unconfigured.
   daConfig,
 }) {
-  const [step, setStep] = useState("details"); // details | addons | done | error
+  // --- Assigned seating -----------------------------------------------------
+  // event.metadata.seating: { seatMapId, mode, sectionTiers, holdMinutes }.
+  // An event without a seat map keeps the original flow untouched.
+  const seating = event?.seating || null;
+  const seatingOn = Boolean(seating?.seatMapId);
+  const seatMode = seating?.mode || "map-first";
+  // { seats, seatIds, ticketId, price, token } from the picker, or null.
+  const [seatSel, setSeatSel] = useState(null);
+
+  // In map-first the section sets the price, so the seat selection resolves the
+  // ticket. Everything downstream (name, price, id, ticket questions) follows.
+  const seatTicket =
+    seatingOn && seatMode === "map-first" && seatSel?.ticketId
+      ? (event?.tickets || []).find((t) => String(t.id) === String(seatSel.ticketId)) || null
+      : null;
+  const ticket = seatTicket || baseTicket;
+
+  const [step, setStep] = useState(
+    // map-first opens on the map; everything else keeps the original entry step.
+    seatingOn && (seating?.mode || "map-first") === "map-first" ? "seats" : "details",
+  ); // seats | details | addons | done | error
   const [qty, setQty] = useState(1);
   // Booked slot id + chosen conditional purchasables ({ [id]: bool | count }).
   const [slotId, setSlotId] = useState(null);
@@ -724,6 +784,8 @@ function TicketCheckout({
       attendees: buildAttendees(),
       bundleId: ticket?.bundleId ?? null,
       accessCode: ticket?.accessCode ?? null,
+      seatIds: seatSel?.seatIds ?? null,
+      seatToken: seatSel?.token ?? null,
     });
     if (res.ok) {
       // The order is recorded; also write the person-coming record so they
@@ -777,6 +839,18 @@ function TicketCheckout({
     // return trip links to the order — only the small ref rides in Stripe metadata.
     const clientRef = ticketQuestions.length ? crypto.randomUUID() : null;
     if (clientRef) await persistTicketAnswers({ clientRef });
+    // The buyer is about to leave the page for Stripe. Re-take the holds on a
+    // longer window so they survive the round trip; buy_seats resolves the seat
+    // ids back out of those holds on return.
+    if (seatSel?.seatIds?.length && seatSel.token) {
+      const extended = await holdSeats(event.id, seatSel.seatIds, seatSel.token, 30);
+      if (!extended?.ok) {
+        setBusy(false);
+        setErrorMsg("Your seats were taken while you were deciding. Please pick again.");
+        setStep("error");
+        return;
+      }
+    }
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/checkout`, {
         method: "POST",
@@ -802,6 +876,7 @@ function TicketCheckout({
           answers,
           formId: event.formId || null,
           clientRef,
+          seatToken: seatSel?.token ?? null,
           // Approved guests are already a registration — skip filing a second
           // one when their payment is confirmed on return.
           skipRegistration: !!approvedResume,
@@ -925,6 +1000,38 @@ function TicketCheckout({
   // conditional purchasables to show, otherwise complete the purchase directly.
   const submitDetails = () => {
     if (!validateDetails()) return;
+    // type-first picks the ticket and quantity here, then the seats.
+    if (seatingOn && seatMode === "type-first" && !seatSel?.seatIds?.length) {
+      setStep("seats");
+      return;
+    }
+    if (usePurchasables && visiblePurs.length) {
+      setStep("addons");
+      return;
+    }
+    proceed();
+  };
+
+  // Seat step "Continue". map-first collects the buyer's details afterwards;
+  // type-first already has them, so it carries straight on.
+  const confirmSeats = () => {
+    const chosen = seatSel?.seatIds?.length || 0;
+    if (chosen === 0) {
+      toast.error("Pick your seats to continue.");
+      return;
+    }
+    if (seatMode === "map-first") {
+      if (!seatSel?.ticketId) {
+        toast.error("That section isn't on sale for this event.");
+        return;
+      }
+      setStep("details");
+      return;
+    }
+    if (chosen !== qty) {
+      toast.error(`Pick ${qty} seat${qty > 1 ? "s" : ""} to match your order.`);
+      return;
+    }
     if (usePurchasables && visiblePurs.length) {
       setStep("addons");
       return;
@@ -1006,6 +1113,53 @@ function TicketCheckout({
         {/* Body scrolls within the fixed-height dialog; the header stays put.
             Scrollbar hidden (suite convention) so it doesn't clutter the form. */}
         <div className="flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Step: seats — the map gets the full dialog width, so it sits outside
+            the details/add-ons slide track rather than squeezing into it.
+            map-first shows it first (the section sets the price); type-first
+            shows it after the ticket and quantity are chosen. */}
+        {step === "seats" ? (
+          <div className="grid gap-4">
+            <SeatPicker
+              event={event}
+              seating={seating}
+              tickets={event?.tickets || []}
+              ticketId={seatMode === "type-first" ? ticket?.id ?? null : null}
+              requiredQty={seatMode === "type-first" ? qty : 0}
+              accent={accent}
+              onChange={(sel) => {
+                setSeatSel(sel);
+                // In map-first the seats ARE the quantity.
+                if (seatMode === "map-first" && sel.seatIds.length) {
+                  setQty(sel.seatIds.length);
+                }
+              }}
+            />
+            <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
+              {seatMode === "type-first" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                  onClick={() => setStep("details")}
+                >
+                  Back
+                </Button>
+              ) : (
+                <span />
+              )}
+              <Button
+                type="button"
+                disabled={busy || !seatSel?.seatIds?.length}
+                onClick={confirmSeats}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                style={accent ? { backgroundColor: accent } : undefined}
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         {/* Steps: details + add-ons — a horizontal slide track (details slides
             left, purchasables slide in from the right). */}
         {step === "details" || step === "addons" ? (
@@ -1038,7 +1192,7 @@ function TicketCheckout({
                   <p className="text-xs text-text-secondary">{ticket.note}</p>
                 ) : null}
               </div>
-              <span className="shrink-0 text-sm font-semibold tabular-nums text-white">
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
                 {isFree ? "Free" : `$${price}`}
               </span>
             </div>
@@ -1126,7 +1280,7 @@ function TicketCheckout({
                                 o.selectionType === "single"
                                   ? "rounded-full"
                                   : "rounded",
-                                selected ? "" : "border-[#444]",
+                                selected ? "" : "border-border-strong",
                               )}
                             >
                               {selected ? (
@@ -1142,7 +1296,7 @@ function TicketCheckout({
                             <span
                               className={cn(
                                 "shrink-0 text-sm font-medium tabular-nums",
-                                free ? "text-text-secondary" : "text-white",
+                                free ? "text-text-secondary" : "text-foreground",
                               )}
                             >
                               {free ? "Free" : `+$${Number(opt.price)}`}
@@ -1291,7 +1445,10 @@ function TicketCheckout({
                                     }
                                   >
                                     {checked ? (
-                                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                                      <span
+                                      className="h-1.5 w-1.5 rounded-full"
+                                      style={{ backgroundColor: accent.text }}
+                                    />
                                     ) : null}
                                   </span>
                                 )}
@@ -1568,7 +1725,7 @@ function TicketCheckout({
               ) : null}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-text-secondary">Total</span>
-                <span className="text-lg font-bold tabular-nums text-white">
+                <span className="text-lg font-bold tabular-nums text-foreground">
                   {total === 0 ? "Free" : `$${total}`}
                 </span>
               </div>
@@ -1638,7 +1795,7 @@ function TicketCheckout({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-text-secondary">Total</span>
-                <span className="text-lg font-bold tabular-nums text-white">
+                <span className="text-lg font-bold tabular-nums text-foreground">
                   {total === 0 ? "Free" : `$${total}`}
                 </span>
               </div>
@@ -1709,7 +1866,7 @@ function TicketCheckout({
                 </div>
 
                 <div className="space-y-1.5">
-                  <p className="text-xl font-semibold text-white">
+                  <p className="text-xl font-semibold text-foreground">
                     {regStatus === "Pending"
                       ? "Registration received"
                       : regStatus === "Waitlisted"
@@ -1741,6 +1898,11 @@ function TicketCheckout({
                       {regStatus === "Pending" ? "Pending review" : "Waitlisted"}
                     </SummaryRow>
                   )}
+                  {isConfirmed && seatSel?.seats?.length ? (
+                    <SummaryRow icon={Armchair} label="Seats">
+                      {seatLabelSummary(seatSel.seats, seatSel.sections)}
+                    </SummaryRow>
+                  ) : null}
                   <SummaryRow icon={CalendarCheck} label="When">
                     {formatDate(event.date)}
                     {event.time ? ` · ${event.time}` : ""}
@@ -2296,7 +2458,8 @@ export function EventPublicPageContent({ event, design, live = false }) {
   const defaults = defaultPageDesign();
   const cfg = design ? { ...defaults, ...design } : defaults;
   const effective = cfg.mode === "standard" ? defaults : cfg;
-  const themed = cfg.mode === "themed";
+  // An imported brand is just a theme, so it renders down the themed path.
+  const themed = cfg.mode !== "standard";
   // The brand theme compiles to CSS-variable overrides on the page wrapper, so
   // the markup below re-skins automatically. The accent (brand) color drives the
   // inline CTA styles shared with checkout, ticket selection, etc.
@@ -2332,24 +2495,20 @@ export function EventPublicPageContent({ event, design, live = false }) {
   // "Show tickets remaining" toggle (Registration Settings). Default on.
   const showRemaining = event.regSettings?.showRemaining !== false;
   const gallery = Array.isArray(event.gallery) ? event.gallery : [];
-  const regQuestions =
-    Array.isArray(event.questions) && event.questions.length
-      ? event.questions.map((q) => q.label).filter(Boolean)
-      : REG_QUESTIONS;
+  const regQuestions = Array.isArray(event.questions)
+    ? event.questions.map((q) => q.label).filter(Boolean)
+    : [];
   const TypeIcon = TYPE_ICON[event.type] || MapPin;
+  // The event's own tags, else just its format — never invented topics.
   const tags =
-    Array.isArray(event.tags) && event.tags.length
-      ? event.tags
-      : [event.type, "Community", "Networking"];
-  // Real co-hosts come from the event's team (people who actually run it);
-  // fall back to the demo names only when no team has been configured.
-  const teamHosts = Array.isArray(event.team)
+    Array.isArray(event.tags) && event.tags.length ? event.tags : [event.type];
+  // Co-hosts are the event's real team; no demo names when none are configured.
+  const coHosts = Array.isArray(event.team)
     ? event.team
         .filter((m) => ["Owner", "Admin", "Co-host"].includes(m.role))
         .map((m) => m.name)
         .filter(Boolean)
     : [];
-  const coHosts = teamHosts.length ? teamHosts : CO_HOSTS;
   // Organizer first, then co-hosts — de-duplicated so an organizer who is also
   // listed as a co-host doesn't appear twice (and won't collide on React keys).
   const hosts = [event.organizer, ...coHosts].filter(
@@ -2394,6 +2553,32 @@ export function EventPublicPageContent({ event, design, live = false }) {
         }
       : null);
 
+  // Imported brand mark. The bar sits above the hero and reads like the source
+  // site's own header; the footer repeats it when configured.
+  const barLogo = themed ? resolveLogo(theme, "bar") : null;
+  const footerLogo = themed ? resolveLogo(theme, "footer") : null;
+  const webfonts = themed ? themeWebfonts(theme) : [];
+  const brandMark = barLogo ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={barLogo.url}
+      alt=""
+      style={{ height: barLogo.height }}
+      className="w-auto max-w-[240px] object-contain"
+    />
+  ) : null;
+  const brandBar = barLogo ? (
+    <div className="mb-8 flex items-center border-b border-border pb-5">
+      {barLogo.link ? (
+        <a href={barLogo.link} target="_blank" rel="noopener noreferrer">
+          {brandMark}
+        </a>
+      ) : (
+        brandMark
+      )}
+    </div>
+  ) : null;
+
   // Cover image contents, reused by the in-column cover and the banner hero.
   const coverInner = event.coverUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -2402,9 +2587,7 @@ export function EventPublicPageContent({ event, design, live = false }) {
       alt={`${event.name} cover`}
       className="h-full w-full object-cover"
     />
-  ) : (
-    <ImageIcon className="h-12 w-12" />
-  );
+  ) : null; // banner hero falls back to the themed cover surface, not an icon
 
   // Title / meta / tags — `centered` centers everything (centered hero).
   const titleMeta = (centered) => (
@@ -2453,7 +2636,8 @@ export function EventPublicPageContent({ event, design, live = false }) {
     </div>
   );
 
-  // Gallery thumbnail strip (or placeholders), shared by column + banner heroes.
+  // Gallery thumbnail strip. No images means no strip — empty placeholder tiles
+  // read as a broken page, not as an invitation.
   const galleryStrip =
     effective.showGallery && gallery.length ? (
       <div className="grid grid-cols-4 gap-3">
@@ -2467,42 +2651,30 @@ export function EventPublicPageContent({ event, design, live = false }) {
           />
         ))}
       </div>
-    ) : effective.showGallery ? (
-      <div className="grid grid-cols-4 gap-3">
-        {[1, 2, 3, 4].map((n) => (
-          <div
-            key={n}
-            className="flex aspect-[4/3] items-center justify-center rounded-lg border border-border bg-surface-card text-[#3a3a3a]"
-          >
-            <ImgIcon className="h-5 w-5" />
+    ) : null;
+
+  // In-column cover + gallery strip (classic / centered heroes). With no cover
+  // image the frame is dropped rather than shown empty — the page then opens on
+  // the title, which reads finished instead of unfinished.
+  const coverWrap =
+    event.coverUrl || galleryStrip ? (
+      <div className="space-y-3">
+        {event.coverUrl ? (
+          <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden rounded-2xl border border-border">
+            {coverInner}
+            <div className="absolute left-4 top-4 flex gap-2">
+              <Badge variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}>
+                <TypeIcon className="h-3 w-3" />
+                {event.type}
+              </Badge>
+            </div>
           </div>
-        ))}
+        ) : null}
+        {galleryStrip}
       </div>
     ) : null;
 
-  // In-column cover + gallery strip (classic / centered heroes).
-  const coverWrap = (
-    <div className="space-y-3">
-      <div
-        className={cn(
-          "relative flex aspect-[16/9] items-center justify-center overflow-hidden rounded-2xl border border-border text-[#3a3a3a]",
-          event.coverUrl ? "" : coverClass,
-        )}
-        style={event.coverUrl ? undefined : coverStyle}
-      >
-        {coverInner}
-        <div className="absolute left-4 top-4 flex gap-2">
-          <Badge variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}>
-            <TypeIcon className="h-3 w-3" />
-            {event.type}
-          </Badge>
-        </div>
-      </div>
-      {galleryStrip}
-    </div>
-  );
-
-  const hostsBlock = (
+  const hostsBlock = !hosts.length ? null : (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-y border-border py-5">
       {hosts.map((h, i) => (
         <div key={h} className="flex items-center gap-3">
@@ -2535,7 +2707,7 @@ export function EventPublicPageContent({ event, design, live = false }) {
     <div className="relative mb-10 overflow-hidden rounded-2xl border border-border">
       <div
         className={cn(
-          "relative flex aspect-[21/9] items-center justify-center overflow-hidden text-[#3a3a3a]",
+          "relative flex aspect-[21/9] items-center justify-center overflow-hidden text-text-tertiary",
           event.coverUrl ? "" : coverClass,
         )}
         style={event.coverUrl ? undefined : coverStyle}
@@ -2554,6 +2726,8 @@ export function EventPublicPageContent({ event, design, live = false }) {
               </Badge>
             ))}
           </div>
+          {/* Deliberately white, not themed — this sits on the cover photo over
+              bannerOverlay's dark scrim, which a banner hero always paints. */}
           <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             {event.name}
           </h1>
@@ -2573,6 +2747,276 @@ export function EventPublicPageContent({ event, design, live = false }) {
     </div>
   );
 
+  // --- Sidebar cards ---------------------------------------------------------
+  // The built-in registration column, keyed by block type. The sidebar renders
+  // whatever `sidebarBlocks` lists, so these can be reordered or hidden and
+  // interleaved with the organizer's own content blocks.
+  const sidebarCards = {
+    register: (
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
+        <div className="flex items-center gap-3 border-b border-border p-4">
+          <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg border border-border bg-surface-card">
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              {MONTHS[m - 1]}
+            </span>
+            <span className="text-lg font-bold leading-none text-foreground">
+              {d}
+            </span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {formatDate(event.date)}
+            </p>
+            <p className="text-xs text-text-secondary">
+              {event.time} · {y}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2 p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+            Select ticket
+          </p>
+          {accessCodesEnabled(event) && gatedIds.size > 0 ? (
+            <div className="flex items-center gap-2 pb-1">
+              <Input
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyAccessCode();
+                  }
+                }}
+                placeholder="Have an access code?"
+                className="h-9"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={codeBusy || !codeInput.trim()}
+                onClick={applyAccessCode}
+                className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              >
+                {codeBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <KeyRound className="h-4 w-4" /> Unlock
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : null}
+          {(() => {
+            const renderOption = (t) => {
+              const i = tickets.indexOf(t);
+              const isActive = selected === i;
+              return (
+                <button
+                  key={t.id || t.name}
+                  type="button"
+                  onClick={() => setSelected(i)}
+                  style={isActive ? { borderColor: accent.color } : undefined}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
+                    isActive
+                      ? "bg-surface-card"
+                      : "border-border bg-transparent hover:bg-surface-card",
+                  )}
+                >
+                  <span
+                    style={
+                      isActive
+                        ? { backgroundColor: accent.color, borderColor: accent.color }
+                        : undefined
+                    }
+                    className={cn(
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                      isActive ? "" : "border-border-strong",
+                    )}
+                  >
+                    {isActive ? (
+                      <Check className="h-3 w-3" style={{ color: accent.text }} />
+                    ) : null}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground">
+                      {t.name}
+                    </span>
+                    {t.note ? (
+                      <span className="block text-xs text-text-secondary">
+                        {t.note}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                    {t.price === 0 ? "Free" : `$${t.price}`}
+                  </span>
+                </button>
+              );
+            };
+            if (!ticketGroups) {
+              return <div className="space-y-2">{tickets.map(renderOption)}</div>;
+            }
+            return (
+              <div className="space-y-4">
+                {ticketGroups.sections.map((g) => (
+                  <div key={g.tierId} className="space-y-2">
+                    <p className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                      <span
+                        className={cn("h-2 w-2 rounded-full", tierAccentDot(g.color))}
+                      />
+                      {g.name}
+                    </p>
+                    {g.items.map(renderOption)}
+                  </div>
+                ))}
+                {ticketGroups.ungrouped.length ? (
+                  <div className="space-y-2">
+                    {ticketGroups.ungrouped.map(renderOption)}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()}
+        </div>
+
+        <div className="space-y-3 border-t border-border p-4">
+          <Button
+            style={soldOut ? undefined : primaryBtnStyle}
+            disabled={soldOut}
+            className="w-full hover:opacity-90 disabled:opacity-60"
+            onClick={() => setCheckoutOpen(true)}
+          >
+            {soldOut ? (
+              "Sold out"
+            ) : (
+              <>
+                {tickets[selected].price === 0 ? "Register" : "Get tickets"}
+                <ChevronRight className="h-4 w-4" />
+              </>
+            )}
+          </Button>
+          {showRemaining ? (
+            <p className="flex items-center justify-center gap-1.5 text-xs text-text-secondary">
+              <Ticket className="h-3.5 w-3.5" />
+              {soldOut
+                ? "Sold out"
+                : Number.isFinite(remaining)
+                  ? `${remaining.toLocaleString()} tickets remaining`
+                  : "Tickets available"}
+            </p>
+          ) : null}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={() => toast.success("Added to calendar.")}
+            >
+              <CalendarCheck className="h-4 w-4" /> Add
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={() => toast.success("Share link copied.")}
+            >
+              <Share2 className="h-4 w-4" /> Share
+            </Button>
+          </div>
+        </div>
+      </div>
+    ),
+    goodtoknow: (
+      <div className="rounded-2xl border border-border bg-surface-subtle p-4">
+        <p className="mb-3 text-sm font-semibold text-foreground">
+          Good to know
+        </p>
+        <div className="space-y-3 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-text-secondary">
+              <TypeIcon className="h-4 w-4" /> Format
+            </span>
+            <span className="text-muted-foreground">{event.type}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-text-secondary">
+              <Gauge className="h-4 w-4" /> Capacity
+            </span>
+            <span className="text-muted-foreground">
+              {event.capacity.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-text-secondary">
+              <Languages className="h-4 w-4" /> Language
+            </span>
+            <span className="text-muted-foreground">{language}</span>
+          </div>
+        </div>
+      </div>
+    ),
+    atregistration: regQuestions.length ? (
+      <div className="rounded-2xl border border-border bg-surface-subtle p-4">
+        <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+          <ClipboardList className="h-4 w-4 text-muted-foreground" /> At registration
+        </p>
+        <ul className="space-y-2">
+          {regQuestions.map((q) => (
+            <li
+              key={q}
+              className="flex items-center gap-2 text-sm text-muted-foreground"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-text-tertiary" />
+              {q}
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null,
+    guidelines: guidelines.length ? (
+      <div className="rounded-2xl border border-border bg-surface-subtle p-4">
+        <p className="mb-4 flex items-center gap-2 border-b border-border pb-3 text-sm font-semibold text-foreground">
+          <Accessibility className="h-4 w-4 text-muted-foreground" />
+          Dietary & Accessibility
+        </p>
+        <div className="flex flex-col gap-4">
+          {guidelines.map((g, i) => {
+            const cat = GUIDELINE_CATEGORY_MAP[g.category];
+            return (
+              <div key={g.id || i} className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
+                    {g.label}
+                  </span>
+                  {cat ? (
+                    <Badge variant={cat.variant} className="shrink-0">
+                      {cat.label}
+                    </Badge>
+                  ) : null}
+                </div>
+                {g.detail ? (
+                  <p className="text-sm text-text-secondary">
+                    {g.detail}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    ) : null,
+  };
+
+  // Pages saved before the sidebar became block-driven have no `sidebarBlocks`
+  // — fall back to the default order so they render exactly as they did.
+  const sidebarBlocks = (
+    effective.sidebarBlocks || defaultSidebarBlocks()
+  ).filter((b) => b.visible);
+
   return (
     <div
       className={cn(
@@ -2581,10 +3025,16 @@ export function EventPublicPageContent({ event, design, live = false }) {
       )}
       style={wrapperStyle}
     >
+      {/* Imported webfonts. `precedence` is what makes React hoist and dedupe a
+          stylesheet into <head> rather than leaving it in the body. */}
+      {webfonts.map((w) => (
+        <link key={w.css} rel="stylesheet" href={w.css} precedence="default" />
+      ))}
       <div
         className="mx-auto px-4 py-12 sm:px-6 lg:px-8"
         style={{ maxWidth: contentWidth }}
       >
+        {brandBar}
         {hero === "banner" ? bannerBlock : null}
         <div
           className={cn(
@@ -2622,272 +3072,24 @@ export function EventPublicPageContent({ event, design, live = false }) {
             ))}
           </div>
 
-          {/* Registration sidebar */}
+          {/* Registration sidebar — ordered by the page design's sidebar blocks */}
           <div
             className={cn(
               "space-y-4 lg:sticky lg:top-20 lg:self-start",
               sidebarLeft && "lg:order-first",
             )}
           >
-            <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
-              <div className="flex items-center gap-3 border-b border-border p-4">
-                <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg border border-border bg-surface-card">
-                  <span className="text-[10px] font-semibold text-muted-foreground">
-                    {MONTHS[m - 1]}
-                  </span>
-                  <span className="text-lg font-bold leading-none text-white">
-                    {d}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {formatDate(event.date)}
-                  </p>
-                  <p className="text-xs text-text-secondary">
-                    {event.time} · {y}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
-                  Select ticket
-                </p>
-                {accessCodesEnabled(event) && gatedIds.size > 0 ? (
-                  <div className="flex items-center gap-2 pb-1">
-                    <Input
-                      value={codeInput}
-                      onChange={(e) => setCodeInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          applyAccessCode();
-                        }
-                      }}
-                      placeholder="Have an access code?"
-                      className="h-9"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={codeBusy || !codeInput.trim()}
-                      onClick={applyAccessCode}
-                      className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                    >
-                      {codeBusy ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <KeyRound className="h-4 w-4" /> Unlock
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                ) : null}
-                {(() => {
-                  const renderOption = (t) => {
-                    const i = tickets.indexOf(t);
-                    const isActive = selected === i;
-                    return (
-                      <button
-                        key={t.id || t.name}
-                        type="button"
-                        onClick={() => setSelected(i)}
-                        style={isActive ? { borderColor: accent.color } : undefined}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
-                          isActive
-                            ? "bg-surface-card"
-                            : "border-border bg-transparent hover:bg-surface-card",
-                        )}
-                      >
-                        <span
-                          style={
-                            isActive
-                              ? { backgroundColor: accent.color, borderColor: accent.color }
-                              : undefined
-                          }
-                          className={cn(
-                            "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                            isActive ? "" : "border-[#444]",
-                          )}
-                        >
-                          {isActive ? (
-                            <Check className="h-3 w-3" style={{ color: accent.text }} />
-                          ) : null}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-medium text-foreground">
-                            {t.name}
-                          </span>
-                          {t.note ? (
-                            <span className="block text-xs text-text-secondary">
-                              {t.note}
-                            </span>
-                          ) : null}
-                        </span>
-                        <span className="shrink-0 text-sm font-semibold tabular-nums text-white">
-                          {t.price === 0 ? "Free" : `$${t.price}`}
-                        </span>
-                      </button>
-                    );
-                  };
-                  if (!ticketGroups) {
-                    return <div className="space-y-2">{tickets.map(renderOption)}</div>;
-                  }
-                  return (
-                    <div className="space-y-4">
-                      {ticketGroups.sections.map((g) => (
-                        <div key={g.tierId} className="space-y-2">
-                          <p className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                            <span
-                              className={cn("h-2 w-2 rounded-full", tierAccentDot(g.color))}
-                            />
-                            {g.name}
-                          </p>
-                          {g.items.map(renderOption)}
-                        </div>
-                      ))}
-                      {ticketGroups.ungrouped.length ? (
-                        <div className="space-y-2">
-                          {ticketGroups.ungrouped.map(renderOption)}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              <div className="space-y-3 border-t border-border p-4">
-                <Button
-                  style={soldOut ? undefined : primaryBtnStyle}
-                  disabled={soldOut}
-                  className="w-full hover:opacity-90 disabled:opacity-60"
-                  onClick={() => setCheckoutOpen(true)}
-                >
-                  {soldOut ? (
-                    "Sold out"
-                  ) : (
-                    <>
-                      {tickets[selected].price === 0 ? "Register" : "Get tickets"}
-                      <ChevronRight className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-                {showRemaining ? (
-                  <p className="flex items-center justify-center gap-1.5 text-xs text-text-secondary">
-                    <Ticket className="h-3.5 w-3.5" />
-                    {soldOut
-                      ? "Sold out"
-                      : Number.isFinite(remaining)
-                        ? `${remaining.toLocaleString()} tickets remaining`
-                        : "Tickets available"}
-                  </p>
-                ) : null}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                    onClick={() => toast.success("Added to calendar.")}
-                  >
-                    <CalendarCheck className="h-4 w-4" /> Add
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                    onClick={() => toast.success("Share link copied.")}
-                  >
-                    <Share2 className="h-4 w-4" /> Share
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Good to know */}
-            <div className="rounded-2xl border border-border bg-surface-subtle p-4">
-              <p className="mb-3 text-sm font-semibold text-foreground">
-                Good to know
-              </p>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-text-secondary">
-                    <TypeIcon className="h-4 w-4" /> Format
-                  </span>
-                  <span className="text-muted-foreground">{event.type}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-text-secondary">
-                    <Gauge className="h-4 w-4" /> Capacity
-                  </span>
-                  <span className="text-muted-foreground">
-                    {event.capacity.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-text-secondary">
-                    <Languages className="h-4 w-4" /> Language
-                  </span>
-                  <span className="text-muted-foreground">{language}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* What you'll be asked */}
-            <div className="rounded-2xl border border-border bg-surface-subtle p-4">
-              <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-                <ClipboardList className="h-4 w-4 text-muted-foreground" /> At registration
-              </p>
-              <ul className="space-y-2">
-                {regQuestions.map((q) => (
-                  <li
-                    key={q}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#525252]" />
-                    {q}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Dietary & Accessibility guidelines (venue + event, merged). */}
-            {guidelines.length ? (
-              <div className="rounded-2xl border border-border bg-surface-subtle p-4">
-                <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Accessibility className="h-4 w-4 text-muted-foreground" />
-                  Dietary & Accessibility
-                </p>
-                <div className="space-y-3">
-                  {guidelines.map((g, i) => {
-                    const cat = GUIDELINE_CATEGORY_MAP[g.category];
-                    return (
-                      <div key={g.id || i} className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          {cat ? (
-                            <Badge variant={cat.variant}>{cat.label}</Badge>
-                          ) : null}
-                          <span className="text-sm font-medium text-foreground">
-                            {g.label}
-                          </span>
-                        </div>
-                        {g.detail ? (
-                          <p className="text-sm text-text-secondary">
-                            {g.detail}
-                          </p>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
+            {sidebarBlocks.map((b) =>
+              b.type in sidebarCards ? (
+                <React.Fragment key={b.id}>{sidebarCards[b.type]}</React.Fragment>
+              ) : (
+                <PageBlock key={b.id} block={b} event={event} accent={accent} />
+              ),
+            )}
           </div>
         </div>
 
-        <PageFooter footer={effective.footer} accent={accent} />
+        <PageFooter footer={effective.footer} accent={accent} logo={footerLogo} />
       </div>
 
       <TicketCheckout

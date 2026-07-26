@@ -46,6 +46,8 @@ import {
   MessagesSquare,
   Mic,
   Handshake,
+  Sparkles,
+  HelpCircle,
 } from "lucide-react";
 
 import {
@@ -71,6 +73,7 @@ import {
   HybridModeSection,
 } from "./distribution";
 import { RecurringEventsSection } from "./recurring_clone";
+import { HighlightsSection, FaqSection } from "./event_content";
 import { ScheduleSection } from "./schedule";
 import { GuestsSection } from "./guests";
 import { OfferingsSection } from "./offerings";
@@ -81,6 +84,7 @@ import { EventEarlybirdSection } from "./event_earlybird";
 import { EventDonationSection } from "./event_donation";
 import { EventAccessCodesSection } from "./event_access_codes";
 import { EventReservedSection } from "./event_reserved";
+import { EventSeatingSection } from "./event_seating";
 import { EventGroupSection } from "./event_group";
 import { EventBundlesSection } from "./event_bundles";
 import { PaymentsSection } from "./payments";
@@ -165,10 +169,24 @@ export const NAV_GROUPS = [
         desc: "Tell attendees what to expect. Format with headings, lists, and links.",
       },
       {
+        key: "highlights",
+        label: "What to Expect",
+        icon: Sparkles,
+        desc: "The handful of things attendees get out of this event, shown as a highlights card on your page.",
+        ownHeader: true,
+      },
+      {
         key: "schedule",
         label: "Schedule",
         icon: Clock,
         desc: "Lay out your event's running order — each item with a title, description, and image.",
+        ownHeader: true,
+      },
+      {
+        key: "faq",
+        label: "FAQ",
+        icon: HelpCircle,
+        desc: "Answer the questions buyers ask before they commit — shown as an expandable list on your page.",
         ownHeader: true,
       },
       {
@@ -229,6 +247,13 @@ export const NAV_GROUPS = [
         label: "Tickets",
         icon: Ticket,
         desc: "The tickets buyers can purchase for this event.",
+        ownHeader: true,
+      },
+      {
+        key: "seating",
+        label: "Seating",
+        icon: Armchair,
+        desc: "Sell assigned seats from one of the venue's seat maps — sections, rows and chairs.",
         ownHeader: true,
       },
       {
@@ -498,7 +523,9 @@ export const SECTIONS = {
   basics: BasicsSection,
   cover: CoverMediaSection,
   description: RichDescriptionsSection,
+  highlights: HighlightsSection,
   schedule: ScheduleSection,
+  faq: FaqSection,
   guests: GuestsSection,
   speakers: EventSpeakersSection,
   sponsors: EventSponsorsSection,
@@ -514,6 +541,7 @@ export const SECTIONS = {
   donation: EventDonationSection,
   accesscode: EventAccessCodesSection,
   reserved: EventReservedSection,
+  seating: EventSeatingSection,
   group: EventGroupSection,
   bundles: EventBundlesSection,
   payments: PaymentsSection,

@@ -2,19 +2,31 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Printer, Loader2, Download, IdCard } from "lucide-react";
+import {
+  ChevronDown,
+  Download,
+  FileArchive,
+  IdCard,
+  Image as ImageIcon,
+  Loader2,
+  Printer,
+} from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
   EmptyState,
   ScreenHeader,
   SectionCard,
-  SettingsList,
-  SettingRow,
-  Field,
+  StatsBar,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -22,72 +34,80 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
-import { listRegistrationsByEvent } from "@/lib/supabase/registrations";
+import { getCheckinSettings, updateCheckinSettings } from "@/lib/supabase/checkin";
+import { listPassAttendees, tiersOf } from "@/lib/passes/attendees";
+import { resolveTemplate } from "@/lib/passes/render";
+import { sheetGrid } from "@/lib/passes/stock";
 import { downloadCsv } from "@/components/internal/screens/registrations/csv";
-import { BADGE_TEMPLATES, defaultBadge, formatDate } from "./constants";
 
-const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUpperCase();
-const isUpcoming = (e) => !e.date || new Date(e.date) >= new Date(new Date().toDateString());
-const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+import { formatDate, newPassTemplate, withDefaults } from "./constants";
+import { TemplateList } from "./badge/template_list";
+import { DesignForm } from "./badge/design_form";
+import { PassPreview } from "./badge/preview";
+import { printPasses } from "./badge/print";
+import { exportPassPng, exportPassesZip } from "./badge/export";
 
-// One badge as inline-styled HTML (used for both the live preview and the print
-// sheet, so what you see is what prints).
-function badgeHtml(design, ev, att) {
-  const accent = design.accent || "#6366f1";
-  const rows = [];
-  if (design.fields.name) rows.push(`<div style="font-size:20px;font-weight:700;color:#111">${esc(att.name || "Attendee")}</div>`);
-  if (design.fields.company) rows.push(`<div style="font-size:13px;color:#555;margin-top:2px">${esc(att.company || ev.name)}</div>`);
-  if (design.fields.ticket) rows.push(`<div style="font-family:monospace;font-size:12px;color:#888;margin-top:6px">${esc(ticketCode(att.id))}</div>`);
-  const qr = design.fields.qr
-    ? `<div style="width:56px;height:56px;border-radius:6px;background:#111;margin-top:10px"></div>`
-    : "";
-  return `
-    <div style="width:240px;height:150px;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;background:#fff;font-family:system-ui,sans-serif">
-      <div style="height:8px;background:${accent}"></div>
-      <div style="padding:14px;flex:1;display:flex;flex-direction:column;justify-content:center">
-        ${design.showLogo ? `<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:${accent};font-weight:700;margin-bottom:8px">${esc(ev.name)}</div>` : ""}
-        ${rows.join("")}
-        ${qr}
-      </div>
-    </div>`;
-}
+const isUpcoming = (e) =>
+  !e.date || new Date(e.date) >= new Date(new Date().toDateString());
 
-function BadgePreview({ design, ev, att }) {
-  return (
-    <div
-      className="mx-auto"
-      dangerouslySetInnerHTML={{ __html: badgeHtml(design, ev, att) }}
-    />
-  );
-}
+// Stands in for a real attendee so the designer is usable before anyone has
+// registered. The payload is deliberately not a real id.
+const SAMPLE = {
+  key: "sample",
+  name: "Alex Morgan",
+  company: "Northwind Studio",
+  tier: "",
+  code: "A1B2C3D4",
+  payload: "sample-pass-preview",
+  seat: 1,
+  of: 1,
+};
 
 export function BadgePrintingScreen() {
   const { projectId } = useProject();
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState("");
   const [attendees, setAttendees] = useState([]);
+  const [previewKey, setPreviewKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingList, setLoadingList] = useState(false);
-  const [design, setDesign] = useState(() => ({
-    template: "classic",
-    accent: "#6366f1",
-    showLogo: true,
-    fields: { name: true, company: true, ticket: true, qr: true },
-    ...defaultBadge(),
-  }));
+  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState("");
 
+  const [slice, setSlice] = useState(() => withDefaults({}, "badge"));
+  const [saved, setSaved] = useState(() => withDefaults({}, "badge"));
+  const [qrSettings, setQrSettings] = useState(() => withDefaults({}, "qrTickets"));
+  const [selectedId, setSelectedId] = useState("");
+
+  // Events + the project's saved designs load together; both are needed before
+  // anything can render.
   useEffect(() => {
     let alive = true;
-    listEvents(projectId).then((rows) => {
-      if (!alive) return;
-      const upcoming = (rows ?? []).filter(isUpcoming);
-      setEvents(upcoming);
-      setEventId((cur) => cur || upcoming[0]?.id || "");
-      setLoading(false);
-    });
+    Promise.all([listEvents(projectId), getCheckinSettings(projectId)]).then(
+      ([rows, settings]) => {
+        if (!alive) return;
+        const upcoming = (rows ?? []).filter(isUpcoming);
+        setEvents(upcoming);
+        setEventId((cur) => cur || upcoming[0]?.id || "");
+
+        const config = settings?.config || {};
+        const merged = withDefaults(config, "badge");
+        // A project with no saved designs starts on one seeded from the legacy
+        // preset. It's seeded into `saved` too, so an untouched screen is clean.
+        const templates =
+          Array.isArray(merged.templates) && merged.templates.length
+            ? merged.templates
+            : [newPassTemplate(merged.defaultTemplate || "classic", { isDefault: true })];
+        const next = { ...merged, templates };
+        setSlice(next);
+        setSaved(next);
+        setSelectedId(templates.find((t) => t.isDefault)?.id || templates[0].id);
+        setQrSettings(withDefaults(config, "qrTickets"));
+        setLoading(false);
+      },
+    );
     return () => {
       alive = false;
     };
@@ -98,9 +118,10 @@ export function BadgePrintingScreen() {
     let alive = true;
     const load = async () => {
       setLoadingList(true);
-      const rows = await listRegistrationsByEvent(eventId);
+      const rows = await listPassAttendees(eventId);
       if (!alive) return;
       setAttendees(rows ?? []);
+      setPreviewKey(rows?.[0]?.key || "");
       setLoadingList(false);
     };
     load();
@@ -109,63 +130,152 @@ export function BadgePrintingScreen() {
     };
   }, [eventId]);
 
-  const ev = useMemo(() => events.find((e) => e.id === eventId) || null, [events, eventId]);
-  const sample = attendees[0] || { id: "sample-0000", name: "Alex Morgan", company: "" };
-  const setField = (key, v) => setDesign((d) => ({ ...d, fields: { ...d.fields, [key]: v } }));
+  const templates = useMemo(() => slice.templates || [], [slice.templates]);
+  const event = useMemo(() => events.find((e) => e.id === eventId) || null, [events, eventId]);
+  const selected = useMemo(
+    () => templates.find((t) => t.id === selectedId) || templates[0] || null,
+    [templates, selectedId],
+  );
+  const availableTiers = useMemo(() => tiersOf(attendees), [attendees]);
+  const previewAttendee = useMemo(
+    () => attendees.find((a) => a.key === previewKey) || attendees[0] || SAMPLE,
+    [attendees, previewKey],
+  );
 
-  const applyTemplate = (t) => {
-    const presets = {
-      classic: { showLogo: true, fields: { name: true, company: true, ticket: true, qr: true } },
-      compact: { showLogo: false, fields: { name: true, company: false, ticket: true, qr: false } },
-      qr: { showLogo: true, fields: { name: true, company: false, ticket: true, qr: true } },
-      vip: { showLogo: true, fields: { name: true, company: true, ticket: false, qr: true } },
-    };
-    setDesign((d) => ({ ...d, template: t, ...(presets[t] || {}) }));
+  // How many passes each template is responsible for — shown on the rail so a
+  // tier binding that matches nobody is obvious.
+  const counts = useMemo(() => {
+    const out = {};
+    for (const attendee of attendees) {
+      const template = resolveTemplate(templates, attendee.tier);
+      if (template) out[template.id] = (out[template.id] || 0) + 1;
+    }
+    return out;
+  }, [attendees, templates]);
+
+  const dirty = useMemo(() => JSON.stringify(slice) !== JSON.stringify(saved), [slice, saved]);
+
+  const setTemplates = (next) => setSlice((s) => ({ ...s, templates: next }));
+
+  const updateTemplate = (patch) =>
+    setTemplates(templates.map((t) => (t.id === selected?.id ? { ...t, ...patch } : t)));
+
+  const addTemplate = (preset) => {
+    const created = newPassTemplate(preset, { isDefault: templates.length === 0 });
+    setTemplates([...templates, created]);
+    setSelectedId(created.id);
   };
 
-  const printSheet = () => {
-    if (!ev || !attendees.length) {
-      toast.error("No attendees to print for this event.");
+  const duplicateTemplate = (id) => {
+    const source = templates.find((t) => t.id === id);
+    if (!source) return;
+    const copy = { ...source, id: crypto.randomUUID(), name: `${source.name} copy`, isDefault: false };
+    setTemplates([...templates, copy]);
+    setSelectedId(copy.id);
+  };
+
+  const setDefaultTemplate = (id) =>
+    setTemplates(templates.map((t) => ({ ...t, isDefault: t.id === id })));
+
+  const deleteTemplate = (id) => {
+    if (templates.length === 1) return;
+    const next = templates.filter((t) => t.id !== id);
+    // Something must stay the fallback for unmatched tiers.
+    if (!next.some((t) => t.isDefault)) next[0] = { ...next[0], isDefault: true };
+    setTemplates(next);
+    if (selectedId === id) setSelectedId(next[0].id);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const previous = saved;
+    setSaved(slice);
+    const res = await updateCheckinSettings(projectId, { badge: slice });
+    setSaving(false);
+    if (res === false) {
+      setSaved(previous);
+      toast.error("Couldn't save your designs.");
       return;
     }
-    const win = window.open("", "_blank");
-    if (!win) {
-      toast.error("Allow pop-ups to open the print sheet.");
+    toast.success("Designs saved.");
+  };
+
+  const handlePrint = () => {
+    if (!event || !attendees.length) {
+      toast.error("No passes to print for this event.");
       return;
     }
-    const badges = attendees.map((a) => badgeHtml(design, ev, a)).join("");
-    win.document.write(`<!doctype html><html><head><title>${esc(ev.name)} — badges</title>
-      <style>@page{margin:12mm}body{margin:0}.grid{display:flex;flex-wrap:wrap;gap:12px;padding:12px}</style>
-      </head><body><div class="grid">${badges}</div>
-      <script>window.onload=function(){window.print()}</script></body></html>`);
-    win.document.close();
-    toast.success(`Prepared ${attendees.length} badges.`);
+    const error = printPasses({ templates, event, attendees, qrSettings });
+    if (error) toast.error(error);
+    else toast.success(`Prepared ${attendees.length} passes.`);
+  };
+
+  const handlePng = async () => {
+    if (!selected) return;
+    setBusy("png");
+    const warning = await exportPassPng({
+      template: selected,
+      event: event || {},
+      attendee: previewAttendee,
+      qrSettings,
+    });
+    setBusy("");
+    if (warning) toast.error(warning);
+    else toast.success("PNG downloaded.");
+  };
+
+  const handleZip = async () => {
+    if (!attendees.length) {
+      toast.error("No passes to export.");
+      return;
+    }
+    setBusy("zip");
+    const warning = await exportPassesZip({
+      templates,
+      event: event || {},
+      attendees,
+      qrSettings,
+      onProgress: (done, total) => setBusy(`zip:${done}/${total}`),
+    });
+    setBusy("");
+    if (warning) toast.error(warning);
+    else toast.success(`${attendees.length} PNGs zipped.`);
   };
 
   const exportCsv = () => {
     if (!attendees.length) {
-      toast.error("No attendees to export.");
+      toast.error("No passes to export.");
       return;
     }
     downloadCsv(
       [
         { header: "name", value: (a) => a.name },
         { header: "company", value: (a) => a.company || "" },
-        { header: "ticket_code", value: (a) => ticketCode(a.id) },
-        { header: "email", value: (a) => a.email },
+        { header: "tier", value: (a) => a.tier || "" },
+        { header: "seat", value: (a) => a.seatLabel || "" },
+        { header: "ticket_code", value: (a) => a.code },
+        { header: "email", value: (a) => a.email || "" },
+        { header: "source", value: (a) => a.source },
       ],
       attendees,
-      "badge-data.csv",
+      "pass-data.csv",
     );
-    toast.success("Badge data exported.");
+    toast.success("Pass data exported.");
   };
+
+  const header = (
+    <ScreenHeader
+      title="Badge Printing"
+      description="Design event passes, bind them to ticket tiers, and print or export them for every attendee."
+    />
+  );
 
   if (loading) {
     return (
       <MainScreenWrapper>
-        <ScreenHeader title="Badge Printing" description="Design and print attendee badges for your upcoming events." />
+        {header}
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading events…
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading designs…
         </div>
       </MainScreenWrapper>
     );
@@ -174,37 +284,69 @@ export function BadgePrintingScreen() {
   if (!events.length) {
     return (
       <MainScreenWrapper>
-        <ScreenHeader title="Badge Printing" description="Design and print attendee badges for your upcoming events." />
+        {header}
         <div className="rounded-xl border border-border bg-surface-subtle">
           <EmptyState
             icon={IdCard}
             title="No upcoming events"
-            description="Create an upcoming event to design and print its attendee badges."
+            description="Create an upcoming event to design and print its attendee passes."
           />
         </div>
       </MainScreenWrapper>
     );
   }
 
+  const grid = selected ? sheetGrid(selected.sheet, selected.stock) : null;
+  const zipping = busy.startsWith("zip");
+
   return (
     <MainScreenWrapper>
       <ScreenHeader
         title="Badge Printing"
-        description="Pick an upcoming event, choose a template, tweak the layout, and print badges for every attendee."
+        description="Design event passes, bind them to ticket tiers, and print or export them for every attendee."
         actions={
           <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={Boolean(busy)}
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                >
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {zipping && busy.includes("/") ? busy.split(":")[1] : "Export"}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 border-border bg-surface-subtle shadow-xl">
+                <DropdownMenuItem onClick={handlePng}>
+                  <ImageIcon className="h-4 w-4" /> PNG of this pass
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleZip}>
+                  <FileArchive className="h-4 w-4" /> ZIP of all passes
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-surface-strong" />
+                <DropdownMenuItem onClick={exportCsv}>
+                  <Download className="h-4 w-4" /> Pass data (CSV)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               variant="outline"
               className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              onClick={exportCsv}
-            >
-              <Download className="h-4 w-4" /> Export data
-            </Button>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={printSheet}
+              onClick={handlePrint}
             >
               <Printer className="h-4 w-4" /> Print / PDF
+            </Button>
+
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={!dirty || saving}
+              onClick={save}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {saving ? "Saving…" : "Save changes"}
             </Button>
           </div>
         }
@@ -224,59 +366,96 @@ export function BadgePrintingScreen() {
           </SelectContent>
         </Select>
         <p className="text-sm text-text-secondary">
-          {ev ? formatDate(ev.date) : ""} ·{" "}
-          {loadingList ? "…" : `${attendees.length} attendee${attendees.length === 1 ? "" : "s"}`}
+          {event ? formatDate(event.date) : ""}
+          {" · "}
+          {loadingList
+            ? "loading passes…"
+            : `${attendees.length} pass${attendees.length === 1 ? "" : "es"}`}
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <div className="space-y-6 lg:col-span-3">
-          <SectionCard title="Template" description="Start from a preset, then fine-tune below.">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {BADGE_TEMPLATES.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => applyTemplate(t.value)}
-                  className={cn(
-                    "rounded-xl border p-3 text-left transition-colors",
-                    design.template === t.value
-                      ? "border-primary bg-primary/10"
-                      : "border-border bg-surface-card hover:border-border-strong",
-                  )}
-                >
-                  <p className="text-sm font-medium text-foreground">{t.label}</p>
-                  <p className="mt-0.5 text-xs text-text-secondary">{t.desc}</p>
-                </button>
-              ))}
-            </div>
-          </SectionCard>
+      <StatsBar
+        className="mb-6"
+        stats={[
+          { label: "Passes", value: String(attendees.length) },
+          { label: "Templates", value: String(templates.length) },
+          { label: "Per page", value: grid ? String(grid.perPage) : "—" },
+          { label: "Tiers", value: String(availableTiers.length) },
+        ]}
+      />
 
-          <SectionCard title="Layout" description="What shows on each badge.">
-            <SettingsList>
-              <SettingRow title="Event name header" checked={design.showLogo} onCheckedChange={(v) => setDesign((d) => ({ ...d, showLogo: v }))} />
-              <SettingRow title="Attendee name" checked={design.fields.name} onCheckedChange={(v) => setField("name", v)} />
-              <SettingRow title="Company / role" checked={design.fields.company} onCheckedChange={(v) => setField("company", v)} />
-              <SettingRow title="Ticket code" checked={design.fields.ticket} onCheckedChange={(v) => setField("ticket", v)} />
-              <SettingRow title="QR code" checked={design.fields.qr} onCheckedChange={(v) => setField("qr", v)} />
-            </SettingsList>
-            <div className="mt-4 max-w-xs">
-              <Field label="Accent color" hint="The band across the top of each badge.">
-                <Input value={design.accent} onChange={(e) => setDesign((d) => ({ ...d, accent: e.target.value }))} placeholder="#6366f1" />
-              </Field>
-            </div>
-          </SectionCard>
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-3">
+          <TemplateList
+            templates={templates}
+            selectedId={selected?.id || ""}
+            counts={counts}
+            onSelect={setSelectedId}
+            onAdd={addTemplate}
+            onDuplicate={duplicateTemplate}
+            onSetDefault={setDefaultTemplate}
+            onDelete={deleteTemplate}
+          />
         </div>
 
-        <div className="lg:col-span-2">
-          <SectionCard title="Preview">
-            <div className="flex flex-col items-center gap-3 py-4">
-              {ev ? <BadgePreview design={design} ev={ev} att={sample} /> : null}
-              <p className="text-center text-xs text-text-secondary">
-                Preview of {sample.name}. Print produces one per attendee.
-              </p>
-            </div>
-          </SectionCard>
+        <div className="lg:col-span-5">
+          {selected ? (
+            <DesignForm
+              template={selected}
+              availableTiers={availableTiers}
+              qrSettings={qrSettings}
+              onChange={updateTemplate}
+            />
+          ) : null}
+        </div>
+
+        <div className="lg:col-span-4">
+          <div className="lg:sticky lg:top-6">
+            <SectionCard title="Preview" description="Exactly what prints and exports.">
+              {selected ? (
+                <PassPreview
+                  template={selected}
+                  event={event || {}}
+                  attendee={previewAttendee}
+                  qrSettings={qrSettings}
+                />
+              ) : null}
+
+              <div className="mt-4">
+                <Select
+                  value={previewKey || SAMPLE.key}
+                  onValueChange={setPreviewKey}
+                  disabled={!attendees.length}
+                >
+                  <SelectTrigger className="h-9 bg-surface-card">
+                    <SelectValue placeholder="Sample attendee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {attendees.length ? (
+                      attendees.slice(0, 100).map((a) => (
+                        <SelectItem key={a.key} value={a.key}>
+                          {a.name}
+                          {a.tier ? ` · ${a.tier}` : ""}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value={SAMPLE.key}>Sample attendee</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {attendees.length > 100 ? (
+                  <p className="mt-2 text-xs text-text-tertiary">
+                    Showing the first 100 of {attendees.length} for preview; all of them print.
+                  </p>
+                ) : null}
+                {!attendees.length && !loadingList ? (
+                  <p className="mt-2 text-xs text-text-tertiary">
+                    Nobody has registered yet — this is a sample pass. Its QR is not a real code.
+                  </p>
+                ) : null}
+              </div>
+            </SectionCard>
+          </div>
         </div>
       </div>
     </MainScreenWrapper>

@@ -54,6 +54,7 @@ import {
   History,
   Contact,
   Heart,
+  HandHeart,
   Wallet,
   Package,
   ScanLine,
@@ -96,6 +97,8 @@ import {
   Link2,
   ArrowLeftRight,
   Receipt,
+  Boxes,
+  PackageCheck,
 } from "lucide-react";
 
 // Sidebar navigation for Geiger Events.
@@ -150,15 +153,15 @@ export const workspaceNav = [
   },
 
   {
-    // Venue/supplier sourcing (à la Cvent Supplier & Venue Solutions). Only the
-    // features Geiger doesn't already cover: Smart Custom Proposals, Instant Book
-    // and Advertising. 3D Virtual Tour → Event Design → 3D Walkthrough; Hotel RFP
-    // → Conference → Venue Sourcing; Passkey → Conference → Housing & Travel.
+    // Venue/supplier sourcing and its related physical-event logistics.
+    // 3D Virtual Tour lives under Event Design → 3D Walkthrough.
     title: "Sourcing",
     icon: FileSearch,
     subItems: [
       { title: "Smart Custom Proposals", icon: FileText },
       { title: "Instant Book", icon: Zap },
+      { title: "Venue Sourcing", icon: MapPin },
+      { title: "Housing & Travel", icon: Plane },
     ],
   },
 
@@ -248,6 +251,29 @@ export const workspaceNav = [
       { title: "Billing & Receipts", icon: Receipt },
       { title: "Disputes & Chargebacks", icon: Scale },
       { title: "Order Settings", icon: Settings },
+    ],
+  },
+
+  {
+    // Inventory — physical stock & merch (tees, swag, badges, print, F&B,
+    // supplies). A project-wide catalog with parent/variant rows; on-hand is
+    // derived from an append-only movement ledger, so it can't drift. Items are
+    // allocated to events with an issuance mode — internal, entitled by ticket,
+    // session, audience or every attendee, or backing a paid add-on — plus a
+    // collection rule (once / per day / per window / rolling). Staff hand items
+    // over at the /issue desk, which writes the redemption ledger; entitlements
+    // themselves are derived, never stored. Distinct from ticket inventory
+    // (per-tier qty in Tickets). Backed by events.inventory_* via
+    // lib/supabase/inventory.js and inventory_issuing.js.
+    title: "Inventory",
+    icon: Boxes,
+    subItems: [
+      { title: "Items", icon: Package },
+      { title: "Stock Movements", icon: History },
+      { title: "Event Allocations", icon: PackageCheck },
+      { title: "Item Issuing", icon: HandHeart },
+      { title: "Issuing Staff", icon: BadgeCheck },
+      { title: "Suppliers & Purchase Orders", icon: Building2 },
     ],
   },
 
@@ -429,16 +455,6 @@ export const workspaceNav = [
       { title: "Recordings & Replay", icon: Video },
       { title: "Captions & Transcription", icon: Captions },
       { title: "Mobile Event App", icon: Smartphone },
-    ],
-  },
-
-  {
-    // Logistics — physical-event operations kept out of the digital areas above.
-    title: "Logistics",
-    icon: Plane,
-    subItems: [
-      { title: "Venue Sourcing", icon: MapPin },
-      { title: "Housing & Travel", icon: Plane },
     ],
   },
 

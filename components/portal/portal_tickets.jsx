@@ -11,6 +11,8 @@ import {
   Loader2,
   User,
   Building2,
+  Package,
+  Check,
 } from "lucide-react";
 
 import { EmptyState, StatusPill, ScreenHeader } from "@/components/internal/shared/screen_kit";
@@ -146,6 +148,53 @@ export function RefundPanel({ ticket, onRequestRefund }) {
   );
 }
 
+// What this ticket entitles the buyer to pick up on the day. Derived live from
+// the organiser's allocation rules, so it stays correct if they change them.
+function CollectSection({ entitlements }) {
+  if (!entitlements?.length) return null;
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-surface-card p-4 text-sm">
+      <p className="font-medium text-foreground">Collect at the event</p>
+      <p className="text-xs text-text-secondary">
+        Show the QR above at the desk to pick these up.
+      </p>
+      <ul className="space-y-2 pt-1">
+        {entitlements.map((e) => {
+          const done = e.remaining <= 0;
+          return (
+            <li key={e.allocationId} className="flex items-center gap-3">
+              {e.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={e.imageUrl}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-lg border border-border object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-text-tertiary">
+                  <Package className="h-4 w-4" />
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-foreground">{e.name}</span>
+                <span className="block truncate text-xs text-text-secondary">
+                  {done
+                    ? "Collected"
+                    : `${e.collected} of ${e.entitled} collected`}
+                  {e.periodLabel ? ` · ${e.periodLabel}` : ""}
+                </span>
+              </span>
+              {done ? (
+                <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-label="Collected" />
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function TicketDialog({ ticket, onClose, onMessage, onRequestRefund }) {
   const loc = ticket ? locationText(ticket) : "";
   return (
@@ -191,6 +240,8 @@ function TicketDialog({ ticket, onClose, onMessage, onRequestRefund }) {
                 </Row>
               ) : null}
             </div>
+
+            <CollectSection entitlements={ticket.entitlements} />
 
             {/* Purchase breakdown */}
             <div className="space-y-2 rounded-xl border border-border bg-surface-card p-4 text-sm">

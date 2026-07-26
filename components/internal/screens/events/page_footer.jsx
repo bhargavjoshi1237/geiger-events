@@ -70,16 +70,27 @@ export function resolveFooter(footer) {
 // Public renderer
 // ---------------------------------------------------------------------------
 
-export function PageFooter({ footer, accent }) {
+// `logo` is the resolved brand mark ({ url, height, link }) from the page theme,
+// or null. Only the imported/themed pages pass one.
+export function PageFooter({ footer, accent, logo }) {
   const f = resolveFooter(footer);
   const links = f.links.filter((l) => l && l.label);
   const socials = f.socials.filter((s) => s && s.url);
   const hasCustom = links.length || socials.length || f.text;
 
-  if (!hasCustom && !f.showBranding) return null;
+  if (!hasCustom && !f.showBranding && !logo?.url) return null;
 
   return (
     <footer className="mt-14 flex flex-col items-center gap-4 border-t border-border pt-8 text-center">
+      {logo?.url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={logo.url}
+          alt=""
+          style={{ height: logo.height || 32 }}
+          className="w-auto max-w-[200px] object-contain opacity-80"
+        />
+      ) : null}
       {socials.length ? (
         <div className="flex flex-wrap items-center justify-center gap-2">
           {socials.map((s, i) => {
