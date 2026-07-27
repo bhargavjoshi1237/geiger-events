@@ -1,3 +1,7 @@
+-- Imported from events.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- ===========================================================================
 -- Geiger Events — events store
 --

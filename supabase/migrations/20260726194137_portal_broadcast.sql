@@ -1,3 +1,7 @@
+-- Imported from zzz_portal_broadcast.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- ===========================================================================
 -- Geiger Events — organiser broadcast (targeted messaging to buyers)
 --

@@ -1,3 +1,7 @@
+-- Imported from zzzzz_seating.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- ===========================================================================
 -- Geiger Events — reserved seating (section / row / seat)
 --

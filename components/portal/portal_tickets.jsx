@@ -13,6 +13,9 @@ import {
   Building2,
   Package,
   Check,
+  LucideAArrowDown,
+  LucideArrowDown,
+  LucideArrowUp,
 } from "lucide-react";
 
 import { EmptyState, StatusPill, ScreenHeader } from "@/components/internal/shared/screen_kit";
@@ -208,7 +211,7 @@ function TicketDialog({ ticket, onClose, onMessage, onRequestRefund }) {
 
             <TicketQr orderId={ticket.id} />
             <p className="-mt-2 text-center text-xs text-text-tertiary">
-              Show this at the door · {ticket.orderCode}
+              Please Present At Entrance · {ticket.orderCode}
             </p>
 
             <div className="space-y-2 rounded-xl border border-border bg-surface-card p-4 text-sm">
@@ -225,9 +228,28 @@ function TicketDialog({ ticket, onClose, onMessage, onRequestRefund }) {
                 {ticket.eventTime ? ` · ${ticket.eventTime}` : ""}
               </Row>
               {loc ? (
-                <Row icon={MapPin} label="Where">
-                  {loc}
-                </Row>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex items-center gap-1.5 text-text-secondary">
+                      <MapPin className="h-3.5 w-3.5" />
+                      Where
+                    </span>
+                    <details className="group max-w-[12rem] text-right">
+                      <summary className=" flex cursor-pointer list-none text-foreground hover:text-text-secondary">
+                        <span className="block truncate">
+                          {ticket.address || loc}
+                        </span>
+                        <span className="block text-xs text-text-secondary group-open:hidden">
+                          <LucideArrowDown className="ml-1 inline h-3 w-3" />
+                        </span>
+                        <span className="hidden text-xs text-text-secondary group-open:block">
+                          <LucideArrowUp className="ml-1 inline h-3 w-3" />
+                        </span>
+                      </summary>
+                      <p className="mt-2 whitespace-pre-wrap break-words text-xs text-text-secondary">
+                        {loc}
+                      </p>
+                    </details>
+                  </div>
               ) : null}
               {ticket.timezone ? (
                 <Row icon={Clock} label="Timezone">
@@ -341,7 +363,7 @@ function TicketDialog({ ticket, onClose, onMessage, onRequestRefund }) {
                 onClick={() => onMessage(ticket)}
                 className="border-border bg-surface-card text-foreground hover:bg-surface-hover"
               >
-                <MessageSquare className="h-4 w-4" /> Message organiser
+                <MessageSquare className="h-4 w-4" /> Message Organiser
               </Button>
             </div>
 

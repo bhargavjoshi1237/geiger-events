@@ -1,3 +1,7 @@
+-- Imported from portal_support.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- ===========================================================================
 -- Geiger Events — members portal support threads (buyer ↔ organiser messaging)
 --

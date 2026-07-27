@@ -1,3 +1,7 @@
+-- Imported from init.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 create table public.flow_teams (
   id uuid not null default gen_random_uuid (),
   members jsonb null default '{}'::jsonb,

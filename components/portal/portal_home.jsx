@@ -76,8 +76,10 @@ function NextEventHero({ ticket, onOpenTicket }) {
           >
             <Ticket className="h-4 w-4" /> View ticket
           </button>
-          <CalendarButton order={ticket} />
+          <div className="flex gap-3 ml-auto sm:ml-1">
+            <CalendarButton order={ticket} />
           <DirectionsButton order={ticket} />
+          </div>
         </div>
       </div>
     </div>

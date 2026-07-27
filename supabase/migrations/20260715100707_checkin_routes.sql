@@ -1,3 +1,7 @@
+-- Imported from checkin_routes.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- ===========================================================================
 -- Geiger Events — check-in staff routes (Phase 2)
 --

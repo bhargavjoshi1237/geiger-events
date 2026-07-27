@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- portal renders remote Supabase cover URLs; next/image adds no value here */
 
 import React, { useEffect, useState } from "react";
-import { CalendarPlus, MapPin, Ticket } from "lucide-react";
+import { CalendarPlus, LucideGamepadDirectional, LucideMousePointer2, MapPin, Ticket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { buildEventICS, directionsUrl, downloadICS } from "@/lib/portal/calendar";
@@ -304,7 +304,7 @@ export function CalendarButton({ order, className = "" }) {
       onClick={() => downloadICS(order)}
       className={`border-border bg-surface-card text-foreground hover:bg-surface-hover ${className}`}
     >
-      <CalendarPlus className="h-4 w-4" /> Add to calendar
+      <CalendarPlus className="h-4 w-4" />
     </Button>
   );
 }
@@ -320,7 +320,7 @@ export function DirectionsButton({ order, className = "" }) {
       className={`border-border bg-surface-card text-foreground hover:bg-surface-hover ${className}`}
     >
       <a href={url} target="_blank" rel="noreferrer">
-        <MapPin className="h-4 w-4" /> Directions
+        <LucideMousePointer2 className="h-4 w-4" />
       </a>
     </Button>
   );

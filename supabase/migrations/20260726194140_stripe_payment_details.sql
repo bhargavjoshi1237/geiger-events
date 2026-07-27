@@ -1,3 +1,7 @@
+-- Imported from zzzz_stripe_payment_details.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- Full, safe Stripe payment snapshot captured during Checkout fulfillment.
 -- The JSON contains the Checkout Session, every line item, and expanded
 -- PaymentIntent / PaymentMethod / Charge / BalanceTransaction data. Credentials

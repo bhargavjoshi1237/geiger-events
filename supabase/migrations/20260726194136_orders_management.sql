@@ -1,3 +1,7 @@
+-- Imported from zzz_orders_management.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- ===========================================================================
 -- Geiger Events — Order Management module
 --

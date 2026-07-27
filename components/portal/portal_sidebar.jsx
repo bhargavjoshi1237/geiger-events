@@ -82,7 +82,7 @@ export function PortalSidebar({ tab, onTab, counts = {}, basePath }) {
 
       <SidebarContent className="gap-0 py-1">
         {GROUPS.map((group, i) => (
-          <SidebarGroup key={group.label || i} className="py-1">
+          <SidebarGroup key={group.label || i} className="py-1 mt-2">
             {group.label ? (
               <SidebarGroupLabel className="text-[11px] uppercase tracking-wider text-text-tertiary">
                 {group.label}

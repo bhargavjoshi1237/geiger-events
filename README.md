@@ -130,7 +130,7 @@ lib/
   rbac.js                Permissions catalog
 supabase/sqls/           Idempotent SQL schema and policies
 docs/                    Product and reference documentation
-scripts/run-sqls.js      Migration runner (npm run db:push)
+supabase/migrations/     Timestamped @up/@down migrations (npm run db:push)
 ```
 
 ## Conventions

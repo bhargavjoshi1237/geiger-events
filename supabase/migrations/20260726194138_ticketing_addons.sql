@@ -1,3 +1,7 @@
+-- Imported from zzz_ticketing_addons.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- Ticketing add-ons: authoritative checkout behaviour for the per-event features
 -- (early-bird, donations, access-code tickets, reserved holds, group purchasing,
 -- bundles). This file is named to run AFTER zz_project_access.sql (filename

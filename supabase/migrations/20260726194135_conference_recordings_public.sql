@@ -1,3 +1,7 @@
+-- Imported from zzz_conference_recordings_public.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- ===========================================================================
 -- Geiger Events — public read for shared recordings
 --

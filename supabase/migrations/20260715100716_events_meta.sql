@@ -1,3 +1,7 @@
+-- Imported from events_meta.sql by geiger-orm.
+-- No @down section — this migration cannot be rolled back.
+
+-- @up
 -- ===========================================================================
 -- Geiger Events — event config metadata merge
 --
