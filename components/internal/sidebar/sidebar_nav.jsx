@@ -99,6 +99,7 @@ import {
   Receipt,
   Boxes,
   PackageCheck,
+  Blocks,
 } from "lucide-react";
 
 // Sidebar navigation for Geiger Events.
@@ -464,9 +465,11 @@ export const workspaceNav = [
     subItems: [
       { title: "Team & Members", icon: Users },
       { title: "Roles & Permissions", icon: ShieldCheck },
+      { title: "Notifications", icon: Bell },
       { title: "API & Webhooks", icon: Webhook },
       { title: "Usage", icon: Gauge },
       { title: "Custom Domains", icon: Globe },
+      { title: "Add-ons", icon: Blocks },
     ],
   },
 ];

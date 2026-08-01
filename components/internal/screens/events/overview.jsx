@@ -7,16 +7,9 @@ import {
   Wallet,
   Users,
   CalendarClock,
-  Palette,
-  ImageIcon,
-  ClipboardList,
   UserCog,
-  Link2,
-  Copy,
   ExternalLink,
   MapPin,
-  Eye,
-  ArrowRight,
   Plus,
   Trash2,
   Loader2,
@@ -50,6 +43,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { getEventNotes, saveEventNotes } from "@/lib/supabase/notes";
+import { EventDatePicker } from "./date_time_fields";
 import {
   EVENT_STATUS_MAP,
   EVENT_TYPE_MAP,
@@ -107,7 +101,7 @@ function AddNoteDialog({ open, onOpenChange, onAdd }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md bg-background">
         <DialogHeader>
-          <DialogTitle>Add checklist item</DialogTitle>
+          <DialogTitle className="capitalize">Add checklist item</DialogTitle>
           <DialogDescription>
             A step to complete before this event goes live. Set a due date to
             keep it on track.
@@ -130,12 +124,11 @@ function AddNoteDialog({ open, onOpenChange, onAdd }) {
               autoFocus
             />
           </Field>
-          <Field label="Due date" hint="Optional" htmlFor="note-due">
-            <Input
-              id="note-due"
-              type="date"
+          <Field label="Due date" hint="Optional">
+            <EventDatePicker
               value={draft.dueDate}
-              onChange={(e) => set("dueDate")(e.target.value)}
+              onChange={set("dueDate")}
+              placeholder="Pick a due date"
             />
           </Field>
         </div>
@@ -149,7 +142,7 @@ function AddNoteDialog({ open, onOpenChange, onAdd }) {
             Cancel
           </Button>
           <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            className="bg-primary capitalize text-primary-foreground hover:bg-primary/90"
             onClick={submit}
           >
             Add item
@@ -208,6 +201,7 @@ function PreLaunchNotes({ eventId, className }) {
 
   return (
     <SectionCard
+      bare
       title="Pre-launch checklist"
       description={
         notes.length
@@ -219,7 +213,7 @@ function PreLaunchNotes({ eventId, className }) {
         <Button
           size="sm"
           onClick={() => setAddOpen(true)}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          className="bg-primary capitalize text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" /> Add item
         </Button>
@@ -248,7 +242,7 @@ function PreLaunchNotes({ eventId, className }) {
             return (
               <div
                 key={n.id}
-                className="group flex min-h-[32px] items-center gap-3 rounded-lg px-3 py-1 transition-colors hover:bg-surface-active"
+                className="group -mx-3 flex min-h-[32px] items-center gap-3 rounded-lg px-3 py-1 transition-colors hover:bg-surface-active"
               >
                 <Checkbox
                   checked={n.done}
@@ -304,14 +298,7 @@ function PreLaunchNotes({ eventId, className }) {
   );
 }
 
-export function OverviewSection({
-  event,
-  onPreview,
-  onPatch,
-  onCommit,
-  onViewLive,
-  onNavigate,
-}) {
+export function OverviewSection({ event, onPatch, onCommit, onViewLive }) {
   // Overview controls take effect immediately — `commit` persists right away
   // (DB + list); `patch` (live, save-on-Save) is the fallback if no committer.
   const commit = onCommit || onPatch || (() => {});
@@ -351,181 +338,102 @@ export function OverviewSection({
     toast.success(`Visibility set to ${visibility}.`);
   };
 
-  const copyLink = () => {
-    if (typeof window === "undefined" || !navigator.clipboard) return;
-    navigator.clipboard
-      .writeText(
-        `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ""}/e/${event.id}`,
-      )
-      .then(
-        () => toast.success("Public link copied."),
-        () => toast.error("Couldn't copy the link."),
-      );
-  };
-
-  const quickActions = [
-    { label: "Ticket types", icon: Ticket, to: "tickets" },
-    { label: "Page design", icon: Palette, to: "design" },
-    { label: "Cover media", icon: ImageIcon, to: "cover" },
-    { label: "Registration", icon: ClipboardList, to: "questions" },
-    { label: "Co-hosts & team", icon: UserCog, to: "team" },
-  ];
-
   return (
     <div className="space-y-6">
       <StatGrid stats={stats} />
 
-      {/* Two-up grid: each row pairs a wide control card with a narrow snapshot
-          card, so Status & sharing ↔ At a glance and Pre-launch ↔ Quick actions
-          stretch to equal heights per row. */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px] xl:items-stretch">
-        {/* Row 1, left — Status & sharing */}
-        <SectionCard
-          title="Status & sharing"
-          description="Control how this event is published and who can find it."
-          className="xl:self-start"
-        >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Status">
-                <Select value={event.status} onValueChange={setStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OVERVIEW_STATUS.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        <span className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "h-1.5 w-1.5 rounded-full",
-                              EVENT_STATUS_MAP[s]?.dotClass || "bg-current",
-                            )}
-                          />
-                          {s}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Visibility">
-                <Select value={event.visibility} onValueChange={setVisibility}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OVERVIEW_VISIBILITY.map((v) => (
-                      <SelectItem key={v} value={v}>
-                        {v}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
+      {/* A single full-width stack: the two box-less sections sit on the page
+          the way the section header above them does, then the checklist card. */}
+      <SectionCard
+        bare
+        title="Status & sharing"
+        description="Control how this event is published and who can find it."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Status">
+            <Select value={event.status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OVERVIEW_STATUS.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          EVENT_STATUS_MAP[s]?.dotClass || "bg-current",
+                        )}
+                      />
+                      {s}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Visibility">
+            <Select value={event.visibility} onValueChange={setVisibility}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OVERVIEW_VISIBILITY.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </div>
+      </SectionCard>
 
-            <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2">
-              <Link2 className="h-4 w-4 shrink-0 text-text-secondary" />
-              <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
-                /e/{event.id}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={copyLink}
-                aria-label="Copy public link"
-                className="text-text-secondary hover:bg-surface-active hover:text-foreground"
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={onViewLive}
-                aria-label="Open public page"
-                className="text-text-secondary hover:bg-surface-active hover:text-foreground"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-        </SectionCard>
+      {/* At a glance — box-less too, sitting a little below Status & sharing. */}
+      <SectionCard
+        bare
+        title="At glance"
+        className="pt-4"
+        action={
+          <div className="flex items-center gap-2">
+            <Badge variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}>
+              {event.type}
+            </Badge>
+            <StatusPill status={event.status} map={EVENT_STATUS_MAP} />
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={onViewLive}
+            >
+              <ExternalLink className="h-4 w-4" /> Live
+            </Button>
+          </div>
+        }
+      >
+        {/* Two-up: date/venue on the left, capacity/organizer on the right. */}
+        <div className="grid grid-cols-1 gap-x-6 gap-y-2.5 text-sm sm:grid-cols-2">
+          <GlanceRow
+            icon={CalendarClock}
+            label={
+              [formatDate(event.date), event.time].filter(Boolean).join(" · ") ||
+              "No date set"
+            }
+          />
+          <GlanceRow
+            icon={Users}
+            label={`${capacity.toLocaleString()} capacity`}
+          />
+          <GlanceRow
+            icon={MapPin}
+            label={`${event.venue}${event.city && event.city !== "Remote" ? `, ${event.city}` : ""}`}
+          />
+          <GlanceRow icon={UserCog} label={event.organizer} />
+        </div>
+      </SectionCard>
 
-        {/* Row 1, right — At a glance */}
-        <SectionCard
-          title="At glance"
-          className="h-full"
-          action={
-            <div className="flex items-center gap-2">
-              <Badge variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}>
-                {event.type}
-              </Badge>
-              <StatusPill status={event.status} map={EVENT_STATUS_MAP} />
-            </div>
-          }
-        >
-            <div className="space-y-2.5 text-sm">
-              <GlanceRow
-                icon={CalendarClock}
-                label={
-                  [formatDate(event.date), event.time]
-                    .filter(Boolean)
-                    .join(" · ") || "No date set"
-                }
-              />
-              <GlanceRow
-                icon={MapPin}
-                label={`${event.venue}${event.city && event.city !== "Remote" ? `, ${event.city}` : ""}`}
-              />
-              <GlanceRow
-                icon={Users}
-                label={`${capacity.toLocaleString()} capacity`}
-              />
-              <GlanceRow icon={UserCog} label={event.organizer} />
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                onClick={onViewLive}
-              >
-                <ExternalLink className="h-4 w-4" /> Live
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                onClick={onPreview}
-              >
-                <Eye className="h-4 w-4" /> Preview
-              </Button>
-            </div>
-        </SectionCard>
-
-        {/* Row 2, left — Pre-launch checklist (editable, persisted notes) */}
-        <PreLaunchNotes eventId={event.id} className="h-full" />
-
-        {/* Row 2, right — Quick actions */}
-        <SectionCard title="Quick actions" bodyPadding={false} className="h-full">
-            <div className="p-2">
-              {quickActions.map((a) => {
-                const Icon = a.icon;
-                return (
-                  <button
-                    key={a.label}
-                    type="button"
-                    onClick={() => onNavigate?.(a.to)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-active hover:text-foreground"
-                  >
-                    <Icon className="h-4 w-4 text-text-secondary" />
-                    <span className="flex-1">{a.label}</span>
-                    <ArrowRight className="h-4 w-4 text-text-tertiary" />
-                  </button>
-                );
-              })}
-            </div>
-        </SectionCard>
-      </div>
+      {/* Pre-launch checklist (editable, persisted notes) — full width. */}
+      <PreLaunchNotes eventId={event.id} className="border-t border-border pt-6" />
     </div>
   );
 }

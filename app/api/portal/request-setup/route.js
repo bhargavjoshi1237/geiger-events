@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { randomToken } from "@/lib/portal/session";
-import { sendSuiteEmail } from "@/lib/email/client";
+import { sendNotificationEmail } from "@/lib/email/notifications";
+import { listMemberProjectIds } from "@/lib/portal/memberships";
 
 // { email, origin, basePath } -> always { ok:true } (never reveals existence).
 // When the member exists, mint a one-time setup token and email the link.
@@ -43,7 +44,13 @@ export async function POST(request) {
   // https://geiger.studio) — its CTA links to data.resetUrl. A dedicated
   // events.portal_set_password template would need a dash code change + prod
   // deploy, so route the setup/reset link through this existing one for now.
-  await sendSuiteEmail({
+  // A portal member is global (one row per email across the suite), so only gate
+  // this on Settings -> Notifications when they belong to exactly one project.
+  // With several, no single project's toggle may lock them out of their account.
+  const projectIds = await listMemberProjectIds(clean);
+  await sendNotificationEmail({
+    projectId: projectIds.length === 1 ? projectIds[0] : null,
+    notification: "portal_set_password",
     template: "account.password_reset",
     to: clean,
     subject: "Set your Geiger Events password",

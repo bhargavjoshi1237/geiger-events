@@ -1,6 +1,8 @@
 // Lookups, section defaults, and formatters for the Tickets area.
 // Config only — never row data.
 
+import { defaultEntitlements } from "@/lib/memberships/entitlements";
+
 // --- Formatters --------------------------------------------------------------
 
 export const currency = (n) => `$${Number(n || 0).toLocaleString()}`;
@@ -232,6 +234,8 @@ export const MEMBER_STATUS_MAP = {
 };
 
 // Membership plan record config (ticketing_records, module "membership").
+// `entitlements` is what the plan actually hands members (scope + duration per
+// attachable item type) — see lib/memberships/entitlements.js.
 export const defaultMembershipPlanConfig = () => ({
   price: 0,
   billingPeriod: "yearly", // one-time | monthly | yearly
@@ -239,6 +243,7 @@ export const defaultMembershipPlanConfig = () => ({
   discountPercent: 0, // member discount on tickets
   applyToAllEvents: false, // on = discount applies to every event; off = per-event opt-in
   description: "",
+  entitlements: defaultEntitlements(),
 });
 
 export const BILLING_PERIOD_OPTIONS = [

@@ -49,8 +49,21 @@ export async function GET(request) {
       logo: result.logos.length > 0,
       colors: hasColors,
       fonts: hasFonts,
-      shape: !!(result.radius || result.button),
-      background: !!result.background,
+      shape: !!(
+        result.radius ||
+        result.button ||
+        result.elevation ||
+        Number.isFinite(result.borderWidth)
+      ),
+      layout: !!(result.width || result.density || result.pageGradient),
+      header: !!(result.nav?.length || result.cta),
+      footer: !!(
+        result.footer?.links?.length ||
+        result.footer?.socials?.length ||
+        result.footer?.text
+      ),
+      content: !!(result.tagline || result.heroImage || result.favicon),
+      background: !!(result.background || result.heroImage),
     },
   });
 }

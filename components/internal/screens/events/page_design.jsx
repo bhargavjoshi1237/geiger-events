@@ -71,6 +71,10 @@ import {
   OVERLAY_STYLES,
   SIDEBAR_SIDES,
   BG_TYPES,
+  HEADER_ALIGNS,
+  BORDER_WIDTHS,
+  BUTTON_WEIGHTS,
+  DEFAULT_HEADER,
   themeFontOptions,
 } from "@/lib/events/theme";
 import { Segmented, ColorField } from "./theme_controls";
@@ -86,6 +90,116 @@ import { ImportBrandDialog, BrandLogoSection } from "./brand_import";
 //   - Themed   : theme + show/hide/reorder the default event blocks
 //   - Custom   : the full builder — add/edit/remove/reorder any block
 // ---------------------------------------------------------------------------
+
+// The site header bar — the brand's own nav reproduced above the event hero.
+// Populated by an import, editable by hand afterwards.
+function SiteHeaderEditor({ header, onChange }) {
+  const h = { ...DEFAULT_HEADER, ...(header || {}) };
+  const links = Array.isArray(h.links) ? h.links : [];
+  const patch = (next) => onChange({ ...h, ...next });
+  const setLink = (i, key, v) =>
+    patch({ links: links.map((l, j) => (j === i ? { ...l, [key]: v } : l)) });
+
+  return (
+    <div className="space-y-5">
+      <SettingsList>
+        <SettingRow
+          title="Show the header bar"
+          description="A brand bar with your logo and links above the event hero."
+          checked={h.show !== false}
+          onCheckedChange={(v) => patch({ show: v })}
+        />
+        <SettingRow
+          title="Stick to the top"
+          description="Keep the bar visible as the page scrolls."
+          checked={h.sticky}
+          onCheckedChange={(v) => patch({ sticky: v })}
+        />
+        <SettingRow
+          title="Bottom rule"
+          description="A hairline separating the bar from the page."
+          checked={h.border !== false}
+          onCheckedChange={(v) => patch({ border: v })}
+        />
+      </SettingsList>
+
+      <Field label="Layout">
+        <Segmented
+          value={h.align}
+          onChange={(v) => patch({ align: v })}
+          options={HEADER_ALIGNS}
+        />
+      </Field>
+
+      <Field label="Nav links" hint="Shown beside your logo, in order.">
+        <div className="space-y-2">
+          {links.map((l, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                value={l.label || ""}
+                onChange={(e) => setLink(i, "label", e.target.value)}
+                placeholder="Label"
+                className="w-36 shrink-0"
+              />
+              <Input
+                value={l.url || ""}
+                onChange={(e) => setLink(i, "url", e.target.value)}
+                placeholder="https://…"
+                className="flex-1"
+              />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Remove link"
+                onClick={() => patch({ links: links.filter((_, j) => j !== i) })}
+                className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => patch({ links: [...links, { label: "", url: "" }] })}
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          >
+            <Plus className="h-4 w-4" /> Add link
+          </Button>
+        </div>
+      </Field>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Header button" hint="Leave the label blank for no button.">
+          <Input
+            value={h.cta?.label || ""}
+            onChange={(e) => patch({ cta: { ...h.cta, label: e.target.value } })}
+            placeholder="Get tickets"
+          />
+        </Field>
+        <Field label="Button links to">
+          <Input
+            value={h.cta?.url || ""}
+            onChange={(e) => patch({ cta: { ...h.cta, url: e.target.value } })}
+            placeholder="https://…"
+          />
+        </Field>
+      </div>
+
+      <Field
+        label="Bar background"
+        hint="Leave blank to sit on the page background."
+      >
+        <Input
+          value={h.background || ""}
+          onChange={(e) => patch({ background: e.target.value })}
+          placeholder="#111111"
+          className="font-mono text-xs"
+        />
+      </Field>
+    </div>
+  );
+}
 
 export const PAGE_MODES = [
   { key: "standard", label: "Standard", desc: "Geiger's optimized, ready-to-go layout. No setup needed." },
@@ -854,8 +968,14 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
     if (key === "imported" && !theme.source?.url) setImportOpen(true);
   };
   // An imported brand is a theme patch — merged over what's there so a partial
-  // import (colors only, say) leaves the rest of the theme alone.
-  const applyImport = (patch) => set({ mode: "imported", theme: { ...theme, ...patch } });
+  // import (colors only, say) leaves the rest of the theme alone. The footer
+  // rides alongside the theme rather than inside it, so it patches separately.
+  const applyImport = (patch, nextFooter) =>
+    set({
+      mode: "imported",
+      theme: { ...theme, ...patch },
+      ...(nextFooter ? { footer: nextFooter } : null),
+    });
 
   // The two block surfaces. A design saved before the sidebar became
   // block-driven has no `sidebarBlocks` — fall back to the defaults so the list
@@ -1011,6 +1131,21 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
                   onChange={(v) => setColors({ brandText: v })}
                 />
                 <ColorField
+                  label="Gradient end"
+                  value={theme.colors.brandTo || theme.colors.brand}
+                  onChange={(v) => setColors({ brandTo: v })}
+                />
+                <ColorField
+                  label="Secondary"
+                  value={theme.colors.accent || theme.colors.brand}
+                  onChange={(v) => setColors({ accent: v })}
+                />
+                <ColorField
+                  label="Links"
+                  value={theme.colors.link || theme.colors.brand}
+                  onChange={(v) => setColors({ link: v })}
+                />
+                <ColorField
                   label="Page background"
                   value={theme.colors.bg}
                   onChange={(v) => setColors({ bg: v })}
@@ -1073,6 +1208,31 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
                   />
                 </Field>
               </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  label="Heading tracking"
+                  hint="Letter-spacing, in em. Negative tightens."
+                >
+                  <Input
+                    type="number"
+                    step="0.005"
+                    value={theme.headingTracking || 0}
+                    onChange={(e) =>
+                      setTheme({ headingTracking: Number(e.target.value) || 0 })
+                    }
+                  />
+                </Field>
+                <Field label="Heading line height" hint="0 leaves it to the base style.">
+                  <Input
+                    type="number"
+                    step="0.05"
+                    value={theme.headingLineHeight || 0}
+                    onChange={(e) =>
+                      setTheme({ headingLineHeight: Number(e.target.value) || 0 })
+                    }
+                  />
+                </Field>
+              </div>
               <SettingsList>
                 <SettingRow
                   title="Uppercase headings"
@@ -1121,7 +1281,73 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
                   options={WIDTHS}
                 />
               </Field>
+              <Field label="Border weight">
+                <Segmented
+                  value={Number(theme.borderWidth ?? 1)}
+                  onChange={(v) => setTheme({ borderWidth: v })}
+                  options={BORDER_WIDTHS}
+                />
+              </Field>
+              <Field label="Button weight">
+                <Segmented
+                  value={theme.buttonWeight || ""}
+                  onChange={(v) => setTheme({ buttonWeight: v })}
+                  options={BUTTON_WEIGHTS}
+                />
+              </Field>
+              <Field
+                label="Exact corner radius"
+                hint="Pixels. Blank uses the bucket above."
+              >
+                <Input
+                  type="number"
+                  min="0"
+                  max="48"
+                  value={theme.radiusPx ?? ""}
+                  onChange={(e) =>
+                    setTheme({
+                      radiusPx: e.target.value === "" ? null : Number(e.target.value),
+                    })
+                  }
+                  placeholder="—"
+                />
+              </Field>
+              <Field label="Button corner radius" hint="Pixels. Blank matches cards.">
+                <Input
+                  type="number"
+                  min="0"
+                  max="48"
+                  value={theme.buttonRadiusPx ?? ""}
+                  onChange={(e) =>
+                    setTheme({
+                      buttonRadiusPx:
+                        e.target.value === "" ? null : Number(e.target.value),
+                    })
+                  }
+                  placeholder="—"
+                />
+              </Field>
             </div>
+            <div className="mt-5">
+              <SettingsList>
+                <SettingRow
+                  title="Uppercase buttons"
+                  description="Render button labels in all caps."
+                  checked={theme.buttonUpper}
+                  onCheckedChange={(v) => setTheme({ buttonUpper: v })}
+                />
+              </SettingsList>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Site header"
+            description="A brand bar above the event — your logo, links, and a button."
+          >
+            <SiteHeaderEditor
+              header={theme.header}
+              onChange={(header) => setTheme({ header })}
+            />
           </SectionCard>
 
           <SectionCard
@@ -1187,6 +1413,29 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
                   />
                 </Field>
               ) : null}
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Brand details"
+            description="The tagline under your event title, and the browser tab icon."
+          >
+            <div className="space-y-5">
+              <Field label="Tagline" hint="A short line under the event title.">
+                <Input
+                  value={theme.tagline || ""}
+                  onChange={(e) => setTheme({ tagline: e.target.value })}
+                  placeholder="Two days of talks, workshops, and good coffee."
+                />
+              </Field>
+              <Field label="Favicon URL" hint="Shown in the browser tab on the live page.">
+                <Input
+                  value={theme.favicon || ""}
+                  onChange={(e) => setTheme({ favicon: e.target.value })}
+                  placeholder="https://…/favicon.ico"
+                  className="font-mono text-xs"
+                />
+              </Field>
             </div>
           </SectionCard>
 
@@ -1289,6 +1538,7 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
         onOpenChange={setImportOpen}
         eventId={eventId}
         theme={theme}
+        footer={design.footer || DEFAULT_FOOTER}
         onApply={applyImport}
       />
     </div>

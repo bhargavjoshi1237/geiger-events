@@ -15,10 +15,9 @@ import {
 } from "@/components/ui/sidebar";
 import { ChevronDown, Search, MoreVertical, PanelLeft, Bell, HelpCircle, X } from "lucide-react";
 import { SidebarOption } from "./sidebar_option";
-import { workspaceNav } from "./sidebar_nav";
 import { NotificationsDropdown } from "../topbar/dialogue/notifications_dropdown";
-import { roleHasPermission, tabPermissionKey } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
+import { useVisibleNav } from "@/lib/hooks/use-visible-nav";
 
 // Persist the sidebar's scroll offset across tab switches. A tab change is a
 // route navigation that can remount the sidebar and reset its scroll to the top;
@@ -78,9 +77,9 @@ export function AppSidebar({
     savedSidebarScroll = e.currentTarget.scrollTop;
   };
 
-  const visibleNav = workspaceNav.filter((item) =>
-    roleHasPermission(roles, roleId, tabPermissionKey(item.title)),
-  );
+  // Enabled addons + role filtering, shared with the topbar's search palette so
+  // both surfaces list exactly the same destinations.
+  const visibleNav = useVisibleNav({ roleId, roles });
 
   const toggleExpand = (title) => {
     setExpandedItems((prev) => ({

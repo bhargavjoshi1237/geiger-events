@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { sendSuiteEmail } from "@/lib/email/client";
+import { sendNotificationEmail } from "@/lib/email/notifications";
+import { getEvent } from "@/lib/supabase/events";
 import { formatDate } from "@/components/internal/screens/events/sample_data";
 
 // Emails an approved registrant a link back to the event's public page, where a
@@ -44,7 +45,13 @@ export async function POST(request) {
   if (name) params.set("name", name);
   const continueUrl = `${base}${basePath}/e/${eventId}?${params.toString()}`;
 
-  const res = await sendSuiteEmail({
+  // Resolve the owning project server-side so the notification gate can't be
+  // steered by whatever the client posted.
+  const event = await getEvent(eventId);
+
+  const res = await sendNotificationEmail({
+    projectId: event?.projectId,
+    notification: "registration_approved",
     template: "events.registration_approved",
     to: email,
     data: {

@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
 import { newId } from "@/components/internal/screens/events/sample_data";
 import { getUser } from "@/lib/supabase/user";
@@ -160,6 +161,7 @@ function RecordEditPage({
   singular,
   kinds,
   EditForm,
+  sections,
   onBack,
   onSave,
   hideHeaderActive = false,
@@ -168,6 +170,9 @@ function RecordEditPage({
   const [active, setActive] = useState(record.active);
   const [config, setConfig] = useState(record.config || {});
   const [saving, setSaving] = useState(false);
+  // The open section lives in the URL (?section=<key>) so a refresh keeps the
+  // user on the same tab, exactly like the event editor.
+  const { section, setSection } = useWorkspaceUrl();
 
   const save = async () => {
     if (!name.trim()) {
@@ -183,60 +188,162 @@ function RecordEditPage({
     setSaving(false);
   };
 
-  return (
-    <SecondaryScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back
-          </button>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <input
-              value={name}
-              size={Math.max(name.length, 6)}
-              spellCheck={false}
-              onChange={(e) => setName(e.target.value)}
-              aria-label={`${singular} name`}
-              className="min-w-0 max-w-full rounded-sm bg-transparent text-2xl font-semibold tracking-tight text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:text-3xl"
-            />
-            {kinds.length > 1 ? (
-              <Badge variant="neutral">{kindLabel(kinds, record.kind)}</Badge>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          {hideHeaderActive ? null : (
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              {active ? "Active" : "Inactive"}
-              <Switch checked={active} onCheckedChange={setActive} />
-            </label>
-          )}
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={saving}
-            onClick={save}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </div>
+  const formProps = {
+    record,
+    config,
+    setConfig,
+    active,
+    setActive,
+  };
 
-      <div className="mt-6">
-        <EditForm
+  // Sectioned mode: content left, section nav right (the event-editor layout).
+  if (sections?.length) {
+    const activeItem = sections.find((s) => s.key === section) || sections[0];
+    // Rendered as an element, not called — sections own their own hooks.
+    const Body = activeItem.render;
+    return (
+      <MainScreenWrapper>
+        <EditHeader
+          singular={singular}
+          kinds={kinds}
           record={record}
-          config={config}
-          setConfig={setConfig}
+          name={name}
+          setName={setName}
           active={active}
           setActive={setActive}
+          hideHeaderActive={hideHeaderActive}
+          saving={saving}
+          onBack={onBack}
+          onSave={save}
         />
+
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px]">
+          <div className="order-2 min-w-0 lg:order-1">
+            <div className="mb-5">
+              <h2 className="text-lg font-semibold text-foreground">{activeItem.label}</h2>
+              {activeItem.desc ? (
+                <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
+              ) : null}
+            </div>
+            <Body {...formProps} />
+          </div>
+
+          <aside className="order-1 lg:order-2">
+            <nav className="space-y-0.5 lg:sticky lg:top-0">
+              {sections.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.key === activeItem.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setSection(item.key)}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                      isActive
+                        ? "bg-surface-card font-medium text-foreground"
+                        : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
+                    )}
+                  >
+                    {Icon ? (
+                      <Icon
+                        className={cn(
+                          "h-4 w-4 shrink-0",
+                          isActive ? "text-foreground" : "text-text-secondary",
+                        )}
+                      />
+                    ) : null}
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
+        </div>
+      </MainScreenWrapper>
+    );
+  }
+
+  return (
+    <SecondaryScreenWrapper>
+      <EditHeader
+        singular={singular}
+        kinds={kinds}
+        record={record}
+        name={name}
+        setName={setName}
+        active={active}
+        setActive={setActive}
+        hideHeaderActive={hideHeaderActive}
+        saving={saving}
+        onBack={onBack}
+        onSave={save}
+      />
+
+      <div className="mt-6">
+        <EditForm {...formProps} />
       </div>
     </SecondaryScreenWrapper>
+  );
+}
+
+// Shared editor header: breadcrumb back, inline-editable name, active switch,
+// and Save. Used by both the plain and the sectioned edit layouts.
+function EditHeader({
+  singular,
+  kinds,
+  record,
+  name,
+  setName,
+  active,
+  setActive,
+  hideHeaderActive,
+  saving,
+  onBack,
+  onSave,
+}) {
+  return (
+    <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
+      <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back
+        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <input
+            value={name}
+            size={Math.max(name.length, 6)}
+            spellCheck={false}
+            onChange={(e) => setName(e.target.value)}
+            aria-label={`${singular} name`}
+            className="min-w-0 max-w-full rounded-sm bg-transparent text-2xl font-semibold tracking-tight text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:text-3xl"
+          />
+          {kinds.length > 1 ? (
+            <Badge variant="neutral">{kindLabel(kinds, record.kind)}</Badge>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        {hideHeaderActive ? null : (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            {active ? "Active" : "Inactive"}
+            <Switch checked={active} onCheckedChange={setActive} />
+          </label>
+        )}
+        <Button
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={saving}
+          onClick={onSave}
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -245,6 +352,10 @@ function RecordEditPage({
 // A reusable global-records screen: list of a module's records, a create
 // dialog, and a per-record edit page. Each module supplies its kinds, list-card
 // summary, and edit form; persistence + optimistic state live here.
+//
+// The editor comes in two shapes: pass `EditForm` for a single scrolling form,
+// or `sections` ([{ key, label, icon, desc, render }]) for the event-editor
+// layout — content on the left, section nav on the right, active key in the URL.
 export function RecordsScreen({
   module,
   title,
@@ -254,6 +365,7 @@ export function RecordsScreen({
   kinds,
   summarize,
   EditForm,
+  sections,
   headerExtra,
   data,
   hideHeaderActive = false,
@@ -355,6 +467,7 @@ export function RecordsScreen({
         singular={singular}
         kinds={kinds}
         EditForm={EditForm}
+        sections={sections}
         onBack={() => setOpenId(null)}
         onSave={handleSave}
         hideHeaderActive={hideHeaderActive}

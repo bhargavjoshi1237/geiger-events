@@ -140,6 +140,10 @@ import { PersonalizationScreen } from "./campaigns/personalization";
 import { TeamMembersScreen } from "./settings/team_members";
 import { RolesPermissionsScreen } from "./settings/roles_permissions";
 import { CustomDomainsScreen } from "./settings/custom_domains";
+import { NotificationsSettingsScreen } from "./settings/notifications";
+import { AddonsSettingsScreen } from "./settings/addons_settings";
+import { createAddonScreen } from "./addon_screen_host";
+import { ADDON_SCREEN_BY_TITLE, ADDON_SECTION_SCREEN } from "@/addons";
 
 /**
  * Maps a sidebar nav title to its screen component. Titles must exactly match
@@ -368,11 +372,15 @@ export const SCREEN_REGISTRY = {
   Announcements: AnnouncementsScreen,
 
   // Settings area — Team & Members (people, groups, invites, activity), Roles &
-  // Permissions (role matrix over WORKSPACE_PERMISSIONS), and Custom Domains
-  // (CNAME-based domain connection). API & Webhooks and Usage are ComingSoon.
+  // Permissions (role matrix over WORKSPACE_PERMISSIONS), Notifications (which
+  // transactional emails this project sends), Custom Domains (CNAME-based domain
+  // connection), and Add-ons (per-project enablement and placement of the addon
+  // catalog). API & Webhooks and Usage are ComingSoon.
   "Team & Members": TeamMembersScreen,
   "Roles & Permissions": RolesPermissionsScreen,
+  Notifications: NotificationsSettingsScreen,
   "Custom Domains": CustomDomainsScreen,
+  "Add-ons": AddonsSettingsScreen,
 
   // Analytics area — only Scheduled Reports is a record set
   // (events.analytics_records); the rest are dashboards (ComingSoon).
@@ -388,6 +396,30 @@ export const SCREEN_REGISTRY = {
   Insights: InsightsScreen,
 };
 
+// Addon-contributed screens, resolved once at module load into host components.
+//
+// A title claimed by both a core screen and an addon is a programming error, not
+// something to resolve by precedence: silently shadowing a core screen is
+// exactly the failure mode this design set out to remove, so it throws here and
+// the addon author renames the screen (e.g. "Affiliate Payouts", because the
+// Tickets area already owns "Payouts").
+const ADDON_SCREENS = (() => {
+  const screens = {};
+  const entries = { ...ADDON_SECTION_SCREEN, ...ADDON_SCREEN_BY_TITLE };
+  for (const [title, entry] of Object.entries(entries)) {
+    if (SCREEN_REGISTRY[title]) {
+      throw new Error(
+        `[addons] "${entry.addonId}" declares screen "${title}", which already exists in SCREEN_REGISTRY — give the addon screen a distinct title`,
+      );
+    }
+    screens[title] = createAddonScreen(entry);
+  }
+  return screens;
+})();
+
+// Core screens first, then addon screens. Addon screens always resolve (the
+// catalog is static); the host decides whether to render, or to explain that the
+// add-on is turned off for this project.
 export function getScreen(title) {
-  return SCREEN_REGISTRY[title] || null;
+  return SCREEN_REGISTRY[title] || ADDON_SCREENS[title] || null;
 }

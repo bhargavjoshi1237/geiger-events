@@ -68,7 +68,7 @@ import { normalizeSpec, isEmptyFilters, describeSpec } from "@/lib/audience/reso
 // `extraEmails`, plus — when set — the buyers a targeted audience spec resolves
 // to (`audience`, see lib/audience/resolve.js; resolve it at fire time via
 // resolveAudienceEmails). Dedupe with a persisted `lastFiredAt` stamp. Delivery
-// goes through the shared `sendSuiteEmail({ template: "event-alert", to, data })`.
+// goes through the shared `sendSuiteEmail({ template: "event-Alert", to, data })`.
 
 // Trigger catalog — key → { label, category, icon, param kind, and a `clause`
 // that renders the human-readable "when" phrase for a saved rule. `param` drives
@@ -93,8 +93,8 @@ const TRIGGERS = {
     param: "offset",
     milestone: "registration closes",
     direction: "before",
-    defaults: { offsetValue: 5, offsetUnit: "days" },
-    clause: (r) => `${offsetLabel(r)} before registration closes`,
+    defaults: { offsetValue: 5, offsetUnit: "Days" },
+    clause: (r) => `${offsetLabel(r)} Before Registration Closes`,
   },
   before_sales_open: {
     label: "Before tickets go on sale",
@@ -329,14 +329,14 @@ export function AlertsSection({ event, headerItem }) {
                 <Switch
                   checked={a.enabled !== false}
                   onCheckedChange={(v) => toggleAlert(i, v)}
-                  aria-label={a.enabled ? "Disable alert" : "Enable alert"}
+                  aria-label={a.enabled ? "Disable Alert" : "Enable Alert"}
                 />
                 <div className="flex items-center">
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => setEditing({ index: i, alert: a })}
-                    aria-label="Edit alert"
+                    aria-label="Edit Alert"
                     className="text-text-secondary hover:bg-surface-active hover:text-foreground"
                   >
                     <Pencil className="h-4 w-4" />
@@ -345,7 +345,7 @@ export function AlertsSection({ event, headerItem }) {
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => removeAlert(i)}
-                    aria-label="Delete alert"
+                    aria-label="Delete Alert"
                     className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -365,7 +365,7 @@ export function AlertsSection({ event, headerItem }) {
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => setAddOpen(true)}
             >
-              <Plus className="h-4 w-4" /> Create your first alert
+              <Plus className="h-4 w-4" /> Create Your First Alert
             </Button>
           }
         />
@@ -447,7 +447,7 @@ function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{initial ? "Edit alert" : "New alert"}</DialogTitle>
+          <DialogTitle>{initial ? "Edit Alert" : "New Alert"}</DialogTitle>
           <DialogDescription>
             We&apos;ll email you when this condition is met.
           </DialogDescription>
@@ -548,7 +548,7 @@ function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }
             onClick={submit}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {initial ? "Save alert" : "Add alert"}
+            {initial ? "Save Alert" : "Add Alert"}
           </Button>
         </DialogFooter>
       </DialogContent>

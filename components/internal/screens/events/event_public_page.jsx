@@ -106,7 +106,9 @@ import {
   themeButtonStyle,
   coverOverlayStyle,
   resolveLogo,
+  resolveHeader,
   themeWebfonts,
+  themeFontFaceCss,
 } from "@/lib/events/theme";
 import { PageBlock } from "./page_blocks";
 import { PageFooter } from "./page_footer";
@@ -364,6 +366,24 @@ function TicketCheckout({
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  // Affiliate attribution. Both purchase paths converge on `order.orderId` (the
+  // free/immediate path sets it directly; the Stripe return sets it from
+  // resumeResult), so one effect covers both. The RPC is idempotent on order id
+  // and silent when the event has no program, and the module is imported lazily
+  // so non-affiliate events never load it.
+  const attributedRef = React.useRef(null);
+  useEffect(() => {
+    const orderId = order?.orderId;
+    if (!live || !orderId || attributedRef.current === orderId) return;
+    attributedRef.current = orderId;
+    import("@/addons/affiliates/lib/attribution")
+      .then((mod) =>
+        mod.attributeOrderFromStorage(event.id, orderId, {
+          code: appliedDiscount?.code ?? null,
+        }),
+      )
+      .catch(() => {});
+  }, [live, order, event.id, appliedDiscount]);
   const [selections, setSelections] = useState({});
   // Answers to the event's registration questions, keyed by question id. The
   // resulting registration status (Confirmed / Pending / Waitlisted) is kept so
@@ -2567,17 +2587,73 @@ export function EventPublicPageContent({ event, design, live = false }) {
       className="w-auto max-w-[240px] object-contain"
     />
   ) : null;
-  const brandBar = barLogo ? (
-    <div className="mb-8 flex items-center border-b border-border pb-5">
-      {barLogo.link ? (
+  // The site header bar. With nav links or a CTA it reads like the source
+  // site's own header; with just a logo it degrades to the plain brand bar the
+  // page has always shown.
+  const headerCfg = themed ? resolveHeader(theme, !!barLogo) : null;
+  const brandBar = headerCfg ? (
+    <div
+      className={cn(
+        "mb-8 flex flex-wrap items-center gap-x-6 gap-y-3 pb-5",
+        headerCfg.border && "border-b border-border",
+        headerCfg.align === "center" && "justify-center text-center",
+        headerCfg.sticky && "sticky top-0 z-20 -mx-4 px-4 pt-4 backdrop-blur",
+      )}
+      style={
+        headerCfg.background
+          ? { backgroundColor: headerCfg.background }
+          : headerCfg.sticky
+            ? { backgroundColor: "color-mix(in srgb, var(--background) 85%, transparent)" }
+            : undefined
+      }
+    >
+      {barLogo?.link ? (
         <a href={barLogo.link} target="_blank" rel="noopener noreferrer">
           {brandMark}
         </a>
       ) : (
         brandMark
       )}
+      {headerCfg.links.length ? (
+        <nav
+          className={cn(
+            "flex flex-wrap items-center gap-x-5 gap-y-2",
+            headerCfg.align === "split" && "ml-auto",
+          )}
+        >
+          {headerCfg.links.map((l) => (
+            <a
+              key={`${l.label}-${l.url}`}
+              href={l.url || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-text-secondary transition-colors hover:text-foreground"
+            >
+              {l.label}
+            </a>
+          ))}
+        </nav>
+      ) : null}
+      {headerCfg.cta ? (
+        <a
+          href={headerCfg.cta.url || "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "inline-flex items-center rounded-lg px-3.5 py-2 text-sm font-medium transition-opacity hover:opacity-90",
+            !headerCfg.links.length && headerCfg.align !== "center" && "ml-auto",
+          )}
+          style={primaryBtnStyle}
+        >
+          {headerCfg.cta.label}
+        </a>
+      ) : null}
     </div>
   ) : null;
+
+  // Self-hosted @font-face rules lifted from the source site. Empty for every
+  // theme that uses a built-in or Google family.
+  const fontFaceCss = themed ? themeFontFaceCss(theme) : "";
 
   // Cover image contents, reused by the in-column cover and the banner hero.
   const coverInner = event.coverUrl ? (
@@ -2602,6 +2678,17 @@ export function EventPublicPageContent({ event, design, live = false }) {
       <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
         {event.name}
       </h1>
+      {/* Brand tagline, carried over from an imported site. */}
+      {themed && theme.tagline ? (
+        <p
+          className={cn(
+            "max-w-2xl text-base text-text-secondary",
+            centered && "mx-auto",
+          )}
+        >
+          {theme.tagline}
+        </p>
+      ) : null}
       <div
         className={cn(
           "flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground",
@@ -3030,6 +3117,11 @@ export function EventPublicPageContent({ event, design, live = false }) {
       {webfonts.map((w) => (
         <link key={w.css} rel="stylesheet" href={w.css} precedence="default" />
       ))}
+      {/* Self-hosted families load straight from the source site's own server —
+          there is no stylesheet URL to link, only @font-face rules to declare. */}
+      {fontFaceCss ? (
+        <style dangerouslySetInnerHTML={{ __html: fontFaceCss }} />
+      ) : null}
       <div
         className="mx-auto px-4 py-12 sm:px-6 lg:px-8"
         style={{ maxWidth: contentWidth }}

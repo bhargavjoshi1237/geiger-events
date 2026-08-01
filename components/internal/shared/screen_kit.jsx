@@ -118,12 +118,12 @@ export function StatTile({ label, value, delta, trend, hint, icon: Icon }) {
           </span>
           {Icon ? <Icon className="h-4 w-4 text-text-tertiary" /> : null}
         </div>
-        <div className="mt-2 flex items-end gap-2">
+        <div className="mt-2 flex flex-col items-start gap-1 sm:flex-row sm:items-end sm:gap-2">
           <span className="text-2xl font-bold leading-none text-white tabular-nums">
             {value}
           </span>
           {delta ? (
-            <span className={cn("mb-0.5 text-xs font-medium", trendClass)}>
+            <span className={cn("text-xs font-medium sm:mb-0.5", trendClass)}>
               {delta}
             </span>
           ) : null}
@@ -232,7 +232,7 @@ export function StatsBar({ stats, columns = 4, className }) {
                 <span className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">
                   {stat.label}
                 </span>
-                <div className="mt-1 flex items-end gap-2">
+                <div className="mt-1 flex flex-col items-start gap-1 sm:flex-row sm:items-end sm:gap-2">
                   <RollingNumber
                     value={stat.value}
                     className="text-2xl font-bold leading-none text-white"
@@ -240,7 +240,7 @@ export function StatsBar({ stats, columns = 4, className }) {
                   {stat.delta ? (
                     <span
                       className={cn(
-                        "mb-0.5 inline-flex items-center gap-0.5 text-xs font-medium",
+                        "inline-flex items-center gap-0.5 text-xs font-medium sm:mb-0.5",
                         up ? "text-emerald-400" : "text-red-400",
                       )}
                     >

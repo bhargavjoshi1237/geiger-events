@@ -27,6 +27,30 @@ function RenewsIn({ dateStr }) {
   );
 }
 
+// What the plan attaches beyond its perk bullets — VOD, room access, event
+// perks — each with its scope and how long it lasts.
+function Included({ items }) {
+  if (!items?.length) return null;
+  return (
+    <div className="mt-3 space-y-2 rounded-lg border border-border bg-surface-subtle/40 p-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
+        What&apos;s included
+      </p>
+      {items.map((i) => (
+        <div key={i.key} className="space-y-0.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-sm font-medium text-foreground">{i.label}</span>
+            <span className="text-xs text-text-secondary">{i.duration}</span>
+          </div>
+          {i.extras.length ? (
+            <p className="text-xs text-text-tertiary">{i.extras.join(" · ")}</p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function HeldCard({ m }) {
   return (
     <Card>
@@ -56,6 +80,8 @@ function HeldCard({ m }) {
           ))}
         </ul>
       ) : null}
+
+      <Included items={m.included} />
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
         {m.startedAt ? <span>Since {fmtDate(m.startedAt)}</span> : null}
@@ -111,6 +137,8 @@ function PlanCard({ plan, paymentsEnabled, busy, onBuy }) {
           ))}
         </ul>
       ) : null}
+
+      <Included items={plan.included} />
 
       <div className="mt-4 flex-1" />
       <Button

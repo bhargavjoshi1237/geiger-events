@@ -15,6 +15,7 @@ import {
   pickDefaultProjectId,
 } from "@/context/project-context";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
+import { AddonsProvider } from "@/context/addons-context";
 
 // The active screen for the current tab, gated on the path's project resolving
 // to one the user can reach. Keyed by project id so switching projects remounts
@@ -97,7 +98,10 @@ export default function ProjectWorkspacePage() {
       }
     >
       <ProjectProvider>
-        <WorkspaceContent />
+        {/* Addon enablement is per project, so it loads inside ProjectProvider. */}
+        <AddonsProvider>
+          <WorkspaceContent />
+        </AddonsProvider>
       </ProjectProvider>
     </Suspense>
   );

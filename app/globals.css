@@ -208,6 +208,7 @@
    brand body font; headings take the brand heading font, weight, and case. */
 .ev-themed {
   font-family: var(--ev-font-body, inherit);
+  font-weight: var(--ev-body-weight, inherit);
 }
 .ev-themed h1,
 .ev-themed h2,
@@ -215,11 +216,29 @@
   font-family: var(--ev-font-heading, inherit);
   font-weight: var(--ev-heading-weight, 700);
   text-transform: var(--ev-heading-case, none);
+  letter-spacing: var(--ev-heading-tracking, normal);
+  line-height: var(--ev-heading-lh, inherit);
 }
 /* Elevated card surfaces on themed pages take the brand shadow (theme.elevation,
    compiled to --ev-elevation in lib/events/theme.js → themeStyle). */
 .ev-themed .ev-surface {
   box-shadow: var(--ev-elevation, none);
+}
+/* Brand border weight. Tailwind's border utilities are a flat 1px; re-declaring
+   them under .ev-themed wins on specificity, so a borderless or heavy-ruled
+   brand carries through the whole page without touching the markup. */
+.ev-themed .border {
+  border-width: var(--ev-border-width, 1px);
+}
+.ev-themed .border-t {
+  border-top-width: var(--ev-border-width, 1px);
+}
+.ev-themed .border-b {
+  border-bottom-width: var(--ev-border-width, 1px);
+}
+.ev-themed .border-y {
+  border-top-width: var(--ev-border-width, 1px);
+  border-bottom-width: var(--ev-border-width, 1px);
 }
 
 

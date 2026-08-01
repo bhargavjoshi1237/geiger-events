@@ -12,6 +12,7 @@ import {
   HelpCircle,
   Bell,
   PanelLeft,
+  PlayCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,10 @@ const GROUPS = [
       { key: "orders", label: "Orders", icon: ShoppingBag },
       { key: "memberships", label: "Memberships", icon: BadgeCheck },
     ],
+  },
+  {
+    label: "Content",
+    items: [{ key: "watch", label: "Watch", icon: PlayCircle }],
   },
   {
     label: "Community",

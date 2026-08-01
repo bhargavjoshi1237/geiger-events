@@ -39,8 +39,12 @@ import { Segmented } from "./theme_controls";
 const CATEGORIES = [
   { key: "logo", label: "Logo", hint: "Brand mark for the header and footer" },
   { key: "colors", label: "Colors", hint: "Brand, background, text, and borders" },
-  { key: "fonts", label: "Fonts", hint: "Heading and body typefaces" },
-  { key: "shape", label: "Shape", hint: "Corner radius and button style" },
+  { key: "fonts", label: "Fonts", hint: "Typefaces, weight, case, and tracking" },
+  { key: "shape", label: "Shape", hint: "Corners, borders, shadows, and buttons" },
+  { key: "layout", label: "Layout", hint: "Content width and section spacing" },
+  { key: "header", label: "Site header", hint: "Their nav links and main button" },
+  { key: "footer", label: "Footer", hint: "Their footer links and social profiles" },
+  { key: "content", label: "Imagery & text", hint: "Hero image, tagline, and favicon" },
 ];
 
 // data: URL → File, so an extracted logo can go through the normal image upload.
@@ -91,18 +95,22 @@ function Swatch({ label, hex }) {
   );
 }
 
-export function ImportBrandDialog({ open, onOpenChange, eventId, theme, onApply }) {
+export function ImportBrandDialog({
+  open,
+  onOpenChange,
+  eventId,
+  theme,
+  footer,
+  onApply,
+}) {
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | done
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
   const [logoIndex, setLogoIndex] = useState(0);
-  const [apply, setApply] = useState({
-    logo: true,
-    colors: true,
-    fonts: true,
-    shape: true,
-  });
+  const [apply, setApply] = useState(
+    Object.fromEntries(CATEGORIES.map((c) => [c.key, true])),
+  );
   const [useBackground, setUseBackground] = useState(false);
   const [applying, setApplying] = useState(false);
 
@@ -132,12 +140,9 @@ export function ImportBrandDialog({ open, onOpenChange, eventId, theme, onApply 
       setData(json);
       setLogoIndex(0);
       // Only offer what the site actually gave us.
-      setApply({
-        logo: json.found.logo,
-        colors: json.found.colors,
-        fonts: json.found.fonts,
-        shape: json.found.shape,
-      });
+      setApply(
+        Object.fromEntries(CATEGORIES.map((c) => [c.key, !!json.found[c.key]])),
+      );
       setStatus("done");
     } catch {
       setError("Something went wrong reading that site. Try again.");
@@ -167,14 +172,15 @@ export function ImportBrandDialog({ open, onOpenChange, eventId, theme, onApply 
       }
     }
 
-    const { patch, notes } = buildThemePatch(data, {
+    const { patch, footer: nextFooter, notes } = buildThemePatch(data, {
       apply,
       current: theme,
+      currentFooter: footer,
       logoUrl,
       background: useBackground,
     });
 
-    onApply(patch);
+    onApply(patch, nextFooter);
     setApplying(false);
     onOpenChange(false);
     toast.success(
@@ -313,7 +319,11 @@ export function ImportBrandDialog({ open, onOpenChange, eventId, theme, onApply 
                       Body: {data.fonts.body}
                     </span>
                   ) : null}
-                  {data.radius ? (
+                  {Number.isFinite(data.radiusPx) ? (
+                    <span className="rounded-lg border border-border bg-surface-card px-2.5 py-1.5 text-xs text-muted-foreground">
+                      Corners: {data.radiusPx}px
+                    </span>
+                  ) : data.radius ? (
                     <span className="rounded-lg border border-border bg-surface-card px-2.5 py-1.5 text-xs capitalize text-muted-foreground">
                       Corners: {data.radius}
                     </span>
@@ -321,9 +331,78 @@ export function ImportBrandDialog({ open, onOpenChange, eventId, theme, onApply 
                   {data.button ? (
                     <span className="rounded-lg border border-border bg-surface-card px-2.5 py-1.5 text-xs capitalize text-muted-foreground">
                       Buttons: {data.button}
+                      {data.buttonGradient ? " gradient" : ""}
+                    </span>
+                  ) : null}
+                  {data.elevation ? (
+                    <span className="rounded-lg border border-border bg-surface-card px-2.5 py-1.5 text-xs capitalize text-muted-foreground">
+                      Shadow: {data.elevation}
+                    </span>
+                  ) : null}
+                  {data.width ? (
+                    <span className="rounded-lg border border-border bg-surface-card px-2.5 py-1.5 text-xs capitalize text-muted-foreground">
+                      Width: {data.width}
+                    </span>
+                  ) : null}
+                  {data.fonts?.faces?.length ? (
+                    <span className="rounded-lg border border-border bg-surface-card px-2.5 py-1.5 text-xs text-muted-foreground">
+                      Self-hosted font ({data.fonts.faces.length} weights)
                     </span>
                   ) : null}
                 </div>
+              ) : null}
+
+              {data.nav?.length || data.cta ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-text-secondary">
+                    Site header — their nav
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface-card px-3 py-2.5">
+                    {(data.nav || []).map((l) => (
+                      <span key={l.url} className="text-xs text-muted-foreground">
+                        {l.label}
+                      </span>
+                    ))}
+                    {data.cta ? (
+                      <span
+                        className="ml-auto rounded-md px-2 py-1 text-xs"
+                        style={{
+                          backgroundColor: colors?.brand || "transparent",
+                          color: colors?.brandText || "inherit",
+                        }}
+                      >
+                        {data.cta.label}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {data.found.footer ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-text-secondary">Footer</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-surface-card px-3 py-2.5">
+                    {(data.footer.links || []).map((l) => (
+                      <span key={l.url} className="text-xs text-muted-foreground">
+                        {l.label}
+                      </span>
+                    ))}
+                    {(data.footer.socials || []).map((s) => (
+                      <span
+                        key={s.platform}
+                        className="text-xs capitalize text-text-tertiary"
+                      >
+                        {s.platform}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {data.tagline ? (
+                <p className="rounded-xl border border-border bg-surface-card px-3 py-2.5 text-xs italic text-text-secondary">
+                  &ldquo;{data.tagline}&rdquo;
+                </p>
               ) : null}
 
               <div className="space-y-2 rounded-xl border border-border bg-surface-card p-3">

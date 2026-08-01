@@ -116,13 +116,6 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
             <ExternalLink className="h-4 w-4" /> 
           </Button>
           <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => setPreviewOpen(true)}
-          >
-            <Eye className="h-4 w-4" /> Preview
-          </Button>
-          <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={save}
           >

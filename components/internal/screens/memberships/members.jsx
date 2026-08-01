@@ -6,6 +6,7 @@ import {
   Users,
   Loader2,
   MoreHorizontal,
+  Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -44,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useProject } from "@/context/project-context";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { newId } from "@/components/internal/screens/events/sample_data";
 import { listRecords } from "@/lib/supabase/ticketing";
 import {
@@ -53,6 +55,7 @@ import {
   softDeleteMember,
 } from "@/lib/supabase/memberships";
 import { formatDate, MEMBER_STATUS_MAP } from "../tickets/constants";
+import { MemberDetail } from "./member_detail";
 
 const STATUSES = ["Active", "Expired", "Cancelled"];
 
@@ -151,6 +154,8 @@ function AddMemberDialog({ open, onOpenChange, plans, onCreate }) {
 
 export function MembersScreen() {
   const { projectId } = useProject();
+  // The open member lives in the URL (?record=<id>) so a refresh stays on it.
+  const { recordId, openRecord, closeRecord } = useWorkspaceUrl();
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -228,6 +233,39 @@ export function MembersScreen() {
     });
   };
 
+  const saveMember = async (draft) => {
+    setMembers((prev) => prev.map((m) => (m.id === draft.id ? draft : m)));
+    const res = await updateMember(draft.id, {
+      name: draft.name,
+      email: draft.email,
+      status: draft.status,
+      membershipId: draft.membershipId,
+      expiresAt: draft.expiresAt,
+    });
+    if (res === false) {
+      toast.error("Couldn't save your changes to the server.");
+      return;
+    }
+    toast.success("Saved.");
+  };
+
+  // The detail editor takes over the screen when a member is open.
+  const openMember = members.find((m) => m.id === recordId) || null;
+  if (openMember) {
+    return (
+      <MemberDetail
+        member={openMember}
+        plans={plans}
+        onBack={closeRecord}
+        onSave={saveMember}
+        onDelete={(m) => {
+          remove(m);
+          closeRecord();
+        }}
+      />
+    );
+  }
+
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -261,7 +299,11 @@ export function MembersScreen() {
           {filtered.map((m) => (
             <div
               key={m.id}
-              className="flex items-center justify-between gap-3 py-3.5"
+              role="button"
+              tabIndex={0}
+              onClick={() => openRecord(m.id)}
+              onKeyDown={(e) => e.key === "Enter" && openRecord(m.id)}
+              className="-mx-4 flex cursor-pointer items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-surface-hover"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -291,6 +333,13 @@ export function MembersScreen() {
                     align="end"
                     className="w-44 border-border bg-surface-card shadow-xl"
                   >
+                    <DropdownMenuItem
+                      className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
+                      onClick={() => openRecord(m.id)}
+                    >
+                      <Pencil className="h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-surface-strong" />
                     {STATUSES.filter((s) => s !== m.status).map((s) => (
                       <DropdownMenuItem
                         key={s}

@@ -39,6 +39,18 @@ export default function PublishedEventPage() {
     };
   }, [id]);
 
+  // Affiliate attribution: a visit on a tracked link (?ref=<slug>) validates the
+  // token, logs the click and remembers it for this event, then strips the
+  // param. Imported lazily so the affiliate code only loads on a link that
+  // actually carries a ref, and silent when the event has no program.
+  useEffect(() => {
+    if (!id || typeof window === "undefined") return;
+    if (!new URLSearchParams(window.location.search).has("ref")) return;
+    import("@/addons/affiliates/lib/attribution")
+      .then((mod) => mod.captureRefFromUrl(id))
+      .catch(() => {});
+  }, [id]);
+
   const share = () => {
     if (typeof window === "undefined") return;
     const url = window.location.href;
@@ -53,6 +65,11 @@ export default function PublishedEventPage() {
       );
     }
   };
+
+  // A themed page can carry the source site's favicon; standard mode never does.
+  const design = event?.pageDesign;
+  const brandFavicon =
+    design && design.mode !== "standard" ? design.theme?.favicon || "" : "";
 
   if (!event) {
     if (loading) {
@@ -90,6 +107,11 @@ export default function PublishedEventPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
+      {/* An imported brand's favicon, so the tab matches the page. React hoists
+          the tag into <head>; without one the app's own icon stands. */}
+      {brandFavicon ? (
+        <link rel="icon" href={brandFavicon} precedence="default" />
+      ) : null}
       {/* Published-page chrome — brand + share, not the editor's preview bar. */}
       <header className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-background/80 px-4 py-3 backdrop-blur sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2">
@@ -117,7 +139,7 @@ export default function PublishedEventPage() {
 
       <EventPublicPageContent
         event={event}
-        design={event.pageDesign || defaultPageDesign()}
+        design={design || defaultPageDesign()}
         live
       />
     </div>

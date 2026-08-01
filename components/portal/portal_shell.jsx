@@ -11,6 +11,7 @@ import PortalHome from "./portal_home";
 import PortalTickets from "./portal_tickets";
 import PortalOrders from "./portal_orders";
 import PortalMemberships from "./portal_memberships";
+import PortalWatch from "./portal_watch";
 import PortalMessages from "./portal_messages";
 import PortalNotifications from "./portal_notifications";
 import PortalCommunity from "./portal_community";
@@ -29,6 +30,7 @@ export function PortalShell({ member: initialMember }) {
   const [data, setData] = useState(null);
   const [plans, setPlans] = useState({ plans: [], paymentsEnabled: false });
   const [busyPlanId, setBusyPlanId] = useState(null);
+  const [watch, setWatch] = useState(null);
   const [threads, setThreads] = useState(null);
   const [notifications, setNotifications] = useState({ items: [], unread: 0 });
   const [messageDraft, setMessageDraft] = useState(null);
@@ -46,6 +48,12 @@ export function PortalShell({ member: initialMember }) {
       .then((d) => setPlans({ plans: d.plans || [], paymentsEnabled: !!d.paymentsEnabled }))
       .catch(() => {});
 
+  const loadWatch = () =>
+    fetch("/api/portal/watch")
+      .then((r) => r.json())
+      .then((d) => setWatch(d.items || []))
+      .catch(() => setWatch([]));
+
   const loadThreads = () =>
     fetch("/api/portal/threads")
       .then((r) => r.json())
@@ -61,6 +69,7 @@ export function PortalShell({ member: initialMember }) {
   useEffect(() => {
     loadData();
     loadPlans();
+    loadWatch();
     loadThreads();
     loadNotifications();
   }, []);
@@ -88,6 +97,7 @@ export function PortalShell({ member: initialMember }) {
           toast.success(`You're now a member of ${d.planName || "the plan"}.`);
           loadData();
           loadPlans();
+          loadWatch();
         } else {
           toast.error(d.error || "We couldn't confirm your membership.");
         }
@@ -134,7 +144,7 @@ export function PortalShell({ member: initialMember }) {
       }
       if (d.enrolled) {
         toast.success(`You're now a member of ${d.planName || plan.name}.`);
-        await Promise.all([loadData(), loadPlans()]);
+        await Promise.all([loadData(), loadPlans(), loadWatch()]);
       } else {
         toast.error(d.error || "Couldn't start checkout.");
       }
@@ -181,6 +191,7 @@ export function PortalShell({ member: initialMember }) {
     tickets: data?.tickets?.length || null,
     orders: data?.orders?.length || null,
     memberships: data?.memberships?.length || null,
+    watch: watch?.length || null,
     messages: unreadThreads || null,
     notifications: notifications.unread || null,
   };
@@ -199,6 +210,9 @@ export function PortalShell({ member: initialMember }) {
     }
     if (tab === "notifications") {
       return <PortalNotifications items={notifications.items} loading={false} />;
+    }
+    if (tab === "watch") {
+      return <PortalWatch items={watch || []} loading={watch === null} />;
     }
     if (tab === "community") {
       return <PortalCommunity member={member} />;
