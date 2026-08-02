@@ -208,7 +208,7 @@ Inline three-pane surface inside the Page Design section, fit-scaled to the colu
 ### State & persistence
 - Canvas state is **lifted into `EventDetailScreen`** alongside `design`, lazy-loaded on
   first entry to custom mode.
-- **Save changes** persists both: `updateEventMeta(id, { pageDesign })` **and**
+- **Save Changes** persists both: `updateEventMeta(id, { pageDesign })` **and**
   `saveEventLayout(id, canvas)`. Optimistic/local when Supabase is absent (UI-first convention).
 - First switch to `custom` seeds a **starter canvas** (cover image + title + date/venue +
   a text block + a Tickets element) so the page is never empty and can always sell tickets.

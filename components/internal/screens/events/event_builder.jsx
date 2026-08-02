@@ -85,7 +85,7 @@ export function BasicsSection({ event, headerItem, onPatch }) {
         </div>
       </div>
       <p className="text-xs text-text-tertiary">
-        Use <span className="font-medium text-text-secondary">Save changes</span>{" "}
+        Use <span className="font-medium text-text-secondary">Save Changes</span>{" "}
         at the top to persist these.
       </p>
     </div>

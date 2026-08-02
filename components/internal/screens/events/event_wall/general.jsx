@@ -70,7 +70,7 @@ export function WallGeneralSection({ wall }) {
           disabled={saving}
           onClick={save}
         >
-          Save changes
+          Save Changes
         </Button>
       </div>
     </div>

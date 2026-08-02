@@ -395,7 +395,7 @@ function OverviewTab({ contact, onPatch }) {
           className="bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={save}
         >
-          Save changes
+          Save Changes
         </Button>
       </div>
     </div>

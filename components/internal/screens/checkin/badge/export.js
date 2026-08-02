@@ -1,6 +1,7 @@
 "use client";
 
 import { passSvg, resolveTemplate } from "@/lib/passes/render";
+import { collectImageUrls } from "@/lib/passes/layout";
 import { zipStore } from "@/lib/passes/zip";
 
 // Raster export. The SVG the preview and printer already use goes into an
@@ -49,6 +50,19 @@ export async function inlineLogo(url) {
   }
 }
 
+// Every image a template references, as a url -> data-URI map. One pass per
+// template, so a 500-pass ZIP fetches each asset once.
+export async function inlineTemplateImages(template) {
+  const images = {};
+  let failed = false;
+  for (const url of collectImageUrls(template)) {
+    const href = await inlineLogo(url);
+    if (href) images[url] = href;
+    else failed = true;
+  }
+  return { images, failed };
+}
+
 function svgToPngBlob(svg) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -70,16 +84,20 @@ function svgToPngBlob(svg) {
 
 // One PNG for the previewed pass. Returns null on success or an error message.
 export async function exportPassPng({ template, event, attendee, qrSettings }) {
-  // Inlined whenever a URL is set: the renderer decides where it's used (badge
-  // corner, QR centre, or neither), so gating here would desync export from
-  // what the preview shows.
-  const logoHref = await inlineLogo(template.logoUrl);
+  // Inlined whenever a URL is set: the renderer decides where each image is used
+  // (background, section, badge corner, QR centre), so gating here would desync
+  // export from what the preview shows.
+  const { images, failed } = await inlineTemplateImages(template);
   try {
-    const svg = passSvg(template, { event, attendee, qrSettings, logoHref }, { dpi: DPI });
+    const svg = passSvg(
+      template,
+      { event, attendee, qrSettings, images, logoHref: images[template.logoUrl] || "" },
+      { dpi: DPI },
+    );
     const blob = await svgToPngBlob(svg);
     downloadBlob(blob, `${slug(event?.name)}-${slug(attendee?.name)}.png`);
-    return template.logoUrl && !logoHref
-      ? "Exported, but the logo couldn't be loaded — check that its host allows cross-origin reads."
+    return failed
+      ? "Exported, but an image couldn't be loaded — check that its host allows cross-origin reads."
       : null;
   } catch (e) {
     console.error("[passes.png]", e);
@@ -98,14 +116,13 @@ export async function exportPassesZip({
 }) {
   if (!attendees.length) return "There are no passes to export.";
 
-  // Inline each template's logo once rather than per pass.
-  const logos = new Map();
+  // Inline each template's images once rather than per pass.
+  const assets = new Map();
   let logoFailed = false;
   for (const template of templates) {
-    if (!template.logoUrl) continue;
-    const href = await inlineLogo(template.logoUrl);
-    if (!href) logoFailed = true;
-    logos.set(template.id, href);
+    const { images, failed } = await inlineTemplateImages(template);
+    if (failed) logoFailed = true;
+    assets.set(template.id, images);
   }
 
   const files = [];
@@ -115,9 +132,10 @@ export async function exportPassesZip({
       const attendee = attendees[i];
       const template = resolveTemplate(templates, attendee.tier);
       if (!template) continue;
+      const images = assets.get(template.id) || {};
       const svg = passSvg(
         template,
-        { event, attendee, qrSettings, logoHref: logos.get(template.id) || "" },
+        { event, attendee, qrSettings, images, logoHref: images[template.logoUrl] || "" },
         { dpi: DPI },
       );
       const blob = await svgToPngBlob(svg);

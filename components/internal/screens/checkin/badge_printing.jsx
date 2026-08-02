@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -13,12 +13,7 @@ import {
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import {
-  EmptyState,
-  ScreenHeader,
-  SectionCard,
-  StatsBar,
-} from "@/components/internal/shared/screen_kit";
+import { EmptyState, ScreenHeader } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -42,10 +37,14 @@ import { resolveTemplate } from "@/lib/passes/render";
 import { sheetGrid } from "@/lib/passes/stock";
 import { downloadCsv } from "@/components/internal/screens/registrations/csv";
 
-import { formatDate, newPassTemplate, withDefaults } from "./constants";
-import { TemplateList } from "./badge/template_list";
-import { DesignForm } from "./badge/design_form";
-import { PassPreview } from "./badge/preview";
+import { withLayout } from "@/lib/passes/layout";
+import { uploadBadgeImage } from "@/lib/supabase/storage";
+
+import { newPassTemplate, withDefaults } from "./constants";
+import { TemplatePicker } from "./badge/template_picker";
+import { LayersPanel } from "./badge/layers_panel";
+import { Inspector } from "./badge/inspector";
+import { PassCanvas } from "./badge/canvas";
 import { printPasses } from "./badge/print";
 import { exportPassPng, exportPassesZip } from "./badge/export";
 
@@ -80,6 +79,7 @@ export function BadgePrintingScreen() {
   const [saved, setSaved] = useState(() => withDefaults({}, "badge"));
   const [qrSettings, setQrSettings] = useState(() => withDefaults({}, "qrTickets"));
   const [selectedId, setSelectedId] = useState("");
+  const [elementId, setElementId] = useState(null);
 
   // Events + the project's saved designs load together; both are needed before
   // anything can render.
@@ -96,10 +96,13 @@ export function BadgePrintingScreen() {
         const merged = withDefaults(config, "badge");
         // A project with no saved designs starts on one seeded from the legacy
         // preset. It's seeded into `saved` too, so an untouched screen is clean.
-        const templates =
+        // Designs saved before the free-layout editor carry only field toggles;
+        // withLayout converts them to positioned elements that draw the same.
+        const templates = (
           Array.isArray(merged.templates) && merged.templates.length
             ? merged.templates
-            : [newPassTemplate(merged.defaultTemplate || "classic", { isDefault: true })];
+            : [newPassTemplate(merged.defaultTemplate || "classic", { isDefault: true })]
+        ).map(withLayout);
         const next = { ...merged, templates };
         setSlice(next);
         setSaved(next);
@@ -137,12 +140,16 @@ export function BadgePrintingScreen() {
     [templates, selectedId],
   );
   const availableTiers = useMemo(() => tiersOf(attendees), [attendees]);
-  const previewAttendee = useMemo(
-    () => attendees.find((a) => a.key === previewKey) || attendees[0] || SAMPLE,
+  const previewIndex = useMemo(
+    () => attendees.findIndex((a) => a.key === previewKey),
     [attendees, previewKey],
   );
+  const previewAttendee = useMemo(
+    () => attendees[previewIndex] || attendees[0] || SAMPLE,
+    [attendees, previewIndex],
+  );
 
-  // How many passes each template is responsible for — shown on the rail so a
+  // How many passes each template is responsible for — shown on the chips so a
   // tier binding that matches nobody is obvious.
   const counts = useMemo(() => {
     const out = {};
@@ -160,10 +167,70 @@ export function BadgePrintingScreen() {
   const updateTemplate = (patch) =>
     setTemplates(templates.map((t) => (t.id === selected?.id ? { ...t, ...patch } : t)));
 
+  // Layout edits merge into the open design; every element lives in its layout,
+  // so the canvas, the layers rail and the inspector all write through here.
+  const updateLayout = useCallback(
+    (patch) =>
+      setSlice((s) => ({
+        ...s,
+        templates: (s.templates || []).map((t) =>
+          t.id === (selected?.id || "")
+            ? { ...t, layout: { ...(t.layout || {}), ...patch } }
+            : t,
+        ),
+      })),
+    [selected?.id],
+  );
+
+  const element = useMemo(
+    () => (selected?.layout?.elements || []).find((el) => el.id === elementId) || null,
+    [selected, elementId],
+  );
+
+  const updateElement = useCallback(
+    (patch) =>
+      setSlice((s) => ({
+        ...s,
+        templates: (s.templates || []).map((t) =>
+          t.id === (selected?.id || "")
+            ? {
+                ...t,
+                layout: {
+                  ...(t.layout || {}),
+                  elements: (t.layout?.elements || []).map((el) =>
+                    el.id === elementId ? { ...el, ...patch } : el,
+                  ),
+                },
+              }
+            : t,
+        ),
+      })),
+    [selected?.id, elementId],
+  );
+
+  const deleteElement = (id) => {
+    updateLayout({
+      elements: (selected?.layout?.elements || []).filter((el) => el.id !== id),
+    });
+    if (elementId === id) setElementId(null);
+  };
+
+  // Card artwork lands in storage under badges/<project>/ and the design stores
+  // the public URL, so print and export read the same file.
+  const uploadImage = async (file) => {
+    const result = await uploadBadgeImage(projectId, file);
+    if (!result?.url) {
+      toast.error("Couldn't upload that image.");
+      return null;
+    }
+    return result.url;
+  };
+
   const addTemplate = (preset) => {
-    const created = newPassTemplate(preset, { isDefault: templates.length === 0 });
+    const created = withLayout(newPassTemplate(preset, { isDefault: templates.length === 0 }));
     setTemplates([...templates, created]);
     setSelectedId(created.id);
+    setElementId(null);
   };
 
   const duplicateTemplate = (id) => {
@@ -184,6 +251,15 @@ export function BadgePrintingScreen() {
     if (!next.some((t) => t.isDefault)) next[0] = { ...next[0], isDefault: true };
     setTemplates(next);
     if (selectedId === id) setSelectedId(next[0].id);
+  };
+
+  // Paging the canvas steps through the real attendee list, wrapping at both
+  // ends so a long list stays reachable from either direction.
+  const stepPreview = (delta) => {
+    if (!attendees.length) return;
+    const from = previewIndex < 0 ? 0 : previewIndex;
+    const next = (from + delta + attendees.length) % attendees.length;
+    setPreviewKey(attendees[next].key);
   };
 
   const save = async () => {
@@ -265,6 +341,7 @@ export function BadgePrintingScreen() {
 
   const header = (
     <ScreenHeader
+      className="shrink-0"
       title="Badge Printing"
       description="Design event passes, bind them to ticket tiers, and print or export them for every attendee."
     />
@@ -298,14 +375,56 @@ export function BadgePrintingScreen() {
 
   const grid = selected ? sheetGrid(selected.sheet, selected.stock) : null;
   const zipping = busy.startsWith("zip");
+  const passCount = attendees.length;
+  const meta = [
+    loadingList ? "Loading Passes…" : `${passCount} Pass${passCount === 1 ? "" : "es"}`,
+    `${templates.length} Design${templates.length === 1 ? "" : "s"}`,
+    grid ? `${grid.perPage} Per ${grid.page.wMm > 214 ? "Letter" : "A4"}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const stepperLabel = attendees.length
+    ? `${previewAttendee.name}${previewAttendee.seatLabel ? ` · ${previewAttendee.seatLabel}` : ""}`
+    : "Sample attendee — nobody has registered yet";
 
   return (
-    <MainScreenWrapper>
-      <ScreenHeader
-        title="Badge Printing"
-        description="Design event passes, bind them to ticket tiers, and print or export them for every attendee."
-        actions={
-          <div className="flex items-center gap-2">
+    <MainScreenWrapper className="flex h-full flex-col space-y-4 py-0">
+      {header}
+
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        {/* Toolbar: what we're designing, for which event, and what to do with it. */}
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
+          <Select value={eventId} onValueChange={setEventId}>
+            <SelectTrigger className="w-[220px] bg-surface-card">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {events.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <TemplatePicker
+            templates={templates}
+            selectedId={selected?.id || ""}
+            counts={counts}
+            onSelect={(id) => {
+              setSelectedId(id);
+              setElementId(null);
+            }}
+            onAdd={addTemplate}
+            onDuplicate={duplicateTemplate}
+            onSetDefault={setDefaultTemplate}
+            onDelete={deleteTemplate}
+          />
+
+          <div className="ml-auto flex items-center gap-3">
+            <span className="hidden text-xs text-text-tertiary lg:inline">{meta}</span>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -346,116 +465,57 @@ export function BadgePrintingScreen() {
               onClick={save}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {saving ? "Saving…" : "Save changes"}
+              {saving ? "Saving…" : "Save"}
             </Button>
           </div>
-        }
-      />
-
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Select value={eventId} onValueChange={setEventId}>
-          <SelectTrigger className="h-9 w-full bg-surface-card sm:max-w-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {events.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-sm text-text-secondary">
-          {event ? formatDate(event.date) : ""}
-          {" · "}
-          {loadingList
-            ? "loading passes…"
-            : `${attendees.length} pass${attendees.length === 1 ? "" : "es"}`}
-        </p>
-      </div>
-
-      <StatsBar
-        className="mb-6"
-        stats={[
-          { label: "Passes", value: String(attendees.length) },
-          { label: "Templates", value: String(templates.length) },
-          { label: "Per page", value: grid ? String(grid.perPage) : "—" },
-          { label: "Tiers", value: String(availableTiers.length) },
-        ]}
-      />
-
-      <div className="grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-3">
-          <TemplateList
-            templates={templates}
-            selectedId={selected?.id || ""}
-            counts={counts}
-            onSelect={setSelectedId}
-            onAdd={addTemplate}
-            onDuplicate={duplicateTemplate}
-            onSetDefault={setDefaultTemplate}
-            onDelete={deleteTemplate}
-          />
         </div>
 
-        <div className="lg:col-span-5">
-          {selected ? (
-            <DesignForm
+        {/* Three separate surfaces: fields rail · draggable canvas · inspector rail. */}
+        <div className="flex min-h-0 flex-1 gap-3">
+          <aside className="hidden w-1/5 shrink-0 overflow-hidden rounded-xl border border-border bg-surface-subtle md:block">
+            {selected ? (
+              <LayersPanel
+                template={selected}
+                selectedId={elementId}
+                onSelect={setElementId}
+                onChange={updateLayout}
+              />
+            ) : null}
+          </aside>
+
+          <div className="min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-background">
+            <PassCanvas
               template={selected}
-              availableTiers={availableTiers}
+              event={event || {}}
+              attendee={previewAttendee}
               qrSettings={qrSettings}
-              onChange={updateTemplate}
+              grid={grid}
+              passCount={passCount}
+              stepperLabel={stepperLabel}
+              canStep={attendees.length > 1}
+              onPrev={() => stepPreview(-1)}
+              onNext={() => stepPreview(1)}
+              selectedId={elementId}
+              onSelect={setElementId}
+              onLayoutChange={updateLayout}
             />
-          ) : null}
-        </div>
-
-        <div className="lg:col-span-4">
-          <div className="lg:sticky lg:top-6">
-            <SectionCard title="Preview" description="Exactly what prints and exports.">
-              {selected ? (
-                <PassPreview
-                  template={selected}
-                  event={event || {}}
-                  attendee={previewAttendee}
-                  qrSettings={qrSettings}
-                />
-              ) : null}
-
-              <div className="mt-4">
-                <Select
-                  value={previewKey || SAMPLE.key}
-                  onValueChange={setPreviewKey}
-                  disabled={!attendees.length}
-                >
-                  <SelectTrigger className="h-9 bg-surface-card">
-                    <SelectValue placeholder="Sample attendee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {attendees.length ? (
-                      attendees.slice(0, 100).map((a) => (
-                        <SelectItem key={a.key} value={a.key}>
-                          {a.name}
-                          {a.tier ? ` · ${a.tier}` : ""}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value={SAMPLE.key}>Sample attendee</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                {attendees.length > 100 ? (
-                  <p className="mt-2 text-xs text-text-tertiary">
-                    Showing the first 100 of {attendees.length} for preview; all of them print.
-                  </p>
-                ) : null}
-                {!attendees.length && !loadingList ? (
-                  <p className="mt-2 text-xs text-text-tertiary">
-                    Nobody has registered yet — this is a sample pass. Its QR is not a real code.
-                  </p>
-                ) : null}
-              </div>
-            </SectionCard>
           </div>
+
+          <aside className="hidden w-1/5 shrink-0 overflow-hidden rounded-xl border border-border bg-surface-subtle lg:block">
+            {selected ? (
+              <Inspector
+                template={selected}
+                element={element}
+                availableTiers={availableTiers}
+                qrSettings={qrSettings}
+                onChange={updateTemplate}
+                onLayoutChange={updateLayout}
+                onElementChange={updateElement}
+                onElementDelete={deleteElement}
+                onUpload={uploadImage}
+              />
+            ) : null}
+          </aside>
         </div>
       </div>
     </MainScreenWrapper>

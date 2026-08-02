@@ -634,7 +634,7 @@ function RoleDialog({ open, onOpenChange, editing, draft, setDraft, roles, onSub
             Cancel
           </Button>
           <Button className="bg-primary text-primary-foreground" onClick={onSubmit}>
-            {editing ? "Save changes" : "Create role"}
+            {editing ? "Save Changes" : "Create role"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -16,6 +16,57 @@ export const EVENT_TYPE_MAP = {
   Hybrid: { label: "Hybrid", variant: "purple" },
 };
 
+// Event-scoped access roles for the Co-hosts & Admins section, ranked by
+// authority. Independent of the project role catalog (events.roles). The style
+// is a warm-to-cool palette so tiers read at a glance; `icon` is a lucide name
+// the section maps to a component.
+export const EVENT_TEAM_ROLES = [
+  {
+    value: "Owner",
+    description: "Full access, including billing and deletion.",
+    icon: "Crown",
+    variant: "warning",
+    avatar: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+  },
+  {
+    value: "Admin",
+    description: "Manage events, tickets, and team — no billing.",
+    icon: "ShieldCheck",
+    variant: "purple",
+    avatar: "border-violet-500/25 bg-violet-500/10 text-violet-300",
+  },
+  {
+    value: "Co-host",
+    description: "Edit event details and message attendees.",
+    icon: "Users",
+    variant: "info",
+    avatar: "border-sky-500/25 bg-sky-500/10 text-sky-300",
+  },
+  {
+    value: "Check-in staff",
+    description: "Scan tickets and view the guest list only.",
+    icon: "ScanLine",
+    variant: "success",
+    avatar: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+  },
+  {
+    value: "Viewer",
+    description: "Read-only access to analytics and lists.",
+    icon: "Eye",
+    variant: "neutral",
+    avatar: "border-border bg-surface-card text-muted-foreground",
+  },
+];
+
+export const EVENT_TEAM_ROLE_MAP = Object.fromEntries(
+  EVENT_TEAM_ROLES.map((r) => [r.value, r]),
+);
+
+export const EVENT_TEAM_ROLE_FILTER_OPTIONS = [
+  { value: "all", label: "All roles" },
+  ...EVENT_TEAM_ROLES.map((r) => ({ value: r.value, label: r.value })),
+];
+
 export const EVENTS = [
   {
     id: "7b1c0e9a-4d2f-4a1b-9c3e-1f5a8d6b2c01",

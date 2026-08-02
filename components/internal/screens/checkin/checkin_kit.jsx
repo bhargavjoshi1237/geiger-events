@@ -91,7 +91,7 @@ export function CheckinSettingsScreen({
             onClick={save}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? "Saving…" : "Save Changes"}
           </Button>
         }
       />

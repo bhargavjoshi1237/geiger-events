@@ -181,7 +181,7 @@ export function VisibilitySection({ event, headerItem, onPatch, onCommit }) {
               saveAccess(access, { successMsg: "Visibility settings saved." })
             }
           >
-            Save changes
+            Save Changes
           </Button>
         </div>
     </div>

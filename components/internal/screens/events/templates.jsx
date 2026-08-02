@@ -219,11 +219,7 @@ function TemplateDialog({ open, onOpenChange, onSubmit, initial, mode }) {
               placeholder="What's included in this template?"
             />
           </Field>
-
-          <div className="rounded-lg border border-border bg-surface-subtle p-3">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-              Blueprint defaults
-            </p>
+          <Field label="Blueprint defaults">
             <div className="grid grid-cols-3 gap-3">
               <Field label="Format">
                 <Select value={draft.type} onValueChange={set("type")}>
@@ -263,7 +259,7 @@ function TemplateDialog({ open, onOpenChange, onSubmit, initial, mode }) {
                 </Select>
               </Field>
             </div>
-          </div>
+          </Field>
         </div>
 
         <DialogFooter>

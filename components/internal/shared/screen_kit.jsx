@@ -334,6 +334,7 @@ export function SearchInput({
   onChange,
   placeholder = "Search…",
   className,
+  ...props
 }) {
   return (
     <div className={cn("relative", className)}>
@@ -343,6 +344,7 @@ export function SearchInput({
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         placeholder={placeholder}
+        {...props}
         className="h-9 w-full rounded-md border border-border bg-surface-card pl-8 pr-3 text-sm text-foreground placeholder:text-text-tertiary outline-none transition-colors focus-visible:border-border-strong focus-visible:ring-2 focus-visible:ring-border"
       />
     </div>

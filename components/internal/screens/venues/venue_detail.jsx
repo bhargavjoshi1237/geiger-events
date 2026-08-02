@@ -85,7 +85,7 @@ export function VenueDetailScreen({ venue, onBack, onUpdate }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={save}
           >
-            Save changes
+            Save Changes
           </Button>
         </div>
       </div>

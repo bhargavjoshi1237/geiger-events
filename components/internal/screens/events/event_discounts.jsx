@@ -6,11 +6,8 @@ import { Percent, Plus, Ticket, ShoppingCart, Loader2 } from "lucide-react";
 import {
   EditorSectionHeader,
   Field,
-  SettingsList,
-  SettingRow,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -24,6 +21,7 @@ import { useEventConfig } from "@/lib/events/use-event-config";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listRecords } from "@/lib/supabase/ticketing";
+import { DiscountStub } from "@/components/internal/screens/tickets/discount_stub";
 
 // Event-editor "Discounts" tab. Owns the per-event discount-code config:
 //   metadata.discountSettings = { enabled: true, appliesTo: "order" | "tickets" }
@@ -33,14 +31,6 @@ import { listRecords } from "@/lib/supabase/ticketing";
 // coupon is attached, and validates typed codes against these attached records.
 
 const DEFAULT_SETTINGS = { enabled: true, appliesTo: "order" };
-
-// One-line summary of a coupon record's config.
-function couponSummary(config) {
-  const c = config || {};
-  const off = c.discountType === "flat" ? `$${c.value} off` : `${c.value}% off`;
-  const limit = Number(c.usageLimit) > 0 ? ` · limit ${c.usageLimit}` : "";
-  return `${off}${limit}`;
-}
 
 export function EventDiscountsSection({ event, headerItem }) {
   const { projectId } = useProject();
@@ -158,19 +148,17 @@ export function EventDiscountsSection({ event, headerItem }) {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading codes…
             </div>
           ) : coupons.length ? (
-            <SettingsList>
+            <div className="space-y-3">
               {coupons.map((r) => (
-                <SettingRow
+                <DiscountStub
                   key={r.id}
-                  title={
-                    <span className="flex items-center gap-2">
-                      <span className="font-mono text-sm text-foreground">
-                        {r.config?.code || "NO CODE"}
-                      </span>
-                      {!r.active ? <Badge variant="neutral">Inactive</Badge> : null}
-                    </span>
-                  }
-                  description={couponSummary(r.config)}
+                  code={r.config?.code}
+                  discountType={r.config?.discountType}
+                  value={r.config?.value}
+                  usageLimit={r.config?.usageLimit}
+                  active={r.active}
+                  attached={selected.includes(r.id)}
+                  onToggle={() => toggleCoupon(r.id)}
                   control={
                     <Switch
                       checked={selected.includes(r.id)}
@@ -180,7 +168,7 @@ export function EventDiscountsSection({ event, headerItem }) {
                   }
                 />
               ))}
-            </SettingsList>
+            </div>
           ) : (
             <button
               type="button"

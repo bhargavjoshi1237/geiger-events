@@ -5,7 +5,10 @@ import { toast } from "sonner";
 import { ArrowLeft, Eye, ExternalLink } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { StatusPill } from "@/components/internal/shared/screen_kit";
+import {
+  SearchInput,
+  StatusPill,
+} from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
@@ -22,6 +25,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
   // keeps the user on the same tab inside the event.
   const { section: active, setSection: setActive } = useWorkspaceUrl();
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [screenQuery, setScreenQuery] = useState("");
   const [design, setDesign] = useState(
     () => event?.pageDesign || defaultPageDesign(),
   );
@@ -80,6 +84,28 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
 
   const ActiveSection = SECTIONS[active] || SECTIONS.overview;
 
+  // Right-hand section nav, filtered by the search box. Group names also count
+  // as matches (typing "Tickets" surfaces every ticket-related topic).
+  const normalizedQuery = screenQuery.trim().toLowerCase().replace(/[-_]/g, " ");
+  const navGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((i) => !i.showIf || i.showIf(form)),
+  }))
+    .map((group) => ({
+      ...group,
+      items: normalizedQuery
+        ? group.items.filter((item) => {
+            const label = item.label.toLowerCase().replace(/[-_]/g, " ");
+            const groupName = group.group?.toLowerCase().replace(/[-_]/g, " ");
+            return (
+              label.includes(normalizedQuery) ||
+              groupName?.includes(normalizedQuery)
+            );
+          })
+        : group.items,
+    }))
+    .filter((group) => group.items.length > 0);
+
   return (
     <MainScreenWrapper className="lg:flex lg:h-full lg:flex-col lg:gap-6 lg:space-y-0 lg:overflow-hidden lg:py-0">
       {/* Editor header */}
@@ -119,7 +145,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={save}
           >
-            Save changes
+            Save Changes
           </Button>
         </div>
       </div>
@@ -174,57 +200,70 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
           )}
         </div>
 
-        <aside className="order-1 lg:order-2 lg:min-h-0">
+        <aside className="order-1 lg:order-2 lg:flex lg:min-h-0 lg:flex-col">
+          <div className="mb-3 lg:shrink-0">
+            <SearchInput
+              value={screenQuery}
+              onChange={setScreenQuery}
+              placeholder="Search screens..."
+              aria-label="Search screens"
+            />
+          </div>
           {/* Fills the editor column and scrolls inside its own area rather than
               the whole page. The thin scrollbar is hidden to match the suite's
               chrome-free scroll surfaces. */}
           <nav
             ref={navRef}
-            className="space-y-5 lg:h-full lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="space-y-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-              {NAV_GROUPS.map((group, gi) => {
+            {navGroups.map((group, gi) => {
               // Feature-gated items (Ticket Rules tabs) only show once their rule
               // is on; a group whose items all filter out is hidden entirely.
-              const items = group.items.filter((i) => !i.showIf || i.showIf(form));
-              if (!items.length) return null;
               return (
-              <div key={group.group || `g${gi}`}>
-                {group.group ? (
-                  <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                    {group.group}
-                  </p>
-                ) : null}
-                <div className="space-y-0.5">
-                  {items.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = active === item.key;
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        data-active={isActive ? "true" : undefined}
-                        onClick={() => setActive(item.key)}
-                        className={cn(
-                          "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                          isActive
-                            ? "bg-surface-card font-medium text-white"
-                            : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
-                        )}
-                      >
-                        <Icon
+                <div key={group.group || `g${gi}`}>
+                  {group.group ? (
+                    <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+                      {group.group}
+                    </p>
+                  ) : null}
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = active === item.key;
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          data-active={isActive ? "true" : undefined}
+                          onClick={() => setActive(item.key)}
                           className={cn(
-                            "h-4 w-4 shrink-0",
-                            isActive ? "text-white" : "text-text-secondary",
+                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                            isActive
+                              ? "bg-surface-card font-medium text-white"
+                              : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
                           )}
-                        />
-                        <span className="truncate capitalize">{item.label}</span>
-                      </button>
-                    );
-                  })}
+                        >
+                          <Icon
+                            className={cn(
+                              "h-4 w-4 shrink-0",
+                              isActive ? "text-white" : "text-text-secondary",
+                            )}
+                          />
+                          <span className="truncate capitalize">
+                            {item.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
               );
-              })}
+            })}
+            {navGroups.length === 0 ? (
+              <p className="px-3 text-sm text-text-tertiary">
+                No screens match “{screenQuery}”.
+              </p>
+            ) : null}
           </nav>
         </aside>
       </div>

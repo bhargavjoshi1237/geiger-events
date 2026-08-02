@@ -348,7 +348,7 @@ export function WallDesignSection({ wall }) {
           disabled={saving}
           onClick={onSave}
         >
-          Save changes
+          Save Changes
         </Button>
       </div>
     </div>

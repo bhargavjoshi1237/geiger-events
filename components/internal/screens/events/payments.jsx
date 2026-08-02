@@ -152,7 +152,7 @@ export function PaymentsSection({ event, headerItem }) {
             savePayments(payments, { successMsg: "Payment settings saved." })
           }
         >
-          Save changes
+          Save Changes
         </Button>
       </div>
     </div>

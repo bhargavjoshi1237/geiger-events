@@ -92,7 +92,7 @@ state holds the picker mode and the working `nearby` buckets (seeded from
 picker's `onChange({ address?, coords? })`:
 - `address` → `patch({ address })`
 - `coords` → `patch({ latitude: c.lat, longitude: c.lng })` (persisted on the
-  venue's top "Save changes" / any `commit`, consistent with the other columns).
+  venue's top "Save Changes" / any `commit`, consistent with the other columns).
 
 **Layout (top to bottom):**
 1. Section header with `LocationModeTabs` pinned right (mirrors the event

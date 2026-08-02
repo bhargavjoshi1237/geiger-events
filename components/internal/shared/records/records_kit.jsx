@@ -256,7 +256,7 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={save}
           >
-            Save changes
+            Save Changes
           </Button>
         </div>
       </div>
