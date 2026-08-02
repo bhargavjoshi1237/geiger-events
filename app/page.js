@@ -88,11 +88,11 @@ const utilityCards = [
 
 // Big-number credibility band (concept from the reference, in our style).
 const stats = [
-  { value: "12K+", label: "Events run" },
-  { value: "40+", label: "Countries" },
-  { value: "500K+", label: "Tickets sold" },
-  { value: "3M+", label: "Attendees hosted" },
-  { value: "98%", label: "On-time check-ins" },
+  { value: "0K+", label: "Events run" },
+  { value: "0+", label: "Countries" },
+  { value: "0K+", label: "Tickets sold" },
+  { value: "0M+", label: "Attendees hosted" },
+  { value: "0%", label: "On-time check-ins" },
 ];
 
 // Alternating text/playground spotlights that tell the end-to-end story. Each

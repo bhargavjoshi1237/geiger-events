@@ -23,7 +23,7 @@ export default function EventsPlaygroundShowcase({
 }) {
   return (
     <section
-      className="relative overflow-hidden rounded-2xl border mx-auto w-[80%] border-border bg-cover bg-center bg-no-repeat p-3 sm:rounded-3xl sm:p-6 md:p-8 xl:p-10"
+      className="relative overflow-hidden rounded-2xl border mx-auto w-[calc(100%-1.5rem)] border-border bg-cover bg-center bg-no-repeat p-3 sm:w-[80%] sm:rounded-3xl sm:p-6 md:p-8 xl:p-10"
       style={
         backgroundImage
           ? { backgroundImage: `url('${backgroundImage}')` }
@@ -33,7 +33,7 @@ export default function EventsPlaygroundShowcase({
       <div className="absolute inset-0 bg-[#080808]/75" />
       <div className="relative z-10 flex flex-col gap-6 sm:gap-10">
         <div className="space-y-5">
-          <div className="mx-auto mb-4 mt-4 flex w-[92%] flex-col items-start gap-4 sm:mb-6 sm:mt-6 sm:w-[90%]">
+          <div className="mx-auto mb-4 mt-4 flex w-full flex-col items-start gap-4 sm:mb-6 sm:mt-6 sm:w-[90%]">
             <h3 className="text-3xl font-semibold leading-tight text-white">
               Try the full Events workspace in real time.
             </h3>
