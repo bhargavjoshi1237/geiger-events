@@ -54,7 +54,7 @@ import {
   updateRole,
   softDeleteRole,
   ensureSystemRoles,
-} from "@/lib/supabase/roles";
+} from "@/lib/supabase/rbac";
 import { listMembers, logActivity } from "@/lib/supabase/team";
 import {
   PERMISSION_GROUPS,
@@ -94,12 +94,12 @@ export function RolesPermissionsScreen() {
       setUserName(u?.name || "");
     });
     (async () => {
-      let rows = await listRoles(projectId);
-      // First visit for this project — seed the system roles, then re-read.
-      if (rows && rows.length === 0) {
-        const seeded = await ensureSystemRoles(projectId, null);
-        if (seeded.length) rows = await listRoles(projectId);
-      }
+      // Fill in whichever system roles this project is missing. The adopt_rbac
+      // migration seeds only Owner (its "*" is stable); the rest are defined in
+      // geiger-rbac.config.js, so seeding them here keeps the catalog their
+      // single source of truth. Idempotent per key, so this is a no-op once the
+      // project has them all.
+      const rows = await ensureSystemRoles(projectId, null);
       if (!alive) return;
       setRoles(rows ?? []);
       setLoading(false);

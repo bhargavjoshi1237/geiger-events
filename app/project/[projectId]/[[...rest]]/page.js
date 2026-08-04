@@ -17,6 +17,7 @@ import {
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 import { AddonsProvider } from "@/context/addons-context";
 import { NavVisibilityProvider } from "@/context/nav-visibility-context";
+import { RbacProvider } from "@/context/rbac-context";
 
 // The active screen for the current tab, gated on the path's project resolving
 // to one the user can reach. Keyed by project id so switching projects remounts
@@ -101,11 +102,15 @@ export default function ProjectWorkspacePage() {
       <ProjectProvider>
         {/* Addon enablement is per project, so it loads inside ProjectProvider. */}
         <AddonsProvider>
-          {/* Sidebar curation is per (project, user) and sits under both, so it
-              can filter the nav the addons have already been merged into. */}
-          <NavVisibilityProvider>
-            <WorkspaceContent />
-          </NavVisibilityProvider>
+          {/* Grants are per (project, user) and gate the nav the addons have
+              already been merged into, so RBAC sits between the two. */}
+          <RbacProvider>
+            {/* Sidebar curation sits under all three: hiding an entry narrows
+                what the grant already allows, and can never widen it. */}
+            <NavVisibilityProvider>
+              <WorkspaceContent />
+            </NavVisibilityProvider>
+          </RbacProvider>
         </AddonsProvider>
       </ProjectProvider>
     </Suspense>

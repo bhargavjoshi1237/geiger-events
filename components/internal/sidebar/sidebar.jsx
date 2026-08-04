@@ -56,12 +56,11 @@ function MobileSidebarHeader() {
   );
 }
 
-export function AppSidebar({
-  activeTab = "Overview",
-  onTabChange = () => {},
-  roleId = "workspace_owner",
-  roles = [],
-}) {
+// Authorization is no longer passed in. It used to arrive as `roleId`/`roles`
+// props that nothing ever supplied, so the filter defaulted to "allow
+// everything"; useVisibleNav() now reads the signed-in user's real grants from
+// RbacProvider instead.
+export function AppSidebar({ activeTab = "Overview", onTabChange = () => {} }) {
   const { toggleSidebar } = useSidebar();
   const [expandedItems, setExpandedItems] = React.useState({});
 
@@ -77,9 +76,9 @@ export function AppSidebar({
     savedSidebarScroll = e.currentTarget.scrollTop;
   };
 
-  // Enabled addons + role filtering, shared with the topbar's search palette so
+  // Enabled addons + grant filtering, shared with the topbar's search palette so
   // both surfaces list exactly the same destinations.
-  const visibleNav = useVisibleNav({ roleId, roles });
+  const visibleNav = useVisibleNav();
 
   const toggleExpand = (title) => {
     setExpandedItems((prev) => ({

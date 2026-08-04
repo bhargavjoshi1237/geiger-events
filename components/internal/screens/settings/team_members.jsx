@@ -71,7 +71,9 @@ import { getUser } from "@/lib/supabase/user";
 import {
   listRoles,
   ensureSystemRoles,
-} from "@/lib/supabase/roles";
+  listGrants,
+  setMemberRole,
+} from "@/lib/supabase/rbac";
 import {
   listMembers,
   inviteMember,
@@ -110,6 +112,9 @@ export function TeamMembersScreen() {
 
   const [members, setMembers] = useState([]);
   const [roles, setRoles] = useState([]);
+  // What @geiger/rbac actually reads. The roster above is display; these are the
+  // rows that decide access.
+  const [grants, setGrants] = useState([]);
   const [groups, setGroups] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -151,12 +156,9 @@ export function TeamMembersScreen() {
       setUserName(u?.name || "");
     });
     (async () => {
-      let roleRows = await listRoles(projectId);
-      if (roleRows && roleRows.length === 0) {
-        await ensureSystemRoles(projectId, null);
-        roleRows = await listRoles(projectId);
-      }
-      const rolesList = roleRows ?? [];
+      // Fills any missing system role from geiger-rbac.config.js; a no-op once
+      // the project has them all.
+      const rolesList = (await ensureSystemRoles(projectId, null)) ?? [];
       const defaultRole =
         rolesList.find((r) => r.key === "member") ||
         rolesList[rolesList.length - 1] ||
@@ -171,6 +173,7 @@ export function TeamMembersScreen() {
     })();
     listGroups(projectId).then((rows) => alive && setGroups(rows ?? []));
     listActivity(projectId).then((rows) => alive && setActivity(rows ?? []));
+    listGrants(projectId).then((rows) => alive && setGrants(rows ?? []));
     return () => {
       alive = false;
     };
@@ -251,17 +254,38 @@ export function TeamMembersScreen() {
   const patchMember = (id, patch) =>
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
 
+  // Two writes, deliberately. project_members stays the roster (it carries the
+  // invited-but-unregistered rows, keyed by email alone), while role_grants is
+  // what @geiger/rbac actually reads — a member with no user_id yet has nothing
+  // to grant to, so the grant is written only once they have an account.
   const changeRole = async (member, roleId) => {
     if (member.roleId === roleId) return;
     const prevRole = member.roleId;
     patchMember(member.id, { roleId });
     const saved = await updateMember(member.id, { roleId });
-    if (saved) {
-      audit("role_changed", member, { role: roleById[roleId]?.name });
-    } else {
+    if (!saved) {
       patchMember(member.id, { roleId: prevRole });
       toast.error("Couldn't change the role.");
+      return;
     }
+    if (member.userId) {
+      const granted = await setMemberRole({
+        projectId,
+        userId: member.userId,
+        roleId,
+        grantedBy: userId,
+        currentGrants: grants,
+      });
+      if (granted) {
+        setGrants((prev) => [
+          ...prev.filter((g) => g.userId !== member.userId),
+          granted,
+        ]);
+      } else {
+        toast.error("Role saved, but their access didn't update.");
+      }
+    }
+    audit("role_changed", member, { role: roleById[roleId]?.name });
   };
 
   const toggleSuspend = async (member) => {
