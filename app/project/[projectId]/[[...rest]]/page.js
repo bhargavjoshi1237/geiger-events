@@ -16,6 +16,7 @@ import {
 } from "@/context/project-context";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 import { AddonsProvider } from "@/context/addons-context";
+import { NavVisibilityProvider } from "@/context/nav-visibility-context";
 
 // The active screen for the current tab, gated on the path's project resolving
 // to one the user can reach. Keyed by project id so switching projects remounts
@@ -100,7 +101,11 @@ export default function ProjectWorkspacePage() {
       <ProjectProvider>
         {/* Addon enablement is per project, so it loads inside ProjectProvider. */}
         <AddonsProvider>
-          <WorkspaceContent />
+          {/* Sidebar curation is per (project, user) and sits under both, so it
+              can filter the nav the addons have already been merged into. */}
+          <NavVisibilityProvider>
+            <WorkspaceContent />
+          </NavVisibilityProvider>
         </AddonsProvider>
       </ProjectProvider>
     </Suspense>

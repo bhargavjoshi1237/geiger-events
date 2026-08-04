@@ -100,6 +100,7 @@ import {
   Boxes,
   PackageCheck,
   Blocks,
+  PanelLeft,
 } from "lucide-react";
 
 // Sidebar navigation for Geiger Events.
@@ -465,6 +466,9 @@ export const workspaceNav = [
     subItems: [
       { title: "Team & Members", icon: Users },
       { title: "Roles & Permissions", icon: ShieldCheck },
+      // Personal sidebar curation. Locked in geiger-ui.config.js — it is the
+      // screen that unhides everything else.
+      { title: "Navigation", icon: PanelLeft },
       { title: "Notifications", icon: Bell },
       { title: "API & Webhooks", icon: Webhook },
       { title: "Usage", icon: Gauge },
