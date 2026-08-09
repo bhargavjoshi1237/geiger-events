@@ -5,12 +5,6 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { StatusPill } from "@/components/internal/shared/screen_kit";
 
-// Shared builders for record-manager module configs (see an area's modules.jsx).
-// Column/stat/filter/field factories plus small formatters, so every area
-// declares its modules the same way.
-
-// --- Formatters & option builders --------------------------------------------
-
 export function currency(n) {
   const value = Number(n) || 0;
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -20,12 +14,10 @@ export function pct(n) {
   return `${Math.round(Number(n) || 0)}%`;
 }
 
-// Build a StatusPill map's keys into Select options (no "all" sentinel).
 export function statusOptions(map) {
   return Object.keys(map).map((s) => ({ value: s, label: s }));
 }
 
-// Build a filter option list from a status map — "all" sentinel first.
 export function statusFilterOptions(map, allLabel = "All Statuses") {
   return [
     { value: "all", label: allLabel },

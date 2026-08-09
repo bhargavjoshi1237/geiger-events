@@ -94,12 +94,9 @@ import FilterDropdown from "@/components/internal/screens/overview/filter_dropdo
 import {
   MEMBER_STATUS_MAP,
   MEMBER_STATUS_FILTER_OPTIONS,
-  ROLE_COLORS,
-  ROLE_COLOR_OPTIONS,
   ACTIVITY_ACTION_MAP,
   PERMISSION_GROUPS,
   DEFAULT_SEAT_LIMIT,
-  roleColor,
   formatDate,
   formatRelativeTime,
   initialsOf,
@@ -503,7 +500,7 @@ export function TeamMembersScreen() {
     }
   };
 
-  const handleCreateGroup = async (name, description, color) => {
+  const handleCreateGroup = async (name, description) => {
     if (!name.trim()) {
       toast.error("Name the group.");
       return;
@@ -515,7 +512,6 @@ export function TeamMembersScreen() {
       projectId,
       name: name.trim(),
       description,
-      color,
       createdBy: userId,
     };
     setGroups((prev) => [...prev, optimistic]);
@@ -717,7 +713,6 @@ export function TeamMembersScreen() {
 // --- Role pill (inline picker) ----------------------------------------------
 
 function RolePill({ role, roles, onChange, disabled }) {
-  const color = roleColor(role?.color);
   return (
     <div onClick={(e) => e.stopPropagation()}>
       <DropdownMenu>
@@ -726,7 +721,6 @@ function RolePill({ role, roles, onChange, disabled }) {
             type="button"
             className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-card px-2 py-1 text-xs font-medium text-foreground hover:bg-surface-hover disabled:opacity-60"
           >
-            <span className={cn("h-1.5 w-1.5 rounded-full", color.dot)} />
             {role?.name || "No role"}
             {!disabled ? <ChevronDown className="h-3 w-3 text-text-tertiary" /> : null}
           </button>
@@ -741,7 +735,6 @@ function RolePill({ role, roles, onChange, disabled }) {
               onClick={() => onChange(r.id)}
               className="cursor-pointer gap-2 focus:bg-surface-hover"
             >
-              <span className={cn("h-1.5 w-1.5 rounded-full", roleColor(r.color).dot)} />
               {r.name}
             </DropdownMenuItem>
           ))}
@@ -758,9 +751,8 @@ function GroupChips({ ids, groupById }) {
       {ids.map((id) => {
         const g = groupById[id];
         if (!g) return null;
-        const color = roleColor(g.color);
         return (
-          <Badge key={id} className={cn("border", color.chip)}>
+          <Badge key={id} variant="neutral">
             {g.name}
           </Badge>
         );
@@ -1008,7 +1000,6 @@ function InvitationsTab({ invites, roleById, onRevoke, onInvite }) {
       <SettingsList className="px-3">
         {invites.map((m) => {
           const role = roleById[m.roleId];
-          const color = roleColor(role?.color);
           return (
             <div key={m.id} className="flex items-center justify-between gap-4 py-3.5">
               <div className="flex min-w-0 items-center gap-3">
@@ -1025,10 +1016,7 @@ function InvitationsTab({ invites, roleById, onRevoke, onInvite }) {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Badge className="border border-border bg-surface-card text-text-secondary">
-                  <span className={cn("h-1.5 w-1.5 rounded-full", color.dot)} />
-                  {role?.name || "No role"}
-                </Badge>
+                <Badge variant="neutral">{role?.name || "No role"}</Badge>
                 <Button variant="outline" size="sm" onClick={() => onRevoke(m)}>
                   Revoke
                 </Button>
@@ -1066,25 +1054,17 @@ function GroupsTab({ groups, counts, onCreate }) {
         </SectionCard>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {groups.map((g) => {
-            const color = roleColor(g.color);
-            return (
-              <SectionCard key={g.id}>
-                <div className="flex items-start gap-3">
-                  <span className={cn("mt-1 h-2.5 w-2.5 rounded-full", color.dot)} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">{g.name}</p>
-                    {g.description ? (
-                      <p className="mt-0.5 text-xs text-text-secondary">{g.description}</p>
-                    ) : null}
-                    <p className="mt-2 text-xs text-text-tertiary">
-                      {counts[g.id] || 0} member{(counts[g.id] || 0) === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                </div>
-              </SectionCard>
-            );
-          })}
+          {groups.map((g) => (
+            <SectionCard key={g.id}>
+              <p className="truncate text-sm font-semibold text-foreground">{g.name}</p>
+              {g.description ? (
+                <p className="mt-0.5 text-xs text-text-secondary">{g.description}</p>
+              ) : null}
+              <p className="mt-2 text-xs text-text-tertiary">
+                {counts[g.id] || 0} member{(counts[g.id] || 0) === 1 ? "" : "s"}
+              </p>
+            </SectionCard>
+          ))}
         </div>
       )}
     </div>
@@ -1484,7 +1464,6 @@ function GroupDialog({ open, onOpenChange, onSubmit }) {
   // Keyed by `open` in the parent, so it mounts fresh (form resets) each open.
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [color, setColor] = useState("emerald");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1508,25 +1487,6 @@ function GroupDialog({ open, onOpenChange, onSubmit }) {
               placeholder="What this group is for"
             />
           </Field>
-          <Field label="Color">
-            <div className="flex flex-wrap gap-2 pt-1">
-              {ROLE_COLOR_OPTIONS.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  aria-label={key}
-                  onClick={() => setColor(key)}
-                  className={cn(
-                    "h-6 w-6 rounded-full",
-                    ROLE_COLORS[key].dot,
-                    color === key
-                      ? "ring-2 ring-offset-2 ring-offset-background ring-white/60"
-                      : "",
-                  )}
-                />
-              ))}
-            </div>
-          </Field>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
@@ -1534,7 +1494,7 @@ function GroupDialog({ open, onOpenChange, onSubmit }) {
           </Button>
           <Button
             className="bg-primary text-primary-foreground"
-            onClick={() => onSubmit(name, description, color)}
+            onClick={() => onSubmit(name, description)}
           >
             Create group
           </Button>

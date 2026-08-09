@@ -29,26 +29,26 @@ export const MEMBER_STATUS_FILTER_OPTIONS = [
   { value: "suspended", label: "Suspended" },
 ];
 
-// --- Role colors -----------------------------------------------------------
+// Roles and groups are identified by name and by their System/Custom badge —
+// there is no accent palette. The `color` column still exists on both tables and
+// the data layer still normalizes it; nothing reads it.
 
-// A small palette of semantic accents for roles and groups. `dot` colors the
-// list/pill marker; `chip` styles a filled badge at /10 bg + /20 border.
-export const ROLE_COLORS = {
-  violet: { dot: "bg-violet-400", chip: "border-violet-500/20 bg-violet-500/10 text-violet-300" },
-  blue: { dot: "bg-blue-400", chip: "border-blue-500/20 bg-blue-500/10 text-blue-300" },
-  sky: { dot: "bg-sky-400", chip: "border-sky-500/20 bg-sky-500/10 text-sky-300" },
-  emerald: { dot: "bg-emerald-400", chip: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300" },
-  amber: { dot: "bg-amber-400", chip: "border-amber-500/20 bg-amber-500/10 text-amber-300" },
-  rose: { dot: "bg-rose-400", chip: "border-rose-500/20 bg-rose-500/10 text-rose-300" },
-  cyan: { dot: "bg-cyan-400", chip: "border-cyan-500/20 bg-cyan-500/10 text-cyan-300" },
-  slate: { dot: "bg-slate-400", chip: "border-slate-500/20 bg-slate-500/10 text-slate-300" },
+// --- Domain status ---------------------------------------------------------
+
+export const DOMAIN_STATUS_MAP = {
+  connected: { label: "Connected", variant: "success", dotClass: "bg-emerald-400" },
+  pending_dns: { label: "Pending DNS", variant: "warning", dotClass: "bg-amber-400" },
+  pending_ssl: { label: "Pending SSL", variant: "info", dotClass: "bg-sky-400" },
+  failed: { label: "Failed", variant: "danger", dotClass: "bg-red-400" },
 };
 
-export const ROLE_COLOR_OPTIONS = Object.keys(ROLE_COLORS);
-
-export function roleColor(key) {
-  return ROLE_COLORS[key] || ROLE_COLORS.slate;
-}
+export const DOMAIN_STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All Statuses" },
+  { value: "connected", label: "Connected" },
+  { value: "pending_dns", label: "Pending DNS" },
+  { value: "pending_ssl", label: "Pending SSL" },
+  { value: "failed", label: "Failed" },
+];
 
 // --- Activity feed ---------------------------------------------------------
 

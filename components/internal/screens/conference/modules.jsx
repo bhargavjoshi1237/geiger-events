@@ -1043,6 +1043,7 @@ export const MODULES = {
           label: "Room",
           icon: Radio,
           desc: "What kind of room this is and when it runs.",
+          bare: true,
           fields: [
             nameField("Room Name"),
             statusField(ROOM_STATUS_MAP),

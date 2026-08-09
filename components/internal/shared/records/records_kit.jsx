@@ -291,7 +291,14 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
             {activeItem.render ? (
               activeItem.render({ record: form, patch, commit })
             ) : (
-              <FieldSection fields={activeItem.fields} values={form} onPatch={patch} />
+              // `bare` drops the card around the fields — the section heading is
+              // already rendered above it, so the box is redundant chrome.
+              <FieldSection
+                fields={activeItem.fields}
+                values={form}
+                onPatch={patch}
+                bare={activeItem.bare}
+              />
             )}
           </div>
 

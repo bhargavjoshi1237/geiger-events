@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { NavVisibilitySettings } from "@geiger/ui";
+import { Loader2, Info } from "lucide-react";
+import { NavVisibilitySettings, navVisibilityModel } from "@geiger/ui";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { ScreenHeader } from "@/components/internal/shared/screen_kit";
-import { LoadingArea } from "@/components/internal/workspace/workspace_states";
+import { ScreenHeader, StatsBar } from "@/components/internal/shared/screen_kit";
 import { useCuratableNav } from "@/lib/hooks/use-visible-nav";
 import { useNavVisibility } from "@/context/nav-visibility-context";
 
@@ -16,14 +16,50 @@ import { useNavVisibility } from "@/context/nav-visibility-context";
 //
 // The rules are declared in geiger-ui.config.js and enforced by @geiger/ui's
 // <NavVisibilitySettings>: a switch that would leave a visible screen without
-// something it needs is disabled and explains why. This screen owns only the
-// frame, the stats and the toasts.
+// something it needs is disabled and explains why. This screen owns the frame,
+// the KPI row and the toasts; the two-pane curation surface is the library's.
+//
+// The stats are derived from the same pure model the component renders, so the
+// two read off one source and can't drift.
 
 export function NavigationSettingsScreen() {
   const nav = useCuratableNav();
   const { hidden, config, loading, available, setHidden, showAll } =
     useNavVisibility();
   const [busy, setBusy] = useState(false);
+
+  const stats = useMemo(() => {
+    const { sections } = navVisibilityModel({ nav, hidden, config });
+    const shownSections = sections.filter((s) => !s.hidden).length;
+    const screens = sections.flatMap((s) => s.subItems);
+    const shownScreens = screens.filter((s) => !s.hidden).length;
+    const entries = [...sections, ...screens];
+    const locked = entries.filter((e) => e.locked).length;
+    const hiddenCount = entries.filter((e) => e.hidden).length;
+
+    return [
+      {
+        label: "Sections",
+        value: String(shownSections),
+        footer: `of ${sections.length} in your sidebar`,
+      },
+      {
+        label: "Screens",
+        value: String(shownScreens),
+        footer: `of ${screens.length} across every section`,
+      },
+      {
+        label: "Hidden",
+        value: String(hiddenCount),
+        footer: hiddenCount ? "Tucked away by you" : "You're seeing everything",
+      },
+      {
+        label: "Always on",
+        value: String(locked),
+        footer: "The spine of the workspace",
+      },
+    ];
+  }, [nav, hidden, config]);
 
   const handleToggle = async (title, nextHidden) => {
     setBusy(true);
@@ -44,7 +80,7 @@ export function NavigationSettingsScreen() {
   const header = (
     <ScreenHeader
       title="Navigation"
-      description="Choose what appears in your sidebar. This is personal to you — teammates on this project keep their own. Some screens can't be hidden while another screen still needs them."
+      description="Choose which sections appear in your sidebar."
     />
   );
 
@@ -52,7 +88,10 @@ export function NavigationSettingsScreen() {
     return (
       <MainScreenWrapper>
         {header}
-        <LoadingArea />
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading your navigation…
+        </div>
       </MainScreenWrapper>
     );
   }
@@ -61,8 +100,17 @@ export function NavigationSettingsScreen() {
     <MainScreenWrapper>
       {header}
 
-      {/* The counts live in the component's own summary pill, so there is no
-          separate stats bar to keep in sync. */}
+      <StatsBar stats={stats} />
+
+      <div className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-card px-3.5 py-2.5 text-xs leading-relaxed text-text-secondary">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+        <p>
+          This is personal to you — teammates on this project keep their own
+          sidebar. A section another visible screen depends on can&apos;t be
+          hidden; its switch explains why.
+        </p>
+      </div>
+
       <NavVisibilitySettings
         nav={nav}
         config={config}

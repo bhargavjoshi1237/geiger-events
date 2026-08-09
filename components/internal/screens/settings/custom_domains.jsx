@@ -6,17 +6,15 @@ import {
   Globe,
   Plus,
   Trash2,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
   RefreshCw,
   Copy,
   ShieldCheck,
   ExternalLink,
   Settings2,
   Loader2,
-  Sparkles,
   Lock,
+  Info,
+  MoreHorizontal,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
@@ -24,12 +22,12 @@ import {
   ScreenHeader,
   StatsBar,
   SectionCard,
-  SettingsList,
+  DataTable,
+  StatusPill,
   EmptyState,
   Field,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -39,6 +37,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -54,6 +59,7 @@ import {
   getOrgEntitlements,
   isProductUnlocked,
 } from "@/lib/supabase/domains";
+import { DOMAIN_STATUS_MAP } from "./constants";
 
 // Root domain the subdomain sits under (matches geiger-dash env var).
 const ROOT_DOMAIN =
@@ -63,36 +69,59 @@ const ROOT_DOMAIN =
 
 const CNAME_TARGET = "custom.events.geiger.events";
 
+function sanitizeSubdomain(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/^-+/, "")
+    .slice(0, 63);
+}
+
+// Local shape rules only. There is no availability API yet, so the screen must
+// not imply one — it validates the label and leaves the verdict to the save.
+function validateSubdomain(value) {
+  const sub = sanitizeSubdomain(value);
+  if (!sub) return { valid: false, reason: "" };
+  if (sub.length < 3) return { valid: false, reason: "Use at least 3 characters." };
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(sub)) {
+    return {
+      valid: false,
+      reason: "Letters, numbers and hyphens only — no leading or trailing hyphen.",
+    };
+  }
+  return { valid: true, reason: "", subdomain: sub };
+}
+
+// The DNS name a CNAME goes on: the label(s) in front of the registrable
+// domain, or "@" for an apex.
+function dnsRecordName(domain) {
+  return String(domain || "").split(".").slice(0, -2).join(".") || "@";
+}
+
 // --- Screen -------------------------------------------------------------------
 
 export function CustomDomainsScreen() {
   const { project } = useProject();
+  const projectId = project?.id;
 
-  // ── Data state ──────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [org, setOrg] = useState(null);
   const [domain, setDomain] = useState(null); // current subdomain row or null
   const [error, setError] = useState(null);
 
-  // ── Subdomain form state ────────────────────────────────────────────────────
   const [subdomainValue, setSubdomainValue] = useState("");
-  const [subdomainStatus, setSubdomainStatus] = useState("idle"); // idle | checking | available | unavailable
-  const [subdomainReason, setSubdomainReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
 
-  // ── Custom domain state ─────────────────────────────────────────────────────
   const [addOpen, setAddOpen] = useState(false);
   const [dnsSheetId, setDnsSheetId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [draftDomain, setDraftDomain] = useState("");
   const [verifyingId, setVerifyingId] = useState(null);
 
-  // Mock custom domains until the real data layer exists.
+  // Custom domains have no data layer yet; these are UI-only until one exists.
   const [customDomains, setCustomDomains] = useState([]);
-
-  // ── Fetch org + domain on mount ─────────────────────────────────────────────
-  const projectId = project?.id;
 
   useEffect(() => {
     if (!projectId) return;
@@ -108,17 +137,11 @@ export function CustomDomainsScreen() {
       }
       setOrg(orgData);
 
-      const entitlements = getOrgEntitlements(orgData);
-      const unlocked = isProductUnlocked(entitlements, "subdomain");
-
-      if (unlocked) {
-        // Attempt to read the current subdomain (may be null).
+      if (isProductUnlocked(getOrgEntitlements(orgData), "subdomain")) {
         const domainRow = await getOrgDomain(orgData.id);
         if (!alive) return;
         setDomain(domainRow || null);
-        if (domainRow) {
-          setSubdomainValue(domainRow.subdomain);
-        }
+        if (domainRow) setSubdomainValue(domainRow.subdomain);
       }
       setLoading(false);
     })();
@@ -128,87 +151,46 @@ export function CustomDomainsScreen() {
     };
   }, [projectId]);
 
-  // ── Derived ─────────────────────────────────────────────────────────────────
-
   const entitlements = useMemo(
     () => (org ? getOrgEntitlements(org) : null),
     [org],
   );
-  const hasSubdomainAddon = useMemo(
-    () => isProductUnlocked(entitlements, "subdomain"),
-    [entitlements],
-  );
-  const hasCustomDomainAddon = useMemo(
-    () => isProductUnlocked(entitlements, "domain"),
-    [entitlements],
-  );
+  const hasSubdomainAddon = isProductUnlocked(entitlements, "subdomain");
+  const hasCustomDomainAddon = isProductUnlocked(entitlements, "domain");
 
-  // Stats: subdomain + custom domains.
+  // Counts only — a KPI row animates its numbers, so the subdomain's address
+  // belongs in its own section rather than in a stat tile.
   const stats = useMemo(() => {
-    const subConnected = domain ? 1 : 0;
-    const customConnected = customDomains.filter(
-      (d) => d.status === "connected",
-    ).length;
-    const customPending = customDomains.filter((d) =>
+    const connected =
+      customDomains.filter((d) => d.status === "connected").length +
+      (domain ? 1 : 0);
+    const pending = customDomains.filter((d) =>
       d.status.startsWith("pending"),
     ).length;
+    const failed = customDomains.filter((d) => d.status === "failed").length;
     return [
       {
-        label: "Subdomain",
-        value: domain ? domain.subdomain : "—",
-        hint: domain ? `${domain.subdomain}.${ROOT_DOMAIN}` : undefined,
+        label: "Addresses",
+        value: String(customDomains.length + (domain ? 1 : 0)),
+        footer: domain ? `${domain.subdomain}.${ROOT_DOMAIN}` : "No subdomain yet",
       },
-      {
-        label: "Custom domains",
-        value: String(customConnected + customPending),
-        hint: `${customConnected} connected`,
-      },
+      { label: "Connected", value: String(connected), footer: "Serving traffic" },
+      { label: "Pending", value: String(pending), footer: "Awaiting DNS or SSL" },
+      { label: "Failed", value: String(failed), footer: "Need attention" },
     ];
   }, [domain, customDomains]);
 
-  // ── Subdomain mutations ────────────────────────────────────────────────────
-  // These are UI-only until server actions are wired (mirror geiger-dash
-  // app/org/domain-actions.js). For now they optimistically update local state.
+  const check = validateSubdomain(subdomainValue);
+  const previewHost = `${subdomainValue || "yourname"}.${ROOT_DOMAIN}`;
 
-  function sanitizeSubdomain(value) {
-    return String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, "")
-      .replace(/^-+/, "")
-      .slice(0, 63);
-  }
+  // --- Subdomain mutations (UI-only until server actions are wired) ---------
 
-  function validateSubdomain(value) {
-    const sub = sanitizeSubdomain(value);
-    if (sub.length < 3)
-      return { valid: false, reason: "Use at least 3 characters." };
-    if (sub.length > 63)
-      return { valid: false, reason: "Keep it under 63 characters." };
-    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(sub)) {
-      return {
-        valid: false,
-        reason:
-          "Use letters, numbers, and hyphens only (no leading or trailing hyphen).",
-      };
-    }
-    return { valid: true, reason: "", subdomain: sub };
-  }
-
-  function handleSubdomainChange(e) {
-    setSubdomainValue(sanitizeSubdomain(e.target.value));
-    setSubdomainStatus("idle");
-    setSubdomainReason("");
-  }
-
-  async function handleSubdomainSave() {
-    const check = validateSubdomain(subdomainValue);
+  const handleSubdomainSave = async () => {
     if (!check.valid) {
-      toast.error(check.reason);
+      toast.error(check.reason || "Pick a subdomain first.");
       return;
     }
     setSaving(true);
-    // Simulate server call — replace with server action later.
     await new Promise((r) => setTimeout(r, 800));
     setDomain({
       id: domain?.id || crypto.randomUUID(),
@@ -220,31 +202,30 @@ export function CustomDomainsScreen() {
     });
     setSaving(false);
     toast.success("Subdomain saved.");
-  }
+  };
 
-  async function handleSubdomainRemove() {
+  const handleSubdomainRemove = async () => {
     setRemoving(true);
     await new Promise((r) => setTimeout(r, 500));
     setDomain(null);
     setSubdomainValue("");
-    setSubdomainStatus("idle");
     setRemoving(false);
     toast.success("Subdomain removed.");
-  }
+  };
 
-  // ── Custom domain mutations (UI-only, as before) ────────────────────────────
+  // --- Custom domain mutations ---------------------------------------------
 
   const handleAdd = () => {
-    const domain = draftDomain.trim().toLowerCase();
-    if (!domain) {
+    const next = draftDomain.trim().toLowerCase();
+    if (!next) {
       toast.error("Enter a domain name.");
       return;
     }
-    if (!/^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/.test(domain)) {
+    if (!/^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/.test(next)) {
       toast.error("Enter a valid domain name (e.g. events.example.com).");
       return;
     }
-    if (customDomains.find((d) => d.domain === domain)) {
+    if (customDomains.some((d) => d.domain === next)) {
       toast.error("This domain is already configured.");
       return;
     }
@@ -255,14 +236,15 @@ export function CustomDomainsScreen() {
       ...prev,
       {
         id,
-        domain,
+        domain: next,
         status: "pending_dns",
         verifiedAt: null,
         cnameTarget: CNAME_TARGET,
         sslStatus: null,
       },
     ]);
-    toast.success("Domain added. Configure your DNS to complete setup.");
+    setDnsSheetId(id);
+    toast.success("Domain added. Add the CNAME record to complete setup.");
   };
 
   const handleDelete = () => {
@@ -270,6 +252,7 @@ export function CustomDomainsScreen() {
     setDeleteTarget(null);
     if (!target) return;
     setCustomDomains((prev) => prev.filter((d) => d.id !== target.id));
+    if (dnsSheetId === target.id) setDnsSheetId(null);
     toast.success(`Removed ${target.domain}`);
   };
 
@@ -303,163 +286,97 @@ export function CustomDomainsScreen() {
     [customDomains, dnsSheetId],
   );
 
-  const previewHost = subdomainValue
-    ? `${subdomainValue}.${ROOT_DOMAIN}`
-    : `${"yourname"}.${ROOT_DOMAIN}`;
+  const addAction =
+    hasSubdomainAddon && hasCustomDomainAddon ? (
+      <Button
+        onClick={() => setAddOpen(true)}
+        className="bg-primary text-primary-foreground"
+      >
+        <Plus className="h-4 w-4" /> Add domain
+      </Button>
+    ) : null;
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const header = (
+    <ScreenHeader
+      title="Custom Domains"
+      description="Serve your event pages from your own address instead of the default geiger.events URL."
+      actions={addAction}
+    />
+  );
 
-  // Loading state.
   if (loading) {
     return (
       <MainScreenWrapper>
-        <ScreenHeader
-          title="Custom Domains"
-          description="Connect your own domain to host event pages under your brand."
-        />
-        <div className="flex items-center justify-center py-24 text-sm text-text-secondary">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        {header}
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
+          <Loader2 className="h-4 w-4 animate-spin" />
           Loading domain settings…
         </div>
       </MainScreenWrapper>
     );
   }
 
-  // Error / no org.
   if (error || !org) {
     return (
       <MainScreenWrapper>
-        <ScreenHeader
-          title="Custom Domains"
-          description="Connect your own domain to host event pages under your brand."
-        />
-        <EmptyState
-          icon={Globe}
-          title="Could not load domain settings"
-          description={
-            error || "This workspace is not linked to an organization."
-          }
-        />
+        {header}
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={Globe}
+            title="Could not load domain settings"
+            description={error || "This workspace is not linked to an organization."}
+          />
+        </div>
       </MainScreenWrapper>
     );
   }
-
-  // Subdomain add-on not purchased.
-  if (!hasSubdomainAddon) {
-    return (
-      <MainScreenWrapper>
-        <ScreenHeader
-          title="Custom Domains"
-          description="Connect your own domain to host event pages under your brand."
-        />
-
-        <SectionCard
-          title="Subdomain"
-          description="A branded subdomain for your workspace."
-        >
-          <div className="flex flex-col items-center gap-4 py-8 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface-card text-text-tertiary">
-              <Lock className="h-6 w-6" />
-            </div>
-            <div className="max-w-sm space-y-1">
-              <p className="text-sm font-semibold text-foreground">
-                Subdomain add-on not active
-              </p>
-              <p className="text-sm text-text-secondary">
-                Purchase the Custom subdomain add-on from your workspace plan to
-                host your event pages at{" "}
-                <code className="text-foreground">yourname.geiger.studio</code>.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              className="mt-2"
-              onClick={() =>
-                toast.info("Billing page — coming soon.")
-              }
-            >
-              <Sparkles className="mr-1.5 h-4 w-4" /> View plans
-            </Button>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Custom domain" bare>
-          <p className="text-sm text-text-secondary">
-            Bring your own domain (e.g.{" "}
-            <strong className="text-foreground">events.example.com</strong>)
-            for a fully branded experience. This feature is coming soon.
-          </p>
-        </SectionCard>
-
-        <SectionCard title="How it works" bare>
-          <div className="space-y-3 text-sm text-text-secondary">
-            <p>
-              When you connect a domain, your event pages are served from your
-              own URL instead of the default{" "}
-              <code className="text-foreground">geiger.events/&hellip;</code>{" "}
-              address.
-            </p>
-            <ol className="ml-4 list-decimal space-y-2">
-              <li>
-                Purchase the{" "}
-                <strong className="text-foreground">Custom subdomain</strong>{" "}
-                add-on from your workspace plan.
-              </li>
-              <li>
-                Pick your subdomain (e.g.{" "}
-                <strong className="text-foreground">acme</strong>) to get{" "}
-                <code className="text-foreground">acme.geiger.studio</code>.
-              </li>
-              <li>
-                Or connect your own domain via a CNAME record pointing to{" "}
-                <code className="text-foreground">{CNAME_TARGET}</code>.
-              </li>
-            </ol>
-          </div>
-        </SectionCard>
-      </MainScreenWrapper>
-    );
-  }
-
-  // ── Add-on purchased — show subdomain + custom domain UI ─────────────────
-
-  const addAction = hasCustomDomainAddon ? (
-    <Button
-      onClick={() => setAddOpen(true)}
-      className="bg-primary text-primary-foreground"
-    >
-      <Plus className="h-4 w-4" /> Add domain
-    </Button>
-  ) : null;
 
   return (
     <MainScreenWrapper>
-      <ScreenHeader
-        title="Custom Domains"
-        description="Connect your own domain to host event pages under your brand."
-        actions={addAction}
-      />
+      {header}
 
       <StatsBar stats={stats} />
 
-      {/* ── Subdomain section ───────────────────────────────────────────── */}
+      {/* ── Subdomain ────────────────────────────────────────────────────── */}
       <SectionCard
         title="Subdomain"
-        description="Your workspace's branded subdomain."
+        description={`A branded address under ${ROOT_DOMAIN}, live as soon as you claim it.`}
+        action={
+          domain ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSubdomainRemove}
+              disabled={removing}
+              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
+              {removing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              Remove
+            </Button>
+          ) : null
+        }
       >
-        {domain ? (
-          /* Active subdomain — show live details */
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-card p-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-                <Globe className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {domain.subdomain}.{ROOT_DOMAIN}
-                </p>
-                <p className="text-xs text-emerald-400">Active</p>
-              </div>
+        {!hasSubdomainAddon ? (
+          <Notice icon={Lock}>
+            The <span className="text-foreground">Custom subdomain</span> add-on
+            isn&apos;t active on this workspace. Add it to your plan to host event
+            pages at <span className="text-foreground">yourname.{ROOT_DOMAIN}</span>.
+          </Notice>
+        ) : domain ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">
+                {domain.subdomain}.{ROOT_DOMAIN}
+              </p>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                Live · all event pages for this workspace resolve here.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -470,213 +387,121 @@ export function CustomDomainsScreen() {
                   )
                 }
               >
-                <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy URL
+                <Copy className="h-3.5 w-3.5" /> Copy
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-              >
+              <Button variant="outline" size="sm" asChild>
                 <a
                   href={`https://${domain.subdomain}.${ROOT_DOMAIN}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Visit
+                  <ExternalLink className="h-3.5 w-3.5" /> Visit
                 </a>
               </Button>
             </div>
-
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                onClick={handleSubdomainRemove}
-                disabled={removing}
-                className="text-red-400 hover:bg-red-500/10 hover:text-red-400"
-              >
-                {removing ? (
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-1.5 h-4 w-4" />
-                )}
-                Remove
-              </Button>
-            </div>
           </div>
         ) : (
-          /* No subdomain — show claim form */
-          <div className="space-y-4">
-            <p className="text-sm text-text-secondary">
-              Pick a subdomain to host this workspace. Visitors see only this
-              organization&apos;s events.
-            </p>
-
-            <div className="space-y-2">
-              <Field label="Subdomain">
-                <div className="flex items-stretch overflow-hidden rounded-md border border-border bg-surface-card focus-within:ring-2 focus-within:ring-ring">
-                  <input
-                    value={subdomainValue}
-                    onChange={handleSubdomainChange}
-                    placeholder="yourname"
-                    autoComplete="off"
-                    autoCapitalize="off"
-                    spellCheck={false}
-                    className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-text-tertiary"
-                  />
-                  <span className="flex items-center border-l border-border bg-surface-active px-3 text-sm text-text-secondary">
-                    .{ROOT_DOMAIN}
-                  </span>
-                </div>
-              </Field>
-
-              <div className="flex min-h-[1.25rem] items-center gap-2 text-xs">
-                {subdomainStatus === "checking" && (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-text-secondary" />
-                    <span className="text-text-secondary">
-                      Checking availability…
-                    </span>
-                  </>
-                )}
-                {subdomainStatus === "available" && (
-                  <>
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                    <span className="text-emerald-400">
-                      {previewHost} is available
-                    </span>
-                  </>
-                )}
-                {subdomainStatus === "unavailable" && (
-                  <span className="text-red-400">
-                    {subdomainReason || "Not available."}
-                  </span>
-                )}
-                {subdomainStatus === "idle" && subdomainValue && (
-                  <span className="text-text-secondary">
-                    Preview: {previewHost}
-                  </span>
-                )}
-                {subdomainStatus === "idle" && !subdomainValue && (
-                  <span className="text-text-tertiary">
-                    3–63 characters · letters, numbers, and hyphens
-                  </span>
-                )}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <Field
+              className="min-w-0 flex-1"
+              label="Choose a subdomain"
+              hint={
+                check.reason
+                  ? undefined
+                  : subdomainValue
+                    ? `Your pages will live at ${previewHost}`
+                    : "3–63 characters · letters, numbers and hyphens"
+              }
+            >
+              <div className="flex items-stretch overflow-hidden rounded-md border border-border bg-surface-card focus-within:ring-2 focus-within:ring-ring">
+                <input
+                  value={subdomainValue}
+                  onChange={(e) =>
+                    setSubdomainValue(sanitizeSubdomain(e.target.value))
+                  }
+                  onKeyDown={(e) => e.key === "Enter" && handleSubdomainSave()}
+                  placeholder="yourname"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-text-tertiary"
+                />
+                <span className="flex items-center border-l border-border bg-surface-active px-3 text-sm text-text-secondary">
+                  .{ROOT_DOMAIN}
+                </span>
               </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSubdomainSave}
-                disabled={
-                  saving ||
-                  !subdomainValue ||
-                  subdomainStatus === "unavailable"
-                }
-              >
-                {saving ? (
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                ) : (
-                  <Globe className="mr-1.5 h-4 w-4" />
-                )}
-                Claim subdomain
-              </Button>
-            </div>
+              {check.reason ? (
+                <p className="text-xs text-red-400">{check.reason}</p>
+              ) : null}
+            </Field>
+            <Button
+              className="bg-primary text-primary-foreground sm:mt-[26px]"
+              onClick={handleSubdomainSave}
+              disabled={saving || !check.valid}
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Globe className="h-4 w-4" />
+              )}
+              Claim
+            </Button>
           </div>
         )}
       </SectionCard>
 
-      {/* ── Custom domains section ──────────────────────────────────────── */}
+      {/* ── Custom domains ───────────────────────────────────────────────── */}
       <SectionCard
         title="Custom domains"
-        description={
-          hasCustomDomainAddon
-            ? "Domains linked to your event pages. Each needs a CNAME record."
-            : 'Bring your own domain — requires the "Own domain" add-on.'
+        description="Domains you own, pointed here with a CNAME record."
+        action={
+          hasCustomDomainAddon && customDomains.length ? (
+            <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" /> Add domain
+            </Button>
+          ) : null
         }
-        bodyPadding={hasCustomDomainAddon && !customDomains.length}
+        bodyPadding={!hasCustomDomainAddon}
       >
         {!hasCustomDomainAddon ? (
-          <div className="flex flex-col items-center gap-4 py-8 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface-card text-text-tertiary">
-              <Lock className="h-6 w-6" />
-            </div>
-            <div className="max-w-sm space-y-1">
-              <p className="text-sm font-semibold text-foreground">
-                Coming soon
-              </p>
-              <p className="text-sm text-text-secondary">
-                The <strong>Own domain</strong> add-on will let you connect your
-                own domain to host event pages.
-              </p>
-            </div>
-          </div>
-        ) : customDomains.length === 0 ? (
-          <EmptyState
-            icon={Globe}
-            title="No custom domains"
-            description="Add a domain to host your event pages on a branded URL like events.yourcompany.com."
-            action={
-              <Button
-                onClick={() => setAddOpen(true)}
-                className="bg-primary text-primary-foreground"
-              >
-                <Plus className="h-4 w-4" /> Add your first domain
-              </Button>
-            }
-          />
+          <Notice icon={Lock}>
+            The <span className="text-foreground">Own domain</span> add-on
+            isn&apos;t active on this workspace. Add it to your plan to serve event
+            pages from a domain you own, like{" "}
+            <span className="text-foreground">events.example.com</span>.
+          </Notice>
         ) : (
-          <SettingsList className="px-3">
-            {customDomains.map((d) => (
-              <CustomDomainRow
-                key={d.id}
-                domain={d}
-                verifying={verifyingId === d.id}
-                onShowDns={() => setDnsSheetId(d.id)}
-                onDelete={() => setDeleteTarget(d)}
-                onVerify={() => handleVerify(d.id)}
-                onCopyCname={() =>
-                  copyToClipboard(d.cnameTarget, "DNS target")
-                }
-              />
-            ))}
-          </SettingsList>
+          <DomainsTable
+            domains={customDomains}
+            verifyingId={verifyingId}
+            onShowDns={setDnsSheetId}
+            onVerify={handleVerify}
+            onDelete={setDeleteTarget}
+            onCopyTarget={(d) => copyToClipboard(d.cnameTarget, "DNS target")}
+            onAdd={() => setAddOpen(true)}
+          />
         )}
       </SectionCard>
 
-      {/* How it works */}
+      {/* ── How it works ─────────────────────────────────────────────────── */}
       <SectionCard title="How it works" bare>
-        <div className="space-y-3 text-sm text-text-secondary">
-          <p>
-            When you connect a domain, your event pages are served from your own
-            URL instead of the default{" "}
-            <code className="text-foreground">geiger.events/&hellip;</code>{" "}
-            address.
-          </p>
-          <ol className="ml-4 list-decimal space-y-2">
-            <li>
-              Pick a <strong className="text-foreground">subdomain</strong> (e.g.{" "}
-              <code className="text-foreground">acme.geiger.studio</code>) —
-              instant setup.
-            </li>
-            <li>
-              Or add a{" "}
-              <strong className="text-foreground">custom domain</strong> and
-              create a CNAME record pointing to{" "}
-              <code className="text-foreground">{CNAME_TARGET}</code>.
-            </li>
-            <li>
-              We automatically provision an SSL certificate and verify
-              ownership.
-            </li>
-          </ol>
-          <p>
-            DNS propagation can take up to 48 hours. Once connected, all event
-            pages for this workspace will be available on your domain.
-          </p>
-        </div>
+        <ol className="space-y-3">
+          <Step n={1} title="Claim a subdomain">
+            Pick a name to get <Mono>yourname.{ROOT_DOMAIN}</Mono>. It works
+            immediately — no DNS to configure.
+          </Step>
+          <Step n={2} title="Or point your own domain here">
+            Add the domain above, then create a CNAME record at your DNS provider
+            targeting <Mono>{CNAME_TARGET}</Mono>.
+          </Step>
+          <Step n={3} title="We verify and secure it">
+            Once the record resolves we provision an SSL certificate
+            automatically. DNS changes can take up to 48 hours to propagate.
+          </Step>
+        </ol>
       </SectionCard>
 
-      {/* ── Dialogs ──────────────────────────────────────────────────────── */}
+      {/* ── Dialogs & drawers ────────────────────────────────────────────── */}
 
       <Dialog
         key={addOpen ? "add-open" : "add-closed"}
@@ -690,8 +515,8 @@ export function CustomDomainsScreen() {
           <DialogHeader>
             <DialogTitle>Add a custom domain</DialogTitle>
             <DialogDescription>
-              Enter the domain you want to use for your event pages. A subdomain
-              is recommended.
+              Enter the domain your event pages should be served from. A
+              subdomain of your site is recommended.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -724,105 +549,21 @@ export function CustomDomainsScreen() {
         </DialogContent>
       </Dialog>
 
-      <Sheet
-        open={!!dnsSheetId}
+      <DnsDrawer
+        domain={sheetDomain}
+        verifying={verifyingId === sheetDomain?.id}
         onOpenChange={(o) => !o && setDnsSheetId(null)}
-      >
-        <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>DNS configuration</SheetTitle>
-            <SheetDescription>
-              Add this record at your DNS provider.
-            </SheetDescription>
-          </SheetHeader>
-          {sheetDomain ? (
-            <div className="space-y-6 px-4 pb-6 pt-4">
-              <Field label="Your domain">
-                <div className="flex items-center justify-between rounded-md border border-border bg-surface-card px-3 py-2.5">
-                  <code className="text-sm text-foreground">
-                    {sheetDomain.domain}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 shrink-0"
-                    onClick={() =>
-                      copyToClipboard(sheetDomain.domain, "Domain")
-                    }
-                    aria-label="Copy domain"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </Field>
+        onCopy={copyToClipboard}
+        onVerify={handleVerify}
+      />
 
-              <div className="rounded-lg border border-border bg-surface-card p-4">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wider text-text-tertiary">
-                  DNS record
-                </p>
-                <div className="space-y-3 text-sm">
-                  <DnsRow label="Type" value="CNAME" />
-                  <DnsRow
-                    label="Name"
-                    value={
-                      sheetDomain.domain.split(".").slice(0, -2).join(".") ||
-                      "@"
-                    }
-                  />
-                  <DnsRow
-                    label="Target"
-                    value={sheetDomain.cnameTarget}
-                    mono
-                    copyable
-                    onCopy={() =>
-                      copyToClipboard(sheetDomain.cnameTarget, "DNS target")
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-border/60 bg-surface-card/50 p-4">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wider text-text-tertiary">
-                  Status
-                </p>
-                <DomainStatusBadge status={sheetDomain.status} />
-                {sheetDomain.sslStatus ? (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-text-secondary">
-                    <ShieldCheck
-                      className={cn(
-                        "h-4 w-4",
-                        sheetDomain.sslStatus === "valid"
-                          ? "text-emerald-400"
-                          : "text-amber-400",
-                      )}
-                    />
-                    SSL certificate{" "}
-                    {sheetDomain.sslStatus === "valid"
-                      ? "active"
-                      : "provisioning…"}
-                  </div>
-                ) : null}
-              </div>
-
-              <p className="text-xs text-text-tertiary">
-                <ExternalLink className="mr-1 inline-block h-3 w-3" />
-                DNS changes can take up to 48 hours to propagate.
-              </p>
-            </div>
-          ) : null}
-        </SheetContent>
-      </Sheet>
-
-      <Dialog
-        open={!!deleteTarget}
-        onOpenChange={(o) => !o && setDeleteTarget(null)}
-      >
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove domain</DialogTitle>
             <DialogDescription>
               {deleteTarget
-                ? `Remove ${deleteTarget.domain}? Event pages will fall back to the default geiger.events URL.`
+                ? `Remove ${deleteTarget.domain}? Event pages served from it fall back to the default geiger.events URL.`
                 : ""}
             </DialogDescription>
           </DialogHeader>
@@ -843,132 +584,268 @@ export function CustomDomainsScreen() {
   );
 }
 
-// --- Sub-components -----------------------------------------------------------
+// --- Shared bits --------------------------------------------------------------
 
-const DOMAIN_STATUS_MAP = {
-  connected: {
-    label: "Connected",
-    icon: CheckCircle2,
-    chip: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
-  },
-  pending_dns: {
-    label: "Pending DNS",
-    icon: Clock,
-    chip: "border-amber-500/20 bg-amber-500/10 text-amber-300",
-  },
-  pending_ssl: {
-    label: "Pending SSL",
-    icon: Clock,
-    chip: "border-sky-500/20 bg-sky-500/10 text-sky-300",
-  },
-  failed: {
-    label: "Failed",
-    icon: AlertCircle,
-    chip: "border-red-500/20 bg-red-500/10 text-red-300",
-  },
-};
-
-function DomainStatusBadge({ status }) {
-  const meta = DOMAIN_STATUS_MAP[status];
-  if (!meta) return null;
-  const Icon = meta.icon;
+function Notice({ icon: Icon = Info, children }) {
   return (
-    <Badge className={cn("border", meta.chip)}>
-      <Icon className="mr-1 h-3 w-3" />
-      {meta.label}
-    </Badge>
-  );
-}
-
-function DnsRow({ label, value, mono, copyable, onCopy }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-text-secondary">{label}</span>
-      <div className="flex items-center gap-1.5">
-        <span className={cn("text-foreground", mono && "font-mono text-xs")}>
-          {value}
-        </span>
-        {copyable ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={onCopy}
-            aria-label={`Copy ${label}`}
-          >
-            <Copy className="h-3 w-3" />
-          </Button>
-        ) : null}
-      </div>
+    <div className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-card px-3.5 py-2.5 text-xs leading-relaxed text-text-secondary">
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+      <p>{children}</p>
     </div>
   );
 }
 
-function CustomDomainRow({
-  domain,
-  verifying,
+function Mono({ children }) {
+  return <code className="font-mono text-xs text-foreground">{children}</code>;
+}
+
+function Step({ n, title, children }) {
+  return (
+    <li className="flex gap-3">
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-card text-[11px] font-medium text-text-secondary tabular-nums">
+        {n}
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="mt-0.5 text-sm text-text-secondary">{children}</p>
+      </div>
+    </li>
+  );
+}
+
+// --- Domains table ------------------------------------------------------------
+
+function DomainsTable({
+  domains,
+  verifyingId,
   onShowDns,
-  onDelete,
   onVerify,
-  onCopyCname,
+  onDelete,
+  onCopyTarget,
+  onAdd,
 }) {
+  const columns = [
+    {
+      key: "domain",
+      header: "Domain",
+      render: (d) => (
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate font-medium text-foreground">{d.domain}</span>
+          <span className="truncate font-mono text-[11px] text-text-tertiary">
+            CNAME {dnsRecordName(d.domain)} → {d.cnameTarget}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (d) => <StatusPill status={d.status} map={DOMAIN_STATUS_MAP} />,
+    },
+    {
+      key: "ssl",
+      header: "SSL",
+      render: (d) =>
+        d.sslStatus ? (
+          <span className="inline-flex items-center gap-1.5 text-xs text-text-secondary">
+            <ShieldCheck
+              className={cn(
+                "h-3.5 w-3.5",
+                d.sslStatus === "valid" ? "text-emerald-400" : "text-amber-400",
+              )}
+            />
+            {d.sslStatus === "valid" ? "Active" : "Provisioning"}
+          </span>
+        ) : (
+          <span className="text-xs text-text-tertiary">—</span>
+        ),
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "text-right",
+      render: (d) => {
+        const verifying = verifyingId === d.id;
+        return (
+          <div onClick={(e) => e.stopPropagation()} className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Domain actions"
+                  className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-48 border-border bg-surface-subtle shadow-xl"
+              >
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2 focus:bg-surface-hover"
+                  onClick={() => onShowDns(d.id)}
+                >
+                  <Settings2 className="h-4 w-4" /> DNS record
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2 focus:bg-surface-hover"
+                  onClick={() => onCopyTarget(d)}
+                >
+                  <Copy className="h-4 w-4" /> Copy target
+                </DropdownMenuItem>
+                {d.status !== "connected" ? (
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2 focus:bg-surface-hover"
+                    disabled={verifying}
+                    onClick={() => onVerify(d.id)}
+                  >
+                    {verifying ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    {verifying ? "Verifying…" : "Verify now"}
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2 focus:bg-surface-hover"
+                    asChild
+                  >
+                    <a
+                      href={`https://${d.domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4" /> Visit
+                    </a>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator className="bg-surface-strong" />
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                  onClick={() => onDelete(d)}
+                >
+                  <Trash2 className="h-4 w-4" /> Remove
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
-    <div className="flex items-center justify-between gap-4 py-3.5">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-text-secondary">
-          <Globe className="h-4 w-4" />
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">
-            {domain.domain}
-          </p>
-          <p className="flex items-center gap-1.5 text-xs text-text-tertiary">
-            CNAME &rarr;{" "}
-            <code className="text-text-secondary">{domain.cnameTarget}</code>
-          </p>
-        </div>
-      </div>
+    <DataTable
+      className="rounded-none border-0"
+      columns={columns}
+      data={domains}
+      getRowKey={(d) => d.id}
+      onRowClick={(d) => onShowDns(d.id)}
+      empty={
+        <EmptyState
+          icon={Globe}
+          title="No custom domains"
+          description="Point a domain you own here to serve event pages from a branded URL."
+          action={
+            <Button onClick={onAdd} className="bg-primary text-primary-foreground">
+              <Plus className="h-4 w-4" /> Add your first domain
+            </Button>
+          }
+        />
+      }
+    />
+  );
+}
 
-      <div className="flex shrink-0 items-center gap-2">
-        <DomainStatusBadge status={domain.status} />
+// --- DNS drawer ---------------------------------------------------------------
 
-        {domain.status === "pending_dns" || domain.status === "failed" ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onVerify(domain.id)}
-            disabled={verifying}
-          >
-            {verifying ? (
-              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+function DnsDrawer({ domain, verifying, onOpenChange, onCopy, onVerify }) {
+  if (!domain) return null;
+
+  const rows = [
+    { label: "Type", value: "CNAME" },
+    { label: "Name", value: dnsRecordName(domain.domain) },
+    { label: "Target", value: domain.cnameTarget, copy: "DNS target" },
+    { label: "TTL", value: "Automatic" },
+  ];
+
+  return (
+    <Sheet open onOpenChange={onOpenChange}>
+      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+        <SheetHeader className="shrink-0 gap-2 border-b border-border p-5 pr-12">
+          <SheetTitle className="truncate">{domain.domain}</SheetTitle>
+          <SheetDescription>
+            Add this record at your DNS provider, then verify.
+          </SheetDescription>
+          <div>
+            <StatusPill status={domain.status} map={DOMAIN_STATUS_MAP} />
+          </div>
+        </SheetHeader>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <p className="px-5 pt-5 text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            DNS record
+          </p>
+          <div className="divide-y divide-border px-5">
+            {rows.map((row) => (
+              <div
+                key={row.label}
+                className="flex items-center justify-between gap-4 py-3"
+              >
+                <span className="text-sm text-text-secondary">{row.label}</span>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate font-mono text-xs text-foreground">
+                    {row.value}
+                  </span>
+                  {row.copy ? (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="shrink-0"
+                      aria-label={`Copy ${row.label}`}
+                      onClick={() => onCopy(row.value, row.copy)}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="px-5 pb-6 pt-5">
+            {domain.status === "connected" ? (
+              <Notice icon={ShieldCheck}>
+                This domain is live and its SSL certificate is active.
+              </Notice>
             ) : (
-              <RefreshCw className="mr-1 h-3.5 w-3.5" />
+              <>
+                <Button
+                  className="w-full bg-primary text-primary-foreground"
+                  disabled={verifying}
+                  onClick={() => onVerify(domain.id)}
+                >
+                  {verifying ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {verifying ? "Verifying…" : "Verify record"}
+                </Button>
+                <p className="mt-3 text-xs text-text-tertiary">
+                  DNS changes can take up to 48 hours to propagate. You can close
+                  this and come back — verification runs again automatically.
+                </p>
+              </>
             )}
-            {verifying ? "Verifying…" : "Verify"}
-          </Button>
-        ) : null}
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => onShowDns(domain.id)}
-          aria-label="DNS configuration"
-        >
-          <Settings2 className="h-4 w-4" />
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-          onClick={() => onDelete(domain)}
-          aria-label="Remove domain"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -434,7 +434,14 @@ const FULL_TYPES = new Set([
 
 export function FieldSection({ title, description, action, fields, values, onPatch, bare = false }) {
   return (
-    <SectionCard title={title} description={description} action={action} bare={bare}>
+    <SectionCard
+      title={title}
+      description={description}
+      action={action}
+      bare={bare}
+      // Untitled + bare: the caller owns the heading, so skip the header offset.
+      bodyPadding={!bare || Boolean(title)}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         {fields.map((field) => {
           const full = field.full ?? FULL_TYPES.has(field.type);
