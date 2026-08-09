@@ -283,7 +283,6 @@ export function DataRequestsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search by email…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

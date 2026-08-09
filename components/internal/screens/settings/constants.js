@@ -23,7 +23,7 @@ export const MEMBER_STATUS_MAP = {
 };
 
 export const MEMBER_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "active", label: "Active" },
   { value: "invited", label: "Invited" },
   { value: "suspended", label: "Suspended" },

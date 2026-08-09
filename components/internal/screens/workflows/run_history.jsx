@@ -310,7 +310,6 @@ export function RunHistoryScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search runs…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

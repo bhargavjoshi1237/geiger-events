@@ -199,13 +199,12 @@ function OrdersListView({ tabs }) {
         description="Every ticket order across your events."
       />
       <Toolbar>
+        {tabs}
         <SearchInput
           value={search}
           onChange={setSearch}
           placeholder="Search name, email, event…"
-          className="w-full sm:max-w-xs"
         />
-        {tabs}
       </Toolbar>
 
       {loading ? (

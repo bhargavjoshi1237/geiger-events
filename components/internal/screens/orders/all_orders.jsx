@@ -72,7 +72,7 @@ export function AllOrdersScreen() {
 
   const eventFilterOptions = useMemo(
     () => [
-      { value: "all", label: "All events" },
+      { value: "all", label: "All Events" },
       ...Object.entries(eventNames).map(([id, name]) => ({ value: id, label: name })),
     ],
     [eventNames],
@@ -288,7 +288,6 @@ export function AllOrdersScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search name, email, order, event…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

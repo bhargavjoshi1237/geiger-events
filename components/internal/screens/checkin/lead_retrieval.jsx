@@ -145,7 +145,7 @@ export function LeadRetrievalScreen() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All events</SelectItem>
+            <SelectItem value="all">All Events</SelectItem>
             {events.map((e) => (
               <SelectItem key={e.id} value={e.id}>
                 {e.name}
@@ -157,7 +157,6 @@ export function LeadRetrievalScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search name, company, email…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

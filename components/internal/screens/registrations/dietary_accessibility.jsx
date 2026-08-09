@@ -90,7 +90,7 @@ function NeedsReportTab({ regs, events, eventNames, questions, registerExport })
 
   const eventFilterOptions = useMemo(
     () => [
-      { value: "all", label: "All events" },
+      { value: "all", label: "All Events" },
       ...events.map((e) => ({ value: e.id, label: e.name })),
     ],
     [events],
@@ -323,18 +323,17 @@ function NeedsReportTab({ regs, events, eventNames, questions, registerExport })
           <Accessibility className="h-4 w-4 text-text-tertiary" />
           {filtered.length} {filtered.length === 1 ? "person" : "people"} with needs
         </span>
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search name or need…"
-            className="w-full sm:max-w-xs"
-          />
+        <div className="flex items-center gap-2">
           <FilterDropdown
             value={eventFilter}
             onValueChange={setEventFilter}
             options={eventFilterOptions}
             height="h-9"
+          />
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search name or need…"
           />
         </div>
       </Toolbar>
@@ -372,7 +371,7 @@ function RequestsTab({ config, onConfigChange, requests, setRequests, events, ev
 
   const eventFilterOptions = useMemo(
     () => [
-      { value: "all", label: "All events" },
+      { value: "all", label: "All Events" },
       ...events.map((e) => ({ value: e.id, label: e.name })),
     ],
     [events],
@@ -593,7 +592,6 @@ function RequestsTab({ config, onConfigChange, requests, setRequests, events, ev
             value={search}
             onChange={setSearch}
             placeholder="Search requests…"
-            className="w-full sm:max-w-xs"
           />
         </div>
       </Toolbar>

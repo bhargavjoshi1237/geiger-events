@@ -56,7 +56,7 @@ export const ORDER_STATUS_MAP = {
 };
 
 export const ORDER_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "Paid", label: "Paid" },
   { value: "Partially refunded", label: "Partially refunded" },
   { value: "Refunded", label: "Refunded" },

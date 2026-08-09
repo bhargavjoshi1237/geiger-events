@@ -63,7 +63,7 @@ export const EVENT_TEAM_ROLE_MAP = Object.fromEntries(
 );
 
 export const EVENT_TEAM_ROLE_FILTER_OPTIONS = [
-  { value: "all", label: "All roles" },
+  { value: "all", label: "All Roles" },
   ...EVENT_TEAM_ROLES.map((r) => ({ value: r.value, label: r.value })),
 ];
 
@@ -418,7 +418,7 @@ export const SERIES_VISIBILITY_OPTIONS = [
 ];
 
 export const SERIES_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   ...SERIES_STATUS_OPTIONS,
 ];
 

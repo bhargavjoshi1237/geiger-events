@@ -39,16 +39,27 @@ import {
 } from "@geiger/ui";
 import { useOptionalProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
-import { conferenceApi } from "@/lib/supabase/conference";
 import { currency } from "@/components/internal/shared/records/builders";
+import {
+  createBooth,
+  createHallMap,
+  deleteBooth,
+  listBooths,
+  listHallMaps,
+  updateBooth,
+} from "@/lib/supabase/hall_maps";
 import { BOOTH_STATUS_MAP } from "./constants";
 import { DEMO_BOOTHS } from "./demo_floor_plan";
 
-// Floor Plan & Booths — an interactive expo map over the SAME booth records the
-// Expo Booths list manages (module "booth"). Booths carry a floor position in
-// config.x / config.y (percent of the canvas); unplaced booths sit in a tray you
-// drag onto the floor. Dragging, status changes, and edits persist optimistically
-// through the shared conference data layer.
+// Floor Plan & Booths — an interactive expo map over events.hall_booths, the one
+// booth concept in the app. A hall is a reusable venue-level template; an event
+// attaches one on its Exhibitor Floor tab and sells stalls from it, and this
+// screen is where the floor itself is laid out.
+//
+// Booths carry a position in x / y (percent of the canvas); a booth marked
+// unplaced sits in a tray you drag onto the floor. The Available / Reserved /
+// Occupied status here is PLANNING state on the template (metadata.status) — the
+// live sold state is per event and lives in the event editor'"'"'s box office.
 
 const SIZE_OPTIONS = ["Standard", "Large", "Premium"];
 const STATUS_OPTIONS = Object.keys(BOOTH_STATUS_MAP);
@@ -67,6 +78,50 @@ const DOT_STYLE = {
 
 const isPlaced = (b) =>
   typeof b.config?.x === "number" && typeof b.config?.y === "number";
+
+// hall_booths row -> the floor plan'"'"'s view model. The screen keeps its original
+// { name, status, config } shape so the map, tray and inspector are untouched;
+// only what backs them changed.
+function toFloorBooth(row) {
+  const meta = row.metadata || {};
+  const placed = meta.placed !== false;
+  return {
+    id: row.id,
+    name: row.code || row.name,
+    status: meta.status || "Available",
+    config: {
+      hall: row.hall || "",
+      size: row.sizeClass || "Standard",
+      exhibitor: meta.exhibitor || "",
+      price: Number(row.price) || 0,
+      notes: meta.notes || "",
+      x: placed ? Number(row.x) : null,
+      y: placed ? Number(row.y) : null,
+    },
+  };
+}
+
+// …and back. Every save sends the whole booth, which keeps the three call sites
+// (drag, inspector edit, status change) identical.
+function toBoothPatch(view) {
+  const cfg = view.config || {};
+  const placed = typeof cfg.x === "number" && typeof cfg.y === "number";
+  return {
+    code: view.name || "",
+    name: view.name || "",
+    hall: cfg.hall || "",
+    sizeClass: cfg.size || "Standard",
+    price: Number(cfg.price) || 0,
+    x: placed ? cfg.x : 0,
+    y: placed ? cfg.y : 0,
+    metadata: {
+      status: view.status || "Available",
+      exhibitor: cfg.exhibitor || "",
+      notes: cfg.notes || "",
+      placed,
+    },
+  };
+}
 
 const clamp = (n) => Math.max(2, Math.min(96, n));
 
@@ -163,22 +218,42 @@ export function FloorPlanScreen({ demo = false }) {
   const [userId, setUserId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  // The project's halls, and which one this screen is laying out. A hall is a
+  // reusable template, so a project can have several (main hall, atrium…).
+  const [halls, setHalls] = useState([]);
+  const [hallId, setHallId] = useState(null);
   const canvasRef = useRef(null);
   const dragRef = useRef(null); // { id, moved }
 
   useEffect(() => {
-    if (demo) return;
+    if (demo) return undefined;
     let alive = true;
-    conferenceApi.list(projectId, "booth").then((rows) => {
+    listHallMaps().then((rows) => {
       if (!alive) return;
-      setBooths(rows ?? []);
-      setLoading(false);
+      const list = rows ?? [];
+      setHalls(list);
+      setHallId((current) => current || list[0]?.id || null);
+      if (list.length === 0) setLoading(false);
     });
     getUser().then((u) => alive && setUserId(u?.id || null));
     return () => {
       alive = false;
     };
   }, [projectId, demo]);
+
+  useEffect(() => {
+    if (demo || !hallId) return undefined;
+    let alive = true;
+    listBooths(hallId).then((rows) => {
+      if (!alive) return;
+      setBooths((rows ?? []).map(toFloorBooth));
+      setSelectedId(null);
+      setLoading(false);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [hallId, demo]);
 
   const placed = useMemo(() => booths.filter(isPlaced), [booths]);
   const tray = useMemo(() => booths.filter((b) => !isPlaced(b)), [booths]);
@@ -201,12 +276,17 @@ export function FloorPlanScreen({ demo = false }) {
     ];
   }, [booths, placed, tray]);
 
-  // Persist a config patch for one booth (optimistic local state already set).
+  // Persist one booth (optimistic local state already set). The caller hands us
+  // the config it just wrote, because setBooths hasn't flushed yet.
   const persist = (id, config) => {
     if (demo) return;
-    conferenceApi.update(id, { config }).then((saved) => {
-      if (!saved) toast.error("Couldn't save to the server.");
-    });
+    const current = booths.find((b) => b.id === id);
+    if (!current) return;
+    updateBooth(id, toBoothPatch({ ...current, config: config || current.config })).then(
+      (saved) => {
+        if (!saved) toast.error("Couldn't save to the server.");
+      },
+    );
   };
 
   const patchConfig = (id, partial, { save = true } = {}) => {
@@ -231,11 +311,9 @@ export function FloorPlanScreen({ demo = false }) {
       }),
     );
     if (updated && !demo) {
-      conferenceApi
-        .update(id, { name: updated.name, status: updated.status, config: updated.config })
-        .then((saved) => {
-          if (!saved) toast.error("Couldn't save to the server.");
-        });
+      updateBooth(id, toBoothPatch(updated)).then((saved) => {
+        if (!saved) toast.error("Couldn't save to the server.");
+      });
     }
   };
 
@@ -298,21 +376,47 @@ export function FloorPlanScreen({ demo = false }) {
   const handleCreate = (draft) => {
     const booth = {
       id: crypto.randomUUID(),
-      module: "booth",
       name: draft.name.trim(),
       status: "Available",
-      coverUrl: "",
-      config: { hall: draft.hall, size: draft.size, exhibitor: "", price: 0, notes: "" },
-      createdBy: userId,
-      projectId,
+      // A new booth starts in the tray, so it has no position yet.
+      config: { hall: draft.hall, size: draft.size, exhibitor: "", price: 0, notes: "", x: null, y: null },
     };
     setBooths((prev) => [booth, ...prev]);
     toast.success(`"${booth.name}" added.`);
     if (demo) return;
-    conferenceApi.create(booth).then((saved) => {
-      if (!saved) toast.error("Couldn't save to the server.");
-      else setBooths((prev) => prev.map((b) => (b.id === saved.id ? saved : b)));
+    createBooth({
+      id: booth.id,
+      hallMapId: hallId,
+      kind: "booth",
+      width: 8,
+      height: 6,
+      sortOrder: booths.length,
+      ...toBoothPatch(booth),
+    }).then((saved) => {
+      if (!saved) {
+        setBooths((prev) => prev.filter((b) => b.id !== booth.id));
+        toast.error("Couldn't save to the server.");
+      }
     });
+  };
+
+  // Create the project's first hall from here, so the screen is usable without
+  // going to a venue first. It has no venue until someone attaches one.
+  const handleCreateHall = async () => {
+    const created = await createHallMap({
+      id: crypto.randomUUID(),
+      projectId,
+      name: "Exhibitor hall",
+      status: "Active",
+      createdBy: userId,
+    });
+    if (!created) {
+      toast.error("Couldn't create the hall.");
+      return;
+    }
+    setHalls((prev) => [created, ...prev]);
+    setHallId(created.id);
+    toast.success("Hall created.");
   };
 
   const handleDelete = (booth) => {
@@ -320,7 +424,7 @@ export function FloorPlanScreen({ demo = false }) {
     if (selectedId === booth.id) setSelectedId(null);
     toast.success(`Deleted "${booth.name}".`);
     if (demo) return;
-    conferenceApi.remove(booth.id).then((ok) => {
+    deleteBooth(booth.id).then((ok) => {
       if (!ok) toast.error("Couldn't delete on the server.");
     });
   };
@@ -329,14 +433,33 @@ export function FloorPlanScreen({ demo = false }) {
     <MainScreenWrapper>
       <ScreenHeader
         title="Floor Plan & Booths"
-        description="Lay out the exhibitor floor visually — drag booths into place, colour-coded by status. It's the same booth data as Expo Booths, seen as a map."
+        description="Lay out the exhibitor floor visually — drag booths into place, colour-coded by status. Events sell stalls from this floor on their Exhibitor Floor tab."
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> Add booth
-          </Button>
+          <div className="flex items-center gap-2">
+            {halls.length > 1 ? (
+              <div className="w-52">
+                <Select value={hallId || ""} onValueChange={setHallId}>
+                  <SelectTrigger aria-label="Exhibitor hall">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {halls.map((h) => (
+                      <SelectItem key={h.id} value={h.id}>
+                        {h.name || "Untitled hall"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={!demo && !hallId}
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> Add booth
+            </Button>
+          </div>
         }
       />
 
@@ -345,6 +468,22 @@ export function FloorPlanScreen({ demo = false }) {
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading floor…
+        </div>
+      ) : !demo && !hallId ? (
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={LayoutGrid}
+            title="No exhibitor hall yet"
+            description="A hall is the reusable floor plan events sell booths from. Create one here, or build it on a venue to reuse it across events."
+            action={
+              <Button
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={handleCreateHall}
+              >
+                <Plus className="h-4 w-4" /> Create a hall
+              </Button>
+            }
+          />
         </div>
       ) : booths.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

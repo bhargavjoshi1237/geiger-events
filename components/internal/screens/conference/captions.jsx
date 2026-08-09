@@ -66,7 +66,7 @@ function estimateWords(duration) {
 }
 
 const STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   ...Object.keys(CAPTION_STATUS_MAP).map((k) => ({ value: k, label: k })),
 ];
 
@@ -451,7 +451,6 @@ export function CaptionsTranscriptionScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search recordings, sessions, models…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

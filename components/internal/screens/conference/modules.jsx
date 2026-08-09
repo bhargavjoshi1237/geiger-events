@@ -169,7 +169,7 @@ export const MODULES = {
       textCol("featured", "Featured", (r) => (r.config.featured ? "★ Featured" : "")),
     ],
     stats: (records) => [
-      { label: "Speakers", value: String(records.length), footer: "All statuses" },
+      { label: "Speakers", value: String(records.length), footer: "All Statuses" },
       { label: "Confirmed", value: String(count(records, (r) => r.status === "Confirmed")), footer: "Locked in" },
       { label: "Featured", value: String(count(records, (r) => r.config.featured)), footer: "Highlighted" },
       { label: "Companies", value: String(distinct(records, (r) => r.config.company)), footer: "Represented" },
@@ -337,7 +337,7 @@ export const MODULES = {
       statusCol(PACKAGE_STATUS_MAP),
     ],
     stats: (records) => [
-      { label: "Packages", value: String(records.length), footer: "All statuses" },
+      { label: "Packages", value: String(records.length), footer: "All Statuses" },
       { label: "Total value", value: currency(sum(records, (r) => (Number(r.config.price) || 0) * (Number(r.config.slots) || 0))), footer: "If fully sold" },
       { label: "Slots sold", value: String(sum(records, (r) => r.config.sold)), footer: "Across packages" },
       { label: "Available", value: String(count(records, (r) => r.status === "Available")), footer: "On sale" },
@@ -1076,7 +1076,7 @@ export const MODULES = {
       const registered = sum(records, (r) => r.config.registered);
       const attended = sum(records, (r) => r.config.attended);
       return [
-        { label: "Webinars", value: String(records.length), footer: "All statuses" },
+        { label: "Webinars", value: String(records.length), footer: "All Statuses" },
         { label: "Live now", value: String(count(records, (r) => r.status === "Live")), footer: "Streaming" },
         { label: "Registered", value: String(registered), footer: "Across webinars" },
         { label: "Show rate", value: pct(registered ? (attended / registered) * 100 : 0), footer: "Attended vs registered" },
@@ -1638,7 +1638,7 @@ export const MODULES = {
       statusCol(AGENDA_ASSIGN_STATUS_MAP),
     ],
     stats: (records) => [
-      { label: "Agendas", value: String(records.length), footer: "All statuses" },
+      { label: "Agendas", value: String(records.length), footer: "All Statuses" },
       { label: "Published", value: String(count(records, (r) => r.status === "Published")), footer: "Assigned live" },
       { label: "Sessions assigned", value: String(sum(records, (r) => (r.config.sessionIds || []).length)), footer: "Across agendas" },
       { label: "Drafts", value: String(count(records, (r) => r.status === "Draft")), footer: "Not yet live" },

@@ -119,7 +119,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
             className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            All events
+            All Events
           </button>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
@@ -207,6 +207,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
               onChange={setScreenQuery}
               placeholder="Search screens..."
               aria-label="Search screens"
+
             />
           </div>
           {/* Fills the editor column and scrolls inside its own area rather than

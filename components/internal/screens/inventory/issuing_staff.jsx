@@ -452,13 +452,12 @@ export function IssuingStaffScreen() {
       />
 
       <Toolbar>
+        <span />
         <SearchInput
           value={search}
           onChange={setSearch}
           placeholder="Search issuing roles…"
-          className="w-full sm:max-w-xs"
         />
-        <span />
       </Toolbar>
 
       {loading ? (

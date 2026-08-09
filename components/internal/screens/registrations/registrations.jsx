@@ -373,18 +373,6 @@ export function RegistrationsScreen() {
       />
 
       <Toolbar>
-        {/* Search on the left. */}
-        <SearchInput
-          value={search}
-          onChange={(v) => {
-            setSearch(v);
-            setEventLimit(PAGE_EVENTS);
-            setPeopleLimit(PAGE_PEOPLE);
-          }}
-          placeholder={view === "events" ? "Search events…" : "Search name, email, event…"}
-          className="w-full sm:max-w-xs"
-        />
-
         {/* Events / People view switch. */}
         <div className="flex h-10 w-fit shrink-0 items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
           {[
@@ -407,6 +395,17 @@ export function RegistrationsScreen() {
             </button>
           ))}
         </div>
+
+        {/* Search on the right. */}
+        <SearchInput
+          value={search}
+          onChange={(v) => {
+            setSearch(v);
+            setEventLimit(PAGE_EVENTS);
+            setPeopleLimit(PAGE_PEOPLE);
+          }}
+          placeholder={view === "events" ? "Search events…" : "Search name, email, event…"}
+        />
       </Toolbar>
 
       {loading ? (

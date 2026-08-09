@@ -31,7 +31,7 @@ export const VENUE_TYPE_MAP = {
 
 // Filter option lists — "all" sentinel first.
 export const VENUE_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   ...Object.keys(VENUE_STATUS_MAP).map((s) => ({ value: s, label: s })),
 ];
 

@@ -326,7 +326,6 @@ export function PortalThreadBoard({
             value={search}
             onChange={setSearch}
             placeholder="Search threads…"
-            className="sm:max-w-xs"
           />
           {filtered.length ? (
             <div className="space-y-2">

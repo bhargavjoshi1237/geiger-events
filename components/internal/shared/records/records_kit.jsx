@@ -563,7 +563,6 @@ export function RecordsScreen({ mod, api }) {
           value={search}
           onChange={setSearch}
           placeholder={mod.searchPlaceholder}
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

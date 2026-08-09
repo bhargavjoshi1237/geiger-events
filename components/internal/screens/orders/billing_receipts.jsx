@@ -204,7 +204,6 @@ export function BillingReceiptsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search buyer, order, event…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

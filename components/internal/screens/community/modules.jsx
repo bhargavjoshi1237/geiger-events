@@ -71,7 +71,7 @@ export const MODULES = {
       statusCol(POLL_STATUS_MAP),
     ],
     stats: (records) => [
-      { label: "Polls", value: String(records.length), footer: "All statuses" },
+      { label: "Polls", value: String(records.length), footer: "All Statuses" },
       { label: "Live", value: String(count(records, (r) => r.status === "Live")), footer: "Open now" },
       { label: "Total votes", value: String(sum(records, (r) => r.config.votes)), footer: "Across polls" },
       { label: "Closed", value: String(count(records, (r) => r.status === "Closed")), footer: "Finished" },
@@ -123,7 +123,7 @@ export const MODULES = {
       statusCol(SURVEY_STATUS_MAP),
     ],
     stats: (records) => [
-      { label: "Surveys", value: String(records.length), footer: "All statuses" },
+      { label: "Surveys", value: String(records.length), footer: "All Statuses" },
       { label: "Open", value: String(count(records, (r) => r.status === "Open")), footer: "Collecting" },
       { label: "Responses", value: String(sum(records, (r) => r.config.responses)), footer: "Across surveys" },
       { label: "Closed", value: String(count(records, (r) => r.status === "Closed")), footer: "Finished" },
@@ -174,7 +174,7 @@ export const MODULES = {
       statusCol(ANNOUNCEMENT_STATUS_MAP),
     ],
     stats: (records) => [
-      { label: "Announcements", value: String(records.length), footer: "All statuses" },
+      { label: "Announcements", value: String(records.length), footer: "All Statuses" },
       { label: "Sent", value: String(count(records, (r) => r.status === "Sent")), footer: "Delivered" },
       { label: "Scheduled", value: String(count(records, (r) => r.status === "Scheduled")), footer: "Queued" },
       { label: "Draft", value: String(count(records, (r) => r.status === "Draft")), footer: "Unsent" },

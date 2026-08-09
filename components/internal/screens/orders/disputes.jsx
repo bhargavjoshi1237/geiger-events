@@ -378,7 +378,6 @@ export function DisputesScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search buyer, order, reason…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

@@ -11,15 +11,18 @@ import {
   Users,
   Lock,
   Check,
+  Search,
+  ChevronRight,
+  Crown,
+  Info,
 } from "lucide-react";
+import { expandPatterns, matchesAny } from "@geiger/rbac";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
   ScreenHeader,
   StatsBar,
   SectionCard,
-  SettingsList,
-  SettingRow,
   EmptyState,
   Field,
 } from "@/components/internal/shared/screen_kit";
@@ -46,16 +49,17 @@ import {
 import { cn } from "@/lib/utils";
 import { ALL_PERMISSION_KEYS } from "@/lib/rbac";
 import { useProject } from "@/context/project-context";
+import { useRbac } from "@/context/rbac-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getUser } from "@/lib/supabase/user";
 import {
-  listRoles,
   createRole,
   updateRole,
   softDeleteRole,
   ensureSystemRoles,
+  listGrants,
 } from "@/lib/supabase/rbac";
-import { listMembers, logActivity } from "@/lib/supabase/team";
+import { logActivity } from "@/lib/supabase/team";
 import {
   PERMISSION_GROUPS,
   ROLE_COLORS,
@@ -70,15 +74,33 @@ const EMPTY_DRAFT = {
   cloneFrom: "none",
 };
 
+// Owner is the one role the screen refuses to touch: its "*" is what keeps a
+// project administrable, and it is the only permission list that keeps granting
+// new keys as the catalog grows. Every other seeded role is a starting point the
+// project owner is free to rewrite.
+function isOwnerRole(role) {
+  return role?.key === "owner" || (role?.permissions || []).includes("*");
+}
+
+// Does this role actually grant `key`? Roles store PATTERNS, so a literal
+// includes() reports Owner as holding nothing at all.
+function grantsKey(role, key) {
+  return matchesAny(role?.permissions || [], key);
+}
+
 export function RolesPermissionsScreen() {
   const { projectId } = useProject();
   const { recordId, openRecord, setTab } = useWorkspaceUrl();
+  const { can, refresh: refreshRbac } = useRbac();
+
+  const canManage = can("events.role.manage");
 
   const [roles, setRoles] = useState([]);
-  const [members, setMembers] = useState([]);
+  const [grants, setGrants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [userName, setUserName] = useState("");
+  const [query, setQuery] = useState("");
 
   // One dialog serves create + edit; `editing` holds the role being edited.
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -104,21 +126,23 @@ export function RolesPermissionsScreen() {
       setRoles(rows ?? []);
       setLoading(false);
     })();
-    listMembers(projectId).then((rows) => alive && setMembers(rows ?? []));
+    listGrants(projectId).then((rows) => alive && setGrants(rows ?? []));
     return () => {
       alive = false;
     };
   }, [projectId]);
 
+  // Counted off grants, not the roster overlay — a grant is what authorizes, so
+  // it is the only honest answer to "how many people hold this role".
   const memberCountByRole = useMemo(() => {
     const map = {};
-    for (const m of members) {
-      if (m.roleId && m.status !== "invited") {
-        map[m.roleId] = (map[m.roleId] || 0) + 1;
+    for (const g of grants) {
+      if (g.roleId && g.status === "active") {
+        map[g.roleId] = (map[g.roleId] || 0) + 1;
       }
     }
     return map;
-  }, [members]);
+  }, [grants]);
 
   const selectedRole = useMemo(
     () => roles.find((r) => r.id === recordId) || roles[0] || null,
@@ -131,7 +155,7 @@ export function RolesPermissionsScreen() {
     return [
       { label: "Roles", value: String(roles.length) },
       { label: "Custom roles", value: String(custom) },
-      { label: "Members assigned", value: String(assigned) },
+      { label: "People assigned", value: String(assigned) },
       { label: "Permissions", value: String(ALL_PERMISSION_KEYS.length) },
     ];
   }, [roles, memberCountByRole]);
@@ -143,26 +167,40 @@ export function RolesPermissionsScreen() {
       prev.map((r) => (r.id === role.id ? { ...r, permissions } : r)),
     );
     const saved = await updateRole(role.id, { permissions });
-    if (!saved) {
+    if (saved) {
+      // The editor may be editing their own role; re-resolve so the nav and the
+      // gates on this very screen reflect the change without a reload.
+      refreshRbac();
+    } else {
       setRoles((prev) =>
-        prev.map((r) => (r.id === role.id ? { ...r, permissions: role.permissions } : r)),
+        prev.map((r) =>
+          r.id === role.id ? { ...r, permissions: role.permissions } : r,
+        ),
       );
       toast.error("Couldn't update permissions.");
     }
   };
 
+  // Turning one key off inside a wildcard can't be expressed by removing a key,
+  // so a role holding any pattern is first expanded to the concrete set it
+  // currently reaches. What the user saw ticked is exactly what stays ticked.
+  const concreteKeys = (role) =>
+    (role.permissions || []).some((p) => p.includes("*"))
+      ? expandPatterns(role.permissions, ALL_PERMISSION_KEYS)
+      : [...(role.permissions || [])];
+
   const togglePermission = (role, key) => {
-    if (role.isSystem) return;
-    const has = role.permissions.includes(key);
-    const next = has
-      ? role.permissions.filter((k) => k !== key)
-      : [...role.permissions, key];
+    if (!canManage || isOwnerRole(role)) return;
+    const base = concreteKeys(role);
+    const next = grantsKey(role, key)
+      ? base.filter((k) => k !== key)
+      : [...new Set([...base, key])];
     persistPermissions(role, next);
   };
 
   const toggleGroup = (role, keys, enable) => {
-    if (role.isSystem) return;
-    const set = new Set(role.permissions);
+    if (!canManage || isOwnerRole(role)) return;
+    const set = new Set(concreteKeys(role));
     keys.forEach((k) => (enable ? set.add(k) : set.delete(k)));
     persistPermissions(role, Array.from(set));
   };
@@ -222,7 +260,9 @@ export function RolesPermissionsScreen() {
       name,
       description: draft.description,
       color: draft.color,
-      permissions: source ? [...source.permissions] : [],
+      // Cloning Owner would copy "*" into a custom role, quietly minting a
+      // second unrestricted role. Expand it to the concrete catalog instead.
+      permissions: source ? expandPatterns(source.permissions, ALL_PERMISSION_KEYS) : [],
       isSystem: false,
       sort: roles.length,
       createdBy: userId,
@@ -255,7 +295,7 @@ export function RolesPermissionsScreen() {
       name: `${role.name} copy`,
       description: role.description,
       color: role.color,
-      permissions: [...role.permissions],
+      permissions: expandPatterns(role.permissions, ALL_PERMISSION_KEYS),
       isSystem: false,
       sort: roles.length,
       createdBy: userId,
@@ -303,11 +343,11 @@ export function RolesPermissionsScreen() {
     setTab("Team & Members");
   };
 
-  const createAction = (
+  const createAction = canManage ? (
     <Button onClick={openCreate} className="bg-primary text-primary-foreground">
       <Plus className="h-4 w-4" /> Create role
     </Button>
-  );
+  ) : null;
 
   return (
     <MainScreenWrapper>
@@ -318,6 +358,14 @@ export function RolesPermissionsScreen() {
       />
 
       <StatsBar stats={stats} />
+
+      {!canManage ? (
+        <Notice icon={Lock}>
+          You can see how access is set up here, but only someone with
+          <span className="text-foreground"> Create and edit roles </span>
+          can change it.
+        </Notice>
+      ) : null}
 
       {loading ? (
         <SectionCard>
@@ -335,7 +383,7 @@ export function RolesPermissionsScreen() {
           />
         </SectionCard>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+        <div className="grid gap-4 lg:grid-cols-[264px_1fr]">
           <RoleList
             roles={roles}
             selectedId={selectedRole?.id}
@@ -345,7 +393,10 @@ export function RolesPermissionsScreen() {
           {selectedRole ? (
             <RoleDetail
               role={selectedRole}
+              canManage={canManage}
               memberCount={memberCountByRole[selectedRole.id] || 0}
+              query={query}
+              setQuery={setQuery}
               onToggle={togglePermission}
               onToggleGroup={toggleGroup}
               onEdit={openEdit}
@@ -373,7 +424,7 @@ export function RolesPermissionsScreen() {
             <DialogTitle>Delete role</DialogTitle>
             <DialogDescription>
               {deleteTarget
-                ? `Remove “${deleteTarget.name}”? Members with this role keep access until reassigned.`
+                ? `Remove “${deleteTarget.name}”? Anyone holding it loses the access it granted.`
                 : ""}
             </DialogDescription>
           </DialogHeader>
@@ -394,22 +445,34 @@ export function RolesPermissionsScreen() {
   );
 }
 
+// --- Shared notice strip -----------------------------------------------------
+
+function Notice({ icon: Icon = Info, children }) {
+  return (
+    <div className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-card px-3.5 py-2.5 text-xs leading-relaxed text-text-secondary">
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+      <p>{children}</p>
+    </div>
+  );
+}
+
 // --- Left rail: role list ----------------------------------------------------
 
 function RoleList({ roles, selectedId, counts, onSelect }) {
   return (
     <SectionCard bodyPadding={false} contentClassName="p-2">
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {roles.map((role) => {
           const active = role.id === selectedId;
           const color = roleColor(role.color);
+          const count = counts[role.id] || 0;
           return (
             <button
               key={role.id}
               type="button"
               onClick={() => onSelect(role)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
+                "flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors",
                 active ? "bg-surface-active" : "hover:bg-surface-hover",
               )}
             >
@@ -419,14 +482,17 @@ function RoleList({ roles, selectedId, counts, onSelect }) {
                   <span className="truncate text-sm font-medium text-foreground">
                     {role.name}
                   </span>
-                  {role.isSystem ? (
-                    <Lock className="h-3 w-3 shrink-0 text-text-tertiary" />
+                  {isOwnerRole(role) ? (
+                    <Crown className="h-3 w-3 shrink-0 text-amber-400" />
                   ) : null}
                 </span>
                 <span className="text-[11px] text-text-tertiary">
-                  {counts[role.id] || 0} member{(counts[role.id] || 0) === 1 ? "" : "s"}
+                  {count} {count === 1 ? "person" : "people"}
                 </span>
               </span>
+              {active ? (
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+              ) : null}
             </button>
           );
         })}
@@ -439,7 +505,10 @@ function RoleList({ roles, selectedId, counts, onSelect }) {
 
 function RoleDetail({
   role,
+  canManage,
   memberCount,
+  query,
+  setQuery,
   onToggle,
   onToggleGroup,
   onEdit,
@@ -448,6 +517,30 @@ function RoleDetail({
   onViewMembers,
 }) {
   const color = roleColor(role.color);
+  const owner = isOwnerRole(role);
+  const locked = owner || !canManage;
+
+  const q = query.trim().toLowerCase();
+  const groups = useMemo(
+    () =>
+      PERMISSION_GROUPS.map(({ group, permissions }) => ({
+        group,
+        permissions: q
+          ? permissions.filter(
+              (p) =>
+                p.label.toLowerCase().includes(q) ||
+                p.key.toLowerCase().includes(q),
+            )
+          : permissions,
+      })).filter((g) => g.permissions.length),
+    [q],
+  );
+
+  const totalGranted = useMemo(
+    () => ALL_PERMISSION_KEYS.filter((k) => grantsKey(role, k)).length,
+    [role],
+  );
+
   return (
     <div className="space-y-4">
       <SectionCard>
@@ -463,92 +556,178 @@ function RoleDetail({
             {role.description ? (
               <p className="mt-1 text-sm text-text-secondary">{role.description}</p>
             ) : null}
-            <button
-              type="button"
-              onClick={() => onViewMembers(role)}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-foreground"
-            >
-              <Users className="h-3.5 w-3.5" />
-              {memberCount} member{memberCount === 1 ? "" : "s"} · view in Team
-            </button>
+            <div className="mt-2 flex items-center gap-3 text-xs">
+              <button
+                type="button"
+                onClick={() => onViewMembers(role)}
+                className="inline-flex items-center gap-1.5 font-medium text-text-secondary hover:text-foreground"
+              >
+                <Users className="h-3.5 w-3.5" />
+                {memberCount} {memberCount === 1 ? "person" : "people"} · view in Team
+              </button>
+              <span className="text-text-tertiary">
+                {owner ? "Every permission" : `${totalGranted} of ${ALL_PERMISSION_KEYS.length} permissions`}
+              </span>
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => onDuplicate(role)}>
-              <Copy className="h-3.5 w-3.5" /> Duplicate
-            </Button>
-            {!role.isSystem ? (
-              <>
-                <Button variant="outline" size="sm" onClick={() => onEdit(role)}>
-                  <Pencil className="h-3.5 w-3.5" /> Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-400 hover:text-red-300"
-                  onClick={() => onDelete(role)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </>
+            {canManage ? (
+              <Button variant="outline" size="sm" onClick={() => onDuplicate(role)}>
+                <Copy className="h-3.5 w-3.5" /> Duplicate
+              </Button>
+            ) : null}
+            {canManage && !owner ? (
+              <Button variant="outline" size="sm" onClick={() => onEdit(role)}>
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </Button>
+            ) : null}
+            {canManage && !owner && !role.isSystem ? (
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="Delete role"
+                className="text-red-400 hover:text-red-300"
+                onClick={() => onDelete(role)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             ) : null}
           </div>
         </div>
       </SectionCard>
 
-      {role.isSystem ? (
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2 text-xs text-text-secondary">
-          <Lock className="h-3.5 w-3.5" />
-          System role — permissions are fixed. Duplicate it to make an editable copy.
-        </div>
+      {owner ? (
+        <Notice icon={Crown}>
+          Owner holds every permission — including ones added to the product
+          later. It is deliberately not editable, so a workspace always keeps at
+          least one role that can administer it.
+        </Notice>
       ) : null}
 
-      {PERMISSION_GROUPS.map(({ group, permissions }) => {
-        const keys = permissions.map((p) => p.key);
-        const enabledCount = keys.filter((k) => role.permissions.includes(k)).length;
-        const allOn = enabledCount === keys.length;
-        return (
-          <SectionCard
-            key={group}
-            title={group}
-            action={
-              !role.isSystem ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-text-secondary"
-                  onClick={() => onToggleGroup(role, keys, !allOn)}
-                >
-                  {allOn ? "Clear all" : "Select all"}
-                </Button>
-              ) : (
-                <span className="text-xs text-text-tertiary">
-                  {enabledCount}/{keys.length}
-                </span>
-              )
-            }
+      <SectionCard
+        title="Permissions"
+        action={
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter permissions…"
+              className="h-8 w-48 bg-surface-card pl-8 text-xs"
+            />
+          </div>
+        }
+        bodyPadding={false}
+        contentClassName="p-2"
+      >
+        {groups.length === 0 ? (
+          <p className="py-10 text-center text-sm text-text-tertiary">
+            No permission matches “{query}”.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {groups.map(({ group, permissions }) => (
+              <PermissionGroup
+                key={group}
+                group={group}
+                permissions={permissions}
+                role={role}
+                locked={locked}
+                onToggle={onToggle}
+                onToggleGroup={onToggleGroup}
+              />
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+function PermissionGroup({ group, permissions, role, locked, onToggle, onToggleGroup }) {
+  const keys = permissions.map((p) => p.key);
+  const enabled = keys.filter((k) => grantsKey(role, k));
+  const allOn = enabled.length === keys.length;
+
+  // Collapsed by default unless something is on — "Workspace views" alone is two
+  // dozen rows, and an open accordion of every group buries the operations that
+  // matter under a wall of switches.
+  const [open, setOpen] = useState(enabled.length > 0);
+
+  return (
+    <div className="rounded-lg border border-border/60">
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          aria-expanded={open}
+        >
+          <ChevronRight
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 text-text-tertiary transition-transform",
+              open && "rotate-90",
+            )}
+          />
+          <span className="truncate text-sm font-medium text-foreground">{group}</span>
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+              enabled.length
+                ? "bg-primary/15 text-primary"
+                : "bg-surface-card text-text-tertiary",
+            )}
           >
-            <SettingsList>
-              {permissions.map((perm) => {
-                const checked = role.permissions.includes(perm.key);
-                return (
-                  <SettingRow
-                    key={perm.key}
-                    title={perm.label}
-                    description={perm.key}
-                    control={
-                      <Switch
-                        checked={checked}
-                        disabled={role.isSystem}
-                        onCheckedChange={() => onToggle(role, perm.key)}
-                      />
-                    }
-                  />
-                );
-              })}
-            </SettingsList>
-          </SectionCard>
-        );
-      })}
+            {enabled.length}/{keys.length}
+          </span>
+        </button>
+        {!locked ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 shrink-0 text-xs text-text-secondary"
+            onClick={() => onToggleGroup(role, keys, !allOn)}
+          >
+            {allOn ? "Clear all" : "Select all"}
+          </Button>
+        ) : null}
+      </div>
+
+      {open ? (
+        <div className="grid gap-px border-t border-border/60 bg-border/40 sm:grid-cols-2">
+          {permissions.map((perm) => {
+            const checked = grantsKey(role, perm.key);
+            return (
+              <label
+                key={perm.key}
+                className={cn(
+                  "flex items-center justify-between gap-3 bg-surface-subtle px-3 py-2.5",
+                  !locked && "cursor-pointer hover:bg-surface-hover",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-sm text-foreground">{perm.label}</span>
+                    {perm.scopeBy ? (
+                      <span className="shrink-0 rounded border border-border bg-surface-card px-1 py-px text-[10px] text-text-tertiary">
+                        per {perm.scopeBy}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="block truncate font-mono text-[10px] text-text-tertiary">
+                    {perm.key}
+                  </span>
+                </span>
+                <Switch
+                  checked={checked}
+                  disabled={locked}
+                  onCheckedChange={() => onToggle(role, perm.key)}
+                />
+              </label>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

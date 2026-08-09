@@ -245,7 +245,7 @@ export function WaitlistScreen() {
             setDetailLimit(PAGE_ROWS);
           }}
         >
-          <ArrowLeft className="h-4 w-4" /> All events
+          <ArrowLeft className="h-4 w-4" /> All Events
         </Button>
 
         <div className="space-y-3 border-b border-border pb-5">
@@ -310,7 +310,6 @@ export function WaitlistScreen() {
               setDetailLimit(PAGE_ROWS);
             }}
             placeholder="Search this waitlist…"
-            className="w-full sm:max-w-xs"
           />
         </Toolbar>
 
@@ -427,7 +426,6 @@ export function WaitlistScreen() {
             setListLimit(PAGE_EVENTS);
           }}
           placeholder="Search events…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

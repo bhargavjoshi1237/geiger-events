@@ -280,7 +280,7 @@ export function ApprovalGatesScreen() {
             setDetailLimit(PAGE_CARDS);
           }}
         >
-          <ArrowLeft className="h-4 w-4" /> All events
+          <ArrowLeft className="h-4 w-4" /> All Events
         </Button>
 
         <div className="flex flex-col gap-3 border-b border-border pb-5 md:flex-row md:items-center md:justify-between">
@@ -329,7 +329,6 @@ export function ApprovalGatesScreen() {
               setDetailLimit(PAGE_CARDS);
             }}
             placeholder="Search this event…"
-            className="w-full sm:max-w-xs"
           />
         </Toolbar>
 
@@ -429,7 +428,6 @@ export function ApprovalGatesScreen() {
             setListLimit(PAGE_EVENTS);
           }}
           placeholder="Search events…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

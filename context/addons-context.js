@@ -11,10 +11,15 @@ import React, {
 
 import { INSTALLED_ADDONS } from "@/addons";
 import { useOptionalProject } from "@/context/project-context";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import {
   listProjectAddons,
   upsertProjectAddon,
 } from "@/lib/supabase/project_addons";
+import {
+  usePaintFromShellCache,
+  writeShellCache,
+} from "@/lib/workspace/shell_cache";
 
 // Per-project addon enablement for the workspace shell.
 //
@@ -23,8 +28,14 @@ import {
 // backed by events.project_addons so a toggle survives a refresh and every
 // teammate on the project sees the same sidebar.
 //
+// Enabled addons contribute sidebar sections, so the rows are read back from a
+// local cache before the first paint and the database read only revalidates
+// them; otherwise an addon's nav pops in a round trip after everything else.
+//
 // Writes are optimistic: local state updates immediately, then persists; a
 // falsy return rolls the change back and the caller toasts.
+
+const CACHE = "addon-rows";
 
 const AddonsContext = createContext(null);
 
@@ -46,11 +57,23 @@ const DISABLED = Object.freeze({
 
 export function AddonsProvider({ children }) {
   const project = useOptionalProject();
-  const projectId = project?.projectId || null;
+  // The route carries the project id synchronously; the project record itself is
+  // a fetch away, and the cached rows need a key on the first frame.
+  const { projectId: routeProjectId } = useWorkspaceUrl();
+  const projectId = routeProjectId || project?.projectId || null;
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load this project's addon rows. Every setState happens in the async
+  // Paint the last known rows before the browser paints, so an enabled addon's
+  // sidebar section doesn't pop in a round trip after everything else.
+  usePaintFromShellCache(CACHE, projectId, (entry) => {
+    if (!Array.isArray(entry.value)) return;
+    setRows(entry.value);
+    setLoading(false);
+  });
+
+  // Revalidate this project's addon rows. Every setState happens in the async
   // continuation — a synchronous setState in an effect body cascades renders.
   // With no project yet, resolve to an empty set rather than staying "loading"
   // forever, so consumers render their empty state instead of a spinner.
@@ -59,14 +82,23 @@ export function AddonsProvider({ children }) {
     (projectId ? listProjectAddons(projectId) : Promise.resolve([])).then(
       (result) => {
         if (!alive) return;
-        setRows(result ?? []);
         setLoading(false);
+        // null is "unconfigured or the read failed" — keep the painted rows
+        // rather than blanking every addon's nav on a flaky read.
+        if (result) setRows(result);
       },
     );
     return () => {
       alive = false;
     };
   }, [projectId]);
+
+  // Mirror every settled change — a load, a toggle, a rolled-back toggle — into
+  // the cache, so the next paint starts from what this project last looked like.
+  useEffect(() => {
+    if (loading) return;
+    writeShellCache(CACHE, projectId, null, rows);
+  }, [projectId, loading, rows]);
 
   const byId = useMemo(
     () => Object.fromEntries(rows.map((r) => [r.addonId, r])),

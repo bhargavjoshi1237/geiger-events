@@ -547,7 +547,7 @@ export function IssuingDeskScreen() {
           <FilterDropdown
             value={eventFilter}
             options={[
-              { value: "all", label: "All events" },
+              { value: "all", label: "All Events" },
               ...events.map((e) => ({ value: e.id, label: e.name })),
             ]}
             onValueChange={setEventFilter}
@@ -558,7 +558,6 @@ export function IssuingDeskScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search attendee, item or staff…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

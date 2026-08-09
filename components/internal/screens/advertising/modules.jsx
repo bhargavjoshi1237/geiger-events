@@ -68,7 +68,7 @@ export const MODULES = {
       const impressions = sum(records, (r) => r.config.impressions);
       const clicks = sum(records, (r) => r.config.clicks);
       return [
-        { label: "Campaigns", value: String(records.length), footer: "All statuses" },
+        { label: "Campaigns", value: String(records.length), footer: "All Statuses" },
         { label: "Active", value: String(count(records, (r) => r.status === "Active")), footer: "Live now" },
         { label: "Total spend", value: currency(sum(records, (r) => r.config.spend)), footer: "Across campaigns" },
         { label: "Avg CTR", value: ctr(impressions, clicks), footer: "Clicks / impressions" },
@@ -140,7 +140,7 @@ export const MODULES = {
       const amount = sum(records, (r) => r.config.amount);
       const spent = sum(records, (r) => r.config.spent);
       return [
-        { label: "Budgets", value: String(records.length), footer: "All statuses" },
+        { label: "Budgets", value: String(records.length), footer: "All Statuses" },
         { label: "Total budget", value: currency(amount), footer: "Allocated" },
         { label: "Spent", value: currency(spent), footer: "So far" },
         { label: "Remaining", value: currency(Math.max(0, amount - spent)), footer: "Left to spend" },

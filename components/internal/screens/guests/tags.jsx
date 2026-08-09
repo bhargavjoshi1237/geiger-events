@@ -400,7 +400,6 @@ export function TagsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search tags…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

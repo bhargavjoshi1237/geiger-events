@@ -2,7 +2,15 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArmchairIcon, ArrowLeft, Loader2, Plus, Trash2, Upload } from "lucide-react";
+import {
+  ArmchairIcon,
+  ArrowLeft,
+  LayoutGrid,
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 import {
   EmptyState,
@@ -10,6 +18,9 @@ import {
   SectionCard,
   StatsBar,
 } from "@/components/internal/shared/screen_kit";
+import { MapCanvas } from "@/components/internal/shared/map_canvas";
+import { MapField } from "@/components/internal/shared/map_field";
+import { MapFloorPanel } from "@/components/internal/shared/map_floor_panel";
 import {
   Button,
   Dialog,
@@ -29,15 +40,19 @@ import {
 import { cn } from "@/lib/utils";
 import { generateSeats, sectionSeatCount } from "@/lib/seating/generate";
 import { parseManifest } from "@/lib/seating/csv";
+import { BOWL_SHAPES, bowlSeatCount, generateBowl } from "@/lib/seating/bowl";
 import {
+  createBowl,
   createSection,
   deleteSection,
   getSeatMap,
   importManifest,
   regenerateSectionSeats,
   updateSeat,
+  updateSeatMap,
   updateSection,
 } from "@/lib/supabase/seat_maps";
+import { uploadVenueImage } from "@/lib/supabase/storage";
 
 // Canvas editor for one seat map configuration. Sections are percent-positioned
 // blocks dragged onto the floor — the same interaction the conference floor plan
@@ -157,9 +172,189 @@ function ImportDialog({ open, onOpenChange, onImport }) {
   );
 }
 
+// Lay a whole bowl out in one go. Everything here is a preview over the pure
+// generator — nothing is written until the organiser confirms, and the seat
+// count is shown first because a two-tier arena is tens of thousands of rows.
+function BowlDialog({ open, onOpenChange, field, onGenerate, hasSections }) {
+  const [draft, setDraft] = useState({
+    shape: "oval",
+    tiers: 2,
+    perSide: 6,
+    tierDepth: 10,
+    rows: 12,
+    seatsPerRow: 14,
+    tables: 16,
+    seatsPerTable: 10,
+  });
+  const [busy, setBusy] = useState(false);
+
+  const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
+  const num = (key) => (e) => set(key)(Number(e.target.value) || 0);
+
+  const preview = useMemo(() => generateBowl({ ...draft, field }), [draft, field]);
+  const isRounds = draft.shape === "rounds";
+
+  const submit = async () => {
+    setBusy(true);
+    const ok = await onGenerate(preview);
+    setBusy(false);
+    if (ok) onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg bg-background">
+        <DialogHeader>
+          <DialogTitle>Generate the bowl</DialogTitle>
+          <DialogDescription>
+            Lay sections around the central feature, then drag any of them to match the real
+            venue. Import a CSV manifest afterwards to fill in the real row and seat labels.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4">
+          <Field label="Shape" hint={BOWL_SHAPES.find((s) => s.value === draft.shape)?.hint}>
+            <Select value={draft.shape} onValueChange={set("shape")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BOWL_SHAPES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {isRounds ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Tables">
+                <Input
+                  type="number"
+                  min={1}
+                  max={200}
+                  inputMode="numeric"
+                  value={draft.tables}
+                  onChange={num("tables")}
+                  className="tabular-nums"
+                />
+              </Field>
+              <Field label="Seats per table">
+                <Input
+                  type="number"
+                  min={2}
+                  max={20}
+                  inputMode="numeric"
+                  value={draft.seatsPerTable}
+                  onChange={num("seatsPerTable")}
+                  className="tabular-nums"
+                />
+              </Field>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field label="Tiers">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={5}
+                    inputMode="numeric"
+                    value={draft.tiers}
+                    onChange={num("tiers")}
+                    className="tabular-nums"
+                  />
+                </Field>
+                <Field label="Per side">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    inputMode="numeric"
+                    value={draft.perSide}
+                    onChange={num("perSide")}
+                    className="tabular-nums"
+                  />
+                </Field>
+                <Field label="Tier depth %">
+                  <Input
+                    type="number"
+                    min={3}
+                    max={30}
+                    inputMode="numeric"
+                    value={draft.tierDepth}
+                    onChange={num("tierDepth")}
+                    className="tabular-nums"
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Rows per section">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={80}
+                    inputMode="numeric"
+                    value={draft.rows}
+                    onChange={num("rows")}
+                    className="tabular-nums"
+                  />
+                </Field>
+                <Field label="Seats per row">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={80}
+                    inputMode="numeric"
+                    value={draft.seatsPerRow}
+                    onChange={num("seatsPerRow")}
+                    className="tabular-nums"
+                  />
+                </Field>
+              </div>
+            </>
+          )}
+
+          <p className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-text-secondary tabular-nums">
+            {preview.length} sections · {bowlSeatCount(preview).toLocaleString()} seats
+            {hasSections ? (
+              <span className="mt-1 block text-red-400">
+                This replaces every section already on this map.
+              </span>
+            ) : null}
+          </p>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={busy || preview.length === 0}
+            onClick={submit}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutGrid className="h-4 w-4" />}
+            Generate
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Layout fields are buffered locally and committed on blur, so typing "12" into
 // a seats-per-row box doesn't regenerate the section once per keystroke.
-function SectionPanel({ section, seatCount, onPatch, onCommitLayout, onDelete }) {
+function SectionPanel({ section, seatCount, onPatch, onCommitLayout, onCommitRotation, onDelete }) {
   const [draft, setDraft] = useState(section.layout || {});
   const [seedId, setSeedId] = useState(section.id);
   if (section.id !== seedId) {
@@ -206,6 +401,22 @@ function SectionPanel({ section, seatCount, onPatch, onCommitLayout, onDelete })
               <SelectItem value="ga">General admission zone</SelectItem>
             </SelectContent>
           </Select>
+        </Field>
+
+        <Field
+          label="Facing"
+          hint="Degrees clockwise. 0 faces up; a bowl section is turned to face the field."
+        >
+          <Input
+            type="number"
+            min={0}
+            max={359}
+            inputMode="numeric"
+            value={Math.round(section.rotation ?? 0)}
+            onChange={(e) => onPatch({ rotation: Number(e.target.value) || 0 })}
+            onBlur={onCommitRotation}
+            className="tabular-nums"
+          />
         </Field>
 
         {isGa ? (
@@ -349,6 +560,10 @@ export function SeatMapEditor({ mapId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [bowlOpen, setBowlOpen] = useState(false);
+  // Panning is suppressed while a block is being dragged, so the floor doesn't
+  // slide out from under it.
+  const [dragging, setDragging] = useState(false);
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
 
@@ -406,6 +621,20 @@ export function SeatMapEditor({ mapId, onBack }) {
       },
     ];
   }, [sections, seats]);
+
+  // --- floor config --------------------------------------------------------
+
+  // The floor's shape, central feature and traced plan all live in the map's
+  // config jsonb, so one patch + one save serves all of them.
+  const patchConfig = (partial) => {
+    const config = { ...(map?.config || {}), ...partial };
+    setMap((prev) => (prev ? { ...prev, config, ...partial } : prev));
+    updateSeatMap(mapId, { config }).then((row) => {
+      if (!row) toast.error("Couldn't save the floor.");
+    });
+  };
+
+  const uploadPlan = (file) => uploadVenueImage(map?.venueId, file);
 
   // --- section mutations ---------------------------------------------------
 
@@ -480,6 +709,38 @@ export function SeatMapEditor({ mapId, onBack }) {
     });
   };
 
+  // Rotating a section moves its chairs with it, so the seats are rebuilt on
+  // commit exactly as a layout change does.
+  const commitRotation = async () => {
+    const current = sections.find((s) => s.id === selectedId);
+    if (!current) return;
+    const saved = await updateSection(current.id, { rotation: current.rotation });
+    if (!saved) {
+      toast.error("Couldn't save the rotation.");
+      return;
+    }
+    await regenerateSectionSeats(saved);
+    reload();
+  };
+
+  const runBowl = async (drafts) => {
+    const result = await createBowl(mapId, drafts, { replace: sections.length > 0 });
+    if (!result) {
+      toast.error("Couldn't generate the bowl.");
+      return false;
+    }
+    reload();
+    setSelectedId(null);
+    if (result.partial) {
+      toast.error(`Generated ${result.sections} sections, but only ${result.seats} seats landed.`);
+      return true;
+    }
+    toast.success(
+      `Generated ${result.sections} sections and ${result.seats.toLocaleString()} seats.`,
+    );
+    return true;
+  };
+
   const runImport = async (parsed) => {
     const result = await importManifest(mapId, parsed);
     if (!result) {
@@ -496,16 +757,15 @@ export function SeatMapEditor({ mapId, onBack }) {
   const onPointerDown = (event, section, mode) => {
     event.preventDefault();
     event.stopPropagation();
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    if (!canvasRef.current) return;
     dragRef.current = {
       id: section.id,
       mode,
-      rect,
       startX: event.clientX,
       startY: event.clientY,
       origin: { x: section.x, y: section.y, width: section.width, height: section.height },
     };
+    setDragging(true);
     setSelectedId(section.id);
   };
 
@@ -513,8 +773,11 @@ export function SeatMapEditor({ mapId, onBack }) {
     const onMove = (event) => {
       const drag = dragRef.current;
       if (!drag) return;
-      const dx = ((event.clientX - drag.startX) / drag.rect.width) * 100;
-      const dy = ((event.clientY - drag.startY) / drag.rect.height) * 100;
+      // Deltas go through the canvas so a block tracks the cursor at any zoom.
+      const { x: dx, y: dy } = canvasRef.current.toPercentDelta(
+        event.clientX - drag.startX,
+        event.clientY - drag.startY,
+      );
       const next =
         drag.mode === "resize"
           ? {
@@ -536,6 +799,7 @@ export function SeatMapEditor({ mapId, onBack }) {
     const onUp = () => {
       const drag = dragRef.current;
       dragRef.current = null;
+      setDragging(false);
       // No movement between down and up is a plain click, not a drag.
       if (!drag?.next) return;
       // Persist the final geometry, then rebuild chairs so they follow the box.
@@ -596,6 +860,14 @@ export function SeatMapEditor({ mapId, onBack }) {
             size="sm"
             variant="ghost"
             className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={() => setBowlOpen(true)}
+          >
+            <LayoutGrid className="h-4 w-4" /> Generate bowl
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={() => setImportOpen(true)}
           >
             <Upload className="h-4 w-4" /> Import CSV
@@ -614,22 +886,47 @@ export function SeatMapEditor({ mapId, onBack }) {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         {/* Floor */}
-        <div
+        <MapCanvas
           ref={canvasRef}
-          className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-border bg-surface-subtle"
-          onPointerDown={() => setSelectedId(null)}
+          aspect={map.aspect}
+          background={map.background}
+          panDisabled={dragging}
+          onCanvasPointerDown={() => setSelectedId(null)}
+          overlay={
+            sections.length === 0 ? (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <p className="text-sm text-text-secondary">
+                  Generate a bowl, add a section, or import a CSV manifest.
+                </p>
+              </div>
+            ) : null
+          }
         >
-          <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md border border-border-strong bg-surface-strong px-6 py-1 text-[10px] font-medium uppercase tracking-widest text-text-secondary">
-            Stage
-          </div>
+          <MapField field={map.field} />
 
-          {sections.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-sm text-text-secondary">
-                Add a section, or import a CSV manifest.
-              </p>
-            </div>
-          ) : null}
+          {/* The selected section's chairs are drawn in CANVAS space, not inside
+              the block: a rotated section's seats legitimately fall outside its
+              box, and nesting them would rotate them a second time. */}
+          {selected
+            ? selectedSeats.map((seat) => (
+                <button
+                  key={seat.id}
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    cycleSeatKind(seat);
+                  }}
+                  aria-label={`Row ${seat.rowLabel} seat ${seat.seatLabel}, ${seat.kind}`}
+                  title={`${seat.rowLabel}${seat.seatLabel} · ${seat.kind}`}
+                  className={cn(
+                    "absolute z-10 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border",
+                    SEAT_KIND_STYLE[seat.kind] || SEAT_KIND_STYLE.standard,
+                  )}
+                  style={{ left: `${seat.x}%`, top: `${seat.y}%` }}
+                />
+              ))
+            : null}
 
           {sections.map((section) => {
             const isSelected = section.id === selectedId;
@@ -667,33 +964,6 @@ export function SeatMapEditor({ mapId, onBack }) {
                   {count}
                 </span>
 
-                {/* Chairs render only for the selected section — the same
-                    drill-down the buyer's picker uses, and what keeps a large
-                    map cheap to draw. */}
-                {isSelected
-                  ? selectedSeats.map((seat) => (
-                      <button
-                        key={seat.id}
-                        type="button"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          cycleSeatKind(seat);
-                        }}
-                        aria-label={`Row ${seat.rowLabel} seat ${seat.seatLabel}, ${seat.kind}`}
-                        title={`${seat.rowLabel}${seat.seatLabel} · ${seat.kind}`}
-                        className={cn(
-                          "absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border",
-                          SEAT_KIND_STYLE[seat.kind] || SEAT_KIND_STYLE.standard,
-                        )}
-                        style={{
-                          left: `${((seat.x - section.x) / (section.width || 1)) * 100}%`,
-                          top: `${((seat.y - section.y) / (section.height || 1)) * 100}%`,
-                        }}
-                      />
-                    ))
-                  : null}
-
                 {isSelected ? (
                   <span
                     role="presentation"
@@ -704,7 +974,7 @@ export function SeatMapEditor({ mapId, onBack }) {
               </div>
             );
           })}
-        </div>
+        </MapCanvas>
 
         {/* Panel */}
         <div className="space-y-4">
@@ -714,14 +984,18 @@ export function SeatMapEditor({ mapId, onBack }) {
               seatCount={selectedSeats.length}
               onPatch={(partial) => patchSection(selected.id, partial)}
               onCommitLayout={(layout) => commitLayout(selected.id, layout)}
+              onCommitRotation={commitRotation}
               onDelete={() => removeSection(selected.id)}
             />
           ) : (
-            <SectionCard title="No section selected">
-              <p className="text-sm text-text-secondary">
-                Pick a section on the floor to edit its rows, numbering and seats.
-              </p>
-            </SectionCard>
+            <MapFloorPanel
+              config={map.config}
+              field={map.field}
+              background={map.background}
+              onChange={patchConfig}
+              onUpload={uploadPlan}
+              description="Pick a section on the floor to edit its rows and seats, or set the room up here."
+            />
           )}
 
           {selected && selected.kind !== "ga" ? (
@@ -748,6 +1022,13 @@ export function SeatMapEditor({ mapId, onBack }) {
       </div>
 
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} onImport={runImport} />
+      <BowlDialog
+        open={bowlOpen}
+        onOpenChange={setBowlOpen}
+        field={map.field}
+        hasSections={sections.length > 0}
+        onGenerate={runBowl}
+      />
     </div>
   );
 }

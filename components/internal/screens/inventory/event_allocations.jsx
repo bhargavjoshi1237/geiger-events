@@ -557,7 +557,7 @@ export function EventAllocationsScreen() {
 
   const eventFilterOptions = useMemo(
     () => [
-      { value: "all", label: "All events" },
+      { value: "all", label: "All Events" },
       ...events.map((e) => ({ value: e.id, label: e.name || "Untitled event" })),
     ],
     [events],
@@ -961,7 +961,6 @@ export function EventAllocationsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search item or event…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

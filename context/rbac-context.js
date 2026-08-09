@@ -12,35 +12,53 @@ import { can as rbacCan, evaluate as rbacEvaluate, resolveGrants } from "@geiger
 
 import rbacConfig from "@/geiger-rbac.config";
 import { useOptionalProject } from "@/context/project-context";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getUser } from "@/lib/supabase/user";
-import { listRoles, listUserGrants } from "@/lib/supabase/rbac";
+import {
+  ensureMembership,
+  ensureSystemRoles,
+  listRoles,
+  listUserGrants,
+} from "@/lib/supabase/rbac";
+import {
+  usePaintFromShellCache,
+  writeShellCache,
+} from "@/lib/workspace/shell_cache";
 
 // What the signed-in user may do in the active project.
 //
-// This is the piece that was missing: the roles matrix has been editable for a
-// while, but nothing ever resolved the current user's grants, so every check in
-// the app returned true. The provider loads (roles, my grants) once per
-// (project, user), flattens them with @geiger/rbac, and exposes an explainable
-// decision to every surface.
+// The provider loads (roles, my grants) once per (project, user), flattens them
+// with @geiger/rbac, and exposes an explainable decision to every surface.
 //
-// THE TRANSITION CONTRACT. `available` is false when the user holds no grants
-// in this project — either the backfill hasn't reached them or the DB isn't
-// configured. In that state can() returns true, exactly matching the old
-// roleHasPermission() behaviour, so adopting the package cannot lock anyone out
-// of a screen they could reach yesterday. Real denial arrives with the RLS
-// policies, which are per-table migrations, not this provider. Once every
-// member holds a grant, flip FALLBACK_ALLOW to false and the UI becomes strict.
+// ENFORCEMENT IS STRICT. Once the rows are in hand the engine's answer stands:
+// holding no grant means seeing nothing. The safety net is not a permissive
+// default — it is the bootstrap in load(), which gives every person who can
+// reach the project a role *before* the first decision is made, so "strict"
+// never means "blank sidebar". Someone whose grant was deliberately revoked is
+// the one case that stays denied, which is the point.
+//
+// The only permissive window left is the load itself, so the shell doesn't
+// flash empty on a project switch. Real denial of *data* is the per-table RLS
+// policies; this provider gates UI.
 //
 // Outside the workspace (public event page, members portal, landing playground)
 // there is no provider, so useRbac() returns a permissive stand-in rather than
 // throwing — shared components render anywhere.
 
-const FALLBACK_ALLOW = true;
+// The answer to every question until the real rows land. Allowing here trades a
+// brief over-permissive shell for never blanking it mid-load.
+const ALLOW_WHILE_LOADING = true;
 
 // Sentinel for "nothing loaded yet". Loading is derived from which project the
 // current rows belong to rather than held in its own flag — a setLoading(true)
 // in the effect body would cascade renders on every project switch.
 const UNLOADED = Symbol("rbac:unloaded");
+
+// The nav is filtered by can(), so until the grants land the sidebar lists
+// sections the user may not hold. Painting the last known (roles, grants) first
+// and letting the fetch revalidate them stops entries vanishing a round trip
+// after the page appears. Advisory either way — this gates UI, not data.
+const CACHE = "rbac-grants";
 
 const RbacContext = createContext(null);
 
@@ -52,9 +70,9 @@ const PERMISSIVE = Object.freeze({
   available: false,
   userId: null,
   isOwner: false,
-  can: () => FALLBACK_ALLOW,
+  can: () => true,
   decide: () => ({
-    allowed: FALLBACK_ALLOW,
+    allowed: true,
     code: "no_provider",
     reason: "Authorization is not loaded on this surface.",
     via: null,
@@ -64,49 +82,89 @@ const PERMISSIVE = Object.freeze({
 
 export function RbacProvider({ children }) {
   const project = useOptionalProject();
-  const projectId = project?.projectId || null;
+  // The route carries the project id synchronously; the project record itself is
+  // a fetch away, and the cached grants need a key on the first frame.
+  const { projectId: routeProjectId } = useWorkspaceUrl();
+  const projectId = routeProjectId || project?.projectId || null;
 
   const [userId, setUserId] = useState(null);
   const [roles, setRoles] = useState([]);
   const [grants, setGrants] = useState([]);
   const [loadedFor, setLoadedFor] = useState(UNLOADED);
 
+  // Paint the last known decision set before the browser paints, so gated nav
+  // doesn't appear and then vanish once the real grants land.
+  usePaintFromShellCache(CACHE, projectId, (entry) => {
+    if (!entry.value) return;
+    setUserId(entry.userId ?? null);
+    setRoles(entry.value.roles || []);
+    setGrants(entry.value.grants || []);
+    setLoadedFor(projectId);
+  });
+
+  // Returns null rows when a read failed, so the caller can keep what it painted
+  // instead of downgrading the user to "no grants" on a flaky network.
   const load = useCallback(async () => {
     const user = await getUser();
     const uid = user?.id ?? null;
     if (!projectId || !uid) {
       return { uid, roleRows: [], grantRows: [] };
     }
-    const [roleRows, grantRows] = await Promise.all([
+    let [roleRows, grantRows] = await Promise.all([
       listRoles(projectId),
       listUserGrants(projectId, uid),
     ]);
-    return { uid, roleRows: roleRows ?? [], grantRows: grantRows ?? [] };
+
+    // Nobody should meet a strict UI with no grant. When this project holds none
+    // for them, seed its roles from the catalog and let the RPC decide whether
+    // they earn one — it re-checks org membership in the database and refuses to
+    // revive a grant somebody revoked. Only runs on the empty case, so the
+    // steady-state load stays two reads.
+    if (grantRows && grantRows.length === 0) {
+      const seeded = await ensureSystemRoles(projectId, uid);
+      if (seeded?.length) roleRows = seeded;
+      const fallback = (roleRows || []).find((r) => r.key === "member") || null;
+      if (await ensureMembership(projectId, fallback?.id ?? null)) {
+        grantRows = (await listUserGrants(projectId, uid)) ?? grantRows;
+      }
+    }
+
+    return { uid, roleRows, grantRows };
   }, [projectId]);
+
+  const apply = useCallback(
+    ({ uid, roleRows, grantRows }) => {
+      setUserId(uid);
+      setLoadedFor(projectId);
+      if (!roleRows || !grantRows) return;
+      setRoles(roleRows);
+      setGrants(grantRows);
+      if (projectId) {
+        writeShellCache(CACHE, projectId, uid, {
+          roles: roleRows,
+          grants: grantRows,
+        });
+      }
+    },
+    [projectId],
+  );
 
   // Every setState happens in the async continuation — a synchronous setState in
   // an effect body cascades renders (same rule as nav-visibility-context).
   useEffect(() => {
     let alive = true;
-    load().then(({ uid, roleRows, grantRows }) => {
+    load().then((result) => {
       if (!alive) return;
-      setUserId(uid);
-      setRoles(roleRows);
-      setGrants(grantRows);
-      setLoadedFor(projectId);
+      apply(result);
     });
     return () => {
       alive = false;
     };
-  }, [load, projectId]);
+  }, [load, apply]);
 
   const refresh = useCallback(async () => {
-    const { uid, roleRows, grantRows } = await load();
-    setUserId(uid);
-    setRoles(roleRows);
-    setGrants(grantRows);
-    setLoadedFor(projectId);
-  }, [load, projectId]);
+    apply(await load());
+  }, [load, apply]);
 
   // While a project switch is in flight the rows still describe the previous
   // project, so nothing is enforced until they catch up.
@@ -120,9 +178,9 @@ export function RbacProvider({ children }) {
     [roles, grants],
   );
 
-  // Enforce only once this project's own grants are in hand. Gating on stale or
-  // half-loaded rows would flash an empty sidebar on every project switch.
-  const available = !loading && grants.length > 0;
+  // Decisions are real as soon as this project's rows are in hand. Holding no
+  // grant is itself an answer (deny) — not a reason to stop enforcing.
+  const available = !loading;
 
   const value = useMemo(() => {
     const options = { config: rbacConfig, roles, grants, actorId: userId, resolved };
@@ -130,10 +188,9 @@ export function RbacProvider({ children }) {
     const decide = (key, extra = {}) => {
       if (!available) {
         return {
-          allowed: FALLBACK_ALLOW,
-          code: "no_grants",
-          reason:
-            "You hold no roles in this workspace yet, so permissions aren't being enforced in the UI.",
+          allowed: ALLOW_WHILE_LOADING,
+          code: "loading",
+          reason: "Still checking what you can do here.",
           via: null,
         };
       }
@@ -147,15 +204,15 @@ export function RbacProvider({ children }) {
       loading,
       available,
       userId,
-      // The wildcard is what Owner holds; useful for "you can't remove the last
-      // owner" style guards in the Team screen.
+      // The wildcard is what Owner holds; this backs the "you can't remove the
+      // last owner" guard and the read-only states in the Settings screens.
       isOwner: roles.some(
         (r) =>
           grants.some((g) => g.roleId === r.id) &&
           (r.permissions || []).includes("*"),
       ),
       can: (key, extra) =>
-        available ? rbacCan(key, { ...options, ...extra }) : FALLBACK_ALLOW,
+        available ? rbacCan(key, { ...options, ...extra }) : ALLOW_WHILE_LOADING,
       decide,
       refresh,
     };

@@ -48,14 +48,14 @@ export const PAYOUT_STATE_MAP = {
 // --- Filter options (an "all" sentinel first) --------------------------------
 
 export const AFFILIATE_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "invited", label: "Invited" },
   { value: "active", label: "Active" },
   { value: "suspended", label: "Suspended" },
 ];
 
 export const PROGRAM_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "draft", label: "Draft" },
   { value: "active", label: "Active" },
   { value: "paused", label: "Paused" },

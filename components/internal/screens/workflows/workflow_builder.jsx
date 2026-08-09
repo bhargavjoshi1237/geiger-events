@@ -292,7 +292,7 @@ export function WorkflowBuilderScreen({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="workspace">All events (workspace)</SelectItem>
+                        <SelectItem value="workspace">All Events (workspace)</SelectItem>
                         <SelectItem value="event">A specific event</SelectItem>
                       </SelectContent>
                     </Select>

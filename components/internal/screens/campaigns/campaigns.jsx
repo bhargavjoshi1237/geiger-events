@@ -473,12 +473,6 @@ export function CampaignsScreen({ preset }) {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search campaigns…"
-          className="w-full sm:max-w-xs"
-        />
         <div className="flex items-center gap-2">
           {!preset?.lockChannel ? (
             <FilterDropdown
@@ -495,6 +489,11 @@ export function CampaignsScreen({ preset }) {
             height="h-9"
           />
         </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search campaigns…"
+        />
       </Toolbar>
 
       {loading ? (

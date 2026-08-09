@@ -10,6 +10,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
   SidebarMenu,
+  SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -17,14 +18,45 @@ import { ChevronDown, Search, MoreVertical, PanelLeft, Bell, HelpCircle, X } fro
 import { SidebarOption } from "./sidebar_option";
 import { NotificationsDropdown } from "../topbar/dialogue/notifications_dropdown";
 import { Button } from "@/components/ui/button";
-import { useVisibleNav } from "@/lib/hooks/use-visible-nav";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { useNavLoading, useVisibleNav } from "@/lib/hooks/use-visible-nav";
 
-// Persist the sidebar's scroll offset across tab switches. A tab change is a
-// route navigation that can remount the sidebar and reset its scroll to the top;
-// we stash the last offset in a module-scoped variable (survives the remount)
-// and restore it before paint, so a long nav list stays where the user left it.
+// Persist the sidebar's scroll offset across mounts. The shell now lives in the
+// project layout, so a tab change no longer remounts it — but a reload (or a
+// project switch) still does, and a long nav list should come back where the
+// user left it. We stash the last offset in a module-scoped variable and restore
+// it before paint.
 const SIDEBAR_SCROLL_ID = "workspace-sidebar-scroll";
 let savedSidebarScroll = 0;
+
+// Held in place of the nav until it can be trusted. The list is the project's
+// addons, narrowed by this user's grants and then by their own curation — all
+// three are a round trip away, and the server-rendered markup paints first, so
+// rendering the real list early means showing sections that vanish a moment
+// later. Fixed widths (never random) so the server and client markup agree.
+const SKELETON_WIDTHS = [
+  "w-24", "w-16", "w-28", "w-20", "w-32", "w-16",
+  "w-24", "w-20", "w-28", "w-16", "w-24", "w-20",
+];
+
+function SidebarNavSkeleton() {
+  return SKELETON_WIDTHS.map((width, i) => (
+    <SidebarMenuItem
+      key={i}
+      aria-hidden="true"
+      className="flex h-9 items-center gap-3 rounded-md px-2 group-data-[collapsible=icon]:justify-center"
+    >
+      <Skeleton className="h-4 w-4 shrink-0 rounded bg-sidebar-foreground/10" />
+      <Skeleton
+        className={cn(
+          "h-2.5 rounded bg-sidebar-foreground/10 group-data-[collapsible=icon]:hidden",
+          width,
+        )}
+      />
+    </SidebarMenuItem>
+  ));
+}
 
 function MobileSidebarHeader() {
   const { isMobile, toggleSidebar } = useSidebar();
@@ -79,6 +111,7 @@ export function AppSidebar({ activeTab = "Overview", onTabChange = () => {} }) {
   // Enabled addons + grant filtering, shared with the topbar's search palette so
   // both surfaces list exactly the same destinations.
   const visibleNav = useVisibleNav();
+  const navLoading = useNavLoading();
 
   const toggleExpand = (title) => {
     setExpandedItems((prev) => ({
@@ -101,7 +134,8 @@ export function AppSidebar({ activeTab = "Overview", onTabChange = () => {} }) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleNav.map((item) => (
+              {navLoading && <SidebarNavSkeleton />}
+              {!navLoading && visibleNav.map((item) => (
                 <SidebarOption
                   key={item.title}
                   title={item.title}

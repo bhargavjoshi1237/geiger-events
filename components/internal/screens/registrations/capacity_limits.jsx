@@ -263,18 +263,17 @@ export function CapacityLimitsScreen() {
 
       <Toolbar>
         <span />
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search events…"
-            className="w-full sm:max-w-xs"
-          />
+        <div className="flex items-center gap-2">
           <FilterDropdown
             value={sort}
             onValueChange={setSort}
             options={SORT_OPTIONS}
             height="h-9"
+          />
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search events…"
           />
         </div>
       </Toolbar>

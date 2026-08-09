@@ -983,7 +983,6 @@ export function SuppliersPurchaseOrdersScreen() {
               value={search}
               onChange={setSearch}
               placeholder="Search reference or supplier…"
-              className="w-full sm:max-w-xs"
             />
           </Toolbar>
 
@@ -1027,7 +1026,6 @@ export function SuppliersPurchaseOrdersScreen() {
               value={search}
               onChange={setSearch}
               placeholder="Search supplier or contact…"
-              className="w-full sm:max-w-xs"
             />
           </Toolbar>
 

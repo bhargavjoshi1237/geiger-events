@@ -491,13 +491,12 @@ export function RecordsScreen({
       />
 
       <Toolbar>
+        {headerExtra}
         <SearchInput
           value={search}
           onChange={setSearch}
           placeholder={`Search ${title.toLowerCase()}…`}
-          className="w-full sm:max-w-xs"
         />
-        {headerExtra}
       </Toolbar>
 
       {loading ? (

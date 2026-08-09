@@ -200,7 +200,7 @@ export const ALLOCATION_STATUS_OPTIONS = [
 ];
 
 export const ALLOCATION_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   ...ALLOCATION_STATUS_OPTIONS,
 ];
 

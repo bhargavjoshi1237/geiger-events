@@ -55,6 +55,9 @@ export async function POST(request) {
     // seat ids live in events.seat_holds and buy_seats resolves them on return,
     // which also keeps a large block inside Stripe's 500-char metadata cap.
     seatToken = null,
+    // Exhibitor booths: the same arrangement as seats. Only the token travels;
+    // buy_booths resolves the held stalls from events.booth_holds on return.
+    boothToken = null,
     skipRegistration = false,
     returnUrl,
   } = body || {};
@@ -235,6 +238,8 @@ export async function POST(request) {
         clientRef: clientRef || "",
         // The seat hold token; empty for unseated events.
         seatToken: seatToken || "",
+        // The booth hold token; empty when no exhibitor space is being bought.
+        boothToken: boothToken || "",
         extra: extraJson,
       },
     });

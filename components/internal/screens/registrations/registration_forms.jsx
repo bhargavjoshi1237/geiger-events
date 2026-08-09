@@ -817,7 +817,6 @@ export function RegistrationFormsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search forms…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

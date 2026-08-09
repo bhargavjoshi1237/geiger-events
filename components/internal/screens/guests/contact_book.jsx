@@ -601,7 +601,6 @@ export function ContactBookScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search name, email, company…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

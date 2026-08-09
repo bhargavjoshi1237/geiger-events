@@ -275,7 +275,6 @@ export function CommissionsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search by affiliate, buyer or ticket"
-          className="sm:w-80"
         />
       </Toolbar>
 

@@ -15,7 +15,7 @@ export const CONTACT_STATUS_MAP = {
 export const CONTACT_STATUS_VALUES = ["Lead", "Active", "VIP", "Archived"];
 
 export const STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "Lead", label: "Lead" },
   { value: "Active", label: "Active" },
   { value: "VIP", label: "VIP" },

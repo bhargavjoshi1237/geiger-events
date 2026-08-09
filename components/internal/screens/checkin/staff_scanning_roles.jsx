@@ -479,13 +479,12 @@ export function StaffScanningRolesScreen() {
         {ROLE_TYPES.map((t) => (
           <TabsContent key={t.value} value={t.value} className="space-y-4">
             <Toolbar>
+              <span />
               <SearchInput
                 value={search}
                 onChange={setSearch}
                 placeholder={`Search ${t.label.toLowerCase()} roles…`}
-                className="w-full sm:max-w-xs"
               />
-              <span />
             </Toolbar>
 
             <RoleList

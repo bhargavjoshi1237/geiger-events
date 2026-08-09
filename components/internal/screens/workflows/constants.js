@@ -40,7 +40,7 @@ export const SCOPE_MAP = {
 };
 
 export const STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "Active", label: "Active" },
   { value: "Paused", label: "Paused" },
   { value: "Draft", label: "Draft" },
@@ -517,7 +517,7 @@ export const RUN_STATUS_MAP = {
 };
 
 export const RUN_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "Success", label: "Success" },
   { value: "Failed", label: "Failed" },
   { value: "Running", label: "Running" },

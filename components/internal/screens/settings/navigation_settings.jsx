@@ -1,14 +1,11 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 import { NavVisibilitySettings } from "@geiger/ui";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import {
-  ScreenHeader,
-  StatsBar,
-} from "@/components/internal/shared/screen_kit";
+import { ScreenHeader } from "@/components/internal/shared/screen_kit";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 import { useCuratableNav } from "@/lib/hooks/use-visible-nav";
 import { useNavVisibility } from "@/context/nav-visibility-context";
@@ -27,18 +24,6 @@ export function NavigationSettingsScreen() {
   const { hidden, config, loading, available, setHidden, showAll } =
     useNavVisibility();
   const [busy, setBusy] = useState(false);
-
-  const stats = useMemo(() => {
-    const total = nav.reduce(
-      (sum, section) => sum + 1 + (section.subItems?.length || 0),
-      0,
-    );
-    return [
-      { label: "Destinations", value: String(total) },
-      { label: "Shown", value: String(Math.max(0, total - hidden.length)) },
-      { label: "Hidden", value: String(hidden.length) },
-    ];
-  }, [nav, hidden]);
 
   const handleToggle = async (title, nextHidden) => {
     setBusy(true);
@@ -76,8 +61,8 @@ export function NavigationSettingsScreen() {
     <MainScreenWrapper>
       {header}
 
-      <StatsBar stats={stats} columns={3} />
-
+      {/* The counts live in the component's own summary pill, so there is no
+          separate stats bar to keep in sync. */}
       <NavVisibilitySettings
         nav={nav}
         config={config}

@@ -72,7 +72,7 @@ Expected: clean (no errors).
 
 **Interfaces:**
 - Consumes: `config.applyToAllEvents` (from Task 1's default), `SettingsList`, `SettingRow` from screen_kit.
-- Produces: plan editor toggles `applyToAllEvents`; `summarize` appends `· All events` when set.
+- Produces: plan editor toggles `applyToAllEvents`; `summarize` appends `· All Events` when set.
 
 - [ ] **Step 1: Import `SettingsList` and `SettingRow`**
 
@@ -107,7 +107,7 @@ with:
 ```js
   const disc = Number(c.discountPercent) || 0;
   const parts = [priceStr, disc ? `${disc}% member discount` : "no discount"];
-  if (c.applyToAllEvents) parts.push("All events");
+  if (c.applyToAllEvents) parts.push("All Events");
   return parts.join(" · ");
 ```
 

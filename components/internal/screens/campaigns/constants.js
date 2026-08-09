@@ -85,7 +85,7 @@ export const CAMPAIGN_STATUS_MAP = {
 };
 
 export const STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "draft", label: "Draft" },
   { value: "scheduled", label: "Scheduled" },
   { value: "sent", label: "Sent" },

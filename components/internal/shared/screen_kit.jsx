@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, Minus, Plus, Search } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus, Plus } from "lucide-react";
+import { ExpandableSearch } from "@geiger/ui";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -329,25 +330,34 @@ export function SectionCard({
 
 // --- Toolbar (search + filters + actions) ------------------------------------
 
+// Toolbar search — the suite's collapsible search: a bare icon that expands into
+// a field on click, so the toolbar row keeps its space until the user searches.
+// `expanded` pins it open for screens where the search box *is* the primary
+// input (a discovery form), where hiding it behind an icon would be wrong.
 export function SearchInput({
   value,
   onChange,
   placeholder = "Search…",
+  expanded = false,
   className,
-  ...props
+  "aria-label": ariaLabel,
 }) {
   return (
-    <div className={cn("relative", className)}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        placeholder={placeholder}
-        {...props}
-        className="h-9 w-full rounded-md border border-border bg-surface-card pl-8 pr-3 text-sm text-foreground placeholder:text-text-tertiary outline-none transition-colors focus-visible:border-border-strong focus-visible:ring-2 focus-visible:ring-border"
-      />
-    </div>
+    <ExpandableSearch
+      value={value ?? ""}
+      onChange={onChange}
+      placeholder={placeholder}
+      label={ariaLabel || placeholder}
+      open={expanded ? true : undefined}
+      autoFocus={!expanded}
+      expandedWidth={expanded ? "100%" : "16rem"}
+      // Collapsed, it always hangs off the trailing edge of its row — including
+      // the stacked mobile toolbar, where there is no justify-between to do it.
+      className={cn(expanded ? "w-full" : "ml-auto", className)}
+      // Suppress the browser's native search clear icon; the component ships
+      // its own.
+      inputClassName="[&::-webkit-search-cancel-button]:appearance-none"
+    />
   );
 }
 

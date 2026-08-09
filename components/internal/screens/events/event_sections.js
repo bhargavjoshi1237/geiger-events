@@ -43,6 +43,7 @@ import {
   Heart,
   KeyRound,
   Armchair,
+  Store,
   MessagesSquare,
   Mic,
   Handshake,
@@ -85,6 +86,7 @@ import { EventDonationSection } from "./event_donation";
 import { EventAccessCodesSection } from "./event_access_codes";
 import { EventReservedSection } from "./event_reserved";
 import { EventSeatingSection } from "./event_seating";
+import { EventExpoSection } from "./event_expo";
 import { EventGroupSection } from "./event_group";
 import { EventBundlesSection } from "./event_bundles";
 import { PaymentsSection } from "./payments";
@@ -254,6 +256,13 @@ export const NAV_GROUPS = [
         label: "Seating",
         icon: Armchair,
         desc: "Sell assigned seats from one of the venue's seat maps — sections, rows and chairs.",
+        ownHeader: true,
+      },
+      {
+        key: "expo",
+        label: "Exhibitor Floor",
+        icon: Store,
+        desc: "Sell exhibitor booths from one of the venue's hall plans — stalls, zones and aisles.",
         ownHeader: true,
       },
       {
@@ -542,6 +551,7 @@ export const SECTIONS = {
   accesscode: EventAccessCodesSection,
   reserved: EventReservedSection,
   seating: EventSeatingSection,
+  expo: EventExpoSection,
   group: EventGroupSection,
   bundles: EventBundlesSection,
   payments: PaymentsSection,

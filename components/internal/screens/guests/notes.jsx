@@ -216,7 +216,6 @@ export function NotesScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search notes or people…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

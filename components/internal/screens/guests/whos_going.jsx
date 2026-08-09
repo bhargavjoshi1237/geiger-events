@@ -67,7 +67,7 @@ export function WhosGoingScreen() {
       if (r.eventId && !seen.has(r.eventId)) seen.set(r.eventId, r.eventName);
     }
     return [
-      { value: "all", label: "All events" },
+      { value: "all", label: "All Events" },
       ...Array.from(seen, ([value, label]) => ({ value, label: label || "Event" })),
     ];
   }, [upcoming]);
@@ -210,7 +210,6 @@ export function WhosGoingScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search name, email or event…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

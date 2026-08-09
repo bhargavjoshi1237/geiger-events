@@ -285,8 +285,7 @@ export function MembersScreen() {
         <SearchInput
           value={search}
           onChange={setSearch}
-          placeholder="Search members…"
-          className="w-full sm:max-w-xs"
+          placeholder="Search members…"
         />
       </Toolbar>
 

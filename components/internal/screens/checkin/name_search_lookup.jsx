@@ -143,7 +143,6 @@ export function NameSearchLookupScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search name, email, ticket #…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

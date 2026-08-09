@@ -155,7 +155,6 @@ export function RealTimeAttendanceScreen({ demo = false }) {
           value={search}
           onChange={setSearch}
           placeholder="Search events…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

@@ -325,6 +325,9 @@ export function EventSeatingSection({ event, headerItem }) {
               <SeatMapView
                 sections={sections}
                 seats={live.seats}
+                field={live.field}
+                background={live.background}
+                aspect={live.aspect}
                 activeSectionId={activeSectionId}
                 onSectionChange={setActiveSectionId}
                 seatState={seatState}

@@ -523,7 +523,6 @@ export function EventSeriesScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search series…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

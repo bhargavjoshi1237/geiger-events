@@ -405,7 +405,6 @@ export function StockMovementsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search item, reason, reference…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

@@ -417,7 +417,6 @@ export function VenuesScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search venues, cities…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

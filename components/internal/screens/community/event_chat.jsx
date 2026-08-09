@@ -58,7 +58,7 @@ const MODE_FILTER = [
 const STATUS_FILTER = [
   { value: "active", label: "Active" },
   { value: "archived", label: "Archived" },
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
 ];
 const SORT_OPTIONS = [
   { value: "recent", label: "Recent activity" },
@@ -489,17 +489,16 @@ export function EventChatScreen() {
       ) : (
         <>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search event chats…"
-              className="sm:max-w-xs"
-            />
             <div className="flex flex-wrap items-center gap-2">
               <FilterDropdown value={mode} options={MODE_FILTER} onValueChange={setMode} />
               <FilterDropdown value={status} options={STATUS_FILTER} onValueChange={setStatus} />
               <FilterDropdown value={sort} options={SORT_OPTIONS} onValueChange={setSort} />
             </div>
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search event chats…"
+            />
           </div>
 
           {filtered.length ? (

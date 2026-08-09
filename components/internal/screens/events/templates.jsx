@@ -464,7 +464,6 @@ export function TemplatesScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search templates…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

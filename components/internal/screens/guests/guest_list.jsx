@@ -76,7 +76,7 @@ export function GuestListScreen() {
 
   const eventFilterOptions = useMemo(
     () => [
-      { value: "all", label: "All events" },
+      { value: "all", label: "All Events" },
       ...events.map((e) => ({ value: e.id, label: e.name })),
     ],
     [events],
@@ -312,7 +312,6 @@ export function GuestListScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search name or email…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

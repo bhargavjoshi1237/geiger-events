@@ -37,7 +37,7 @@ const ORDER_STATUS = {
 };
 
 const STATUS_FILTER = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "confirmed", label: "Confirmed" },
   { value: "cancelled", label: "Cancelled" },
   { value: "refunded", label: "Refunded" },
@@ -226,7 +226,6 @@ export function PortalOrders({ orders, onMessage, onRequestRefund }) {
               value={search}
               onChange={setSearch}
               placeholder="Search orders…"
-              className="sm:max-w-xs"
             />
           </div>
 

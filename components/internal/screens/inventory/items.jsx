@@ -738,7 +738,6 @@ export function InventoryItemsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search name, variant, SKU…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

@@ -133,7 +133,6 @@ export function WorkflowTemplatesScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search templates…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

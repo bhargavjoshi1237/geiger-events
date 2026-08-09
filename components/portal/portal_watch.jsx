@@ -141,7 +141,6 @@ export function PortalWatch({ items = [], loading = false }) {
             value={search}
             onChange={setSearch}
             placeholder="Search recordings, sessions, speakers…"
-            className="w-full sm:max-w-xs"
           />
           {filtered.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -438,8 +438,7 @@ export function OrganiserProfileScreen() {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Search followers…"
-              className="w-full sm:max-w-xs"
+              placeholder="Search followers…"
             />
           </Toolbar>
 

@@ -274,7 +274,6 @@ export function AffiliatePayoutsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search payouts"
-          className="sm:w-72"
         />
       </Toolbar>
 

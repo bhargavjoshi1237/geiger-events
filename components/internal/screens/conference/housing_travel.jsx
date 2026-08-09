@@ -209,11 +209,14 @@ function DiscoverPanel() {
       <form onSubmit={onSubmit} className="shrink-0">
         <Toolbar>
           <div className="flex flex-1 flex-wrap items-center gap-2">
+            {/* The query field is this screen's primary input, so it stays
+                expanded rather than collapsing to an icon. */}
             <SearchInput
+              expanded
               value={query}
               onChange={setQuery}
               placeholder="Search a city or area — e.g. Amsterdam, Austin, SoHo NYC"
-              className="w-full sm:max-w-xs"
+              className="sm:max-w-xs"
             />
             <FilterDropdown
               value={type}

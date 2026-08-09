@@ -929,7 +929,6 @@ export function ProgramsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search programs"
-          className="sm:w-72"
         />
       </Toolbar>
 

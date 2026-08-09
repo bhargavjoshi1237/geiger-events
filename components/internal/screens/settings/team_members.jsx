@@ -13,7 +13,9 @@ import {
   ShieldCheck,
   Clock,
   ChevronDown,
+  Globe,
 } from "lucide-react";
+import { matchesAny } from "@geiger/rbac";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -67,13 +69,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
+import { useRbac } from "@/context/rbac-context";
 import { getUser } from "@/lib/supabase/user";
 import {
-  listRoles,
   ensureSystemRoles,
   listGrants,
+  revokeGrant,
   setMemberRole,
+  updateGrantScope,
 } from "@/lib/supabase/rbac";
+import { listEvents } from "@/lib/supabase/events";
 import {
   listMembers,
   inviteMember,
@@ -109,12 +114,19 @@ const TABS = [
 
 export function TeamMembersScreen() {
   const { projectId } = useProject();
+  const { can, userId: myUserId, refresh: refreshRbac } = useRbac();
+
+  const canInvite = can("events.team.invite");
+  const canAssign = can("events.team.assign");
 
   const [members, setMembers] = useState([]);
   const [roles, setRoles] = useState([]);
   // What @geiger/rbac actually reads. The roster above is display; these are the
   // rows that decide access.
   const [grants, setGrants] = useState([]);
+  // Scope targets. A grant may be narrowed to specific events, so the drawer
+  // needs the project's events to offer them.
+  const [events, setEvents] = useState([]);
   const [groups, setGroups] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +186,7 @@ export function TeamMembersScreen() {
     listGroups(projectId).then((rows) => alive && setGroups(rows ?? []));
     listActivity(projectId).then((rows) => alive && setActivity(rows ?? []));
     listGrants(projectId).then((rows) => alive && setGrants(rows ?? []));
+    listEvents(projectId).then((rows) => alive && setEvents(rows ?? []));
     return () => {
       alive = false;
     };
@@ -184,6 +197,44 @@ export function TeamMembersScreen() {
     roles.forEach((r) => (map[r.id] = r));
     return map;
   }, [roles]);
+
+  // A member's ACTIVE grant is the authority on what they can do; the roster's
+  // own role_id is only a display fallback for an invited person who has no
+  // account yet and so has nothing to grant to.
+  const grantByUser = useMemo(() => {
+    const map = {};
+    for (const g of grants) {
+      if (g.userId && g.status === "active" && !g.deletedAt) map[g.userId] = g;
+    }
+    return map;
+  }, [grants]);
+
+  const roleIdOf = React.useCallback(
+    (member) =>
+      (member.userId && grantByUser[member.userId]?.roleId) || member.roleId || null,
+    [grantByUser],
+  );
+
+  // Owner is whichever role holds the wildcard. Demoting or removing the last
+  // one would leave the workspace with nobody able to administer it.
+  const ownerRoleIds = useMemo(
+    () =>
+      new Set(
+        roles.filter((r) => (r.permissions || []).includes("*")).map((r) => r.id),
+      ),
+    [roles],
+  );
+
+  const ownerCount = useMemo(
+    () =>
+      Object.values(grantByUser).filter((g) => ownerRoleIds.has(g.roleId)).length,
+    [grantByUser, ownerRoleIds],
+  );
+
+  const isLastOwner = React.useCallback(
+    (member) => ownerRoleIds.has(roleIdOf(member)) && ownerCount <= 1,
+    [ownerRoleIds, roleIdOf, ownerCount],
+  );
 
   const groupById = useMemo(() => {
     const map = {};
@@ -215,13 +266,13 @@ export function TeamMembersScreen() {
     const q = search.trim().toLowerCase();
     return activeMembers.filter((m) => {
       if (statusFilter !== "all" && m.status !== statusFilter) return false;
-      if (roleFilter !== "all" && m.roleId !== roleFilter) return false;
+      if (roleFilter !== "all" && roleIdOf(m) !== roleFilter) return false;
       if (groupFilter !== "all" && !(m.groupIds || []).includes(groupFilter))
         return false;
       if (q && !`${m.name} ${m.email}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [activeMembers, search, statusFilter, roleFilter, groupFilter]);
+  }, [activeMembers, search, statusFilter, roleFilter, groupFilter, roleIdOf]);
 
   const stats = useMemo(
     () => [
@@ -254,13 +305,24 @@ export function TeamMembersScreen() {
   const patchMember = (id, patch) =>
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
 
-  // Two writes, deliberately. project_members stays the roster (it carries the
-  // invited-but-unregistered rows, keyed by email alone), while role_grants is
-  // what @geiger/rbac actually reads — a member with no user_id yet has nothing
-  // to grant to, so the grant is written only once they have an account.
+  // The grant is the write that matters — it is what @geiger/rbac and every RLS
+  // policy read. project_members is updated alongside it purely so the roster
+  // keeps showing the right role for an invited person who has no account yet
+  // (and therefore nothing to grant to).
   const changeRole = async (member, roleId) => {
-    if (member.roleId === roleId) return;
-    const prevRole = member.roleId;
+    if (!canAssign) {
+      toast.error("You don't have permission to assign roles.");
+      return;
+    }
+    const prevRole = roleIdOf(member);
+    if (prevRole === roleId) return;
+    if (isLastOwner(member) && !ownerRoleIds.has(roleId)) {
+      toast.error(
+        "This is the workspace's last owner — give someone else the Owner role first.",
+      );
+      return;
+    }
+
     patchMember(member.id, { roleId });
     const saved = await updateMember(member.id, { roleId });
     if (!saved) {
@@ -268,6 +330,7 @@ export function TeamMembersScreen() {
       toast.error("Couldn't change the role.");
       return;
     }
+
     if (member.userId) {
       const granted = await setMemberRole({
         projectId,
@@ -281,11 +344,48 @@ export function TeamMembersScreen() {
           ...prev.filter((g) => g.userId !== member.userId),
           granted,
         ]);
+        // Changing your own role changes your own nav.
+        if (member.userId === myUserId) refreshRbac();
       } else {
-        toast.error("Role saved, but their access didn't update.");
+        patchMember(member.id, { roleId: prevRole });
+        await updateMember(member.id, { roleId: prevRole });
+        toast.error("Couldn't change their access — the role is unchanged.");
+        return;
       }
     }
     audit("role_changed", member, { role: roleById[roleId]?.name });
+  };
+
+  // Scope is the half of authorization customers own: the catalog says a
+  // permission is scopeBy "event", and this narrows one person's grant to the
+  // events they actually work on. An empty list means the whole project.
+  const setMemberScope = async (member, eventIds) => {
+    if (!canAssign) {
+      toast.error("You don't have permission to change access.");
+      return;
+    }
+    const grant = member.userId ? grantByUser[member.userId] : null;
+    if (!grant) {
+      toast.error("They need to sign in once before their access can be narrowed.");
+      return;
+    }
+    const scope = eventIds.length ? { event: eventIds } : {};
+    const previous = grant.scope;
+    setGrants((prev) =>
+      prev.map((g) => (g.id === grant.id ? { ...g, scope } : g)),
+    );
+    const saved = await updateGrantScope(grant.id, scope);
+    if (saved) {
+      if (member.userId === myUserId) refreshRbac();
+      audit("role_changed", member, {
+        role: eventIds.length ? `${eventIds.length} event(s)` : "all events",
+      });
+    } else {
+      setGrants((prev) =>
+        prev.map((g) => (g.id === grant.id ? { ...g, scope: previous } : g)),
+      );
+      toast.error("Couldn't update their event access.");
+    }
   };
 
   const toggleSuspend = async (member) => {
@@ -316,8 +416,29 @@ export function TeamMembersScreen() {
     const member = removeTarget;
     setRemoveTarget(null);
     if (!member) return;
+    if (isLastOwner(member)) {
+      toast.error(
+        "This is the workspace's last owner — give someone else the Owner role first.",
+      );
+      return;
+    }
     setMembers((prev) => prev.filter((m) => m.id !== member.id));
     if (openMemberId === member.id) setOpenMemberId(null);
+
+    // Revoking the grant is the part that actually removes access; dropping the
+    // roster row alone would leave them fully authorized but invisible. The
+    // revoked row is also what stops the join bootstrap handing the role back.
+    const grant = member.userId ? grantByUser[member.userId] : null;
+    if (grant) {
+      if (await revokeGrant(grant.id)) {
+        setGrants((prev) => prev.filter((g) => g.id !== grant.id));
+      } else {
+        setMembers((prev) => [...prev, member]);
+        toast.error("Couldn't revoke their access — nothing was removed.");
+        return;
+      }
+    }
+
     const ok = await softDeleteMember(member.id);
     if (ok) {
       audit("removed", member);
@@ -411,7 +532,7 @@ export function TeamMembersScreen() {
 
   // --- Render --------------------------------------------------------------
 
-  const inviteAction = (
+  const inviteAction = canInvite ? (
     <Button
       onClick={() => (seatsFull ? toast.error("All seats are in use.") : setInviteOpen(true))}
       className="bg-primary text-primary-foreground"
@@ -419,14 +540,14 @@ export function TeamMembersScreen() {
     >
       <UserPlus className="h-4 w-4" /> Invite people
     </Button>
-  );
+  ) : null;
 
   const roleFilterOptions = [
-    { value: "all", label: "All roles" },
+    { value: "all", label: "All Roles" },
     ...roles.map((r) => ({ value: r.id, label: r.name })),
   ];
   const groupFilterOptions = [
-    { value: "all", label: "All groups" },
+    { value: "all", label: "All Groups" },
     ...groups.map((g) => ({ value: g.id, label: g.name })),
   ];
 
@@ -439,6 +560,17 @@ export function TeamMembersScreen() {
       />
 
       <StatsBar stats={stats} />
+
+      {!canAssign ? (
+        <div className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-card px-3.5 py-2.5 text-xs leading-relaxed text-text-secondary">
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+          <p>
+            You can see who is on the team, but changing roles or access needs the
+            <span className="text-foreground"> Assign roles </span>
+            permission.
+          </p>
+        </div>
+      ) : null}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-border">
@@ -484,6 +616,9 @@ export function TeamMembersScreen() {
           members={filteredMembers}
           total={activeMembers.length}
           roleById={roleById}
+          roleIdOf={roleIdOf}
+          grantByUser={grantByUser}
+          canAssign={canAssign}
           groupById={groupById}
           roles={roles}
           search={search}
@@ -537,12 +672,17 @@ export function TeamMembersScreen() {
 
       <MemberDrawer
         member={openMember}
-        role={openMember ? roleById[openMember.roleId] : null}
+        role={openMember ? roleById[roleIdOf(openMember)] : null}
+        grant={openMember?.userId ? grantByUser[openMember.userId] : null}
         roles={roles}
         groups={groups}
+        events={events}
+        canAssign={canAssign}
+        isLastOwner={openMember ? isLastOwner(openMember) : false}
         onOpenChange={(o) => !o && setOpenMemberId(null)}
         onChangeRole={changeRole}
         onSetGroups={setMemberGroups}
+        onSetScope={setMemberScope}
         onToggleSuspend={toggleSuspend}
         onRemove={setRemoveTarget}
       />
@@ -654,6 +794,9 @@ function MembersTab({
   members,
   total,
   roleById,
+  roleIdOf,
+  grantByUser,
+  canAssign,
   groupById,
   roles,
   search,
@@ -683,11 +826,26 @@ function MembersTab({
       header: "Role",
       render: (m) => (
         <RolePill
-          role={roleById[m.roleId]}
+          role={roleById[roleIdOf(m)]}
           roles={roles}
+          disabled={!canAssign}
           onChange={(roleId) => onChangeRole(m, roleId)}
         />
       ),
+    },
+    {
+      key: "access",
+      header: "Access",
+      render: (m) => {
+        const scoped = m.userId ? grantByUser[m.userId]?.scope?.event : null;
+        return (
+          <span className="text-xs text-text-secondary">
+            {scoped?.length
+              ? `${scoped.length} event${scoped.length === 1 ? "" : "s"}`
+              : "All Events"}
+          </span>
+        );
+      },
     },
     {
       key: "groups",
@@ -731,24 +889,28 @@ function MembersTab({
               <DropdownMenuItem onClick={() => onOpen(m)} className="cursor-pointer focus:bg-surface-hover">
                 <Users className="h-4 w-4" /> Manage
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onToggleSuspend(m)} className="cursor-pointer focus:bg-surface-hover">
-                {m.status === "suspended" ? (
-                  <>
-                    <CircleCheck className="h-4 w-4" /> Reactivate
-                  </>
-                ) : (
-                  <>
-                    <Ban className="h-4 w-4" /> Suspend
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onRemove(m)}
-                className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
-              >
-                <Trash2 className="h-4 w-4" /> Remove
-              </DropdownMenuItem>
+              {canAssign ? (
+                <>
+                  <DropdownMenuItem onClick={() => onToggleSuspend(m)} className="cursor-pointer focus:bg-surface-hover">
+                    {m.status === "suspended" ? (
+                      <>
+                        <CircleCheck className="h-4 w-4" /> Reactivate
+                      </>
+                    ) : (
+                      <>
+                        <Ban className="h-4 w-4" /> Suspend
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onRemove(m)}
+                    className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                  >
+                    <Trash2 className="h-4 w-4" /> Remove
+                  </DropdownMenuItem>
+                </>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -767,21 +929,21 @@ function MembersTab({
             value={roleFilter}
             onValueChange={setRoleFilter}
             options={roleFilterOptions}
-            placeholder="All roles"
+            placeholder="All Roles"
             height="h-9"
           />
           <FilterDropdown
             value={statusFilter}
             onValueChange={setStatusFilter}
             options={MEMBER_STATUS_FILTER_OPTIONS}
-            placeholder="All statuses"
+            placeholder="All Statuses"
             height="h-9"
           />
           <FilterDropdown
             value={groupFilter}
             onValueChange={setGroupFilter}
             options={groupFilterOptions}
-            placeholder="All groups"
+            placeholder="All Groups"
             height="h-9"
           />
         </div>
@@ -789,7 +951,6 @@ function MembersTab({
           value={search}
           onChange={setSearch}
           placeholder="Search name or email…"
-          className="sm:w-64"
         />
       </Toolbar>
 
@@ -887,7 +1048,7 @@ function GroupsTab({ groups, counts, onCreate }) {
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={onCreate}>
-          <Plus className="h-4 w-4" /> New group
+          <Plus className="h-4 w-4" /> New Group
         </Button>
       </div>
       {groups.length === 0 ? (
@@ -898,7 +1059,7 @@ function GroupsTab({ groups, counts, onCreate }) {
             description="Group members into sub-teams like Check-in staff or Marketing."
             action={
               <Button onClick={onCreate} className="bg-primary text-primary-foreground">
-                <Plus className="h-4 w-4" /> New group
+                <Plus className="h-4 w-4" /> New Group
               </Button>
             }
           />
@@ -977,23 +1138,116 @@ function ActivityTab({ activity }) {
   );
 }
 
+// --- Scope: which events a grant reaches ------------------------------------
+
+// The customer-owned half of authorization. A permission declares scopeBy
+// "event" in the catalog; this narrows one person's grant to the events they
+// actually work on. Absence is "no restriction", so an empty selection means
+// the whole project — the same rule scope.js and rbac_allows() both apply.
+function ScopeSection({ member, grant, events, canAssign, onSetScope }) {
+  const selected = grant?.scope?.event || [];
+  const scoped = selected.length > 0;
+
+  if (!member.userId) {
+    return (
+      <Field label="Event access">
+        <p className="text-xs text-text-tertiary">
+          Available once they have signed in and hold a role.
+        </p>
+      </Field>
+    );
+  }
+
+  const toggle = (id, on) =>
+    onSetScope(member, on ? [...selected, id] : selected.filter((e) => e !== id));
+
+  return (
+    <Field
+      label="Event access"
+      hint={
+        scoped
+          ? "Limited to the events ticked below."
+          : "Everything in this workspace."
+      }
+    >
+      <div className="rounded-lg border border-border bg-surface-card">
+        <label
+          className={cn(
+            "flex items-center justify-between gap-3 px-3 py-2.5",
+            canAssign && "cursor-pointer",
+          )}
+        >
+          <span className="flex items-center gap-2 text-sm text-foreground">
+            <Globe className="h-3.5 w-3.5 text-text-tertiary" />
+            All Events
+          </span>
+          <Checkbox
+            checked={!scoped}
+            disabled={!canAssign || !scoped}
+            onCheckedChange={() => onSetScope(member, [])}
+          />
+        </label>
+
+        {events.length ? (
+          <div className="max-h-52 overflow-y-auto border-t border-border">
+            {events.map((e) => (
+              <label
+                key={e.id}
+                className={cn(
+                  "flex items-center justify-between gap-3 px-3 py-2",
+                  canAssign && "cursor-pointer hover:bg-surface-hover",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm text-foreground">
+                    {e.name || "Untitled event"}
+                  </span>
+                  <span className="block truncate text-[11px] text-text-tertiary">
+                    {formatDate(e.date)}
+                  </span>
+                </span>
+                <Checkbox
+                  checked={selected.includes(e.id)}
+                  disabled={!canAssign}
+                  onCheckedChange={(v) => toggle(e.id, !!v)}
+                />
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="border-t border-border px-3 py-3 text-xs text-text-tertiary">
+            This workspace has no events to narrow access to yet.
+          </p>
+        )}
+      </div>
+    </Field>
+  );
+}
+
 // --- Member drawer ----------------------------------------------------------
 
 function MemberDrawer({
   member,
   role,
+  grant,
   roles,
   groups,
+  events,
+  canAssign,
+  isLastOwner,
   onOpenChange,
   onChangeRole,
   onSetGroups,
+  onSetScope,
   onToggleSuspend,
   onRemove,
 }) {
   if (!member) return null;
+  // Roles store PATTERNS — Owner's "*" grants everything, so a literal
+  // includes() would report the most powerful role as granting nothing.
   const grantedGroups = PERMISSION_GROUPS.map(({ group, permissions }) => ({
     group,
-    granted: permissions.filter((p) => role?.permissions?.includes(p.key)),
+    granted: permissions.filter((p) => matchesAny(role?.permissions || [], p.key)),
   })).filter((g) => g.granted.length);
 
   const memberGroupIds = member.groupIds || [];
@@ -1027,9 +1281,17 @@ function MemberDrawer({
             <StatusPill status={member.status} map={MEMBER_STATUS_MAP} />
           </div>
 
-          <Field label="Role">
+          <Field
+            label="Role"
+            hint={
+              isLastOwner
+                ? "The workspace's last owner — hand Owner to someone else before changing this."
+                : undefined
+            }
+          >
             <Select
-              value={member.roleId || ""}
+              value={role?.id || ""}
+              disabled={!canAssign || isLastOwner}
               onValueChange={(v) => onChangeRole(member, v)}
             >
               <SelectTrigger>
@@ -1045,6 +1307,14 @@ function MemberDrawer({
             </Select>
           </Field>
 
+          <ScopeSection
+            member={member}
+            grant={grant}
+            events={events}
+            canAssign={canAssign}
+            onSetScope={onSetScope}
+          />
+
           {groups.length ? (
             <div>
               <p className="mb-2 text-sm font-medium text-muted-foreground">Groups</p>
@@ -1057,6 +1327,7 @@ function MemberDrawer({
                     control={
                       <Checkbox
                         checked={memberGroupIds.includes(g.id)}
+                        disabled={!canAssign}
                         onCheckedChange={(v) => toggleGroup(g.id, !!v)}
                       />
                     }
@@ -1094,25 +1365,27 @@ function MemberDrawer({
             )}
           </div>
 
-          <div className="space-y-2 border-t border-border pt-4">
-            <p className="text-sm font-medium text-muted-foreground">Danger zone</p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => onToggleSuspend(member)}>
-                {member.status === "suspended" ? "Reactivate" : "Suspend"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-red-400 hover:text-red-300"
-                onClick={() => {
-                  onOpenChange(false);
-                  onRemove(member);
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Remove
-              </Button>
+          {canAssign && !isLastOwner ? (
+            <div className="space-y-2 border-t border-border pt-4">
+              <p className="text-sm font-medium text-muted-foreground">Danger zone</p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => onToggleSuspend(member)}>
+                  {member.status === "suspended" ? "Reactivate" : "Suspend"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-400 hover:text-red-300"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onRemove(member);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>
@@ -1217,7 +1490,7 @@ function GroupDialog({ open, onOpenChange, onSubmit }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New group</DialogTitle>
+          <DialogTitle>New Group</DialogTitle>
           <DialogDescription>Group members into a sub-team.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">

@@ -114,7 +114,9 @@ import { PageBlock } from "./page_blocks";
 import { PageFooter } from "./page_footer";
 import { buyTicket } from "@/lib/supabase/orders";
 import { SeatPicker } from "./seat_picker";
+import { BoothPicker } from "./booth_picker";
 import { holdSeats } from "@/lib/supabase/seating";
+import { holdBooths } from "@/lib/supabase/expo";
 import { listEventTicketsResolved } from "@/lib/supabase/ticketing";
 import {
   registerForEvent,
@@ -335,18 +337,38 @@ function TicketCheckout({
   // { seats, seatIds, ticketId, price, token } from the picker, or null.
   const [seatSel, setSeatSel] = useState(null);
 
+  // --- Exhibitor booths -----------------------------------------------------
+  // event.metadata.expo: { hallMapId, pricing, boothTiers, holdMinutes }.
+  // A purchase is either seated or boothed, never both, so an event selling
+  // assigned seats keeps the seating flow and never offers the floor here.
+  const expo = event?.expo || null;
+  const expoOn = !seatingOn && Boolean(expo?.hallMapId);
+  // { booths, boothIds, ticketId, price, total, token, pricing } or null.
+  const [boothSel, setBoothSel] = useState(null);
+
   // In map-first the section sets the price, so the seat selection resolves the
   // ticket. Everything downstream (name, price, id, ticket questions) follows.
   const seatTicket =
     seatingOn && seatMode === "map-first" && seatSel?.ticketId
       ? (event?.tickets || []).find((t) => String(t.id) === String(seatSel.ticketId)) || null
       : null;
-  const ticket = seatTicket || baseTicket;
+  // The booth selection resolves the ticket the same way a map-first section
+  // does: in tier mode the stall's mapped ticket, in direct mode the nominated
+  // order-line ticket (the price still comes from the booth).
+  const boothTicket =
+    expoOn && boothSel?.ticketId
+      ? (event?.tickets || []).find((t) => String(t.id) === String(boothSel.ticketId)) || null
+      : null;
+
+  const ticket = seatTicket || boothTicket || baseTicket;
 
   const [step, setStep] = useState(
-    // map-first opens on the map; everything else keeps the original entry step.
-    seatingOn && (seating?.mode || "map-first") === "map-first" ? "seats" : "details",
-  ); // seats | details | addons | done | error
+    // map-first seating and the exhibitor floor both open on their map;
+    // everything else keeps the original entry step.
+    (seatingOn && (seating?.mode || "map-first") === "map-first" && "seats") ||
+      (expoOn && "booths") ||
+      "details",
+  ); // seats | booths | details | addons | done | error
   const [qty, setQty] = useState(1);
   // Booked slot id + chosen conditional purchasables ({ [id]: bool | count }).
   const [slotId, setSlotId] = useState(null);
@@ -438,7 +460,13 @@ function TicketCheckout({
     };
   }, [open, ticket?.ticketTypeId]);
 
-  const price = ticket?.price || 0;
+  // A directly-priced booth sets its own price; the nominated ticket only
+  // carries the order line, so its price is irrelevant. buy_booths recomputes
+  // the exact total from the stalls themselves either way.
+  const price =
+    expoOn && boothSel?.pricing === "direct" && boothSel.boothIds?.length
+      ? boothSel.price
+      : ticket?.price || 0;
   const ticketId = ticket?.id != null ? String(ticket.id) : null;
   // A bundle "ticket" carries a bundleId; its price/rules are fixed (no
   // early-bird / group / per-ticket discount stacking).
@@ -806,6 +834,8 @@ function TicketCheckout({
       accessCode: ticket?.accessCode ?? null,
       seatIds: seatSel?.seatIds ?? null,
       seatToken: seatSel?.token ?? null,
+      boothIds: boothSel?.boothIds ?? null,
+      boothToken: boothSel?.token ?? null,
     });
     if (res.ok) {
       // The order is recorded; also write the person-coming record so they
@@ -871,6 +901,16 @@ function TicketCheckout({
         return;
       }
     }
+    // Booths get the same extended hold across the Stripe round trip.
+    if (boothSel?.boothIds?.length && boothSel.token) {
+      const extended = await holdBooths(event.id, boothSel.boothIds, boothSel.token, 40);
+      if (!extended?.ok) {
+        setBusy(false);
+        setErrorMsg("Your booths were taken while you were deciding. Please pick again.");
+        setStep("error");
+        return;
+      }
+    }
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/checkout`, {
         method: "POST",
@@ -897,6 +937,7 @@ function TicketCheckout({
           formId: event.formId || null,
           clientRef,
           seatToken: seatSel?.token ?? null,
+          boothToken: boothSel?.token ?? null,
           // Approved guests are already a registration — skip filing a second
           // one when their payment is confirmed on return.
           skipRegistration: !!approvedResume,
@@ -1030,6 +1071,24 @@ function TicketCheckout({
       return;
     }
     proceed();
+  };
+
+  // Booth step "Continue". The floor always comes first, so the buyer's details
+  // are collected next.
+  const confirmBooths = () => {
+    if (!boothSel?.boothIds?.length) {
+      toast.error("Pick your stand to continue.");
+      return;
+    }
+    if (!boothSel.ticketId) {
+      toast.error(
+        boothSel.pricing === "direct"
+          ? "Exhibitor space isn't on sale for this event yet."
+          : "That booth isn't on sale for this event.",
+      );
+      return;
+    }
+    setStep("details");
   };
 
   // Seat step "Continue". map-first collects the buyer's details afterwards;
@@ -1171,6 +1230,36 @@ function TicketCheckout({
                 type="button"
                 disabled={busy || !seatSel?.seatIds?.length}
                 onClick={confirmSeats}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                style={accent ? { backgroundColor: accent } : undefined}
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Step: booths — the exhibitor floor, given the full dialog width for
+            the same reason the seat map is. It always comes first: the stall
+            decides the package and the price. */}
+        {step === "booths" ? (
+          <div className="grid gap-4">
+            <BoothPicker
+              event={event}
+              expo={expo}
+              tickets={event?.tickets || []}
+              accent={accent}
+              onChange={(sel) => {
+                setBoothSel(sel);
+                // The booths ARE the quantity.
+                if (sel.boothIds.length) setQty(sel.boothIds.length);
+              }}
+            />
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+              <Button
+                type="button"
+                disabled={busy || !boothSel?.boothIds?.length}
+                onClick={confirmBooths}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                 style={accent ? { backgroundColor: accent } : undefined}
               >

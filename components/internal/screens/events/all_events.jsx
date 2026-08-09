@@ -73,7 +73,7 @@ import { useProject } from "@/context/project-context";
 import { EventDetailScreen } from "./event_detail";
 
 const STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "On sale", label: "On sale" },
   { value: "Sold out", label: "Sold out" },
   { value: "Scheduled", label: "Scheduled" },
@@ -583,7 +583,6 @@ export function AllEventsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search events, venues, cities…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

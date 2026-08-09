@@ -47,8 +47,8 @@ In `components/internal/screens/memberships/membership_plans.jsx`
   Most plans stay off and are enabled per event."*
 - `checked={!!config.applyToAllEvents}`, `onCheckedChange={(v) => set({ applyToAllEvents: v })}`
 
-Update `summarize(r)` to append `· All events` when `config.applyToAllEvents` is
-true (e.g. `"$99/yearly · 10% member discount · All events"`).
+Update `summarize(r)` to append `· All Events` when `config.applyToAllEvents` is
+true (e.g. `"$99/yearly · 10% member discount · All Events"`).
 
 ### 3. New event-editor section — Memberships
 
@@ -97,7 +97,7 @@ dedicated section (avoids two surfaces writing `attached.membership`).
 | File | Change |
 |---|---|
 | `components/internal/screens/tickets/constants.js` | add `applyToAllEvents: false` to `defaultMembershipPlanConfig` |
-| `components/internal/screens/memberships/membership_plans.jsx` | Scope switch; `summarize` appends `· All events` |
+| `components/internal/screens/memberships/membership_plans.jsx` | Scope switch; `summarize` appends `· All Events` |
 | `components/internal/screens/events/event_memberships.jsx` | **new** dedicated section |
 | `components/internal/screens/events/event_sections.js` | import + `NAV_GROUPS` entry + `SECTIONS` map |
 | `components/internal/screens/tickets/event_attachments.jsx` | remove `membership` from `ATTACH_MODULES` |

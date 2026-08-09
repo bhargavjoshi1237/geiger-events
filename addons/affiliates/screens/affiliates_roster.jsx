@@ -312,7 +312,6 @@ export function AffiliatesRosterScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search affiliates"
-          className="sm:w-72"
         />
       </Toolbar>
 

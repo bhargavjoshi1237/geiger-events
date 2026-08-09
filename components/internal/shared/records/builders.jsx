@@ -26,7 +26,7 @@ export function statusOptions(map) {
 }
 
 // Build a filter option list from a status map — "all" sentinel first.
-export function statusFilterOptions(map, allLabel = "All statuses") {
+export function statusFilterOptions(map, allLabel = "All Statuses") {
   return [
     { value: "all", label: allLabel },
     ...Object.keys(map).map((s) => ({ value: s, label: s })),

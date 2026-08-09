@@ -303,7 +303,7 @@ export function EventRegistrationsDetail({
         className="-ml-2 w-fit gap-1.5 text-muted-foreground hover:bg-surface-active hover:text-foreground"
         onClick={onBack}
       >
-        <ArrowLeft className="h-4 w-4" /> All events
+        <ArrowLeft className="h-4 w-4" /> All Events
       </Button>
 
       {/* Event header with the pipeline front and centre. */}
@@ -381,7 +381,6 @@ export function EventRegistrationsDetail({
             setLimit(PAGE_ROWS);
           }}
           placeholder="Search name or email…"
-          className="w-full sm:max-w-xs"
         />
       </div>
 

@@ -7,6 +7,7 @@ import { Accessibility, Loader2, Sparkles, Timer } from "lucide-react";
 import { Button } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 import { currency } from "@/components/internal/screens/tickets/constants";
+import { buildPriceTiers } from "@/lib/seating/price_tiers";
 import {
   getEventSeating,
   holdSeats,
@@ -118,6 +119,13 @@ export function SeatPicker({
     }
     return blocked;
   }, [data, sectionTiers, mode, ticketId]);
+
+  // Section colours and the legend come straight from the pricing the organiser
+  // already set — the buyer shops by price band without anyone configuring one.
+  const priceTiers = useMemo(
+    () => buildPriceTiers(data?.sections ?? [], sectionTiers, tickets),
+    [data, sectionTiers, tickets],
+  );
 
   const priceForSection = (sectionId) => {
     const ticket = ticketById.get(sectionTiers[sectionId]);
@@ -309,6 +317,9 @@ export function SeatPicker({
       <SeatMapView
         sections={data.sections}
         seats={data.seats}
+        field={data.field}
+        background={data.background}
+        aspect={data.aspect}
         activeSectionId={activeSectionId}
         onSectionChange={setActiveSectionId}
         seatState={seatState}
@@ -316,6 +327,9 @@ export function SeatPicker({
         sectionMeta={sectionMeta}
         disabledSectionIds={disabledSectionIds}
         seatLabel={seatLabel}
+        colorBySectionId={priceTiers.colorBySectionId}
+        legend={priceTiers.legend}
+        formatPrice={currency}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">

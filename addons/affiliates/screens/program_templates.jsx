@@ -165,7 +165,6 @@ export function ProgramTemplatesScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search templates"
-          className="sm:w-72"
         />
       </Toolbar>
 

@@ -468,7 +468,6 @@ export function OrganiserInboxScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search messages…"
-          className="sm:max-w-xs"
         />
       </div>
 

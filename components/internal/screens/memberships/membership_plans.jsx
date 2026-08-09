@@ -51,7 +51,7 @@ function summarize(r) {
       : `${currency(price)}${c.billingPeriod && c.billingPeriod !== "one-time" ? `/${c.billingPeriod}` : ""}`;
   const disc = Number(c.discountPercent) || 0;
   const parts = [priceStr, disc ? `${disc}% member discount` : "no discount"];
-  if (c.applyToAllEvents) parts.push("All events");
+  if (c.applyToAllEvents) parts.push("All Events");
   const ents = normalizeEntitlements(c);
   const attached = ENTITLEMENT_ITEMS.filter((i) => ents[i.key].mode !== "none");
   if (attached.length) parts.push(attached.map((i) => i.label).join(", "));

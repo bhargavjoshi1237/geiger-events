@@ -724,7 +724,7 @@ function EventScopeSelect({ events, selected, onChange }) {
           onCheckedChange={() => onChange([])}
           onSelect={(e) => e.preventDefault()}
         >
-          All events
+          All Events
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator className="bg-border" />
         {events.map((event) => (

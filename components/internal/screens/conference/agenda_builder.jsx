@@ -73,7 +73,7 @@ const STATUS_VALUES = Object.keys(SESSION_STATUS_MAP);
 
 // Event-list (level 1) filters + sort.
 const EVENT_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "On sale", label: "On sale" },
   { value: "Sold out", label: "Sold out" },
   { value: "Scheduled", label: "Scheduled" },
@@ -81,7 +81,7 @@ const EVENT_STATUS_FILTER_OPTIONS = [
   { value: "Ended", label: "Ended" },
 ];
 const AGENDA_FILTER_OPTIONS = [
-  { value: "all", label: "All events" },
+  { value: "all", label: "All Events" },
   { value: "with", label: "With agenda" },
   { value: "without", label: "No agenda" },
 ];
@@ -93,7 +93,7 @@ const EVENT_SORT_OPTIONS = [
 
 // Session (level 2) status filter.
 const SESSION_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   ...STATUS_VALUES.map((s) => ({ value: s, label: s })),
 ];
 
@@ -847,7 +847,6 @@ export function AgendaBuilderScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search events…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

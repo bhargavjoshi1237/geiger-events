@@ -149,7 +149,7 @@ function CreateWorkflowDialog({ open, onOpenChange, onCreate, events }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="workspace">All events (workspace)</SelectItem>
+                  <SelectItem value="workspace">All Events (workspace)</SelectItem>
                   <SelectItem value="event">A specific event</SelectItem>
                 </SelectContent>
               </Select>
@@ -500,7 +500,6 @@ export function AllWorkflowsScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search workflows…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 

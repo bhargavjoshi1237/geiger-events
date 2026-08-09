@@ -46,7 +46,7 @@ export const FIELD_TYPE_OPTIONS = [
 
 // Filter option lists — an "all" sentinel first, matching the events pattern.
 export const STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "Confirmed", label: "Confirmed" },
   { value: "Pending", label: "Pending" },
   { value: "Waitlisted", label: "Waitlisted" },

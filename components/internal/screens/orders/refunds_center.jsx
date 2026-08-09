@@ -85,7 +85,7 @@ export function RefundsCenterScreen() {
 
   const eventFilterOptions = useMemo(
     () => [
-      { value: "all", label: "All events" },
+      { value: "all", label: "All Events" },
       ...Object.entries(eventNames).map(([id, name]) => ({ value: id, label: name })),
     ],
     [eventNames],
@@ -285,7 +285,6 @@ export function RefundsCenterScreen() {
           value={search}
           onChange={setSearch}
           placeholder="Search buyer, order, event…"
-          className="w-full sm:max-w-xs"
         />
       </Toolbar>
 
