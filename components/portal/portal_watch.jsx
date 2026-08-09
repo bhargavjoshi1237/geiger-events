@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toEmbed } from "@/lib/video-embed";
+import { usePresenceHeartbeat } from "@/lib/hooks/use-presence-heartbeat";
 import { fmtDate } from "./portal_kit";
 
 // The member's on-demand library — every recording their memberships unlock,
@@ -29,7 +30,10 @@ import { fmtDate } from "./portal_kit";
 // the video; the organiser's external link is embedded client-side, same as the
 // public /r/<id> replay page.
 
-function Player({ url }) {
+function Player({ url, itemId }) {
+  // Watching a replay is presence too — it feeds the organiser's measured viewer
+  // and watch-time numbers, the same way an open live room does.
+  usePresenceHeartbeat(itemId);
   const embed = toEmbed(url);
   if (embed.type === "none") {
     return (
@@ -174,7 +178,7 @@ export function PortalWatch({ items = [], loading = false }) {
                 .join(" · ")}
             </DialogDescription>
           </DialogHeader>
-          {open ? <Player url={open.videoUrl} /> : null}
+          {open ? <Player url={open.videoUrl} itemId={open.id} /> : null}
           {open?.description ? (
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
               {open.description}

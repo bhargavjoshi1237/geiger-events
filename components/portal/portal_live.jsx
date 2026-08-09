@@ -8,14 +8,13 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { cn } from "@geiger/ui";
 import { toEmbed } from "@/lib/video-embed";
 import { breakoutTimer, formatCountdown } from "@/lib/live/timer";
+import { usePresenceHeartbeat } from "@/lib/hooks/use-presence-heartbeat";
 
 // The member's Live tab — the rooms their entitlements unlock, and the room view
 // itself. Opening a room starts a presence heartbeat: one write every 30s that
 // every organiser-side metric rolls up from. The heartbeat fails open, so a
 // metric problem can never interrupt playback.
 
-const HEARTBEAT_MS = 30000;
-const HEARTBEAT_SECONDS = HEARTBEAT_MS / 1000;
 const ROUND_POLL_MS = 5000;
 
 const STATE_STYLES = {
@@ -179,28 +178,7 @@ function RoundRail({ parentSessionId }) {
 }
 
 function RoomView({ room, onBack }) {
-  // One heartbeat per open room, per tab. Cleaned up when the room closes.
-  useEffect(() => {
-    if (!room?.id) return undefined;
-    const sessionKey = crypto.randomUUID();
-    let cancelled = false;
-    const beat = (seconds) => {
-      if (cancelled) return;
-      // Fail open: a rejected heartbeat must never interrupt playback.
-      fetch("/api/portal/live/heartbeat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ roomId: room.id, sessionKey, seconds }),
-      }).catch(() => {});
-    };
-    beat(0);
-    const timer = setInterval(() => beat(HEARTBEAT_SECONDS), HEARTBEAT_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [room?.id]);
-
+  usePresenceHeartbeat(room?.id);
   const isBreakout = room.kind === "breakout";
 
   return (
