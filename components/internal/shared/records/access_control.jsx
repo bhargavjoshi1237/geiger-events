@@ -14,31 +14,12 @@ import { currency } from "./builders";
 // `access` object; used by the "access" FieldControl type. Membership options are
 // the project's membership plans (ticketing_records, module "membership").
 
-export const DEFAULT_ACCESS = {
-  free: true,
-  registrationRequired: false,
-  membership: { enabled: false, planIds: [] },
-  purchase: { enabled: false, price: 0 },
-  rental: { enabled: false, price: 0, days: 3 },
-};
+// The access shape is owned by lib/live/access.js so the server-side resolvers
+// (and their node:test coverage) share one implementation. Imported for local
+// use and re-exported so existing importers of this module keep working.
+import { DEFAULT_ACCESS, normalizeAccess } from "@/lib/live/access";
 
-export function normalizeAccess(a) {
-  const v = a && typeof a === "object" ? a : {};
-  return {
-    free: v.free === undefined ? true : Boolean(v.free),
-    registrationRequired: Boolean(v.registrationRequired),
-    membership: {
-      enabled: Boolean(v.membership?.enabled),
-      planIds: Array.isArray(v.membership?.planIds) ? v.membership.planIds : [],
-    },
-    purchase: { enabled: Boolean(v.purchase?.enabled), price: Number(v.purchase?.price) || 0 },
-    rental: {
-      enabled: Boolean(v.rental?.enabled),
-      price: Number(v.rental?.price) || 0,
-      days: Number(v.rental?.days) || 3,
-    },
-  };
-}
+export { DEFAULT_ACCESS, normalizeAccess };
 
 // A short label for lists/pills — "Free", "Registered", or the enabled paths.
 export function accessSummary(a) {
