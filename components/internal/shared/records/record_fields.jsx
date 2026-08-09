@@ -24,11 +24,13 @@ import { getUser } from "@/lib/supabase/user";
 import { removeEventImage, pathFromPublicUrl } from "@/lib/supabase/storage";
 import { AudienceField } from "@/components/internal/shared/audience/audience_field";
 import { AccessControlField } from "./access_control";
+import { conferenceApi } from "@/lib/supabase/conference";
 
 // Declarative field rendering shared by the Conference create dialog, the light
 // single-panel editors, and the rich sectioned editors. A field spec is:
 //   { key, label, type, scope, options?, placeholder?, hint?, full? }
-//   type:  text | email | number | textarea | select | tabs | switch | list | image
+//   type:  text | email | number | datetime | textarea | select | ref | tabs |
+//          switch | list | image
 //   scope: "root" (record.name/status/coverUrl) | "config" (record.config[key])
 // An `image` field also carries { upload } — the area's uploader — and stores the
 // resulting public URL as its value.
@@ -232,6 +234,60 @@ function ImageField({ field, value, onValue, values }) {
 
 // --- Single field control ----------------------------------------------------
 
+// ISO instant -> the "YYYY-MM-DDTHH:mm" a datetime-local input expects, in the
+// viewer's timezone. Returns "" for anything unparseable (legacy display text).
+function toLocalInput(iso) {
+  const ms = new Date(iso).getTime();
+  if (!Number.isFinite(ms)) return "";
+  const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 16);
+}
+
+// A typeahead over sibling records of one module — turns the free-text
+// session/speaker fields into real references. Stores the referenced id so a
+// renamed target stays linked.
+function RecordRefField({ field, value, onValue, projectId }) {
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    conferenceApi.list(projectId, field.refModule).then((rows) => {
+      if (!alive) return;
+      setOptions(rows ?? []);
+      setLoading(false);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [projectId, field.refModule]);
+
+  if (loading) {
+    return <div className="h-9 animate-pulse rounded-md bg-surface-card" />;
+  }
+  if (!options.length) {
+    return (
+      <p className="py-2 text-xs text-text-tertiary">
+        No {field.refModule} records yet — create one first.
+      </p>
+    );
+  }
+  return (
+    <Select value={value ?? ""} onValueChange={onValue}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={field.placeholder || "Select…"} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.id} value={o.id}>
+            {o.name || "Untitled"}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 // Renders one field's control. `value` is the current value; `onValue(val)` gets
 // the new raw value (the caller maps it to a patch via fieldPatch). `values` is
 // the whole record/draft — used by controls that need record context (e.g. the
@@ -282,10 +338,30 @@ export function FieldControl({ field, value, onValue, values }) {
           placeholder={field.placeholder}
         />
       );
+    case "datetime":
+      // Stored as an ISO instant; the input speaks the viewer's local time.
+      return (
+        <Input
+          type="datetime-local"
+          value={value ? toLocalInput(value) : ""}
+          onChange={(e) =>
+            onValue(e.target.value ? new Date(e.target.value).toISOString() : "")
+          }
+        />
+      );
+    case "ref":
+      return (
+        <RecordRefField
+          field={field}
+          value={value}
+          onValue={onValue}
+          projectId={values?.projectId}
+        />
+      );
     case "select":
       return (
         <Select value={value ?? ""} onValueChange={onValue}>
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder={field.placeholder || "Select…"} />
           </SelectTrigger>
           <SelectContent>

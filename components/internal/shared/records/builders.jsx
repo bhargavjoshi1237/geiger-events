@@ -173,3 +173,20 @@ export const c = (key, label, type = "text", extra = {}) => ({
   scope: "config",
   ...extra,
 });
+// A promoted timestamp column (starts_at / ends_at), not a config key.
+export const dateTimeField = (key, label, extra = {}) => ({
+  key,
+  label,
+  type: "datetime",
+  scope: "root",
+  ...extra,
+});
+// A reference to a sibling record of `module`, stored in config as an id.
+export const refField = (key, label, module, extra = {}) => ({
+  key,
+  label,
+  type: "ref",
+  scope: "config",
+  refModule: module,
+  ...extra,
+});
