@@ -82,7 +82,7 @@ const STATUS_FILTER_OPTIONS = [
 ];
 
 const TYPE_FILTER_OPTIONS = [
-  { value: "all", label: "All types" },
+  { value: "all", label: "All Types" },
   { value: "In-person", label: "In-person" },
   { value: "Online", label: "Online" },
   { value: "Hybrid", label: "Hybrid" },

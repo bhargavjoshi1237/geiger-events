@@ -53,6 +53,8 @@ import {
   SessionMultiField,
   AgendaAssignHero,
 } from "./detail_fields";
+import LiveControl from "./live_control";
+import BreakoutAssign from "./breakout_assign";
 import { describeSpec } from "@/lib/audience/resolve";
 import { accessSummary, DEFAULT_ACCESS } from "@/components/internal/shared/records/access_control";
 import {
@@ -70,6 +72,8 @@ import {
   nameField,
   statusField,
   c,
+  dateTimeField,
+  refField,
   optionsFrom,
   currency,
   pct,
@@ -144,6 +148,32 @@ const imageField = (label, hint, aspect) => ({
 });
 
 const TIER_VALUES = Object.keys(TIER_MAP);
+
+// A promoted starts_at instant as a short local "10 Aug, 14:00". Legacy rows
+// still holding display text ("Day 1 · 09:00") fall back to that text.
+const scheduleLabel = (r) => {
+  const ms = r.startsAt ? new Date(r.startsAt).getTime() : NaN;
+  if (!Number.isFinite(ms)) return r.config.scheduledFor || r.config.premiereAt || "";
+  return new Date(ms).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+// Sum one measured presence metric across the loaded rows.
+const presenceSum = (records, presence, key) =>
+  records.reduce((s, r) => s + (presence[r.id]?.[key] || 0), 0);
+
+// The access section every gated module shares.
+const accessSection = (desc) => ({
+  key: "access",
+  label: "Access",
+  icon: ClipboardCheck,
+  desc,
+  fields: [c("access", "Access model", "access")],
+});
 
 // --- Modules -----------------------------------------------------------------
 
@@ -514,7 +544,7 @@ export const MODULES = {
     statusMap: HOUSING_STATUS_MAP,
     filters: [
       statusFilter(HOUSING_STATUS_MAP),
-      configFilter("kind", ["Hotel", "Apartment", "Transport"], "All types"),
+      configFilter("kind", ["Hotel", "Apartment", "Transport"], "All Types"),
     ],
     columns: [
       nameCol((r) => r.config.city),
@@ -668,7 +698,7 @@ export const MODULES = {
     statusMap: CERTIFICATE_STATUS_MAP,
     filters: [
       statusFilter(CERTIFICATE_STATUS_MAP),
-      configFilter("kind", ["Certificate", "CEU credit"], "All types"),
+      configFilter("kind", ["Certificate", "CEU credit"], "All Types"),
     ],
     columns: [
       nameCol((r) => r.config.kind),
@@ -787,21 +817,23 @@ export const MODULES = {
     columns: [
       nameCol((r) => [r.config.session, r.config.speaker].filter(Boolean).join(" · ")),
       textCol("duration", "Duration", (r) => r.config.duration),
-      textCol("views", "Views", (r) => (Number(r.config.views) || 0).toLocaleString()),
+      textCol("viewers", "Viewers", (r) => (r._presence?.uniqueViewers || 0).toLocaleString()),
       textCol("shared", "Sharing", (r) => (r.config.public ? "Public link" : "Private")),
       statusCol(RECORDING_STATUS_MAP),
     ],
-    stats: (records) => [
+    usesPresence: true,
+    stats: (records, { presence = {} } = {}) => [
       { label: "Recordings", value: String(records.length), footer: "In the library" },
       { label: "Published", value: String(count(records, (r) => r.status === "Published")), footer: "Live to watch" },
       { label: "Public links", value: String(count(records, (r) => r.config.public)), footer: "Shared replays" },
-      { label: "Total views", value: String(sum(records, (r) => r.config.views)), footer: "All recordings" },
+      { label: "Viewers", value: String(presenceSum(records, presence, "uniqueViewers")), footer: "Measured, all time" },
     ],
     defaults: {
       status: "Draft",
       config: {
-        session: "", speaker: "", videoUrl: "", duration: "", views: 0,
-        recordedAt: "", description: "", eventIds: [], tags: [], public: false,
+        session: "", speaker: "", sessionId: "", speakerId: "", videoUrl: "",
+        duration: "", recordedAt: "", description: "", eventIds: [], tags: [],
+        public: false,
       },
     },
     createFields: [
@@ -820,11 +852,10 @@ export const MODULES = {
           fields: [
             nameField("Title"),
             statusField(RECORDING_STATUS_MAP),
-            c("session", "Session"),
-            c("speaker", "Speaker"),
+            refField("sessionId", "Session", "session"),
+            refField("speakerId", "Speaker", "speaker"),
             c("recordedAt", "Recorded on", "text", { placeholder: "e.g. 2026-07-18" }),
             c("duration", "Duration", "text", { placeholder: "e.g. 42:15" }),
-            c("views", "Views", "number", { placeholder: "e.g. 1200" }),
             c("tags", "Tags", "list", { placeholder: "Add a tag…" }),
             c("description", "Description", "textarea", { placeholder: "Summary shown in the library and on the public page…" }),
           ],
@@ -894,7 +925,7 @@ export const MODULES = {
       },
     },
     createFields: [
-      nameField("Room name", "e.g. Main Stage — Backstage"),
+      nameField("Room Name", "e.g. Main Stage — Backstage"),
       c("sessionTitle", "Session", "text", { placeholder: "e.g. Opening Keynote" }),
       c("callTime", "Call time", "text", { placeholder: "e.g. 08:30" }),
     ],
@@ -907,7 +938,7 @@ export const MODULES = {
           icon: Clapperboard,
           desc: "The session this backstage covers and who's running it.",
           fields: [
-            nameField("Room name"),
+            nameField("Room Name"),
             statusField(BACKSTAGE_STATUS_MAP),
             c("sessionTitle", "Session"),
             c("callTime", "Call time", "text", { placeholder: "e.g. 08:30" }),
@@ -973,32 +1004,36 @@ export const MODULES = {
     statusMap: ROOM_STATUS_MAP,
     filters: [
       statusFilter(ROOM_STATUS_MAP),
-      configFilter("kind", ["Digital", "On-site", "Hybrid"], "All types"),
+      configFilter("kind", ["Digital", "On-site", "Hybrid"], "All Types"),
     ],
     columns: [
       nameCol((r) => r.config.location || r.config.streamProvider),
       pillCol("kind", "Type", (r) => r.config.kind, ROOM_KIND_MAP),
-      textCol("capacity", "Capacity", (r) => (Number(r.config.capacity) || 0).toLocaleString()),
-      textCol("scheduledFor", "Scheduled", (r) => r.config.scheduledFor),
+      textCol("access", "Access", (r) => accessSummary(r.config.access)),
+      textCol("scheduledFor", "Scheduled", scheduleLabel),
+      textCol("watching", "Watching", (r) => String(r._presence?.liveNow || 0)),
       statusCol(ROOM_STATUS_MAP),
     ],
-    stats: (records) => [
+    usesPresence: true,
+    stats: (records, { presence = {} } = {}) => [
       { label: "Rooms", value: String(records.length), footer: "On-site & digital" },
       { label: "Live now", value: String(count(records, (r) => r.status === "Live")), footer: "Streaming" },
-      { label: "Digital", value: String(count(records, (r) => r.config.kind === "Digital" || r.config.kind === "Hybrid")), footer: "Broadcasting" },
-      { label: "Seats", value: String(sum(records, (r) => r.config.capacity)), footer: "Total capacity" },
+      { label: "Watching", value: String(presenceSum(records, presence, "liveNow")), footer: "Attendees in rooms" },
+      { label: "Unique viewers", value: String(presenceSum(records, presence, "uniqueViewers")), footer: "All time" },
     ],
     defaults: {
       status: "Offline",
       config: {
         kind: "Digital", eventId: "", capacity: 0, location: "", scheduledFor: "",
         streamProvider: "", streamUrl: "", watchUrl: "", description: "",
+        access: DEFAULT_ACCESS,
       },
     },
     createFields: [
-      nameField("Room name", "e.g. Main Stage"),
+      nameField("Room Name", "e.g. Main Stage"),
       c("kind", "Type", "select", { options: optionsFrom(["Digital", "On-site", "Hybrid"]) }),
       c("capacity", "Capacity", "number", { placeholder: "e.g. 500" }),
+      c("access", "Access", "access", { hint: "Choose how attendees unlock this room." }),
     ],
     detail: {
       depth: "rich",
@@ -1009,13 +1044,22 @@ export const MODULES = {
           icon: Radio,
           desc: "What kind of room this is and when it runs.",
           fields: [
-            nameField("Room name"),
+            nameField("Room Name"),
             statusField(ROOM_STATUS_MAP),
             c("kind", "Type", "select", { options: optionsFrom(["Digital", "On-site", "Hybrid"]) }),
             c("capacity", "Capacity", "number", { placeholder: "e.g. 500" }),
-            c("scheduledFor", "Scheduled for", "text", { placeholder: "e.g. Day 1 · 09:00" }),
+            dateTimeField("startsAt", "Starts at", { hint: "Attendees can open the room 15 minutes before this." }),
+            dateTimeField("endsAt", "Ends at", { hint: "Leave empty to keep the room open until you end it." }),
           ],
         },
+        {
+          key: "live",
+          label: "Live",
+          icon: Radio,
+          desc: "Go live, end the room, and watch who's in it.",
+          render: ({ record, commit }) => <LiveControl record={record} commit={commit} />,
+        },
+        accessSection("How attendees unlock this room — free, membership, purchase, or rental."),
         {
           key: "event",
           label: "Event",
@@ -1068,16 +1112,20 @@ export const MODULES = {
     ],
     columns: [
       nameCol((r) => [r.config.platform, r.config.presenter].filter(Boolean).join(" · ")),
-      textCol("scheduledFor", "Scheduled", (r) => r.config.scheduledFor),
+      textCol("access", "Access", (r) => accessSummary(r.config.access)),
+      textCol("scheduledFor", "Scheduled", scheduleLabel),
       textCol("registration", "Registered", (r) => `${Number(r.config.registered) || 0} / ${Number(r.config.capacity) || 0}`),
+      textCol("attended", "Attended", (r) => String(r._presence?.uniqueViewers || 0)),
       statusCol(WEBINAR_STATUS_MAP),
     ],
-    stats: (records) => {
+    usesPresence: true,
+    stats: (records, { presence = {} } = {}) => {
       const registered = sum(records, (r) => r.config.registered);
-      const attended = sum(records, (r) => r.config.attended);
+      // Attendance is measured from presence, never typed in.
+      const attended = presenceSum(records, presence, "uniqueViewers");
       return [
         { label: "Webinars", value: String(records.length), footer: "All Statuses" },
-        { label: "Live now", value: String(count(records, (r) => r.status === "Live")), footer: "Streaming" },
+        { label: "Watching", value: String(presenceSum(records, presence, "liveNow")), footer: "In rooms now" },
         { label: "Registered", value: String(registered), footer: "Across webinars" },
         { label: "Show rate", value: pct(registered ? (attended / registered) * 100 : 0), footer: "Attended vs registered" },
       ];
@@ -1086,14 +1134,16 @@ export const MODULES = {
       status: "Draft",
       config: {
         platform: "Zoom", presenter: "", eventId: "", scheduledFor: "", duration: "",
-        capacity: 0, registered: 0, attended: 0, requiresRegistration: true,
+        capacity: 0, registered: 0, requiresRegistration: true,
         registrationUrl: "", joinUrl: "", replayUrl: "", description: "",
+        access: DEFAULT_ACCESS,
       },
     },
     createFields: [
       nameField("Webinar title", "e.g. Product Deep-Dive"),
       c("platform", "Platform", "select", { options: optionsFrom(["Zoom", "YouTube Live", "Google Meet", "Teams", "Custom"]) }),
       c("presenter", "Presenter", "text", { placeholder: "e.g. Ada Lovelace" }),
+      c("access", "Access", "access", { hint: "Choose how attendees unlock this webinar." }),
     ],
     detail: {
       depth: "rich",
@@ -1108,12 +1158,21 @@ export const MODULES = {
             statusField(WEBINAR_STATUS_MAP),
             c("platform", "Platform", "select", { options: optionsFrom(["Zoom", "YouTube Live", "Google Meet", "Teams", "Custom"]) }),
             c("presenter", "Presenter"),
-            c("scheduledFor", "Scheduled for", "text", { placeholder: "e.g. Day 1 · 14:00" }),
+            dateTimeField("startsAt", "Starts at", { hint: "Attendees can join 15 minutes before this." }),
+            dateTimeField("endsAt", "Ends at", { hint: "Leave empty to keep the room open until you end it." }),
             c("duration", "Duration", "text", { placeholder: "e.g. 60 min" }),
             c("capacity", "Capacity", "number", { placeholder: "e.g. 500" }),
             c("description", "Description", "textarea", { placeholder: "What attendees will learn…" }),
           ],
         },
+        {
+          key: "live",
+          label: "Live",
+          icon: Radio,
+          desc: "Go live, end the webinar, and watch who's in it.",
+          render: ({ record, commit }) => <LiveControl record={record} commit={commit} />,
+        },
+        accessSection("How attendees unlock this webinar — free, membership, purchase, or rental."),
         {
           key: "registration",
           label: "Registration",
@@ -1122,8 +1181,10 @@ export const MODULES = {
           fields: [
             c("requiresRegistration", "Requires registration", "switch", { hint: "Attendees sign up before they can join." }),
             c("registrationUrl", "Registration link", "text", { placeholder: "https://…" }),
-            c("registered", "Registered", "number", { placeholder: "e.g. 320" }),
-            c("attended", "Attended", "number", { placeholder: "e.g. 210" }),
+            c("registered", "Registered (manual)", "number", {
+              placeholder: "e.g. 320",
+              hint: "Entered by hand until registration ships. Attendance is measured from presence.",
+            }),
           ],
         },
         {
@@ -1164,36 +1225,41 @@ export const MODULES = {
     statusMap: BREAKOUT_STATUS_MAP,
     filters: [
       statusFilter(BREAKOUT_STATUS_MAP),
-      configFilter("kind", ["Discussion", "Workshop", "Networking", "Roundtable"], "All types"),
+      configFilter("kind", ["Discussion", "Workshop", "Networking", "Roundtable"], "All Types"),
     ],
     columns: [
       nameCol((r) => r.config.topic),
       pillCol("kind", "Type", (r) => r.config.kind, BREAKOUT_KIND_MAP),
+      textCol("access", "Access", (r) => accessSummary(r.config.access)),
       textCol("facilitator", "Facilitator", (r) => r.config.facilitator),
-      textCol("seats", "Seats", (r) => `${Number(r.config.joined) || 0} / ${Number(r.config.capacity) || 0}`),
+      textCol("seats", "Seats", (r) => `${r._presence?.liveNow || 0} / ${Number(r.config.capacity) || 0}`),
       statusCol(BREAKOUT_STATUS_MAP),
     ],
-    stats: (records) => {
+    usesPresence: true,
+    stats: (records, { presence = {} } = {}) => {
       const cap = sum(records, (r) => r.config.capacity);
-      const joined = sum(records, (r) => r.config.joined);
+      // Participants are measured from presence, never typed in.
+      const inRooms = presenceSum(records, presence, "liveNow");
       return [
-        { label: "Rooms", value: String(records.length), footer: "All types" },
+        { label: "Rooms", value: String(records.length), footer: "All Types" },
         { label: "Open", value: String(count(records, (r) => r.status === "Open")), footer: "Accepting people" },
-        { label: "Participants", value: String(joined), footer: "Across rooms" },
-        { label: "Fill", value: pct(cap ? (joined / cap) * 100 : 0), footer: "Of capacity" },
+        { label: "Participants", value: String(inRooms), footer: "In rooms now" },
+        { label: "Fill", value: pct(cap ? (inRooms / cap) * 100 : 0), footer: "Of capacity" },
       ];
     },
     defaults: {
       status: "Draft",
       config: {
-        kind: "Discussion", topic: "", facilitator: "", parentSession: "", capacity: 0,
-        joined: 0, duration: "", joinUrl: "", autoAssign: false, description: "",
+        kind: "Discussion", topic: "", facilitator: "", parentSession: "",
+        parentSessionId: "", capacity: 0, duration: "", joinUrl: "",
+        autoAssign: false, assigned: [], description: "", access: DEFAULT_ACCESS,
       },
     },
     createFields: [
-      nameField("Room name", "e.g. Table 4 — Scaling Teams"),
+      nameField("Room Name", "e.g. Table 4 — Scaling Teams"),
       c("kind", "Type", "select", { options: optionsFrom(["Discussion", "Workshop", "Networking", "Roundtable"]) }),
       c("facilitator", "Facilitator", "text", { placeholder: "Who leads the room" }),
+      c("access", "Access", "access", { hint: "Choose how attendees unlock this room." }),
     ],
     detail: {
       depth: "rich",
@@ -1204,7 +1270,7 @@ export const MODULES = {
           icon: Network,
           desc: "What this room is about and how long it runs.",
           fields: [
-            nameField("Room name"),
+            nameField("Room Name"),
             statusField(BREAKOUT_STATUS_MAP),
             c("kind", "Type", "select", { options: optionsFrom(["Discussion", "Workshop", "Networking", "Roundtable"]) }),
             c("topic", "Topic", "text", { placeholder: "What this room discusses" }),
@@ -1218,7 +1284,10 @@ export const MODULES = {
           desc: "Who leads the room and the main session it splits from.",
           fields: [
             c("facilitator", "Facilitator", "text", { placeholder: "Who leads the room" }),
-            c("parentSession", "Parent session", "text", { placeholder: "The main session this splits from" }),
+            refField("parentSessionId", "Parent session", "session", {
+              placeholder: "The main session this splits from",
+              hint: "Sibling rooms sharing this session are assigned and timed together.",
+            }),
           ],
         },
         {
@@ -1228,13 +1297,20 @@ export const MODULES = {
           desc: "How many people the room holds and how they're placed.",
           fields: [
             c("capacity", "Capacity", "number", { placeholder: "e.g. 12" }),
-            c("joined", "Joined", "number", { placeholder: "e.g. 8" }),
             c("autoAssign", "Auto-assign attendees", "switch", { hint: "Spread attendees across rooms automatically." }),
           ],
         },
         {
-          key: "access",
-          label: "Access & notes",
+          key: "assign",
+          label: "Rounds & roster",
+          icon: ListChecks,
+          desc: "Place entitled attendees across the sibling rooms, run the round clock, and broadcast to everyone.",
+          render: ({ record }) => <BreakoutAssign record={record} />,
+        },
+        accessSection("How attendees unlock this room — free, membership, purchase, or rental."),
+        {
+          key: "notes",
+          label: "Join & notes",
           icon: Wifi,
           desc: "The join link and any prep notes for the room.",
           fields: [
@@ -1283,7 +1359,7 @@ export const MODULES = {
       },
     },
     createFields: [
-      nameField("Room name", "e.g. Northwind Labs Lounge"),
+      nameField("Room Name", "e.g. Northwind Labs Lounge"),
       c("sponsor", "Sponsor", "text", { placeholder: "e.g. Northwind Labs" }),
       c("tier", "Tier", "select", { options: optionsFrom(TIER_VALUES) }),
     ],
@@ -1296,7 +1372,7 @@ export const MODULES = {
           icon: SquarePen,
           desc: "The sponsor, their tier, and what kind of room this is.",
           fields: [
-            nameField("Room name"),
+            nameField("Room Name"),
             statusField(SPONSOR_ROOM_STATUS_MAP),
             c("sponsor", "Sponsor"),
             c("tier", "Tier", "select", { options: optionsFrom(TIER_VALUES) }),
@@ -1459,22 +1535,23 @@ export const MODULES = {
       nameCol((r) => [r.config.session, r.config.speaker].filter(Boolean).join(" · ")),
       pillCol("mode", "Mode", (r) => r.config.mode, SIMULIVE_MODE_MAP),
       textCol("access", "Access", (r) => accessSummary(r.config.access)),
-      textCol("premiereAt", "Premiere", (r) => r.config.premiereAt),
-      textCol("views", "Views", (r) => (Number(r.config.views) || 0).toLocaleString()),
+      textCol("premiereAt", "Premiere", scheduleLabel),
+      textCol("viewers", "Viewers", (r) => (r._presence?.uniqueViewers || 0).toLocaleString()),
       statusCol(SIMULIVE_STATUS_MAP),
     ],
-    stats: (records) => [
+    usesPresence: true,
+    stats: (records, { presence = {} } = {}) => [
       { label: "Broadcasts", value: String(records.length), footer: "All modes" },
       { label: "Premiering", value: String(count(records, (r) => r.status === "Premiering")), footer: "As-live now" },
       { label: "Available", value: String(count(records, (r) => r.status === "Available")), footer: "On demand" },
-      { label: "Total views", value: String(sum(records, (r) => r.config.views)), footer: "Across broadcasts" },
+      { label: "Viewers", value: String(presenceSum(records, presence, "uniqueViewers")), footer: "Measured, all time" },
     ],
     defaults: {
       status: "Draft",
       config: {
         mode: "Simulive", videoUrl: "", premiereAt: "", duration: "", gated: false,
-        views: 0, session: "", speaker: "", eventId: "", captionsOn: false, description: "",
-        access: DEFAULT_ACCESS,
+        session: "", speaker: "", sessionId: "", speakerId: "", eventId: "",
+        captionsOn: false, description: "", access: DEFAULT_ACCESS,
       },
     },
     createFields: [
@@ -1498,9 +1575,9 @@ export const MODULES = {
             nameField("Title"),
             statusField(SIMULIVE_STATUS_MAP),
             c("mode", "Mode", "select", { options: optionsFrom(["Simulive", "On-demand", "Encore"]) }),
-            c("session", "Session", "text", { placeholder: "e.g. Main Stage · Day 1" }),
-            c("speaker", "Speaker"),
-            c("premiereAt", "Premiere time", "text", { placeholder: "e.g. Day 2 · 10:00" }),
+            refField("sessionId", "Session", "session"),
+            refField("speakerId", "Speaker", "speaker"),
+            dateTimeField("startsAt", "Premiere time", { hint: "When the pre-recorded content plays as-live." }),
             c("duration", "Duration", "text", { placeholder: "e.g. 42:15" }),
             c("description", "Description", "textarea", { placeholder: "Shown alongside the player…" }),
           ],
@@ -1520,7 +1597,6 @@ export const MODULES = {
           fields: [
             c("access", "Access model", "access"),
             c("captionsOn", "Captions available", "switch", { hint: "Show closed captions on the player." }),
-            c("views", "Views", "number", { placeholder: "e.g. 1200" }),
           ],
         },
         {

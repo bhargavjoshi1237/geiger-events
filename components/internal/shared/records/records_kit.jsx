@@ -56,8 +56,24 @@ const emptyDraft = (mod) => ({
   // An `image` create field parks its File here as { file, preview } until the
   // row exists (storage RLS admits writes only for a saved, owned record).
   coverUrl: "",
+  startsAt: "",
+  endsAt: "",
   config: { ...mod.defaults.config },
 });
+
+// Measured presence for the loaded rows, for modules that declare usesPresence.
+// Fails open: any problem leaves the map empty and the stats read zero rather
+// than breaking the screen.
+async function fetchPresence(ids) {
+  if (!ids.length) return {};
+  try {
+    const res = await fetch(`/api/live/stats/bulk?roomIds=${ids.join(",")}`);
+    if (!res.ok) return {};
+    return await res.json();
+  } catch {
+    return {};
+  }
+}
 
 // --- Create dialog -----------------------------------------------------------
 
@@ -342,6 +358,7 @@ export function RecordsScreen({ mod, api }) {
   const { recordId, openRecord, closeRecord } = useWorkspaceUrl();
   const { projectId } = useProject();
   const [userId, setUserId] = useState(null);
+  const [presence, setPresence] = useState({});
 
   const selectedRecord = useMemo(
     () => (recordId ? records.find((r) => r.id === recordId) || null : null),
@@ -354,12 +371,14 @@ export function RecordsScreen({ mod, api }) {
       if (!alive) return;
       setRecords(rows ?? []);
       setLoading(false);
+      if (!mod.usesPresence) return;
+      fetchPresence((rows ?? []).map((r) => r.id)).then((p) => alive && setPresence(p));
     });
     getUser().then((u) => alive && setUserId(u?.id || null));
     return () => {
       alive = false;
     };
-  }, [projectId, api, mod.key]);
+  }, [projectId, api, mod.key, mod.usesPresence]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -373,7 +392,16 @@ export function RecordsScreen({ mod, api }) {
     });
   }, [records, search, filters, mod]);
 
-  const stats = useMemo(() => mod.stats(records), [records, mod]);
+  const stats = useMemo(() => mod.stats(records, { presence }), [records, mod, presence]);
+
+  // Column renderers read their row's measured numbers off `_presence`.
+  const rows = useMemo(
+    () =>
+      mod.usesPresence
+        ? filtered.map((r) => ({ ...r, _presence: presence[r.id] || null }))
+        : filtered,
+    [filtered, presence, mod],
+  );
 
   // `pending` is a create-dialog image ({ file, preview, upload }) that had to
   // wait for the row to exist before storage RLS would accept it.
@@ -412,6 +440,8 @@ export function RecordsScreen({ mod, api }) {
       name: draft.name.trim(),
       status: draft.status,
       coverUrl: pending ? pending.preview : draft.coverUrl || "",
+      startsAt: draft.startsAt || null,
+      endsAt: draft.endsAt || null,
       config: draft.config,
       createdBy: userId,
       projectId,
@@ -428,6 +458,8 @@ export function RecordsScreen({ mod, api }) {
         name: updated.name,
         status: updated.status,
         coverUrl: updated.coverUrl,
+        startsAt: updated.startsAt ?? "",
+        endsAt: updated.endsAt ?? "",
         config: updated.config,
       })
       .then((saved) => {
@@ -574,7 +606,7 @@ export function RecordsScreen({ mod, api }) {
       ) : (
         <DataTable
           columns={columns}
-          data={filtered}
+          data={rows}
           getRowKey={(r) => r.id}
           onRowClick={(r) => openRecord(r.id)}
           empty={

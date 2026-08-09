@@ -36,7 +36,7 @@ export const VENUE_STATUS_FILTER_OPTIONS = [
 ];
 
 export const VENUE_TYPE_FILTER_OPTIONS = [
-  { value: "all", label: "All types" },
+  { value: "all", label: "All Types" },
   ...Object.keys(VENUE_TYPE_MAP).map((t) => ({ value: t, label: t })),
 ];
 

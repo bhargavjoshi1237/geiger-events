@@ -83,6 +83,16 @@ export const ROOM_STATUS_MAP = {
   Ended: { label: "Ended", variant: "outline", dotClass: "bg-[#525252]" },
 };
 
+// The state resolveRoomState() derives from a room's schedule — distinct from the
+// row's own status, which the organiser sets by hand.
+export const LIVE_STATE_MAP = {
+  Live: { label: "Live", variant: "success", dotClass: "bg-emerald-400" },
+  "Opening soon": { label: "Opening soon", variant: "warning", dotClass: "bg-amber-400" },
+  Scheduled: { label: "Scheduled", variant: "info", dotClass: "bg-sky-400" },
+  Ended: { label: "Ended", variant: "outline", dotClass: "bg-[#525252]" },
+  Manual: { label: "Manual", variant: "neutral", dotClass: "bg-[#737373]" },
+};
+
 export const ROOM_KIND_MAP = {
   Digital: { label: "Digital", variant: "info", dotClass: "bg-sky-400" },
   "On-site": { label: "On-site", variant: "purple", dotClass: "bg-violet-400" },

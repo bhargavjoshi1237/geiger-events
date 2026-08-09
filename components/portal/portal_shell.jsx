@@ -12,6 +12,7 @@ import PortalTickets from "./portal_tickets";
 import PortalOrders from "./portal_orders";
 import PortalMemberships from "./portal_memberships";
 import PortalWatch from "./portal_watch";
+import PortalLive from "./portal_live";
 import PortalMessages from "./portal_messages";
 import PortalNotifications from "./portal_notifications";
 import PortalCommunity from "./portal_community";
@@ -210,6 +211,11 @@ export function PortalShell({ member: initialMember }) {
     }
     if (tab === "notifications") {
       return <PortalNotifications items={notifications.items} loading={false} />;
+    }
+    if (tab === "live") {
+      // Live owns its own fetch — its rooms go stale within a minute, so the
+      // shell's one-shot load on mount would be wrong here.
+      return <PortalLive />;
     }
     if (tab === "watch") {
       return <PortalWatch items={watch || []} loading={watch === null} />;

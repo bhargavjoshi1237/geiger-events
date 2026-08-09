@@ -84,7 +84,7 @@ import { AudienceBuilder } from "@/components/internal/shared/audience/audience_
 import { normalizeSpec, isEmptyFilters, describeSpec } from "@/lib/audience/resolve";
 
 const MODE_FILTER = [
-  { value: "all", label: "All types" },
+  { value: "all", label: "All Types" },
   { value: "open", label: "Open discussion" },
   { value: "announce", label: "Announce-only" },
 ];

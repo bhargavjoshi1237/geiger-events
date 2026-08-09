@@ -43,7 +43,7 @@ export const MODULES = {
     statusMap: REPORT_STATUS_MAP,
     filters: [
       statusFilter(REPORT_STATUS_MAP),
-      configFilter("type", REPORT_TYPES, "All types"),
+      configFilter("type", REPORT_TYPES, "All Types"),
     ],
     columns: [
       nameCol((r) => r.config.frequency),

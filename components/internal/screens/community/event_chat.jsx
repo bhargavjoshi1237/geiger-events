@@ -51,7 +51,7 @@ import {
 } from "@/lib/supabase/chat";
 
 const MODE_FILTER = [
-  { value: "all", label: "All types" },
+  { value: "all", label: "All Types" },
   { value: "open", label: "Open discussion" },
   { value: "announce", label: "Announce-only" },
 ];
