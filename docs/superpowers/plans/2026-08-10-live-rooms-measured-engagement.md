@@ -361,7 +361,14 @@ export function resolveItemGrant({
 Run: `node --test lib/live/access.test.js`
 Expected: PASS — `pass 6`, `fail 0`.
 
-> If the import of `@/components/...` fails under bare `node --test` (path alias unresolved), move `normalizeAccess` usage to a locally-defined normaliser inside `lib/live/access.js` that mirrors `access_control.jsx` exactly, and note the duplication in a comment. Do **not** change the test.
+> **Single source of truth (decided up front — do not duplicate).** `@/…` aliases
+> do not resolve under bare `node --test`, so `normalizeAccess` **moves** into
+> `lib/live/access.js` and becomes its owner. Export it from there, and change
+> `components/internal/shared/records/access_control.jsx` to re-export it
+> (`export { normalizeAccess } from "@/lib/live/access";`) instead of defining
+> its own copy. Every existing caller of `normalizeAccess` keeps working
+> unchanged. There must be exactly one implementation in the tree — a second
+> copy is a defect, not a workaround.
 
 - [ ] **Step 5: Refactor `lib/portal/watch.js` to delegate**
 
@@ -1233,19 +1240,66 @@ Remove these field specs entirely:
 - `breakout`: `c("joined", "Joined", "number", …)`
 - `recording` and `simulive`: `c("views", "Views", "number", …)`
 
-Replace each module's corresponding `stats` entry and column to read from the presence rollup passed into the screen (Task 12 supplies it). Until then, render `—`.
+Each removed metric is replaced in the same task by a measured one — Steps 5–7 below. The screens must never be left rendering `—`.
 
-- [ ] **Step 5: Verify nothing regressed**
+- [ ] **Step 5: Add the bulk presence route**
 
-Run `npm run dev`, open each of the five screens, create a record, edit it, and delete it.
+Create `app/api/live/stats/bulk/route.js`:
+
+```js
+import { NextResponse } from "next/server";
+import { presenceStatsByRoom } from "@/lib/live/presence";
+
+// GET ?roomIds=a,b,c -> { [roomId]: { liveNow, uniqueViewers, secondsWatched } }
+export async function GET(request) {
+  const raw = new URL(request.url).searchParams.get("roomIds") || "";
+  const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!ids.length) return NextResponse.json({});
+  return NextResponse.json(await presenceStatsByRoom(ids));
+}
+```
+
+- [ ] **Step 6: Thread presence into the records screen**
+
+In `components/internal/shared/records/records_kit.jsx`, after the records fetch resolves, if the module declares `usesPresence: true`, fetch the bulk stats for the loaded ids into `presence` state and pass it as the second argument to `module.stats(records, { presence })`, and expose it to column renderers via the row's `_presence`.
+
+- [ ] **Step 7: Use the measured numbers in the module stats**
+
+Set `usesPresence: true` on `room`, `webinar` and `breakout`, and rewrite their `stats` to read real numbers, e.g. for `room`:
+
+```js
+    stats: (records, { presence = {} } = {}) => [
+      { label: "Rooms", value: String(records.length), footer: "On-site & digital" },
+      { label: "Live now", value: String(count(records, (r) => r.status === "Live")), footer: "Streaming" },
+      {
+        label: "Watching",
+        value: String(records.reduce((s, r) => s + (presence[r.id]?.liveNow || 0), 0)),
+        footer: "Attendees in rooms",
+      },
+      {
+        label: "Unique viewers",
+        value: String(records.reduce((s, r) => s + (presence[r.id]?.uniqueViewers || 0), 0)),
+        footer: "All time",
+      },
+    ],
+```
+
+Do the equivalent for `webinar` (show rate = presence-derived attendance ÷ the manual `registered`) and `breakout` (participants from presence, fill % against summed capacity).
+
+- [ ] **Step 8: Verify nothing regressed, and that the numbers are real**
+
+Run `npm run dev`, open each of the five screens, create a record, edit it, delete it.
 Expected: all three list states render, the access column shows a summary, the datetime pickers persist, and the reference dropdowns list sibling records.
 
-- [ ] **Step 6: Lint and commit**
+Then open a room as a member in one browser and the organiser screen in another.
+Expected: **Watching** reaches 1 within 30s and returns to 0 within 90s of closing the member tab. No StatsBar shows `—`.
+
+- [ ] **Step 9: Lint and commit**
 
 ```bash
-npx eslint components/internal/screens/conference/modules.jsx
-git add components/internal/screens/conference/modules.jsx
-git commit -m "feat(conference): gate rooms, schedule them, drop fabricated metrics"
+npx eslint components/internal/screens/conference/modules.jsx components/internal/shared/records/records_kit.jsx app/api/live/stats/bulk/route.js
+git add components/internal/screens/conference/modules.jsx components/internal/shared/records/records_kit.jsx app/api/live/stats/
+git commit -m "feat(conference): gate and schedule rooms, replace typed metrics with measured presence"
 ```
 
 ---
@@ -1421,96 +1475,54 @@ export function assignAttendees(attendees, rooms, { mode = "balanced" } = {}) {
 Run: `node --test lib/live/assign.test.js`
 Expected: PASS — `pass 5`, `fail 0`.
 
-- [ ] **Step 5: Build the roster UI**
+- [ ] **Step 5: Build the entitled-attendee roster source**
 
-Create `breakout_assign.jsx`: a `SectionCard` listing sibling breakout rooms in the same `parentSessionId`, a mode selector (`balanced` / `sequential`), an **Assign** button calling `assignAttendees` over the parent session's entitled members (from `GET /api/portal/live` equivalent on the organiser side — reuse `presenceStatsByRoom` for who is present), writing the result to each room's `config.assigned` array via `conferenceApi.update`. Show unassigned attendees in a muted footer with a count.
+The engine needs the people to place. Presence is **not** that list — it only
+says who is watching right now. Build the roster from the same entitlement
+machinery Task 8 extracted.
 
-- [ ] **Step 6: Wire into the breakout detail nav and verify**
-
-Add the section to the `breakout` module's detail nav. Create three breakout rooms with capacity 2 and assign 5 attendees.
-Expected: 4 placed, 1 listed as unassigned, and no attendee appearing twice.
-
-- [ ] **Step 7: Lint and commit**
-
-```bash
-npx eslint lib/live/assign.js lib/live/assign.test.js components/internal/screens/conference/breakout_assign.jsx components/internal/screens/conference/modules.jsx
-git add lib/live/ components/internal/screens/conference/
-git commit -m "feat(conference): breakout assignment engine and roster"
-```
-
----
-
-### Task 13: Derived metrics on the module StatsBars
-
-Closes the loop opened in Task 10 Step 4.
-
-**Files:**
-- Modify: `components/internal/screens/conference/modules.jsx`, and the records screen that renders module stats (`components/internal/shared/records/records_kit.jsx`)
-
-**Interfaces:**
-- Consumes: `presenceStatsByRoom` via a new `GET /api/live/stats/bulk?roomIds=a,b,c`.
-- Produces: module `stats(records, extra)` gains a second `extra` argument carrying `{ presence }`.
-
-- [ ] **Step 1: Add the bulk stats route**
-
-Create `app/api/live/stats/bulk/route.js`:
+Create `app/api/live/roster/route.js`:
 
 ```js
 import { NextResponse } from "next/server";
-import { presenceStatsByRoom } from "@/lib/live/presence";
+import { listEntitledMembers } from "@/lib/live/roster";
 
-// GET ?roomIds=a,b,c -> { [roomId]: { liveNow, uniqueViewers, secondsWatched } }
+// GET ?sessionId= -> { members: [{ id, name, email }] }. Everyone entitled to
+// the parent session's event — the pool a breakout assignment draws from.
 export async function GET(request) {
-  const raw = new URL(request.url).searchParams.get("roomIds") || "";
-  const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
-  if (!ids.length) return NextResponse.json({});
-  return NextResponse.json(await presenceStatsByRoom(ids));
+  const sessionId = new URL(request.url).searchParams.get("sessionId");
+  if (!sessionId) return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  return NextResponse.json({ members: await listEntitledMembers(sessionId) });
 }
 ```
 
-- [ ] **Step 2: Thread presence into the records screen**
+Create `lib/live/roster.js` exporting
+`listEntitledMembers(sessionId) → [{ id, name, email }]`. It reads the session
+record to find its `eventId`, then loads active `membership_members` for that
+project via `adminClient()`, reusing `loadMemberGrants` from
+`lib/portal/grants.js` (Task 8) to decide who the event covers. Return `[]` on
+any failure — fail closed, and `console.error("[live.roster]", …)`.
 
-In `records_kit.jsx`, after the records fetch resolves, if the module declares `usesPresence: true`, fetch the bulk stats for the loaded ids into `presence` state and pass it as the second argument to `module.stats(records, { presence })` and into column renderers via the row's `_presence`.
+- [ ] **Step 6: Build the roster UI**
 
-- [ ] **Step 3: Use it in the module stats**
+Create `breakout_assign.jsx`: a `SectionCard` listing sibling breakout rooms in the same `parentSessionId`, a mode selector (`balanced` / `sequential`), an **Assign** button that fetches `/api/live/roster?sessionId=<parentSessionId>` and calls `assignAttendees` over the returned members, writing the result to each room's `config.assigned` array via `conferenceApi.update`. Show unassigned attendees in a muted footer with a count.
 
-Set `usesPresence: true` on `room`, `webinar` and `breakout`, and rewrite their `stats` to read real numbers, e.g. for `room`:
+- [ ] **Step 7: Wire into the breakout detail nav and verify**
 
-```js
-    stats: (records, { presence = {} } = {}) => [
-      { label: "Rooms", value: String(records.length), footer: "On-site & digital" },
-      { label: "Live now", value: String(count(records, (r) => r.status === "Live")), footer: "Streaming" },
-      {
-        label: "Watching",
-        value: String(records.reduce((s, r) => s + (presence[r.id]?.liveNow || 0), 0)),
-        footer: "Attendees in rooms",
-      },
-      {
-        label: "Unique viewers",
-        value: String(records.reduce((s, r) => s + (presence[r.id]?.uniqueViewers || 0), 0)),
-        footer: "All time",
-      },
-    ],
-```
+Add the section to the `breakout` module's detail nav. Create three breakout rooms with capacity 2 and assign 5 attendees.
+Expected: 4 placed, 1 listed as unassigned, and no attendee appearing twice. Confirm the roster came from entitled members, not from who happened to be watching.
 
-Do the equivalent for `webinar` (show rate = attended from presence ÷ manual `registered`) and `breakout` (participants from presence, fill % against summed capacity).
-
-- [ ] **Step 4: Verify with real presence**
-
-Open a room as a member in one browser and the organiser screen in another.
-Expected: **Watching** goes to 1 within 30s and back to 0 within 90s of closing the member tab.
-
-- [ ] **Step 5: Lint and commit**
+- [ ] **Step 8: Lint and commit**
 
 ```bash
-npx eslint app/api/live/stats/bulk/route.js components/internal/shared/records/records_kit.jsx components/internal/screens/conference/modules.jsx
-git add app/api/live/ components/internal/shared/records/records_kit.jsx components/internal/screens/conference/modules.jsx
-git commit -m "feat(conference): StatsBars read measured presence instead of typed numbers"
+npx eslint lib/live/assign.js lib/live/assign.test.js lib/live/roster.js app/api/live/roster/route.js components/internal/screens/conference/breakout_assign.jsx components/internal/screens/conference/modules.jsx
+git add lib/live/ app/api/live/roster/ components/internal/screens/conference/
+git commit -m "feat(conference): breakout assignment engine and entitled-attendee roster"
 ```
 
 ---
 
-### Task 14: Breakout timer and broadcast-to-all-rooms
+### Task 13: Breakout timer and broadcast-to-all-rooms
 
 Completes spec §2.5. Depends on Task 12's roster existing.
 
