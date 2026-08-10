@@ -165,12 +165,11 @@ export function BreakoutAssign({ record }) {
 
   if (!parentId) {
     return (
-      <SectionCard title="Rounds & roster" description="Link a parent session first.">
-        <p className="text-sm text-text-secondary">
-          Pick a parent session under <span className="text-foreground">Facilitator &amp; session</span>.
-          Rooms sharing that session are assigned, timed and broadcast to together.
-        </p>
-      </SectionCard>
+      // No header — the section heading above already says "Rounds & roster".
+      <p className="text-sm text-text-secondary">
+        Pick a parent session under <span className="text-foreground">Facilitator &amp; session</span>.
+        Rooms sharing that session are assigned, timed and broadcast to together.
+      </p>
     );
   }
 
@@ -186,6 +185,7 @@ export function BreakoutAssign({ record }) {
   return (
     <div className="space-y-6">
       <SectionCard
+        bare
         title="Assignment"
         description={`${siblings.length} room${siblings.length === 1 ? "" : "s"} in this round · ${placed} of ${seats} seats filled.`}
       >
@@ -258,6 +258,7 @@ export function BreakoutAssign({ record }) {
       </SectionCard>
 
       <SectionCard
+        bare
         title="Round clock"
         description="One countdown shared by every room in this round."
         action={
@@ -304,6 +305,7 @@ export function BreakoutAssign({ record }) {
       </SectionCard>
 
       <SectionCard
+        bare
         title="Broadcast"
         description="One message every room in this round sees straight away."
       >

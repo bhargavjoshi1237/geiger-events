@@ -91,6 +91,7 @@ export function LiveControl({ record, commit }) {
   return (
     <div className="space-y-6">
       <SectionCard
+        bare
         title="Room state"
         description="Attendees see this state in their Live tab."
         action={<StatusPill status={resolved.state} map={LIVE_STATE_MAP} />}
@@ -134,6 +135,7 @@ export function LiveControl({ record, commit }) {
       </SectionCard>
 
       <SectionCard
+        bare
         title="Who's in the room"
         description="Measured from attendee heartbeats — refreshes every 15 seconds."
       >

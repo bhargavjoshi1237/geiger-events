@@ -206,10 +206,13 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
   }
 
   const isRich = mod.detail.depth === "rich";
-  // Optional rich header card for a module's detail (e.g. the Speaker profile
-  // hero). When present it owns the title/status, so the top bar keeps only the
-  // back link + actions.
+  // Optional block under the top bar (e.g. the Speaker identity strip). A hero
+  // owns the title/status unless the module sets `heroOwnsTitle: false`, in
+  // which case the top bar keeps the page title and `titleBadges` contributes
+  // any module-specific badges beside the status pill.
   const Hero = mod.detail.hero || null;
+  const heroOwnsTitle = Boolean(Hero) && mod.detail.heroOwnsTitle !== false;
+  const TitleBadges = mod.detail.titleBadges || null;
   const nav = useMemo(() => (isRich ? mod.detail.nav : []), [isRich, mod]);
   const active = isRich
     ? nav.some((i) => i.key === rawSection)
@@ -248,7 +251,7 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
             <ArrowLeft className="h-3.5 w-3.5" />
             {mod.title}
           </button>
-          {!Hero ? (
+          {!heroOwnsTitle ? (
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
                 {form.name || `Untitled ${mod.singular.toLowerCase()}`}
@@ -257,6 +260,7 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
               {mod.statusMap ? (
                 <StatusPill status={form.status} map={mod.statusMap} />
               ) : null}
+              {TitleBadges ? <TitleBadges record={form} /> : null}
             </div>
           ) : null}
         </div>
@@ -291,14 +295,9 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
             {activeItem.render ? (
               activeItem.render({ record: form, patch, commit })
             ) : (
-              // `bare` drops the card around the fields — the section heading is
-              // already rendered above it, so the box is redundant chrome.
-              <FieldSection
-                fields={activeItem.fields}
-                values={form}
-                onPatch={patch}
-                bare={activeItem.bare}
-              />
+              // Always `bare` — the section heading is rendered above, so a
+              // bordered card around the fields is redundant chrome.
+              <FieldSection fields={activeItem.fields} values={form} onPatch={patch} bare />
             )}
           </div>
 
@@ -333,7 +332,8 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
           </aside>
         </div>
       ) : (
-        <div className="mx-auto w-full max-w-3xl space-y-10 pt-2">
+        // Left-aligned, not centred — the panels share the header's left edge.
+        <div className="w-full max-w-3xl space-y-10 pt-2">
           {mod.detail.panels.map((panel) => (
             <FieldSection
               key={panel.title}

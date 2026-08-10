@@ -49,7 +49,7 @@ import { conferenceApi } from "@/lib/supabase/conference";
 import { describeSpec, resolveAudienceEmails } from "@/lib/audience/resolve";
 import { formatDate, initials } from "@/components/internal/screens/events/sample_data";
 import { toEmbed } from "@/lib/video-embed";
-import { SPEAKER_STATUS_MAP, PORTAL_STATUS_MAP, AGENDA_ASSIGN_STATUS_MAP } from "./constants";
+import { PORTAL_STATUS_MAP, AGENDA_ASSIGN_STATUS_MAP } from "./constants";
 
 // Custom detail-editor sections shared by the Conference modules that outgrow the
 // declarative field kit — attaching a record to real events, previewing an
@@ -87,6 +87,14 @@ function EventMeta({ event }) {
   );
 }
 
+function LoadingEvents() {
+  return (
+    <div className="flex items-center gap-2 py-4 text-sm text-text-secondary">
+      <Loader2 className="h-4 w-4 animate-spin" /> Loading events…
+    </div>
+  );
+}
+
 function NoEvents() {
   const { setTab } = useWorkspaceUrl();
   return (
@@ -107,38 +115,32 @@ function NoEvents() {
 // --- Single-event link (backstage / room) ------------------------------------
 
 // EventLinkField — attach a record to ONE event (stored at config[configKey]).
-export function EventLinkField({ record, commit, configKey = "eventId", title = "Linked event", description }) {
+// Heading-less: the detail section this renders in supplies the heading.
+export function EventLinkField({ record, commit, configKey = "eventId" }) {
   const { events, loading } = useProjectEvents();
   const current = record.config?.[configKey] || "";
 
   const set = (id) =>
     commit({ config: { ...(record.config || {}), [configKey]: id === "__none" ? "" : id } });
 
+  if (loading) return <LoadingEvents />;
+  if (!events.length) return <NoEvents />;
+
   return (
-    <SectionCard title={title} description={description}>
-      {loading ? (
-        <div className="flex items-center gap-2 py-4 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading events…
-        </div>
-      ) : events.length === 0 ? (
-        <NoEvents />
-      ) : (
-        <Select value={current || "__none"} onValueChange={set}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select an event" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none">Not linked to an event</SelectItem>
-            {events.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.name}
-                {e.date ? ` · ${formatDate(e.date)}` : ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-    </SectionCard>
+    <Select value={current || "__none"} onValueChange={set}>
+      <SelectTrigger>
+        <SelectValue placeholder="Select an event" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none">Not linked to an event</SelectItem>
+        {events.map((e) => (
+          <SelectItem key={e.id} value={e.id}>
+            {e.name}
+            {e.date ? ` · ${formatDate(e.date)}` : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -146,7 +148,7 @@ export function EventLinkField({ record, commit, configKey = "eventId", title = 
 
 // EventMultiField — attach a record to MANY events (stored at config[configKey]
 // as an array of event ids). Searchable checkbox list.
-export function EventMultiField({ record, commit, configKey = "eventIds", title = "Attached events", description }) {
+export function EventMultiField({ record, commit, configKey = "eventIds" }) {
   const { events, loading } = useProjectEvents();
   const [q, setQ] = useState("");
   const selected = Array.isArray(record.config?.[configKey])
@@ -168,73 +170,66 @@ export function EventMultiField({ record, commit, configKey = "eventIds", title 
     commit({ config: { ...(record.config || {}), [configKey]: next } });
   };
 
+  if (loading) return <LoadingEvents />;
+  if (!events.length) return <NoEvents />;
+
   return (
-    <SectionCard title={title} description={description}>
-      {loading ? (
-        <div className="flex items-center gap-2 py-4 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading events…
-        </div>
-      ) : events.length === 0 ? (
-        <NoEvents />
-      ) : (
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search events…"
-              className="pl-8"
-            />
-          </div>
-          <div className="max-h-72 space-y-1.5 overflow-y-auto">
-            {filtered.map((e) => {
-              const on = selected.includes(e.id);
-              return (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => toggle(e.id)}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
-                    on
-                      ? "border-border-strong bg-surface-hover"
-                      : "border-border bg-surface-card hover:bg-surface-hover",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
-                      on
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border-strong bg-transparent",
-                    )}
-                  >
-                    {on ? <Check className="h-3.5 w-3.5" /> : null}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-foreground">
-                      {e.name}
-                    </span>
-                    <EventMeta event={e} />
-                  </span>
-                </button>
-              );
-            })}
-            {filtered.length === 0 ? (
-              <p className="px-1 py-3 text-sm text-text-tertiary">
-                No events match “{q}”.
-              </p>
-            ) : null}
-          </div>
-          {selected.length ? (
-            <p className="text-xs text-text-secondary">
-              Attached to {selected.length} event{selected.length === 1 ? "" : "s"}.
-            </p>
-          ) : null}
-        </div>
-      )}
-    </SectionCard>
+    <div className="space-y-3">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search events…"
+          className="pl-8"
+        />
+      </div>
+      <div className="max-h-72 space-y-1.5 overflow-y-auto">
+        {filtered.map((e) => {
+          const on = selected.includes(e.id);
+          return (
+            <button
+              key={e.id}
+              type="button"
+              onClick={() => toggle(e.id)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                on
+                  ? "border-border-strong bg-surface-hover"
+                  : "border-border bg-surface-card hover:bg-surface-hover",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                  on
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border-strong bg-transparent",
+                )}
+              >
+                {on ? <Check className="h-3.5 w-3.5" /> : null}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-foreground">
+                  {e.name}
+                </span>
+                <EventMeta event={e} />
+              </span>
+            </button>
+          );
+        })}
+        {filtered.length === 0 ? (
+          <p className="px-1 py-3 text-sm text-text-tertiary">
+            No events match “{q}”.
+          </p>
+        ) : null}
+      </div>
+      {selected.length ? (
+        <p className="text-xs text-text-secondary">
+          Attached to {selected.length} event{selected.length === 1 ? "" : "s"}.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -291,24 +286,19 @@ export function RecordingVideoField({ record, commit }) {
   };
 
   return (
-    <SectionCard
-      title="Video link"
-      description="An external URL (YouTube, Vimeo, or a direct file). Geiger fetches and plays it client-side — it never hosts the video."
-    >
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Link2 className="h-4 w-4 shrink-0 text-text-secondary" />
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onBlur={persist}
-            onKeyDown={(e) => e.key === "Enter" && persist()}
-            placeholder="https://youtube.com/watch?v=…"
-          />
-        </div>
-        <VideoPreview url={record.config?.videoUrl} />
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Link2 className="h-4 w-4 shrink-0 text-text-secondary" />
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onBlur={persist}
+          onKeyDown={(e) => e.key === "Enter" && persist()}
+          placeholder="https://youtube.com/watch?v=…"
+        />
       </div>
-    </SectionCard>
+      <VideoPreview url={record.config?.videoUrl} />
+    </div>
   );
 }
 
@@ -344,47 +334,42 @@ export function RecordingShareField({ record, commit }) {
   };
 
   return (
-    <SectionCard
-      title="Shareable link"
-      description="Turn on a public replay page anyone can open — no account needed. Turn it off to revoke access instantly."
-    >
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-surface-card px-4 py-3">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">Public replay page</p>
-            <p className="text-xs text-text-secondary">
-              {isPublic ? "Live — anyone with the link can watch." : "Private — only your team can see this recording."}
-            </p>
-          </div>
-          <Switch checked={isPublic} onCheckedChange={setPublic} aria-label="Public replay page" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-surface-card px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">Public replay page</p>
+          <p className="text-xs text-text-secondary">
+            {isPublic ? "Live — anyone with the link can watch." : "Private — only your team can see this recording."}
+          </p>
         </div>
-
-        {isPublic ? (
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-border bg-surface-subtle px-3">
-              <span className="truncate text-sm text-muted-foreground">{link}</span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copy}
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(link, "_blank", "noopener,noreferrer")}
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            >
-              <ExternalLink className="h-4 w-4" /> Open
-            </Button>
-          </div>
-        ) : null}
+        <Switch checked={isPublic} onCheckedChange={setPublic} aria-label="Public replay page" />
       </div>
-    </SectionCard>
+
+      {isPublic ? (
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-border bg-surface-subtle px-3">
+            <span className="truncate text-sm text-muted-foreground">{link}</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={copy}
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? "Copied" : "Copy"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(link, "_blank", "noopener,noreferrer")}
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          >
+            <ExternalLink className="h-4 w-4" /> Open
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -402,7 +387,9 @@ function normalizeHref(kind, value) {
   return /^https?:\/\//i.test(v) ? v : `https://${v}`;
 }
 
-function SocialLink({ href, icon: Icon, label }) {
+// `compact` drops the button frame for inline strips; the boxed variant is for
+// the card-style heroes.
+function SocialLink({ href, icon: Icon, label, compact = false }) {
   if (!href) return null;
   return (
     <a
@@ -411,100 +398,75 @@ function SocialLink({ href, icon: Icon, label }) {
       rel="noopener noreferrer"
       aria-label={label}
       title={label}
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-card text-text-secondary transition-colors hover:border-border-strong hover:bg-surface-hover hover:text-foreground"
+      className={cn(
+        "flex items-center justify-center transition-colors",
+        compact
+          ? "h-8 w-8 rounded-md text-text-tertiary hover:bg-surface-hover hover:text-foreground"
+          : "h-9 w-9 rounded-lg border border-border bg-surface-card text-text-secondary hover:border-border-strong hover:bg-surface-hover hover:text-foreground",
+      )}
     >
       <Icon className="h-4 w-4" />
     </a>
   );
 }
 
-// A rich profile header for the Speaker editor — headshot, name, role, status,
-// topics, and quick contact/social links — so the detail reads like a real
-// speaker card instead of a bare form. Display-only; edits happen in the
-// sections below (it reflects the live form via `record`).
+// The Featured flag as a title badge — the name and status pill are rendered by
+// the editor header, so this only adds what the header can't know about.
+export function SpeakerTitleBadges({ record }) {
+  if (!record.config?.featured) return null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-300">
+      <Star className="h-3 w-3 fill-amber-300" /> Featured
+    </span>
+  );
+}
+
+// A slim identity strip under the editor header — headshot, role line, topics
+// and quick contact links. Display-only; edits happen in the sections below (it
+// reflects the live form via `record`).
 export function SpeakerHero({ record }) {
   const cfg = record.config || {};
   const roleLine = [cfg.title, cfg.company].filter(Boolean).join(" · ");
   const topics = Array.isArray(cfg.topics) ? cfg.topics.filter(Boolean) : [];
   const sessionCount = Array.isArray(cfg.sessions) ? cfg.sessions.filter(Boolean).length : 0;
+  const meta = [
+    roleLine,
+    sessionCount ? `${sessionCount} session${sessionCount === 1 ? "" : "s"}` : null,
+  ].filter(Boolean);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-surface-subtle">
-      {/* Ambient brand wash so the card lifts off the canvas. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-24 h-48 bg-gradient-to-b from-primary/15 via-primary/5 to-transparent blur-2xl"
-      />
-      <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-start sm:gap-6">
-        {/* Headshot */}
-        {record.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={record.coverUrl}
-            alt={record.name}
-            className="h-24 w-24 shrink-0 rounded-2xl border border-border object-cover shadow-lg ring-1 ring-white/5 sm:h-28 sm:w-28"
-          />
-        ) : (
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border border-border bg-surface-card text-2xl font-semibold text-muted-foreground shadow-lg ring-1 ring-white/5 sm:h-28 sm:w-28">
-            {record.name ? initials(record.name) : <Mic className="h-8 w-8" />}
-          </div>
-        )}
-
-        {/* Identity */}
-        <div className="min-w-0 flex-1 space-y-3">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="truncate text-xl font-semibold tracking-tight text-white sm:text-2xl">
-              {record.name || "Untitled speaker"}
-            </h2>
-            <StatusPill status={record.status} map={SPEAKER_STATUS_MAP} />
-            {cfg.featured ? (
-              <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-300">
-                <Star className="h-3 w-3 fill-amber-300" /> Featured
-              </span>
-            ) : null}
-          </div>
-
-          {roleLine ? (
-            <p className="text-sm font-medium text-text-secondary">{roleLine}</p>
-          ) : (
-            <p className="text-sm text-text-tertiary">Add a title and company below.</p>
-          )}
-
-          {topics.length ? (
-            <div className="flex flex-wrap gap-1.5">
-              {topics.slice(0, 6).map((t) => (
-                <span
-                  key={t}
-                  className="rounded-md border border-border bg-surface-card px-2 py-1 text-xs text-text-secondary"
-                >
-                  {t}
-                </span>
-              ))}
-              {topics.length > 6 ? (
-                <span className="rounded-md px-2 py-1 text-xs text-text-tertiary">
-                  +{topics.length - 6} more
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-
-          {sessionCount ? (
-            <p className="text-xs text-text-tertiary">
-              Presenting {sessionCount} session{sessionCount === 1 ? "" : "s"}.
-            </p>
-          ) : null}
+    <div className="flex items-center gap-3">
+      {record.coverUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={record.coverUrl}
+          alt={record.name}
+          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-border"
+        />
+      ) : (
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-card text-sm font-semibold text-text-secondary ring-1 ring-border">
+          {record.name ? initials(record.name) : <Mic className="h-4 w-4" />}
         </div>
+      )}
 
-        {/* Contact + socials */}
-        <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
-          <div className="flex gap-2">
-            <SocialLink href={normalizeHref("email", cfg.email)} icon={Mail} label="Email" />
-            <SocialLink href={normalizeHref("phone", cfg.phone)} icon={Phone} label="Call" />
-            <SocialLink href={normalizeHref("website", cfg.website)} icon={Globe} label="Website" />
-            <SocialLink href={normalizeHref("twitter", cfg.twitter)} icon={Twitter} label="X / Twitter" />
-            <SocialLink href={normalizeHref("url", cfg.linkedin)} icon={Linkedin} label="LinkedIn" />
-          </div>
-        </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm text-text-secondary">
+          {meta.length ? meta.join(" · ") : "Add a title and company below."}
+        </p>
+        {topics.length ? (
+          <p className="mt-0.5 truncate text-xs text-text-tertiary">
+            {topics.slice(0, 4).join(" · ")}
+            {topics.length > 4 ? ` · +${topics.length - 4}` : ""}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1">
+        <SocialLink compact href={normalizeHref("email", cfg.email)} icon={Mail} label="Email" />
+        <SocialLink compact href={normalizeHref("phone", cfg.phone)} icon={Phone} label="Call" />
+        <SocialLink compact href={normalizeHref("website", cfg.website)} icon={Globe} label="Website" />
+        <SocialLink compact href={normalizeHref("twitter", cfg.twitter)} icon={Twitter} label="X / Twitter" />
+        <SocialLink compact href={normalizeHref("url", cfg.linkedin)} icon={Linkedin} label="LinkedIn" />
       </div>
     </div>
   );
@@ -677,100 +639,101 @@ export function SessionMultiField({ record, commit, configKey = "sessionIds" }) 
     .reduce((sum, s) => sum + sessionMinutes(s), 0);
   const hours = totalMins ? `${Math.floor(totalMins / 60)}h${totalMins % 60 ? ` ${totalMins % 60}m` : ""}` : null;
 
+  if (sessions === null) {
+    return (
+      <div className="flex items-center gap-2 py-4 text-sm text-text-secondary">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading sessions…
+      </div>
+    );
+  }
+  if (!sessions.length) {
+    return (
+      <div className="flex flex-col items-start gap-2 rounded-xl border border-dashed border-border bg-surface-card px-5 py-8">
+        <p className="text-sm text-text-secondary">No sessions built yet.</p>
+        <p className="text-xs text-text-tertiary">Create sessions in Agenda Builder, then curate them here.</p>
+      </div>
+    );
+  }
+
   return (
-    <SectionCard
-      title="Sessions in this agenda"
-      description="Pick the sessions this agenda includes — attendees see them as their curated running order."
-      action={
-        selected.length ? (
+    <div className="space-y-3">
+      {/* Clear sits with the search — there's no card header to hang it off. */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search sessions, tracks, speakers…"
+            className="pl-8"
+          />
+        </div>
+        {selected.length ? (
           <Button
             variant="outline"
             size="sm"
             onClick={clear}
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
             Clear
           </Button>
-        ) : null
-      }
-    >
-      {sessions === null ? (
-        <div className="flex items-center gap-2 py-4 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading sessions…
-        </div>
-      ) : sessions.length === 0 ? (
-        <div className="flex flex-col items-start gap-2 rounded-xl border border-dashed border-border bg-surface-card px-5 py-8">
-          <p className="text-sm text-text-secondary">No sessions built yet.</p>
-          <p className="text-xs text-text-tertiary">Create sessions in Agenda Builder, then curate them here.</p>
-        </div>
+        ) : null}
+      </div>
+      <div className="max-h-80 space-y-1.5 overflow-y-auto">
+        {filtered.map((s) => {
+          const on = selected.includes(s.id);
+          const cfg = s.config || {};
+          const time = [cfg.startTime, cfg.endTime].filter(Boolean).join("–");
+          const meta = [eventName(cfg.eventId), cfg.day, time, cfg.track]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => toggle(s.id)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                on
+                  ? "border-border-strong bg-surface-hover"
+                  : "border-border bg-surface-card hover:bg-surface-hover",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                  on
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border-strong bg-transparent",
+                )}
+              >
+                {on ? <Check className="h-3.5 w-3.5" /> : null}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-foreground">
+                  {s.name || "Untitled session"}
+                </span>
+                <span className="block truncate text-xs text-text-secondary">
+                  {meta || "No schedule set"}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+        {filtered.length === 0 ? (
+          <p className="px-1 py-3 text-sm text-text-tertiary">No sessions match “{q}”.</p>
+        ) : null}
+      </div>
+      {selected.length ? (
+        <p className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <Clock className="h-3 w-3" />
+          {selected.length} session{selected.length === 1 ? "" : "s"} selected
+          {hours ? ` · ${hours}` : ""}
+        </p>
       ) : (
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search sessions, tracks, speakers…"
-              className="pl-8"
-            />
-          </div>
-          <div className="max-h-80 space-y-1.5 overflow-y-auto">
-            {filtered.map((s) => {
-              const on = selected.includes(s.id);
-              const cfg = s.config || {};
-              const time = [cfg.startTime, cfg.endTime].filter(Boolean).join("–");
-              const meta = [eventName(cfg.eventId), cfg.day, time, cfg.track]
-                .filter(Boolean)
-                .join(" · ");
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => toggle(s.id)}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
-                    on
-                      ? "border-border-strong bg-surface-hover"
-                      : "border-border bg-surface-card hover:bg-surface-hover",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
-                      on
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border-strong bg-transparent",
-                    )}
-                  >
-                    {on ? <Check className="h-3.5 w-3.5" /> : null}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-foreground">
-                      {s.name || "Untitled session"}
-                    </span>
-                    <span className="block truncate text-xs text-text-secondary">
-                      {meta || "No schedule set"}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-            {filtered.length === 0 ? (
-              <p className="px-1 py-3 text-sm text-text-tertiary">No sessions match “{q}”.</p>
-            ) : null}
-          </div>
-          {selected.length ? (
-            <p className="flex items-center gap-1.5 text-xs text-text-secondary">
-              <Clock className="h-3 w-3" />
-              {selected.length} session{selected.length === 1 ? "" : "s"} selected
-              {hours ? ` · ${hours}` : ""}
-            </p>
-          ) : (
-            <p className="text-xs text-text-tertiary">No sessions yet — pick some above.</p>
-          )}
-        </div>
+        <p className="text-xs text-text-tertiary">No sessions yet — pick some above.</p>
       )}
-    </SectionCard>
+    </div>
   );
 }
 

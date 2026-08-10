@@ -468,7 +468,8 @@ export function FieldSection({ title, description, action, fields, values, onPat
 
 // --- Cover image (headshot / logo) -------------------------------------------
 
-export function CoverImageCard({ record, commit, upload, title = "Cover image", description, aspect = "aspect-[16/9]", frameClassName }) {
+// Heading-less: the detail section this renders in supplies the heading.
+export function CoverImageCard({ record, commit, upload, aspect = "aspect-[16/9]", frameClassName }) {
   const cover = record.coverUrl || "";
   const [me, setMe] = useState(null);
   const [resolved, setResolved] = useState(false);
@@ -522,7 +523,7 @@ export function CoverImageCard({ record, commit, upload, title = "Cover image", 
   };
 
   return (
-    <SectionCard title={title} description={description}>
+    <>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
       {cover ? (
         <div className="space-y-3">
@@ -571,6 +572,6 @@ export function CoverImageCard({ record, commit, upload, title = "Cover image", 
           Upload an image
         </button>
       )}
-    </SectionCard>
+    </>
   );
 }

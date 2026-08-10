@@ -49,6 +49,7 @@ import {
   RecordingVideoField,
   RecordingShareField,
   SpeakerHero,
+  SpeakerTitleBadges,
   PortalProgressHero,
   SessionMultiField,
   AgendaAssignHero,
@@ -128,7 +129,6 @@ const mediaSection = (label, title, aspect, frameClassName) => ({
       record={record}
       commit={commit}
       upload={uploadConferenceImage}
-      title={title}
       aspect={aspect}
       frameClassName={frameClassName}
     />
@@ -216,7 +216,11 @@ export const MODULES = {
     ],
     detail: {
       depth: "rich",
+      // The strip is display-only, so the header keeps the name/status and adds
+      // the Featured badge beside them.
       hero: SpeakerHero,
+      heroOwnsTitle: false,
+      titleBadges: SpeakerTitleBadges,
       nav: [
         {
           key: "profile",
@@ -951,7 +955,7 @@ export const MODULES = {
           icon: CalendarDays,
           desc: "Link this backstage to its event.",
           render: ({ record, commit }) => (
-            <EventLinkField record={record} commit={commit} description="The event this session runs at." />
+            <EventLinkField record={record} commit={commit} />
           ),
         },
         {
@@ -1067,7 +1071,7 @@ export const MODULES = {
           icon: CalendarDays,
           desc: "Link this room to its event.",
           render: ({ record, commit }) => (
-            <EventLinkField record={record} commit={commit} description="The event streaming from this room." />
+            <EventLinkField record={record} commit={commit} />
           ),
         },
         {
@@ -1204,7 +1208,7 @@ export const MODULES = {
           icon: CalendarDays,
           desc: "Link this webinar to its event.",
           render: ({ record, commit }) => (
-            <EventLinkField record={record} commit={commit} description="The event this webinar belongs to." />
+            <EventLinkField record={record} commit={commit} />
           ),
         },
         mediaSection("Cover", "Cover image", "aspect-video"),
@@ -1416,7 +1420,7 @@ export const MODULES = {
           icon: CalendarDays,
           desc: "Link this room to its event.",
           render: ({ record, commit }) => (
-            <EventLinkField record={record} commit={commit} description="The event this sponsor room runs at." />
+            <EventLinkField record={record} commit={commit} />
           ),
         },
         mediaSection("Banner", "Banner", "aspect-[16/9]"),
@@ -1606,7 +1610,7 @@ export const MODULES = {
           icon: CalendarDays,
           desc: "Link this broadcast to its event.",
           render: ({ record, commit }) => (
-            <EventLinkField record={record} commit={commit} description="The event this broadcast belongs to." />
+            <EventLinkField record={record} commit={commit} />
           ),
         },
         mediaSection("Thumbnail", "Thumbnail", "aspect-video"),
