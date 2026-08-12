@@ -7,8 +7,10 @@ import {
   ArrowLeft,
   CalendarClock,
   CalendarDays,
+  CalendarRange,
   Clock,
   LayoutGrid,
+  LayoutList,
   Loader2,
   MapPin,
   Mic,
@@ -63,6 +65,7 @@ import { conferenceApi } from "@/lib/supabase/conference";
 import { getUser } from "@/lib/supabase/user";
 import { formatDate, EVENT_STATUS_MAP } from "@/components/internal/screens/events/sample_data";
 import { SESSION_STATUS_MAP } from "./constants";
+import { AgendaGrid } from "./agenda_grid";
 
 // The Agenda Builder is a two-level screen: pick an event, then build its
 // schedule. Sessions are conference_records (module "session") linked to an
@@ -155,7 +158,10 @@ function durationLabel(start, end) {
   return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`;
 }
 
-function SessionDialog({ open, onOpenChange, initial, onSave }) {
+// `initial` seeds the form for both an edit and a prefilled create (dropping a
+// new session onto a grid slot), so `isEdit` — not the presence of a draft —
+// decides the wording.
+function SessionDialog({ open, onOpenChange, initial, isEdit, onSave }) {
   const [draft, setDraft] = useState(EMPTY_SESSION);
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -184,7 +190,7 @@ function SessionDialog({ open, onOpenChange, initial, onSave }) {
           </div>
           <div className="min-w-0 space-y-0.5">
             <DialogTitle className="text-base">
-              {initial ? "Edit session" : "Add session"}
+              {isEdit ? "Edit session" : "Add session"}
             </DialogTitle>
             <DialogDescription className="text-xs">
               One item on the running order — its time, track, room, and speaker.
@@ -340,7 +346,7 @@ function SessionDialog({ open, onOpenChange, initial, onSave }) {
               type="submit"
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {initial ? (
+              {isEdit ? (
                 "Save session"
               ) : (
                 <>
@@ -359,10 +365,16 @@ function SessionDialog({ open, onOpenChange, initial, onSave }) {
 
 function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }) {
   const [addOpen, setAddOpen] = useState(false);
+  // Prefill for the add dialog when a session is started from a grid slot.
+  const [addDraft, setAddDraft] = useState(null);
   const [editing, setEditing] = useState(null); // { id, session } | null
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [trackFilter, setTrackFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  // Grid is the default: an agenda is two-dimensional, and only the grid shows
+  // parallel tracks colliding. The list stays for long, single-track running
+  // orders where a timeline is mostly whitespace.
+  const [view, setView] = useState("grid");
 
   const trackOptions = useMemo(() => {
     const tracks = [
@@ -433,6 +445,11 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
     [sessions],
   );
 
+  // Dragging a block on the grid only moves it in time and track — every other
+  // field has to be resent because onUpdate rewrites the whole config bag.
+  const handleReschedule = (session, patch) =>
+    onUpdate(session.id, { ...sessionToDraft(session), ...patch });
+
   return (
     <MainScreenWrapper>
       <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
@@ -480,9 +497,31 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
               height="h-9"
             />
           </div>
-          <span className="text-xs text-text-tertiary">
-            {visible.length} of {sessions.length} session{sessions.length === 1 ? "" : "s"}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-text-tertiary">
+              {visible.length} of {sessions.length} session{sessions.length === 1 ? "" : "s"}
+            </span>
+            <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
+              {[
+                { value: "grid", icon: CalendarRange, label: "Grid" },
+                { value: "list", icon: LayoutList, label: "List" },
+              ].map(({ value, icon: Icon, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setView(value)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium transition-colors",
+                    view === value
+                      ? "bg-surface-hover text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4" /> {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </Toolbar>
       ) : null}
 
@@ -519,6 +558,18 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
             }
           />
         </div>
+      ) : view === "grid" ? (
+        <AgendaGrid
+          sessions={visible}
+          allSessions={sessions}
+          onEdit={(s) => setEditing({ id: s.id, session: sessionToDraft(s) })}
+          onDelete={setDeleteTarget}
+          onReschedule={handleReschedule}
+          onAddAt={(prefill) => {
+            setAddDraft({ ...EMPTY_SESSION, ...prefill });
+            setAddOpen(true);
+          }}
+        />
       ) : (
         <div className="space-y-8">
           {groups.map(([day, list]) => (
@@ -616,11 +667,20 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
         </div>
       )}
 
-      <SessionDialog open={addOpen} onOpenChange={setAddOpen} onSave={onCreate} />
+      <SessionDialog
+        open={addOpen}
+        onOpenChange={(o) => {
+          setAddOpen(o);
+          if (!o) setAddDraft(null);
+        }}
+        initial={addDraft}
+        onSave={onCreate}
+      />
       <SessionDialog
         open={!!editing}
         onOpenChange={(o) => !o && setEditing(null)}
         initial={editing?.session}
+        isEdit
         onSave={(draft) => {
           onUpdate(editing.id, draft);
           setEditing(null);
