@@ -412,6 +412,7 @@ export const workspaceNav = [
     icon: CalendarClock,
     subItems: [
       { title: "Agenda Builder", icon: ClipboardList },
+      { title: "Display Boards", icon: MonitorPlay },
       { title: "Call for Papers", icon: FileText },
       { title: "Assign Agenda", icon: CalendarCheck },
       { title: "CEU & Certificates", icon: Award },

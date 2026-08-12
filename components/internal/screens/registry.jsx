@@ -108,6 +108,7 @@ import {
   CallForPapersScreen,
   CertificatesScreen,
   AgendaBuilderScreen,
+  DisplayBoardsScreen,
   RecordingsScreen,
   SpeakerBackstageScreen,
   LivestreamRoomsScreen,
@@ -350,6 +351,10 @@ export const SCREEN_REGISTRY = {
   "Call for Papers": CallForPapersScreen,
   "CEU & Certificates": CertificatesScreen,
   "Agenda Builder": AgendaBuilderScreen,
+  // Display Boards — the venue's screens. A board is a conference_records row
+  // (module "board") whose slide queue is built on a canvas and rendered at
+  // /display/<id>; see lib/display/.
+  "Display Boards": DisplayBoardsScreen,
   "Recordings & Replay": RecordingsScreen,
   "Speaker Backstage": SpeakerBackstageScreen,
   "Livestream Rooms": LivestreamRoomsScreen,

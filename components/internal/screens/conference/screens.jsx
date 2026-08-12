@@ -10,6 +10,7 @@ import { MODULES } from "./modules";
 // are re-exported here: Agenda Builder (event → schedule), Floor Plan & Booths
 // (interactive expo map), Mobile Event App (singleton config + live preview).
 export { AgendaBuilderScreen } from "./agenda_builder";
+export { DisplayBoardsScreen } from "./display_boards";
 export { FloorPlanScreen } from "./floor_plan";
 export { MobileAppScreen } from "./mobile_app";
 export { CaptionsTranscriptionScreen } from "./captions";
