@@ -617,49 +617,10 @@ export default function EventsLandingPage() {
           <EventsPlaygroundShowcase backgroundImage={showcaseBg} />
         </section>
 
-        <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-3">
-          {utilityCards.map(({ title, description, icon: Icon }) => (
-            <article
-              key={title}
-              className="rounded-sm border border-border bg-[#191919] p-5"
-            >
-              <Icon className="mb-3 h-5 w-5 text-muted-foreground" />
-              <h2 className="font-medium text-foreground">{title}</h2>
-              <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-            </article>
-          ))}
-        </section>
-
-        {/* Sourcing — the decision that comes before the ticket. */}
-        <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">
-            Find the room before you sell it
-          </h2>
-          <p className="mt-1 text-2xl font-semibold text-muted-foreground sm:text-3xl">
-            Sourcing, instant booking, and housing — all on the map.
-          </p>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {sourcingFeatures.map(({ title, description, cta, demo: Demo }, index) => (
-              <FeatureCard
-                key={title}
-                title={title}
-                description={description}
-                cta={cta}
-                href={dashboardHref}
-                backgroundImage={
-                  showcaseBackgroundImages[
-                    (index + 5) % showcaseBackgroundImages.length
-                  ]
-                }
-              >
-                <Demo />
-              </FeatureCard>
-            ))}
-          </div>
-        </section>
-
-        {/* Surface showcase — one platform, every place the event happens. */}
-        <section className="mx-auto mt-16 w-full max-w-[88rem] px-4 sm:mt-24 sm:px-6">
+        {/* Surface showcase — one platform, every place the event happens. It
+            opens the feature story because the device-framed miniatures are the
+            fastest way to answer "what is this?". */}
+        <section className="mx-auto w-full max-w-[88rem] px-4 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             Everywhere your event happens
           </h2>
@@ -685,6 +646,21 @@ export default function EventsLandingPage() {
               </ShowcaseCard>
             ))}
           </div>
+        </section>
+
+        {/* Capability tiles — a quick summary of the surfaces above, before the
+            feature detail starts. */}
+        <section className="mx-auto mt-16 grid w-full max-w-6xl gap-4 px-4 sm:mt-24 sm:px-6 md:grid-cols-3">
+          {utilityCards.map(({ title, description, icon: Icon }) => (
+            <article
+              key={title}
+              className="rounded-sm border border-border bg-[#191919] p-5"
+            >
+              <Icon className="mb-3 h-5 w-5 text-muted-foreground" />
+              <h2 className="font-medium text-foreground">{title}</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+            </article>
+          ))}
         </section>
 
         {/* Registrations — the apply-to-attend path beside the buy-a-ticket one. */}
@@ -715,6 +691,56 @@ export default function EventsLandingPage() {
             ))}
           </div>
         </section>
+
+        {/* Orders — what happens after money moves. Sits beside Registrations so
+            the whole money story reads in one pass. */}
+        <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+            What happens after money moves
+          </h2>
+          <p className="mt-1 text-2xl font-semibold text-muted-foreground sm:text-3xl">
+            Orders, refunds, and disputes — without the chase.
+          </p>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {ordersFeatures.map(({ title, description, cta, demo: Demo }, index) => (
+              <FeatureCard
+                key={title}
+                title={title}
+                description={description}
+                cta={cta}
+                href={dashboardHref}
+                backgroundImage={
+                  showcaseBackgroundImages[
+                    (index + 4) % showcaseBackgroundImages.length
+                  ]
+                }
+              >
+                <Demo />
+              </FeatureCard>
+            ))}
+          </div>
+        </section>
+
+        {/* Alternating spotlights — the suite's landing showcase frame. Placed
+            mid-page so the identical feature grids never run more than three
+            deep without a change of treatment. */}
+        <div className="mx-auto my-10 w-full max-w-7xl space-y-8 px-4 sm:my-20 sm:space-y-20 sm:px-6">
+          {spotlights.map(
+            ({ title, body, background, ctaLabel, playground: Playground }, index) => (
+              <SpotlightShowcase
+                key={title}
+                backgroundImage={background}
+                title={title}
+                body={body}
+                ctaHref={dashboardHref}
+                ctaLabel={ctaLabel}
+                reverse={index % 2 === 1}
+              >
+                <Playground />
+              </SpotlightShowcase>
+            ),
+          )}
+        </div>
 
         {/* Program — what a conference buyer diligences after ticketing. */}
         <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
@@ -800,81 +826,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Orders — what happens after money moves. */}
-        <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">
-            What happens after money moves
-          </h2>
-          <p className="mt-1 text-2xl font-semibold text-muted-foreground sm:text-3xl">
-            Orders, refunds, and disputes — without the chase.
-          </p>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {ordersFeatures.map(({ title, description, cta, demo: Demo }, index) => (
-              <FeatureCard
-                key={title}
-                title={title}
-                description={description}
-                cta={cta}
-                href={dashboardHref}
-                backgroundImage={
-                  showcaseBackgroundImages[
-                    (index + 4) % showcaseBackgroundImages.length
-                  ]
-                }
-              >
-                <Demo />
-              </FeatureCard>
-            ))}
-          </div>
-        </section>
-
-        {/* Distribution & growth — campaigns, ads, and a wall buyers follow. */}
-        <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">
-            Get the word out, get found
-          </h2>
-          <p className="mt-1 text-2xl font-semibold text-muted-foreground sm:text-3xl">
-            Campaigns, advertising, and the wall buyers follow.
-          </p>
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            {growthFeatures.map(({ title, description, cta, demo: Demo }, index) => (
-              <FeatureCard
-                key={title}
-                title={title}
-                description={description}
-                cta={cta}
-                href={dashboardHref}
-                backgroundImage={
-                  showcaseBackgroundImages[
-                    (index + 3) % showcaseBackgroundImages.length
-                  ]
-                }
-              >
-                <Demo />
-              </FeatureCard>
-            ))}
-          </div>
-        </section>
-
-        {/* Alternating spotlights — the suite's landing showcase frame. */}
-        <div className="mx-auto my-10 w-full max-w-7xl space-y-8 px-4 sm:my-20 sm:space-y-20 sm:px-6">
-          {spotlights.map(
-            ({ title, body, background, ctaLabel, playground: Playground }, index) => (
-              <SpotlightShowcase
-                key={title}
-                backgroundImage={background}
-                title={title}
-                body={body}
-                ctaHref={dashboardHref}
-                ctaLabel={ctaLabel}
-                reverse={index % 2 === 1}
-              >
-                <Playground />
-              </SpotlightShowcase>
-            ),
-          )}
-        </div>
-
         {/* Depth showcase — what large-format organizers actually shop for. */}
         <section className="mx-auto mt-16 w-full max-w-[88rem] px-4 sm:mt-24 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
@@ -903,6 +854,65 @@ export default function EventsLandingPage() {
               >
                 <Demo />
               </ShowcaseCard>
+            ))}
+          </div>
+        </section>
+
+        {/* Sourcing — the decision that comes before the ticket. It sits late
+            because venue selection is a planning-stage concern, not the thing a
+            first-time visitor is here to understand. */}
+        <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+            Find the room before you sell it
+          </h2>
+          <p className="mt-1 text-2xl font-semibold text-muted-foreground sm:text-3xl">
+            Sourcing, instant booking, and housing — all on the map.
+          </p>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {sourcingFeatures.map(({ title, description, cta, demo: Demo }, index) => (
+              <FeatureCard
+                key={title}
+                title={title}
+                description={description}
+                cta={cta}
+                href={dashboardHref}
+                backgroundImage={
+                  showcaseBackgroundImages[
+                    (index + 5) % showcaseBackgroundImages.length
+                  ]
+                }
+              >
+                <Demo />
+              </FeatureCard>
+            ))}
+          </div>
+        </section>
+
+        {/* Distribution & growth — campaigns, ads, and a wall buyers follow.
+            The two-up grid closes the feature story on a different rhythm. */}
+        <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+            Get the word out, get found
+          </h2>
+          <p className="mt-1 text-2xl font-semibold text-muted-foreground sm:text-3xl">
+            Campaigns, advertising, and the wall buyers follow.
+          </p>
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
+            {growthFeatures.map(({ title, description, cta, demo: Demo }, index) => (
+              <FeatureCard
+                key={title}
+                title={title}
+                description={description}
+                cta={cta}
+                href={dashboardHref}
+                backgroundImage={
+                  showcaseBackgroundImages[
+                    (index + 3) % showcaseBackgroundImages.length
+                  ]
+                }
+              >
+                <Demo />
+              </FeatureCard>
             ))}
           </div>
         </section>
