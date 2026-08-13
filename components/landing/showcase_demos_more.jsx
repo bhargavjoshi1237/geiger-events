@@ -87,15 +87,6 @@ const SOURCE_VENUES = [
     pin: "left-[50%] top-[42%]",
   },
   {
-    id: "copley",
-    name: "Copley Hall",
-    area: "Back Bay · Boston",
-    cap: "1,200",
-    price: 29000,
-    dist: "2.8 mi",
-    pin: "left-[24%] top-[62%]",
-  },
-  {
     id: "mill",
     name: "The Mill",
     area: "Fort Point · Boston",
@@ -261,7 +252,7 @@ export function InstantBookDemo() {
         onClick={() => setBooked(true)}
         disabled={booked}
         className={cn(
-          "mt-2.5 flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg text-[11px] font-medium transition-colors",
+          "mt-auto flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg text-[11px] font-medium transition-colors",
           booked
             ? "border border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
             : "bg-white text-zinc-950 hover:bg-white/90",
@@ -289,7 +280,6 @@ export function InstantBookDemo() {
 const ROOM_BLOCKS = [
   { id: "foundry-hotel", name: "The Foundry Hotel", rate: 219, left: 40, dist: "0.2 mi" },
   { id: "harbor", name: "Harbor Inn", rate: 189, left: 12, dist: "0.6 mi" },
-  { id: "union", name: "Union House", rate: 154, left: 0, dist: "1.1 mi" },
 ];
 
 // Housing & travel — room blocks that release with the ticket, plus the shuttle.
@@ -588,7 +578,6 @@ const SUBMISSIONS = [
   { id: "s1", title: "Scaling live ops with bounded queues", who: "Marco Silva", track: "Engineering", status: "new" },
   { id: "s2", title: "Designing for the doorless event", who: "Ada Chen", track: "Experience", status: "review" },
   { id: "s3", title: "Metrics that survive the afterparty", who: "Priya Raman", track: "Analytics", status: "accepted" },
-  { id: "s4", title: "A tiny conference, run properly", who: "Tom Okafor", track: "Operations", status: "declined" },
 ];
 
 // Call for papers — the submission queue feeding the agenda.
@@ -994,9 +983,6 @@ export function LivestreamDemo() {
             />
           ))}
         </div>
-        <span className="absolute bottom-3 left-3 text-[10px] text-white/45">
-          Opening keynote · 4K
-        </span>
       </div>
 
       {captions && (
@@ -1577,7 +1563,7 @@ export function RunManyEventsDemo() {
       <div className={HEADER}>
         <div className="flex items-center gap-1.5">
           <Layers className="h-3.5 w-3.5 text-white/60" />
-          <span className={TITLE}>Run many events</span>
+          <span className={TITLE}>Run Events</span>
         </div>
         <div className="flex items-center gap-1">
           {["Templates", "Series", "Wall"].map((item) => (

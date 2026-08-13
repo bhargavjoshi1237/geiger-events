@@ -271,115 +271,127 @@ export function WorkflowSpotlight() {
             </span>
           </div>
 
-        {tab === "Runs" && (
-          <div className={cn("flex min-h-0 flex-1 flex-col p-2.5 pt-1.5", NOSCROLL)}>
-            <div className="grid shrink-0 grid-cols-[1fr_auto_auto] gap-3 px-2 pb-1.5 text-[9px] uppercase tracking-wider text-white/25">
-              <span>Person</span>
-              <span className="w-24 text-right">Stopped at</span>
-              <span className="w-12 text-right">Took</span>
-            </div>
-            {RUNS.map((run) => (
-              <div
-                key={run.name}
-                className="grid shrink-0 grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-white/[0.04] px-2 py-2 transition-colors hover:bg-white/[0.03]"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span
-                    className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-full",
-                      RUN_TONE[run.state],
-                    )}
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[12px] font-medium text-white">
-                      {run.name}
-                    </span>
-                    <span className="block truncate text-[11px] text-white/35">
-                      {run.state} · {run.at}
-                    </span>
-                  </span>
-                </div>
-                <span className="w-24 truncate text-right text-[11px] text-white/45">
-                  {run.step}
-                </span>
-                <span className="w-12 text-right text-[11px] tabular-nums text-white/25">
-                  {run.took}
-                </span>
+          {tab === "Runs" && (
+            <div className={cn("flex min-h-0 flex-1 flex-col p-2.5 pt-1.5", NOSCROLL)}>
+              <div className="grid shrink-0 grid-cols-[1fr_auto_auto] gap-3 px-2 pb-1.5 text-[9px] uppercase tracking-wider text-white/25">
+                <span>Person</span>
+                <span className="w-24 text-right">Stopped at</span>
+                <span className="w-12 text-right">Took</span>
               </div>
-            ))}
-          </div>
-        )}
-
-        {tab === "Logs" && (
-          <div className={cn("min-h-0 flex-1 p-2.5", NOSCROLL)}>
-            {LOGS.map(([time, kind, message]) => (
-              <div
-                key={`${time}-${message}`}
-                className="flex items-start gap-2.5 border-b border-white/[0.04] px-2 py-1.5 font-mono text-[11px] leading-relaxed"
-              >
-                <span className="shrink-0 tabular-nums text-white/25">{time}</span>
-                <span className="w-16 shrink-0 uppercase text-white/35">{kind}</span>
-                <span className="min-w-0 flex-1 text-white/65">{message}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col p-2.5",
-            NOSCROLL,
-            tab !== "Builder" && "hidden",
-          )}
-        >
-          {STEPS.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <React.Fragment key={item.id}>
-                {index > 0 && (
-                  <div className="group ml-[17px] flex h-3.5 shrink-0 items-center">
-                    <span className="h-full w-px bg-white/20" />
-                    <span className="ml-2 flex items-center gap-1 text-[10px] text-white/0 transition-colors group-hover:text-white/35">
-                      <Plus className="h-2.5 w-2.5" />
-                      Add step
+              {RUNS.map((run) => (
+                <div
+                  key={run.name}
+                  className="grid shrink-0 grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-white/[0.04] px-2 py-2 transition-colors hover:bg-white/[0.03]"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 shrink-0 rounded-full",
+                        RUN_TONE[run.state],
+                      )}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[12px] font-medium text-white">
+                        {run.name}
+                      </span>
+                      <span className="block truncate text-[11px] text-white/35">
+                        {run.state} · {run.at}
+                      </span>
                     </span>
                   </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setSelected(item.id)}
-                  className={cn(
-                    "flex shrink-0 items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-left transition-colors",
-                    selected === item.id
-                      ? "border-white/25 bg-[#242424]"
-                      : "border-white/5 bg-[#1c1c1c] hover:border-white/15",
-                    !active && "opacity-60",
-                  )}
+                  <span className="w-24 truncate text-right text-[11px] text-white/45">
+                    {run.step}
+                  </span>
+                  <span className="w-12 text-right text-[11px] tabular-nums text-white/25">
+                    {run.took}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === "Logs" && (
+            <div className={cn("min-h-0 flex-1 p-2.5", NOSCROLL)}>
+              {LOGS.map(([time, kind, message]) => (
+                <div
+                  key={`${time}-${message}`}
+                  className="flex items-start gap-2.5 border-b border-white/[0.04] px-2 py-1.5 font-mono text-[11px] leading-relaxed"
                 >
-                  <span
+                  <span className="shrink-0 tabular-nums text-white/25">{time}</span>
+                  <span className="w-16 shrink-0 uppercase text-white/35">{kind}</span>
+                  <span className="min-w-0 flex-1 text-white/65">{message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col p-2.5",
+              NOSCROLL,
+              tab !== "Builder" && "hidden",
+            )}
+          >
+            {STEPS.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <React.Fragment key={item.id}>
+                  {index > 0 && (
+                    <div className="relative h-5 shrink-0">
+                      <span className="absolute inset-y-0 left-[17px] w-px bg-white/15" />
+                      <button
+                        type="button"
+                        aria-label="Add step"
+                        className="group absolute left-2.5 top-1/2 z-10 flex h-6 -translate-y-1/2 items-center gap-1.5 rounded-full border border-transparent pl-2 pr-2.5 text-[10px] font-medium text-white/0 opacity-0 transition-all hover:border-white/10 hover:bg-[#242424] hover:opacity-100 hover:text-white/70"
+                      >
+                        <Plus className="h-3 w-3 transition-colors group-hover:text-white/70" />
+                        Add step
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelected(item.id)}
                     className={cn(
-                      "grid h-7 w-7 shrink-0 place-items-center rounded border",
-                      item.accent,
+                      "flex shrink-0 items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-left transition-colors",
+                      selected === item.id
+                        ? "border-white/25 bg-[#242424]"
+                        : "border-white/5 bg-[#1c1c1c] hover:border-white/15",
+                      !active && "opacity-60",
                     )}
                   >
-                    <Icon className="h-3.5 w-3.5" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[9px] uppercase tracking-wider leading-tight text-white/35">
-                      {item.kind}
+                    <span
+                      className={cn(
+                        "grid h-7 w-7 shrink-0 place-items-center rounded border",
+                        item.accent,
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
                     </span>
-                    <span className="block truncate text-[12px] font-medium leading-tight text-white">
-                      {item.label}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[9px] uppercase tracking-wider leading-tight text-white/35">
+                        {item.kind}
+                      </span>
+                      <span className="block truncate text-[12px] font-medium leading-tight text-white">
+                        {item.label}
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0 text-[10px] tabular-nums text-white/30">
-                    {item.count}
-                  </span>
-                </button>
-              </React.Fragment>
-            );
-          })}
-        </div>
+                    <span className="shrink-0 text-[10px] tabular-nums text-white/30">
+                      {item.count}
+                    </span>
+                  </button>
+                </React.Fragment>
+              );
+            })}
+            <button
+              type="button"
+              aria-label="Add step"
+              className="mt-1.5 flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-dashed border-white/10 py-1.5 text-[10px] font-medium text-white/30 transition-colors hover:border-white/25 hover:bg-white/[0.03] hover:text-white/60"
+            >
+              <Plus className="h-3 w-3" />
+              Add step
+            </button>
+          </div>
         </div>
 
         <div className={cn(PANEL, "flex min-h-0 flex-[2] flex-col p-3")}>

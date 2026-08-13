@@ -401,7 +401,7 @@ function FeatureCard({ title, description, cta, href, backgroundImage, children 
 // smaller events never need to touch.
 const scaleFeatures = [
   {
-    title: "Assigned seating",
+    title: "Assigned Seating",
     description:
       "Draw the bowl once, then sell it seat by seat. Every pick takes a timed hold, so two buyers can never land on the same chair.",
     cta: "See seating",
@@ -410,7 +410,7 @@ const scaleFeatures = [
     demo: SeatMapDemo,
   },
   {
-    title: "Expo & sponsors",
+    title: "Expo & Sponsors",
     description:
       "Sell the floor like inventory. Booths, packages, and sponsor rooms priced by size, held on a clock, and tracked to floor value.",
     cta: "See the expo floor",
@@ -419,7 +419,7 @@ const scaleFeatures = [
     demo: ExpoFloorDemo,
   },
   {
-    title: "Live operations",
+    title: "Live Operations",
     description:
       "Watch the room fill in real time. Gates, zones, and session capacity update as the scans land, so you move staff before a queue forms.",
     cta: "See live ops",
@@ -428,7 +428,7 @@ const scaleFeatures = [
     demo: LiveAttendanceDemo,
   },
   {
-    title: "Run many events",
+    title: "Run Events",
     description:
       "Templates, series, and a public event wall — spin up the next date from the last one, and let buyers follow your whole season.",
     cta: "See templates",
@@ -858,10 +858,7 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Sourcing — the decision that comes before the ticket. It sits late
-            because venue selection is a planning-stage concern, not the thing a
-            first-time visitor is here to understand. */}
-        <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
+        <section className="mx-auto mt-16 w-full max-w-[88rem] px-4 sm:mt-24 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             Find the room before you sell it
           </h2>
