@@ -50,12 +50,12 @@ function fmtRange(slot) {
   if (!slot.start) return "No time set";
   const s = new Date(slot.start);
   const opts = { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
-  const startStr = Number.isNaN(s.getTime()) ? slot.start : s.toLocaleString(undefined, opts);
+  const startStr = Number.isNaN(s.getTime()) ? slot.start : s.toLocaleString("en-US", opts);
   if (!slot.end) return startStr;
   const e = new Date(slot.end);
   const endStr = Number.isNaN(e.getTime())
     ? slot.end
-    : e.toLocaleString(undefined, { hour: "numeric", minute: "2-digit" });
+    : e.toLocaleString("en-US", { hour: "numeric", minute: "2-digit" });
   return `${startStr} – ${endStr}`;
 }
 

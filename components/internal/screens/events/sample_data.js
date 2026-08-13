@@ -255,7 +255,7 @@ export function formatDate(iso) {
 }
 
 export function currency(n) {
-  return `$${n.toLocaleString()}`;
+  return `$${n.toLocaleString("en-US")}`;
 }
 
 export function initials(name) {

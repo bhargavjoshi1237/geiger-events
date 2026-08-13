@@ -46,7 +46,7 @@ export function EventsHomeScreen() {
   const stats = [
     { label: "Total events", value: String(EVENTS.length), icon: CalendarDays, hint: "In this workspace" },
     { label: "Upcoming", value: String(upcoming.length), icon: Clock, hint: "Not yet ended" },
-    { label: "Tickets sold", value: EVENTS.reduce((s, e) => s + e.sold, 0).toLocaleString(), icon: Ticket, hint: "All time" },
+    { label: "Tickets sold", value: EVENTS.reduce((s, e) => s + e.sold, 0).toLocaleString("en-US"), icon: Ticket, hint: "All time" },
     { label: "Drafts", value: String(drafts.length), icon: FileText, hint: "Awaiting publish" },
   ];
 

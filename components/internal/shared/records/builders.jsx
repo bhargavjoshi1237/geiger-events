@@ -7,7 +7,7 @@ import { StatusPill } from "@/components/internal/shared/screen_kit";
 
 export function currency(n) {
   const value = Number(n) || 0;
-  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 export function pct(n) {

@@ -258,7 +258,7 @@ export function CampaignEditor({
                 <Users className="h-4 w-4 text-text-tertiary" />
                 <div>
                   <p className="text-lg font-semibold text-foreground tabular-nums leading-none">
-                    {recipients.toLocaleString()}
+                    {recipients.toLocaleString("en-US")}
                   </p>
                   <p className="mt-1 text-xs text-text-secondary">estimated recipients</p>
                 </div>

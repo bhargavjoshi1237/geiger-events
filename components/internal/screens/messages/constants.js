@@ -15,7 +15,7 @@ export const STATUS_FILTER_OPTIONS = [
 export function formatDateTime(d) {
   if (!d) return "";
   try {
-    return new Date(d).toLocaleString(undefined, {
+    return new Date(d).toLocaleString("en-US", {
       month: "short",
       day: "numeric",
       hour: "numeric",

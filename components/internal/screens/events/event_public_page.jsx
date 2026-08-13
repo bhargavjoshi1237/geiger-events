@@ -2334,7 +2334,7 @@ function CapacityTile({ label, value }) {
         </span>
       </div>
       <p className="mt-1.5 text-2xl font-bold tabular-nums text-foreground">
-        {value.toLocaleString()}
+        {value.toLocaleString("en-US")}
       </p>
     </div>
   );
@@ -3081,7 +3081,7 @@ export function EventPublicPageContent({ event, design, live = false }) {
               {soldOut
                 ? "Sold out"
                 : Number.isFinite(remaining)
-                  ? `${remaining.toLocaleString()} tickets remaining`
+                  ? `${remaining.toLocaleString("en-US")} tickets remaining`
                   : "Tickets available"}
             </p>
           ) : null}
@@ -3123,7 +3123,7 @@ export function EventPublicPageContent({ event, design, live = false }) {
               <Gauge className="h-4 w-4" /> Capacity
             </span>
             <span className="text-muted-foreground">
-              {event.capacity.toLocaleString()}
+              {event.capacity.toLocaleString("en-US")}
             </span>
           </div>
           <div className="flex items-center justify-between gap-3">

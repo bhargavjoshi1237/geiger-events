@@ -50,7 +50,7 @@ function relTime(iso) {
   if (hrs < 24) return `${hrs}h`;
   const days = Math.round(hrs / 24);
   if (days < 7) return `${days}d`;
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function monogram(name = "") {

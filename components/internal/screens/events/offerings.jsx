@@ -71,7 +71,7 @@ const newOption = () => {
 
 function priceLabel(price) {
   const n = Number(price) || 0;
-  return n > 0 ? `+$${n.toLocaleString()}` : "Free";
+  return n > 0 ? `+$${n.toLocaleString("en-US")}` : "Free";
 }
 
 function appliesSummary(appliesTo) {

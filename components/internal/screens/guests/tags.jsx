@@ -145,10 +145,10 @@ export function TagsScreen() {
     const mostUsed = tags.reduce((max, t) => Math.max(max, t.count), 0);
     const unused = tags.filter((t) => t.count === 0).length;
     return [
-      { label: "Tags", value: tags.length.toLocaleString() },
-      { label: "Applications", value: applications.toLocaleString() },
-      { label: "Most used", value: mostUsed.toLocaleString() },
-      { label: "Unused", value: unused.toLocaleString() },
+      { label: "Tags", value: tags.length.toLocaleString("en-US") },
+      { label: "Applications", value: applications.toLocaleString("en-US") },
+      { label: "Most used", value: mostUsed.toLocaleString("en-US") },
+      { label: "Unused", value: unused.toLocaleString("en-US") },
     ];
   }, [tags]);
 
@@ -297,7 +297,7 @@ export function TagsScreen() {
       header: "Contacts",
       render: (t) => (
         <span className="text-sm text-foreground tabular-nums">
-          {t.count.toLocaleString()}
+          {t.count.toLocaleString("en-US")}
         </span>
       ),
     },
@@ -559,7 +559,7 @@ export function TagsScreen() {
               <span className="font-medium text-foreground">
                 {deleteTarget?.name}
               </span>{" "}
-              from all {deleteTarget?.count?.toLocaleString()} contact
+              from all {deleteTarget?.count?.toLocaleString("en-US")} contact
               {deleteTarget?.count === 1 ? "" : "s"}? The contacts themselves stay.
             </DialogDescription>
           </DialogHeader>
@@ -596,7 +596,7 @@ export function TagsScreen() {
                   <div className="min-w-0">
                     <SheetTitle className="truncate">{openTag.name}</SheetTitle>
                     <SheetDescription>
-                      {openTag.count.toLocaleString()}{" "}
+                      {openTag.count.toLocaleString("en-US")}{" "}
                       {openTag.count === 1 ? "contact" : "contacts"}
                     </SheetDescription>
                   </div>

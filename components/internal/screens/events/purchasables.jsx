@@ -48,7 +48,7 @@ import { EMPTY_PURCHASABLE, EMPTY_SHOWIF } from "@/lib/events/purchasables";
 
 function priceLabel(price) {
   const n = Number(price) || 0;
-  return n > 0 ? `$${n.toLocaleString()}` : "Free";
+  return n > 0 ? `$${n.toLocaleString("en-US")}` : "Free";
 }
 
 // One-line human summary of a purchasable's conditions for the list card.

@@ -367,7 +367,7 @@ export function AttendeeExportScreen() {
                 />
                 {filtered.length > PREVIEW_LIMIT ? (
                   <p className="pt-3 text-center text-xs text-text-tertiary">
-                    Showing {PREVIEW_LIMIT} of {filtered.length.toLocaleString()}{" "}
+                    Showing {PREVIEW_LIMIT} of {filtered.length.toLocaleString("en-US")}{" "}
                     — export for the full list.
                   </p>
                 ) : null}

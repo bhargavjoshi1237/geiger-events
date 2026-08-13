@@ -976,7 +976,7 @@ export function LivestreamDemo() {
         <span className={TITLE}>Livestream · Main stage</span>
         <Chip tone="live">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-          {viewers.toLocaleString()} watching
+          {viewers.toLocaleString("en-US")} watching
         </Chip>
       </div>
 
@@ -1471,7 +1471,7 @@ export function CampaignsAdvertisingDemo() {
         <div className="flex items-center justify-between text-[10px] text-white/40">
           <span>Ad budget · this month</span>
           <span className="tabular-nums">
-            ${spend.toLocaleString()} / $3,000
+            ${spend.toLocaleString("en-US")} / $3,000
           </span>
         </div>
         <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
@@ -1524,7 +1524,7 @@ export function DiscoveryDemo() {
             Nightshift Live
           </div>
           <div className={META}>
-            {followers.toLocaleString()} followers · geiger.events/w/nightshift
+            {followers.toLocaleString("en-US")} followers · geiger.events/w/nightshift
           </div>
         </div>
       </div>

@@ -323,7 +323,7 @@ export function AllEventsScreen() {
     const revenue = events.reduce((s, e) => s + e.revenue, 0);
     return [
       { label: "Total events", value: String(events.length), footer: `${live} on sale now` },
-      { label: "Tickets sold", value: sold.toLocaleString(), footer: "Across all events" },
+      { label: "Tickets sold", value: sold.toLocaleString("en-US"), footer: "Across all events" },
       { label: "Revenue", value: currency(revenue), footer: "Gross, before fees" },
       { label: "Avg. capacity", value: `${events.length ? Math.round(events.reduce((s, e) => s + (e.capacity ? e.sold / e.capacity : 0), 0) / events.length * 100) : 0}%`, footer: "Sell-through" },
     ];
@@ -467,7 +467,7 @@ export function AllEventsScreen() {
               />
             </div>
             <p className="text-xs text-text-secondary">
-              {e.sold.toLocaleString()} / {e.capacity.toLocaleString()} · {pct}%
+              {e.sold.toLocaleString("en-US")} / {e.capacity.toLocaleString("en-US")} · {pct}%
             </p>
           </div>
         );

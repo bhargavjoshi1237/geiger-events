@@ -67,7 +67,7 @@ export const MODULES = {
     filters: [statusFilter(POLL_STATUS_MAP)],
     columns: [
       nameCol((r) => `${(r.config.options || []).length} options`),
-      textCol("votes", "Votes", (r) => (Number(r.config.votes) || 0).toLocaleString()),
+      textCol("votes", "Votes", (r) => (Number(r.config.votes) || 0).toLocaleString("en-US")),
       statusCol(POLL_STATUS_MAP),
     ],
     stats: (records) => [
@@ -119,7 +119,7 @@ export const MODULES = {
     columns: [
       nameCol((r) => audienceLabel(r.config.audience)),
       textCol("questions", "Questions", (r) => (r.config.questions || []).length || ""),
-      textCol("responses", "Responses", (r) => (Number(r.config.responses) || 0).toLocaleString()),
+      textCol("responses", "Responses", (r) => (Number(r.config.responses) || 0).toLocaleString("en-US")),
       statusCol(SURVEY_STATUS_MAP),
     ],
     stats: (records) => [

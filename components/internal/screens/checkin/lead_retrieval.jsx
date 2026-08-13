@@ -72,9 +72,9 @@ export function LeadRetrievalScreen() {
   const stats = useMemo(() => {
     const exhibitors = new Set(leads.map((l) => l.exhibitor).filter(Boolean));
     return [
-      { label: "Leads captured", value: leads.length.toLocaleString(), footer: "Across all events" },
+      { label: "Leads captured", value: leads.length.toLocaleString("en-US"), footer: "Across all events" },
       { label: "Exhibitors", value: String(exhibitors.size), footer: "Collecting leads" },
-      { label: "Showing", value: filtered.length.toLocaleString(), footer: "In current view" },
+      { label: "Showing", value: filtered.length.toLocaleString("en-US"), footer: "In current view" },
     ];
   }, [leads, filtered]);
 

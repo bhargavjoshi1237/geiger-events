@@ -798,7 +798,7 @@ export function AgendaAssignHero({ record }) {
             <Users className="h-3.5 w-3.5" /> Reach
           </span>
           <span className="text-2xl font-bold leading-none text-white tabular-nums">
-            {reach.loading ? "…" : reach.count.toLocaleString()}
+            {reach.loading ? "…" : reach.count.toLocaleString("en-US")}
           </span>
           <span className="text-[11px] text-text-tertiary">guests match</span>
         </div>

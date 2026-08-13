@@ -20,7 +20,7 @@ const METHODS = [
   { value: "comp", label: "Comp" },
 ];
 
-const currency = (n) => `$${Number(n || 0).toLocaleString()}`;
+const currency = (n) => `$${Number(n || 0).toLocaleString("en-US")}`;
 
 function DoorPos({ eventId, code, role, exit, event }) {
   const tickets = useMemo(() => {

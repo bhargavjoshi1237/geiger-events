@@ -210,7 +210,7 @@ function CampaignCard({ campaign, segmentName, recipients, onOpen, onDuplicate, 
           <span className="inline-flex items-center gap-1">
             <Users className="h-3 w-3" /> {segmentName}
           </span>
-          <span className="tabular-nums">{recipients.toLocaleString()} recipients</span>
+          <span className="tabular-nums">{recipients.toLocaleString("en-US")} recipients</span>
           <span className="inline-flex items-center gap-1">
             <CalendarClock className="h-3 w-3" /> {scheduleLine(campaign)}
           </span>
@@ -353,10 +353,10 @@ export function CampaignsScreen({ preset }) {
     const sent = presetList.filter((c) => c.status === "sent");
     const reached = sent.reduce((s, c) => s + (Number(c.metrics?.recipients) || 0), 0);
     return [
-      { label: "Campaigns", value: presetList.length.toLocaleString() },
-      { label: "Scheduled", value: scheduled.toLocaleString() },
-      { label: "Sent", value: sent.length.toLocaleString() },
-      { label: "Recipients reached", value: reached.toLocaleString() },
+      { label: "Campaigns", value: presetList.length.toLocaleString("en-US") },
+      { label: "Scheduled", value: scheduled.toLocaleString("en-US") },
+      { label: "Sent", value: sent.length.toLocaleString("en-US") },
+      { label: "Recipients reached", value: reached.toLocaleString("en-US") },
     ];
   }, [presetList]);
 

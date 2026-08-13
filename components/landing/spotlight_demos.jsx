@@ -580,7 +580,7 @@ export function SegmentSpotlight() {
               </button>
             ))}
           </div>
-          <Chip>{matched.toLocaleString()} people match</Chip>
+          <Chip>{matched.toLocaleString("en-US")} people match</Chip>
         </div>
         <div className="hidden items-center gap-2 text-[11px] text-white/30 sm:flex">
           <Search className="h-3 w-3" />
@@ -634,7 +634,7 @@ export function SegmentSpotlight() {
                     {rule.field}
                   </span>
                   <span className="shrink-0 text-[10px] tabular-nums text-white/25">
-                    {Math.round(BASE_AUDIENCE * rule.keep).toLocaleString()}
+                    {Math.round(BASE_AUDIENCE * rule.keep).toLocaleString("en-US")}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -672,7 +672,7 @@ export function SegmentSpotlight() {
               Matching people
             </div>
             <span className="text-[10px] tabular-nums text-white/30">
-              {matched.toLocaleString()} of {BASE_AUDIENCE.toLocaleString()}
+              {matched.toLocaleString("en-US")} of {BASE_AUDIENCE.toLocaleString("en-US")}
             </span>
           </div>
 
@@ -702,7 +702,7 @@ export function SegmentSpotlight() {
                   </span>
                 </div>
                 <span className="w-12 text-right text-[11px] tabular-nums text-white/70">
-                  ${person.spend.toLocaleString()}
+                  ${person.spend.toLocaleString("en-US")}
                 </span>
                 <span className="w-8 text-right text-[10px] tabular-nums text-white/25">
                   {person.seen}
@@ -714,7 +714,7 @@ export function SegmentSpotlight() {
           <div className="shrink-0 border-t border-white/5 p-2.5">
             <div className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-white text-[11px] font-medium text-zinc-950">
               <Send className="h-3 w-3" />
-              Send campaign to {matched.toLocaleString()}
+              Send campaign to {matched.toLocaleString("en-US")}
             </div>
           </div>
         </div>
@@ -813,8 +813,8 @@ export function FunnelSpotlight() {
   const conversion = ((source.stages[3] / top) * 100).toFixed(1);
 
   const kpis = [
-    { label: "Revenue", value: `$${source.revenue.toLocaleString()}`, delta: source.deltas[0] },
-    { label: "Tickets", value: source.stages[3].toLocaleString(), delta: source.deltas[1] },
+    { label: "Revenue", value: `$${source.revenue.toLocaleString("en-US")}`, delta: source.deltas[0] },
+    { label: "Tickets", value: source.stages[3].toLocaleString("en-US"), delta: source.deltas[1] },
     { label: "View → paid", value: `${conversion}%`, delta: source.deltas[2], good: true },
     { label: "Avg order", value: `$${source.aov}`, delta: source.deltas[3] },
   ];
@@ -930,7 +930,7 @@ export function FunnelSpotlight() {
                     </span>
                     <span className="flex items-center gap-2.5">
                       <span className="tabular-nums text-white">
-                        {value.toLocaleString()}
+                        {value.toLocaleString("en-US")}
                       </span>
                       {dropOff !== null && (
                         <span className="w-12 text-right text-[11px] tabular-nums text-red-400/70">
@@ -1014,7 +1014,7 @@ export function FunnelSpotlight() {
                     </div>
                     <div className="mt-1 flex items-center justify-between text-[10px] text-white/30">
                       <span className="tabular-nums">
-                        {channel.stages[3].toLocaleString()} paid
+                        {channel.stages[3].toLocaleString("en-US")} paid
                       </span>
                       <span className="tabular-nums">{conv}% conv</span>
                     </div>

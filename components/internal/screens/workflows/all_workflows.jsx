@@ -251,7 +251,7 @@ export function AllWorkflowsScreen() {
     return [
       { label: "Total workflows", value: String(workflows.length), footer: `${active} active` },
       { label: "Active", value: String(active), footer: "Listening for triggers" },
-      { label: "Total runs", value: runs.toLocaleString(), footer: "Across all workflows" },
+      { label: "Total runs", value: runs.toLocaleString("en-US"), footer: "Across all workflows" },
       { label: "Drafts", value: String(drafts), footer: "Not yet activated" },
     ];
   }, [workflows]);
@@ -379,7 +379,7 @@ export function AllWorkflowsScreen() {
       header: "Runs",
       align: "right",
       className: "text-right tabular-nums text-text-secondary",
-      render: (w) => (w.runCount || 0).toLocaleString(),
+      render: (w) => (w.runCount || 0).toLocaleString("en-US"),
     },
     {
       key: "lastRun",

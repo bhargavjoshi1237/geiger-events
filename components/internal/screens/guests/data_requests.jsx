@@ -110,9 +110,9 @@ export function DataRequestsScreen() {
     const overdue = requests.filter(isOverdue).length;
     const completed = requests.filter((r) => r.status === "Completed").length;
     return [
-      { label: "Open", value: open.toLocaleString() },
-      { label: "Overdue", value: overdue.toLocaleString() },
-      { label: "Completed", value: completed.toLocaleString() },
+      { label: "Open", value: open.toLocaleString("en-US") },
+      { label: "Overdue", value: overdue.toLocaleString("en-US") },
+      { label: "Completed", value: completed.toLocaleString("en-US") },
     ];
   }, [requests]);
 

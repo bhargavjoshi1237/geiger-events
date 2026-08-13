@@ -141,10 +141,10 @@ export function SegmentsScreen() {
       ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length)
       : 0;
     return [
-      { label: "Segments", value: segments.length.toLocaleString() },
-      { label: "Largest", value: largest.toLocaleString() },
-      { label: "Reachable", value: reachable.toLocaleString() },
-      { label: "Avg size", value: avg.toLocaleString() },
+      { label: "Segments", value: segments.length.toLocaleString("en-US") },
+      { label: "Largest", value: largest.toLocaleString("en-US") },
+      { label: "Reachable", value: reachable.toLocaleString("en-US") },
+      { label: "Avg size", value: avg.toLocaleString("en-US") },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, contacts, ctx]);
@@ -393,7 +393,7 @@ function SegmentCard({ segment, count, onView, onEdit, onDelete }) {
 
         <div className="shrink-0 text-right">
           <span className="text-lg font-semibold text-foreground tabular-nums">
-            {count.toLocaleString()}
+            {count.toLocaleString("en-US")}
           </span>
           <p className="text-[11px] text-text-tertiary">
             {count === 1 ? "member" : "members"}

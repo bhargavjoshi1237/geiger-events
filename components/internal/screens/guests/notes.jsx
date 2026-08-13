@@ -141,8 +141,8 @@ export function NotesScreen() {
       "",
     );
     return [
-      { label: "Notes", value: notes.length.toLocaleString() },
-      { label: "Contacts with notes", value: people.size.toLocaleString() },
+      { label: "Notes", value: notes.length.toLocaleString("en-US") },
+      { label: "Contacts with notes", value: people.size.toLocaleString("en-US") },
       { label: "Latest", value: latest ? formatDate(latest) : "—" },
     ];
   }, [notes]);

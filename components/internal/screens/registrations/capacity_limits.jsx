@@ -232,7 +232,7 @@ export function CapacityLimitsScreen() {
       : 0;
     return [
       { label: "At capacity", value: String(atCap), footer: "Full or over" },
-      { label: "Total seats", value: seats.toLocaleString(), footer: "Across all events" },
+      { label: "Total seats", value: seats.toLocaleString("en-US"), footer: "Across all events" },
       { label: "Avg. fill", value: `${avg}%`, footer: "Confirmed vs capacity" },
     ];
   }, [rows, events]);

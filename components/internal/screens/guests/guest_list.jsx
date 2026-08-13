@@ -100,10 +100,10 @@ export function GuestListScreen() {
     const repeat = guests.filter((g) => g.eventsCount > 1).length;
     const covered = new Set(guests.flatMap((g) => g.eventIds)).size;
     return [
-      { label: "Guests", value: total.toLocaleString() },
-      { label: "Going", value: going.toLocaleString() },
-      { label: "Repeat guests", value: repeat.toLocaleString() },
-      { label: "Events covered", value: covered.toLocaleString() },
+      { label: "Guests", value: total.toLocaleString("en-US") },
+      { label: "Going", value: going.toLocaleString("en-US") },
+      { label: "Repeat guests", value: repeat.toLocaleString("en-US") },
+      { label: "Events covered", value: covered.toLocaleString("en-US") },
     ];
   }, [guests]);
 

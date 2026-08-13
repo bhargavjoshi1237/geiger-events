@@ -1,7 +1,7 @@
 // Lookups and formatters for the Affiliates addon.
 // Config only — never row data.
 
-export const currency = (n) => `$${Number(n || 0).toLocaleString(undefined, {
+export const currency = (n) => `$${Number(n || 0).toLocaleString("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 })}`;
@@ -10,7 +10,7 @@ export const formatDate = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",

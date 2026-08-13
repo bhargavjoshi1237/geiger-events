@@ -154,7 +154,7 @@ const TIER_VALUES = Object.keys(TIER_MAP);
 const scheduleLabel = (r) => {
   const ms = r.startsAt ? new Date(r.startsAt).getTime() : NaN;
   if (!Number.isFinite(ms)) return r.config.scheduledFor || r.config.premiereAt || "";
-  return new Date(ms).toLocaleString(undefined, {
+  return new Date(ms).toLocaleString("en-US", {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -482,7 +482,7 @@ export const MODULES = {
     filters: [statusFilter(VENUE_LEAD_STATUS_MAP)],
     columns: [
       nameCol((r) => r.config.city),
-      textCol("capacity", "Capacity", (r) => (Number(r.config.capacity) || 0).toLocaleString()),
+      textCol("capacity", "Capacity", (r) => (Number(r.config.capacity) || 0).toLocaleString("en-US")),
       moneyCol("quotedPrice", "Quote", (r) => r.config.quotedPrice),
       textCol("rating", "Rating", (r) => (r.config.rating ? `${r.config.rating}/5` : "")),
       statusCol(VENUE_LEAD_STATUS_MAP),
@@ -821,7 +821,7 @@ export const MODULES = {
     columns: [
       nameCol((r) => [r.config.session, r.config.speaker].filter(Boolean).join(" · ")),
       textCol("duration", "Duration", (r) => r.config.duration),
-      textCol("viewers", "Viewers", (r) => (r._presence?.uniqueViewers || 0).toLocaleString()),
+      textCol("viewers", "Viewers", (r) => (r._presence?.uniqueViewers || 0).toLocaleString("en-US")),
       textCol("shared", "Sharing", (r) => (r.config.public ? "Public link" : "Private")),
       statusCol(RECORDING_STATUS_MAP),
     ],
@@ -1347,7 +1347,7 @@ export const MODULES = {
       nameCol((r) => r.config.sponsor),
       pillCol("tier", "Tier", (r) => r.config.tier, TIER_MAP),
       pillCol("kind", "Type", (r) => r.config.kind, SPONSOR_ROOM_KIND_MAP),
-      textCol("leads", "Leads", (r) => (Number(r.config.leadsCaptured) || 0).toLocaleString()),
+      textCol("leads", "Leads", (r) => (Number(r.config.leadsCaptured) || 0).toLocaleString("en-US")),
       statusCol(SPONSOR_ROOM_STATUS_MAP),
     ],
     stats: (records) => [
@@ -1541,7 +1541,7 @@ export const MODULES = {
       pillCol("mode", "Mode", (r) => r.config.mode, SIMULIVE_MODE_MAP),
       textCol("access", "Access", (r) => accessSummary(r.config.access)),
       textCol("premiereAt", "Premiere", scheduleLabel),
-      textCol("viewers", "Viewers", (r) => (r._presence?.uniqueViewers || 0).toLocaleString()),
+      textCol("viewers", "Viewers", (r) => (r._presence?.uniqueViewers || 0).toLocaleString("en-US")),
       statusCol(SIMULIVE_STATUS_MAP),
     ],
     usesPresence: true,

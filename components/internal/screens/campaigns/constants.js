@@ -16,7 +16,7 @@ export const formatDate = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -27,7 +27,7 @@ export const formatDateTime = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString("en-US", {
     day: "numeric",
     month: "short",
     hour: "numeric",

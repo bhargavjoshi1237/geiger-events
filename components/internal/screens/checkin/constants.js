@@ -8,7 +8,7 @@ export const formatDate = (iso) => {
   if (!iso) return "No date";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -19,7 +19,7 @@ export const formatTime = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 };
 
 // --- Check-in method lookup --------------------------------------------------

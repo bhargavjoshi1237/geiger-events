@@ -323,7 +323,7 @@ export function OverviewSection({ event, onPatch, onCommit, onViewLive }) {
           : "days to go";
 
   const stats = [
-    { label: "Tickets sold", value: sold.toLocaleString(), icon: Ticket, hint: `${remaining.toLocaleString()} of ${capacity.toLocaleString()} left` },
+    { label: "Tickets sold", value: sold.toLocaleString("en-US"), icon: Ticket, hint: `${remaining.toLocaleString("en-US")} of ${capacity.toLocaleString("en-US")} left` },
     { label: "Revenue", value: currency(revenue), icon: Wallet, hint: avgPrice ? `~${currency(avgPrice)} / ticket` : "Gross, before fees" },
     { label: "Sell-through", value: `${pct}%`, icon: Users, hint: "Seats filled" },
     { label: "Days to go", value: daysValue, icon: CalendarClock, hint: daysHint },
@@ -422,7 +422,7 @@ export function OverviewSection({ event, onPatch, onCommit, onViewLive }) {
           />
           <GlanceRow
             icon={Users}
-            label={`${capacity.toLocaleString()} capacity`}
+            label={`${capacity.toLocaleString("en-US")} capacity`}
           />
           <GlanceRow
             icon={MapPin}

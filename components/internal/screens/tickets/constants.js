@@ -5,13 +5,13 @@ import { defaultEntitlements } from "@/lib/memberships/entitlements";
 
 // --- Formatters --------------------------------------------------------------
 
-export const currency = (n) => `$${Number(n || 0).toLocaleString()}`;
+export const currency = (n) => `$${Number(n || 0).toLocaleString("en-US")}`;
 
 export const formatDate = (iso) => {
   if (!iso) return "No date";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",

@@ -187,12 +187,12 @@ export function ContactBookScreen() {
     const consented = contacts.filter((c) => c.consentEmail).length;
     const pct = total ? Math.round((consented / total) * 100) : 0;
     return [
-      { label: "Contacts", value: total.toLocaleString(), footer: "Across all events" },
-      { label: "Active", value: active.toLocaleString(), footer: "Currently engaged" },
-      { label: "VIP", value: vip.toLocaleString(), footer: "Priority guests" },
+      { label: "Contacts", value: total.toLocaleString("en-US"), footer: "Across all events" },
+      { label: "Active", value: active.toLocaleString("en-US"), footer: "Currently engaged" },
+      { label: "VIP", value: vip.toLocaleString("en-US"), footer: "Priority guests" },
       {
         label: "Email consent",
-        value: consented.toLocaleString(),
+        value: consented.toLocaleString("en-US"),
         footer: `Opted in to marketing email · ${pct}%`,
       },
     ];

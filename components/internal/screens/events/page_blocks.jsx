@@ -332,14 +332,14 @@ function WhosGoingBlock({ event }) {
         <div className="min-w-0">
           <p className="text-sm text-muted-foreground">
             <span className="text-base font-semibold text-foreground">
-              {goingCount.toLocaleString()}
+              {goingCount.toLocaleString("en-US")}
             </span>{" "}
             {goingCount === 1 ? "person is" : "people are"} going
           </p>
           {capacity > goingCount ? (
             <p className="text-xs text-text-secondary">
-              {(capacity - goingCount).toLocaleString()} spots left of{" "}
-              {capacity.toLocaleString()}
+              {(capacity - goingCount).toLocaleString("en-US")} spots left of{" "}
+              {capacity.toLocaleString("en-US")}
             </p>
           ) : null}
         </div>

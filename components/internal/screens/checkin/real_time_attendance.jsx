@@ -119,7 +119,7 @@ export function RealTimeAttendanceScreen({ demo = false }) {
     const totalExp = rows.reduce((s, r) => s + r.expected, 0);
     const live = rows.filter((r) => r.checkedIn > 0).length;
     return [
-      { label: "Checked in now", value: totalIn.toLocaleString(), footer: "Across all events" },
+      { label: "Checked in now", value: totalIn.toLocaleString("en-US"), footer: "Across all events" },
       { label: "Live events", value: String(live), footer: "With attendees on site" },
       {
         label: "Overall arrival",
@@ -173,9 +173,9 @@ export function RealTimeAttendanceScreen({ demo = false }) {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold tabular-nums text-foreground">
-                    {r.checkedIn.toLocaleString()}
+                    {r.checkedIn.toLocaleString("en-US")}
                     <span className="text-sm font-normal text-text-tertiary">
-                      {" "}/ {r.expected.toLocaleString()}
+                      {" "}/ {r.expected.toLocaleString("en-US")}
                     </span>
                   </p>
                   <p className="text-xs text-text-secondary">checked in</p>

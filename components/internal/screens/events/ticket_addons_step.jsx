@@ -19,14 +19,14 @@ import { purchasableUnitPrice } from "@/lib/events/purchasables";
 function fmtSlotTime(slot) {
   const d = parseSlotDate(slot.start);
   if (!d) return bandLabel(slot.band);
-  const start = d.toLocaleString(undefined, {
+  const start = d.toLocaleString("en-US", {
     weekday: "short",
     hour: "numeric",
     minute: "2-digit",
   });
   const e = parseSlotDate(slot.end);
   return e
-    ? `${start} – ${e.toLocaleString(undefined, { hour: "numeric", minute: "2-digit" })}`
+    ? `${start} – ${e.toLocaleString("en-US", { hour: "numeric", minute: "2-digit" })}`
     : start;
 }
 

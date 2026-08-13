@@ -99,10 +99,10 @@ export function WhosGoingScreen() {
     const people = new Set(filtered.map((r) => r.email.toLowerCase()));
     const going = filtered.filter((r) => GOING.has(r.status)).length;
     return [
-      { label: "Upcoming events", value: events.size.toLocaleString() },
-      { label: "Attendees", value: people.size.toLocaleString() },
-      { label: "Tickets", value: filtered.length.toLocaleString() },
-      { label: "Going", value: going.toLocaleString() },
+      { label: "Upcoming events", value: events.size.toLocaleString("en-US") },
+      { label: "Attendees", value: people.size.toLocaleString("en-US") },
+      { label: "Tickets", value: filtered.length.toLocaleString("en-US") },
+      { label: "Going", value: going.toLocaleString("en-US") },
     ];
   }, [filtered]);
 

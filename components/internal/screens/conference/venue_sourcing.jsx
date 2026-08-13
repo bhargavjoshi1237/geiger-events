@@ -386,7 +386,7 @@ function ResultCard({ r, active, added, onHover, onAdd }) {
           )}
           {r.capacity ? (
             <span className="inline-flex items-center gap-1">
-              <Users className="h-3 w-3" /> {r.capacity.toLocaleString()}
+              <Users className="h-3 w-3" /> {r.capacity.toLocaleString("en-US")}
             </span>
           ) : null}
           {r.website && (

@@ -83,9 +83,9 @@ export function DedupeMergeScreen({ onBack } = {}) {
     const affected = groups.reduce((n, g) => n + g.members.length, 0);
     const removable = groups.reduce((n, g) => n + g.members.length - 1, 0);
     return [
-      { label: "Duplicate groups", value: groups.length.toLocaleString() },
-      { label: "Contacts affected", value: affected.toLocaleString() },
-      { label: "Removable", value: removable.toLocaleString() },
+      { label: "Duplicate groups", value: groups.length.toLocaleString("en-US") },
+      { label: "Contacts affected", value: affected.toLocaleString("en-US") },
+      { label: "Removable", value: removable.toLocaleString("en-US") },
     ];
   }, [groups]);
 

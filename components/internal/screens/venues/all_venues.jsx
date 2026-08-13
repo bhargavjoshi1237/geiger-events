@@ -205,7 +205,7 @@ export function VenuesScreen() {
     ).size;
     return [
       { label: "Total venues", value: String(venues.length), footer: `${active} active` },
-      { label: "Total capacity", value: capacity.toLocaleString(), footer: "Across all venues" },
+      { label: "Total capacity", value: capacity.toLocaleString("en-US"), footer: "Across all venues" },
       { label: "Active", value: String(active), footer: "Bookable now" },
       { label: "Cities", value: String(cities), footer: "Distinct locations" },
     ];
@@ -316,7 +316,7 @@ export function VenuesScreen() {
       className: "text-right tabular-nums text-muted-foreground",
       render: (v) => {
         const cap = venueCapacity(v);
-        return cap ? cap.toLocaleString() : "—";
+        return cap ? cap.toLocaleString("en-US") : "—";
       },
     },
     {

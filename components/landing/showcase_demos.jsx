@@ -253,10 +253,10 @@ export function DoorDemo() {
       <div className="shrink-0 px-3.5 pt-3">
         <div className="flex items-baseline gap-1.5">
           <span className="text-[26px] font-semibold leading-none tabular-nums text-white">
-            {admitted.toLocaleString()}
+            {admitted.toLocaleString("en-US")}
           </span>
           <span className="text-[11px] text-white/40">
-            / {CAPACITY.toLocaleString()} inside
+            / {CAPACITY.toLocaleString("en-US")} inside
           </span>
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/8">
@@ -788,7 +788,7 @@ export function WaitlistDemo() {
         <div className="flex items-baseline justify-between">
           <span className={TITLE}>Main Hall</span>
           <span className={META}>
-            {confirmed.toLocaleString()} / {HALL_CAPACITY.toLocaleString()}
+            {confirmed.toLocaleString("en-US")} / {HALL_CAPACITY.toLocaleString("en-US")}
           </span>
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/8">
@@ -1072,7 +1072,7 @@ export function ExpoFloorDemo() {
               Booth {active.id} · {active.size}m
             </div>
             <div className={cn("truncate", META)}>
-              {active.who ?? "Available now"} · ${active.price.toLocaleString()}
+              {active.who ?? "Available now"} · ${active.price.toLocaleString("en-US")}
             </div>
           </div>
           <button
@@ -1091,7 +1091,7 @@ export function ExpoFloorDemo() {
         </div>
         <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2 text-[11px]">
           <span className="text-white/35">Floor value</span>
-          <span className="tabular-nums text-white">${value.toLocaleString()}</span>
+          <span className="tabular-nums text-white">${value.toLocaleString("en-US")}</span>
         </div>
       </div>
     </div>
@@ -1138,7 +1138,7 @@ export function LiveAttendanceDemo() {
       <div className="shrink-0 px-3.5 pt-3.5">
         <div className="flex items-baseline gap-2">
           <span className="text-[30px] font-semibold leading-none tabular-nums text-white">
-            {inside.toLocaleString()}
+            {inside.toLocaleString("en-US")}
           </span>
           <span className="text-[11px] text-white/35">inside · cap 1,800</span>
         </div>

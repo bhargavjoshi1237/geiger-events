@@ -191,7 +191,7 @@ function RegistrationsTrendWidget({ events = [] }) {
   const data = series.map((value, i) => ({ label: `W${i + 1}`, value }));
   const isRevenue = metric === "revenue";
   const formatValue = (value) =>
-    isRevenue ? `$${value.toLocaleString()}` : value.toLocaleString();
+    isRevenue ? `$${value.toLocaleString("en-US")}` : value.toLocaleString("en-US");
 
   // Trend detail: change from the start to the end of the selected range.
   const first = series[0];
@@ -348,7 +348,7 @@ function TicketMixWidget({ events = [] }) {
         </div>
       </div>
       <p className="mt-2 text-center text-xs text-text-secondary">
-        {selectedItem?.label} is {Math.round((selectedItem.value / total) * 100)}% of {total.toLocaleString()} tickets
+        {selectedItem?.label} is {Math.round((selectedItem.value / total) * 100)}% of {total.toLocaleString("en-US")} tickets
       </p>
     </WidgetShell>
   );
@@ -397,7 +397,7 @@ function ConversionFunnelWidget() {
                     <span className="flex w-full items-center justify-between gap-3">
                       <span className="text-muted-foreground">{item.payload.label}</span>
                       <span className="font-medium tabular-nums text-foreground">
-                        {item.payload.value.toLocaleString()} · {item.payload.share}%
+                        {item.payload.value.toLocaleString("en-US")} · {item.payload.share}%
                       </span>
                     </span>
                   )}
@@ -573,7 +573,7 @@ function TopEventsTable({ events = [] }) {
                     <div className="flex flex-col gap-1">
                       <span className="font-medium text-foreground">{event.name}</span>
                       <p className="text-xs text-text-secondary">
-                        {event.sold.toLocaleString()} / {event.capacity.toLocaleString()} seats
+                        {event.sold.toLocaleString("en-US")} / {event.capacity.toLocaleString("en-US")} seats
                       </p>
                     </div>
                   </TableCell>
@@ -599,7 +599,7 @@ function TopEventsTable({ events = [] }) {
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-semibold tabular-nums text-white">
-                    ${event.revenue.toLocaleString()}
+                    ${event.revenue.toLocaleString("en-US")}
                   </TableCell>
                   <TableCell>
                     <span className={cn("inline-flex items-center gap-1.5 font-medium", meta.className)}>
@@ -824,7 +824,7 @@ export function EventsOverviewScreen() {
             subtitle="Seats sold vs. capacity."
             value={SELL_THROUGH.value}
             caption="Sold"
-            footnote={`${SELL_THROUGH.sold.toLocaleString()} of ${SELL_THROUGH.capacity.toLocaleString()} Seats`}
+            footnote={`${SELL_THROUGH.sold.toLocaleString("en-US")} of ${SELL_THROUGH.capacity.toLocaleString("en-US")} Seats`}
             events={events}
           />
         </div>
@@ -834,7 +834,7 @@ export function EventsOverviewScreen() {
             subtitle="Checked in vs. registered."
             value={ATTENDANCE.value}
             caption="Checked In"
-            footnote={`${ATTENDANCE.attended.toLocaleString()} of ${ATTENDANCE.registered.toLocaleString()} Showed Up`}
+            footnote={`${ATTENDANCE.attended.toLocaleString("en-US")} of ${ATTENDANCE.registered.toLocaleString("en-US")} Showed Up`}
             events={events}
           />
         </div>

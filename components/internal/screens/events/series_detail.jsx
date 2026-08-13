@@ -259,8 +259,8 @@ function OverviewTab({ series, members, onPatchSeries }) {
       .find((d) => d >= "2026-06-27");
     return [
       { label: "Events", value: String(members.length) },
-      { label: "Capacity", value: capacity.toLocaleString() },
-      { label: "Tickets sold", value: sold.toLocaleString() },
+      { label: "Capacity", value: capacity.toLocaleString("en-US") },
+      { label: "Tickets sold", value: sold.toLocaleString("en-US") },
       { label: "Revenue", value: currency(revenue) },
       { label: "Next event", value: upcoming ? formatDate(upcoming) : "—" },
     ];

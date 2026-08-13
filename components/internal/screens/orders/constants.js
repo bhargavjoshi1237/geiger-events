@@ -6,7 +6,7 @@
 export const currency = (n) => {
   const v = Number(n || 0);
   const sign = v < 0 ? "-" : "";
-  return `${sign}$${Math.abs(v).toLocaleString(undefined, {
+  return `${sign}$${Math.abs(v).toLocaleString("en-US", {
     minimumFractionDigits: Number.isInteger(v) ? 0 : 2,
     maximumFractionDigits: 2,
   })}`;
@@ -16,7 +16,7 @@ export const formatDate = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -27,7 +27,7 @@ export const formatDateTime = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",

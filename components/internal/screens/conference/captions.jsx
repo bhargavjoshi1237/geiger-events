@@ -368,7 +368,7 @@ export function CaptionsTranscriptionScreen() {
       className: "text-right",
       render: (j) =>
         j.config?.wordCount ? (
-          <span className="tabular-nums text-sm text-text-secondary">{Number(j.config.wordCount).toLocaleString()}</span>
+          <span className="tabular-nums text-sm text-text-secondary">{Number(j.config.wordCount).toLocaleString("en-US")}</span>
         ) : (
           <span className="text-text-tertiary">—</span>
         ),

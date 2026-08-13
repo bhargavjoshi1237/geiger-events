@@ -31,6 +31,7 @@ export function Header({ dashboardHref = "/home" }) {
               alt="Logo"
               width={20}
               height={20}
+              className="h-5 w-5"
             />
           </div>
           <span className="truncate bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-sm font-bold tracking-tight text-transparent sm:text-sm">

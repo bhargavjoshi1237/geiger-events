@@ -9,11 +9,11 @@ import { buildEventICS, directionsUrl, downloadICS } from "@/lib/portal/calendar
 
 // ---- formatters -----------------------------------------------------------
 export const money = (n) =>
-  `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 
 export const fmtDate = (d) =>
   d
-    ? new Date(d).toLocaleDateString(undefined, {
+    ? new Date(d).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -22,7 +22,7 @@ export const fmtDate = (d) =>
 
 export const fmtDateTime = (d) =>
   d
-    ? new Date(d).toLocaleString(undefined, {
+    ? new Date(d).toLocaleString("en-US", {
         month: "short",
         day: "numeric",
         hour: "numeric",
@@ -32,7 +32,7 @@ export const fmtDateTime = (d) =>
 
 export const fmtDay = (d) =>
   d
-    ? new Date(d).toLocaleDateString(undefined, {
+    ? new Date(d).toLocaleDateString("en-US", {
         weekday: "long",
         month: "long",
         day: "numeric",

@@ -50,11 +50,11 @@ export const BUDGET_PERIOD_VALUES = ["Daily", "Weekly", "Monthly", "Lifetime"];
 
 export function currency(n) {
   const value = Number(n) || 0;
-  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 export function compactNumber(n) {
-  return (Number(n) || 0).toLocaleString();
+  return (Number(n) || 0).toLocaleString("en-US");
 }
 
 // Click-through rate from impressions/clicks.

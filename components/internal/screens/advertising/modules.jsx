@@ -61,7 +61,7 @@ export const MODULES = {
       ),
       pillCol("platform", "Platform", (r) => r.config.platform, PLATFORM_MAP),
       statusCol(CAMPAIGN_STATUS_MAP),
-      textCol("clicks", "Clicks", (r) => (Number(r.config.clicks) || 0).toLocaleString(), { align: "right", className: "text-right tabular-nums text-muted-foreground" }),
+      textCol("clicks", "Clicks", (r) => (Number(r.config.clicks) || 0).toLocaleString("en-US"), { align: "right", className: "text-right tabular-nums text-muted-foreground" }),
       moneyCol("spend", "Spend", (r) => r.config.spend),
     ],
     stats: (records) => {

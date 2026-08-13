@@ -23,7 +23,7 @@ import { searchCheckin, admitCheckin } from "@/lib/supabase/checkin";
 import { AccessGate } from "@/components/checkin_routes/access_gate";
 import { QrScanner } from "@/components/checkin_routes/qr_scanner";
 
-const currency = (n) => `$${Number(n || 0).toLocaleString()}`;
+const currency = (n) => `$${Number(n || 0).toLocaleString("en-US")}`;
 
 // Shared full-screen confirmation, auto-returns to idle.
 function Done({ title, message, onDone }) {

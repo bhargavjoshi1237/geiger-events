@@ -319,7 +319,7 @@ function BowlDialog({ open, onOpenChange, field, onGenerate, hasSections }) {
           )}
 
           <p className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-text-secondary tabular-nums">
-            {preview.length} sections · {bowlSeatCount(preview).toLocaleString()} seats
+            {preview.length} sections · {bowlSeatCount(preview).toLocaleString("en-US")} seats
             {hasSections ? (
               <span className="mt-1 block text-red-400">
                 This replaces every section already on this map.
@@ -736,7 +736,7 @@ export function SeatMapEditor({ mapId, onBack }) {
       return true;
     }
     toast.success(
-      `Generated ${result.sections} sections and ${result.seats.toLocaleString()} seats.`,
+      `Generated ${result.sections} sections and ${result.seats.toLocaleString("en-US")} seats.`,
     );
     return true;
   };

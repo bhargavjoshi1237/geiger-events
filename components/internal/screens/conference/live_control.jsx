@@ -30,7 +30,7 @@ function duration(seconds) {
 function scheduleWords(startsAt, endsAt) {
   if (!startsAt) return "No schedule set — this room only opens when you do.";
   const fmt = (ms) =>
-    new Date(ms).toLocaleString(undefined, {
+    new Date(ms).toLocaleString("en-US", {
       weekday: "short",
       day: "numeric",
       month: "short",

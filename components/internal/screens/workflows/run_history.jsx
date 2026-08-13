@@ -230,7 +230,7 @@ export function RunHistoryScreen() {
       ? durations.reduce((s, r) => s + r.durationMs, 0) / durations.length
       : 0;
     return [
-      { label: "Total runs", value: total.toLocaleString(), footer: "All time" },
+      { label: "Total runs", value: total.toLocaleString("en-US"), footer: "All time" },
       { label: "Success rate", value: `${rate}%`, footer: `${success} succeeded` },
       { label: "Failed", value: String(failed), footer: "Needs attention" },
       { label: "Avg duration", value: formatDuration(avg), footer: "Per run" },
