@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ds": {
+      "name": "DeepSeek (orchestrated)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://api.deepseek.com/v1",
+        "apiKey": "{env:DEEPSEEK_API_KEY}"
+      },
+      "models": {
+        "deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash",
+          "tool_call": true,
+          "limit": { "context": 1000000, "output": 65536 }
+        }
+      }
+    }
+  },
+  "permission": {
+    "read": "allow",
+    "edit": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+    "webfetch": "deny",
+    "websearch": "deny",
+    "bash": {
+      "*": "deny",
+      "npx eslint*": "allow",
+      "npm run lint*": "allow",
+      "node *": "allow"
+    }
+  }
+}
