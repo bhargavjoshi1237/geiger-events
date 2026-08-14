@@ -25,6 +25,8 @@ export const colors = {
   info: "#38bdf8", // sky-400
   warning: "#fbbf24", // amber-400
   overlay: "rgba(0,0,0,0.6)",
+  avatarGradientStart: "#3a3a3a",
+  avatarGradientEnd: "#1e1e1e",
 } as const;
 
 export const spacing = {
@@ -42,6 +44,7 @@ export const radius = {
   md: 10,
   lg: 14,
   xl: 18,
+  xxl: 24,
   pill: 999,
 } as const;
 
