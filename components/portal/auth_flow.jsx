@@ -8,6 +8,7 @@ import { Loader2, Mail, Ticket, QrCode, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/internal/shared/screen_kit";
+import { portalPostJson } from "@/lib/portal/portal_fetch";
 
 const FEATURES = [
   { icon: Ticket, label: "All your tickets in one place" },
@@ -15,15 +16,9 @@ const FEATURES = [
   { icon: CalendarPlus, label: "Add events to your calendar" },
 ];
 
-async function postJson(url, body) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
-}
+// basePath-aware; see lib/portal/portal_fetch.js for why bare fetch() breaks in
+// production.
+const postJson = portalPostJson;
 
 // Email-first members auth. Steps: email -> password | setup-prompt -> check-email;
 // a ?setup= token enters at set-password. First password / reset always goes

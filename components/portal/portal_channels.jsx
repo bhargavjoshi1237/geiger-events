@@ -9,20 +9,11 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { ChannelList, ChatThread } from "@/components/chat/chat_kit";
 import { subscribeMemberChannel, normalizePortalMessage } from "@/lib/portal/chat_realtime";
 
-async function getJson(url) {
-  const r = await fetch(url);
-  if (!r.ok) return null;
-  return r.json().catch(() => null);
-}
-async function postJson(url, body) {
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body || {}),
-  });
-  const data = await r.json().catch(() => ({}));
-  return { ok: r.ok, data };
-}
+import { portalGetJson, portalPostJson } from "@/lib/portal/portal_fetch";
+
+// basePath-aware portal API helpers (see lib/portal/portal_fetch.js).
+const getJson = portalGetJson;
+const postJson = portalPostJson;
 
 // Generic members-portal channel surface (left rail + live thread). Configured by
 // `kind` so the same UI powers both the event-chat Community section and the Q&A

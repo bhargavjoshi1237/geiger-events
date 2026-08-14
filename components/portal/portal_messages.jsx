@@ -11,16 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, fmtDateTime } from "./portal_kit";
 
-async function postJson(url, body) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body || {}),
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
-}
+import { portalFetch, portalPostJson } from "@/lib/portal/portal_fetch";
 
+// basePath-aware portal API helpers (see lib/portal/portal_fetch.js).
+const postJson = portalPostJson;
 function Composer({ initial, onCancel, onCreated }) {
   const [subject, setSubject] = useState(initial?.subject || "");
   const [body, setBody] = useState("");
@@ -96,7 +90,7 @@ function ThreadView({ threadId, onBack, onChanged }) {
   const endRef = useRef(null);
 
   const load = () =>
-    fetch(`/api/portal/threads/${threadId}`)
+    portalFetch(`/api/portal/threads/${threadId}`)
       .then((r) => r.json())
       .then((d) => setThread(d.thread || null))
       .catch(() => setThread(null));

@@ -19,25 +19,16 @@ import { ChatThread } from "@/components/chat/chat_kit";
 import { cn } from "@/lib/utils";
 import { subscribeMemberChannel, normalizePortalMessage } from "@/lib/portal/chat_realtime";
 
+import { portalGetJson, portalPostJson } from "@/lib/portal/portal_fetch";
+
+// basePath-aware portal API helpers (see lib/portal/portal_fetch.js).
+const getJson = portalGetJson;
+const postJson = portalPostJson;
+
 // Members-portal thread board — mirrors the organiser dashboard's Q&A / Event Chat
 // look (a full-width list of thread cards that opens into a full-width chat), but
 // read-only on structure: a member reads and chats, they don't create or moderate.
 // Reads/writes go through the kind-agnostic /api/portal/chat routes.
-
-async function getJson(url) {
-  const r = await fetch(url);
-  if (!r.ok) return null;
-  return r.json().catch(() => null);
-}
-async function postJson(url, body) {
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body || {}),
-  });
-  const data = await r.json().catch(() => ({}));
-  return { ok: r.ok, data };
-}
 
 function relTime(iso) {
   if (!iso) return "";

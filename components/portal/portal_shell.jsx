@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { portalFetch } from "@/lib/portal/portal_fetch";
 import PortalTopbar from "./portal_topbar";
 import PortalSidebar from "./portal_sidebar";
 import PortalHome from "./portal_home";
@@ -38,31 +39,31 @@ export function PortalShell({ member: initialMember }) {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
   const loadData = () =>
-    fetch("/api/portal/data")
+    portalFetch("/api/portal/data")
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData({ orders: [], memberships: [], tickets: [] }));
 
   const loadPlans = () =>
-    fetch("/api/portal/membership/plans")
+    portalFetch("/api/portal/membership/plans")
       .then((r) => r.json())
       .then((d) => setPlans({ plans: d.plans || [], paymentsEnabled: !!d.paymentsEnabled }))
       .catch(() => {});
 
   const loadWatch = () =>
-    fetch("/api/portal/watch")
+    portalFetch("/api/portal/watch")
       .then((r) => r.json())
       .then((d) => setWatch(d.items || []))
       .catch(() => setWatch([]));
 
   const loadThreads = () =>
-    fetch("/api/portal/threads")
+    portalFetch("/api/portal/threads")
       .then((r) => r.json())
       .then((d) => setThreads(d.threads || []))
       .catch(() => setThreads([]));
 
   const loadNotifications = () =>
-    fetch("/api/portal/notifications")
+    portalFetch("/api/portal/notifications")
       .then((r) => r.json())
       .then((d) => setNotifications({ items: d.items || [], unread: d.unread || 0 }))
       .catch(() => {});
@@ -87,7 +88,7 @@ export function PortalShell({ member: initialMember }) {
       return;
     }
     if (!sessionId) return;
-    fetch("/api/portal/membership/verify", {
+    portalFetch("/api/portal/membership/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId }),
@@ -111,7 +112,7 @@ export function PortalShell({ member: initialMember }) {
   // Mark the announcements feed read when the member opens Notifications.
   useEffect(() => {
     if (tab !== "notifications" || !notifications.unread) return;
-    fetch("/api/portal/notifications", { method: "POST" })
+    portalFetch("/api/portal/notifications", { method: "POST" })
       .then(() =>
         setNotifications((n) => ({
           ...n,
@@ -123,7 +124,7 @@ export function PortalShell({ member: initialMember }) {
   }, [tab, notifications.unread]);
 
   const signOut = async () => {
-    await fetch("/api/portal/logout", { method: "POST" }).catch(() => {});
+    await portalFetch("/api/portal/logout", { method: "POST" }).catch(() => {});
     toast.success("Signed out.");
     window.location.href = `${basePath}/login`;
   };
@@ -133,7 +134,7 @@ export function PortalShell({ member: initialMember }) {
     setBusyPlanId(plan.id);
     try {
       const returnUrl = `${window.location.origin}${basePath}/members`;
-      const r = await fetch("/api/portal/membership/checkout", {
+      const r = await portalFetch("/api/portal/membership/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ planId: plan.id, returnUrl }),
@@ -171,7 +172,7 @@ export function PortalShell({ member: initialMember }) {
   };
 
   const requestRefund = async (order, reason) => {
-    const r = await fetch("/api/portal/refund", {
+    const r = await portalFetch("/api/portal/refund", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId: order.id, reason }),

@@ -10,6 +10,11 @@ import { Field, ScreenHeader } from "@/components/internal/shared/screen_kit";
 import { SecondaryScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { initials } from "./portal_kit";
 
+import { portalPostJson } from "@/lib/portal/portal_fetch";
+
+// basePath-aware portal API helpers (see lib/portal/portal_fetch.js).
+const postJson = portalPostJson;
+
 // Simple flat section: a divider, heading + hint, then the controls — no card.
 function Section({ title, description, children }) {
   return (
@@ -23,16 +28,6 @@ function Section({ title, description, children }) {
       {children}
     </section>
   );
-}
-
-async function postJson(url, body) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body || {}),
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
 }
 
 export function PortalAccount({ member, onMemberChange }) {

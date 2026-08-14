@@ -9,6 +9,7 @@ import { cn } from "@geiger/ui";
 import { toEmbed } from "@/lib/video-embed";
 import { breakoutTimer, formatCountdown } from "@/lib/live/timer";
 import { usePresenceHeartbeat } from "@/lib/hooks/use-presence-heartbeat";
+import { portalFetch } from "@/lib/portal/portal_fetch";
 
 // The member's Live tab — the rooms their entitlements unlock, and the room view
 // itself. Opening a room starts a presence heartbeat: one write every 30s that
@@ -121,7 +122,7 @@ function RoundRail({ parentSessionId }) {
     if (!parentSessionId) return undefined;
     let alive = true;
     const pull = () => {
-      fetch(`/api/portal/live/round?sessionId=${parentSessionId}`)
+      portalFetch(`/api/portal/live/round?sessionId=${parentSessionId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => alive && d && setParent(d.session || null))
         .catch(() => {});
@@ -230,7 +231,7 @@ export function PortalLive() {
 
   useEffect(() => {
     let alive = true;
-    fetch("/api/portal/live")
+    portalFetch("/api/portal/live")
       .then((r) => (r.ok ? r.json() : { rooms: [] }))
       .then((d) => alive && setRooms(d.rooms ?? []))
       .catch(() => alive && setRooms([]));
