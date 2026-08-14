@@ -11,6 +11,7 @@ import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { ToastProvider } from "@/components/ui/Toast";
 import { configureNotificationHandler, notificationRoute } from "@/lib/push";
 import { PortalDataProvider } from "@/state/data";
+import { LivePlayerProvider } from "@/state/live_player";
 import { SessionProvider, useSession } from "@/state/session";
 import { colors } from "@/theme/tokens";
 
@@ -24,7 +25,9 @@ export default function RootLayout() {
         <ToastProvider>
           <SessionProvider>
             <PortalDataProvider>
-              <RootNavigator />
+              <LivePlayerProvider>
+                <RootNavigator />
+              </LivePlayerProvider>
             </PortalDataProvider>
           </SessionProvider>
         </ToastProvider>
