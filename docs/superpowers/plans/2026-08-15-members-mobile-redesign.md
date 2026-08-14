@@ -462,15 +462,32 @@ git commit -m "feat(mobile): restructure tab bar to Home/Tickets/Live/Inbox/More
 
 **Files:**
 - Modify: `mobile/src/app/(app)/home/index.tsx`
+- Modify: `mobile/src/components/TicketQr.tsx` (adds the `compact` prop this
+  task is the first consumer of — Task 6 later reuses it as-is, no further
+  change to this file)
 
 **Interfaces:**
 - Consumes: `usePortalData()` (existing shape), `useSession()` (existing),
   `entitlements` (existing `Record<string, Entitlement[]>`), `api` from
   `lib/api.ts` for a lightweight `/api/portal/live` read (same call
   `live/index.tsx` makes).
-- Produces: no new exports (route component only).
+- Produces: `TicketQr`'s new `compact?: boolean` prop (see Step 0) — Task 6's
+  Pass screen consumes it too.
 
-- [ ] **Step 1: Remove the stats grid**
+- [ ] **Step 1: Add `compact` to `TicketQr`**
+
+In `mobile/src/components/TicketQr.tsx`, add `compact?: boolean` to its
+props type. When `compact` is true, render the QR at `104` size (vs. the
+existing default — check the current default size constant and keep it for
+the non-compact case) and omit the surrounding label/border chrome the
+component currently draws around the code, leaving just the QR graphic and
+the order-code text beneath it at a smaller font size
+(`...type.caption` instead of whatever larger style it currently uses for
+the code). Keep the default (non-compact) rendering byte-identical to today
+for existing callers. (Task 6's Pass screen reuses this same prop later —
+that task does not touch this file again.)
+
+- [ ] **Step 2: Remove the stats grid**
 
 Delete the `statsGrid`/`StatTile`/`AnimatedValue` block and its render call
 from `home/index.tsx` (the `<View style={styles.statsGrid}>...</View>`
@@ -482,7 +499,7 @@ too, and the now-unused `availablePlans`-driven member-prompt block if it no
 longer reads `stats.memberships` (replace `stats.memberships === 0` with a
 direct check: `(data?.memberships || []).filter((m) => m.status === "Active").length === 0`).
 
-- [ ] **Step 2: Add a live-now banner**
+- [ ] **Step 3: Add a live-now banner**
 
 Add local state and a fetch alongside the existing `usePortalData()` call:
 
@@ -554,7 +571,7 @@ liveBannerTitle: { ...type.label, fontWeight: "600", color: colors.foreground },
 liveBannerSub: { ...type.caption, color: colors.textSecondary },
 ```
 
-- [ ] **Step 3: Restyle the hero's countdown/action row to match the mockup**
+- [ ] **Step 4: Restyle the hero's countdown/action row to match the mockup**
 
 In `NextEventHero`, change `styles.hero` `borderRadius` to `radius.xxl` (was
 `radius.lg`). The countdown + "Show pass" action row already largely matches
@@ -564,7 +581,7 @@ buttons); the only functional change: `Button title="View ticket"` becomes
 (the new full-screen route from Task 6) instead of `onOpen` (which opened the
 old pushed ticket-detail route, replaced in Task 5).
 
-- [ ] **Step 4: Event-day mode**
+- [ ] **Step 5: Event-day mode**
 
 Add an `isToday` check next to the existing `nextTicket` memo:
 
@@ -611,7 +628,7 @@ function EventDayCard({ ticket }: { ticket: Ticket }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Collect at the event"
-          onPress={() => router.push(`/tickets/${ticket.id}`)}
+          onPress={() => router.push("/tickets")}
           style={styles.eventDayRow}
         >
           <View style={styles.eventDayRowIcon}>
@@ -648,10 +665,13 @@ function EventDayCard({ ticket }: { ticket: Ticket }) {
 }
 ```
 
-This references a `compact` prop on `TicketQr` that doesn't exist yet — add
-it in Task 6 (Step 1 there adds `compact?: boolean` to shrink the QR to
-104x104 and hide the surrounding chrome when true, matching the mockup's
-event-day card). Add styles:
+This uses the `compact` prop on `TicketQr` added in Step 0 above. The
+"Collect at the event" row deliberately routes to the bare `/tickets` list
+rather than that specific ticket's detail — Task 5 replaces per-ticket
+detail with a sheet opened from local state inside `tickets/index.tsx`, so
+there is no stable route to deep-link a single ticket's sheet open; landing
+on the list is the correct, in-scope behavior (not a placeholder). Add
+styles:
 
 ```ts
 eventDayStack: { gap: spacing.md },
@@ -699,18 +719,18 @@ the structural map — confirm its rendered style reads as dark-on-white
 inside the white `eventDayCard` (it should, since `secondary` is the
 existing muted/outlined variant); if `Card.tsx`/`Button.tsx` render it with a
 transparent background that would vanish on the white card, use
-`variant="primary"` instead and confirm visually during Step 5's manual
+`variant="primary"` instead and confirm visually during Step 6's manual
 check — pick whichever reads correctly and note the choice in the commit
 message.
 
-- [ ] **Step 5: Typecheck, lint, manual check**
+- [ ] **Step 6: Typecheck, lint, manual check**
 
 Run: `npx tsc --noEmit && npm run lint` — expected clean.
 Manually: temporarily edit a ticket's `eventDate` in a debugger/dev tool (or
 just eyeball the non-event-day path since seeding "today" data isn't
 available) to confirm both branches render without crashing.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add mobile/src/app/(app)/home/index.tsx
@@ -860,26 +880,15 @@ git commit -m "feat(mobile): move ticket detail into a bottom sheet, restyle tic
 ### Task 6: Full-screen brightness-boosted Pass screen
 
 **Files:**
-- Modify: `mobile/src/components/TicketQr.tsx` (add `compact` prop)
 - Create: `mobile/src/app/(app)/tickets/pass/[id].tsx`
 
 **Interfaces:**
-- Consumes: `usePortalData().data.tickets` (existing), `expo-brightness` (Task 1).
-- Produces: route `/tickets/pass/:id`; `TicketQr` gains `compact?: boolean`.
+- Consumes: `usePortalData().data.tickets` (existing), `expo-brightness`
+  (Task 1), `TicketQr`'s `compact` prop (added in Task 4 Step 0 — this task
+  does not modify `TicketQr.tsx`, only uses the prop it already exposes).
+- Produces: route `/tickets/pass/:id`.
 
-- [ ] **Step 1: Add `compact` to `TicketQr`**
-
-In `mobile/src/components/TicketQr.tsx`, add `compact?: boolean` to its
-props type. When `compact` is true, render the QR at `104` size (vs. the
-existing default — check the current default size constant and keep it for
-the non-compact case) and omit the surrounding label/border chrome the
-component currently draws around the code, leaving just the QR graphic and
-the order-code text beneath it at a smaller font size
-(`...type.caption` instead of whatever larger style it currently uses for
-the code). Keep the default (non-compact) rendering byte-identical to today
-for existing callers.
-
-- [ ] **Step 2: Write the Pass screen**
+- [ ] **Step 1: Write the Pass screen**
 
 `mobile/src/app/(app)/tickets/pass/[id].tsx`:
 
@@ -1009,12 +1018,12 @@ actually what's wanted on a white background, so this is likely fine as-is —
 verify visually in Step 4 and only patch `DetailRow` if it renders light text
 that disappears on white).
 
-- [ ] **Step 3: Typecheck and lint**
+- [ ] **Step 2: Typecheck and lint**
 
 Run: `npx tsc --noEmit && npm run lint`
 Expected: clean.
 
-- [ ] **Step 4: Manual check**
+- [ ] **Step 3: Manual check**
 
 From Tickets, tap a card's "Pass" button (or Home's "Show pass" in event-day
 mode). Confirm: screen goes full white, brightness visibly increases on a
@@ -1023,10 +1032,10 @@ simulators — note in the report if only simulator-tested), QR + order code +
 attendee/doors/paid rows render, back chevron restores brightness and pops
 the route.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add mobile/src/components/TicketQr.tsx "mobile/src/app/(app)/tickets/pass/[id].tsx"
+git add "mobile/src/app/(app)/tickets/pass/[id].tsx"
 git commit -m "feat(mobile): add full-screen brightness-boosted ticket pass"
 ```
 
