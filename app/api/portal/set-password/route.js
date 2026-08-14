@@ -6,6 +6,7 @@ import {
   randomToken,
   sha256,
   sessionCookieOptions,
+  wantsTokenInBody,
 } from "@/lib/portal/session";
 
 const SESSION_DAYS = 30;
@@ -56,7 +57,11 @@ export async function POST(request) {
     .from("portal_sessions")
     .insert({ member_id: setup.member_id, token_hash: tokenHash, expires_at: expires });
 
-  const res = NextResponse.json({ ok: true });
+  const res = NextResponse.json(
+    (await wantsTokenInBody())
+      ? { ok: true, token: sessionToken, expiresAt: expires }
+      : { ok: true },
+  );
   res.cookies.set(
     SESSION_COOKIE,
     sessionToken,

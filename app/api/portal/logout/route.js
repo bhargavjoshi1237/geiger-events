@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { adminClient } from "@/lib/supabase/admin";
-import { SESSION_COOKIE, sha256 } from "@/lib/portal/session";
+import { SESSION_COOKIE, sha256, sessionTokenFromRequest } from "@/lib/portal/session";
 
 export async function POST() {
-  const store = await cookies();
-  const raw = store.get(SESSION_COOKIE)?.value;
+  const raw = await sessionTokenFromRequest();
   if (raw) {
     const sb = adminClient();
     if (sb) await sb.from("portal_sessions").delete().eq("token_hash", sha256(raw));
