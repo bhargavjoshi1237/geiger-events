@@ -211,7 +211,7 @@ export function EmbeddableWidgetSection({ event }) {
             <div className="flex items-center justify-center rounded-xl border border-dashed border-border bg-background p-10">
               {type === "button" ? (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  Get tickets
+                  Get Tickets
                 </Button>
               ) : (
                 <div className="w-64 rounded-xl border border-border bg-surface-subtle p-4">

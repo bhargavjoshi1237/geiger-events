@@ -19,6 +19,7 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -72,7 +73,21 @@ export function resolveFooter(footer) {
 
 // `logo` is the resolved brand mark ({ url, height, link }) from the page theme,
 // or null. Only the imported/themed pages pass one.
-export function PageFooter({ footer, accent, logo }) {
+//
+// `surface` is a ready-made style bag (resolveFooterSurface) that paints the
+// footer as a full-bleed slab the way a source site's own footer usually is,
+// carrying the token overrides that keep its contents legible on that fill.
+// That only works if the caller renders this *outside* its content column,
+// which it signals by passing `contentWidth` — the footer then owns an inner
+// column of its own. Callers that stay inside their column (the Event Wall)
+// pass neither and render exactly as they always have.
+export function PageFooter({
+  footer,
+  accent,
+  logo,
+  surface = null,
+  contentWidth = null,
+}) {
   const f = resolveFooter(footer);
   const links = f.links.filter((l) => l && l.label);
   const socials = f.socials.filter((s) => s && s.url);
@@ -80,65 +95,81 @@ export function PageFooter({ footer, accent, logo }) {
 
   if (!hasCustom && !f.showBranding && !logo?.url) return null;
 
+  // Set only when the caller renders us outside its column and needs us to
+  // rebuild one at the same width.
+  const owns = !!contentWidth;
+
   return (
-    <footer className="mt-14 flex flex-col items-center gap-4 border-t border-border pt-8 text-center">
-      {logo?.url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={logo.url}
-          alt=""
-          style={{ height: logo.height || 32 }}
-          className="w-auto max-w-[200px] object-contain opacity-80"
-        />
-      ) : null}
-      {socials.length ? (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {socials.map((s, i) => {
-            const Icon = socialIcon(s.platform);
-            const href =
-              s.platform === "email" && !/^mailto:/.test(s.url)
-                ? `mailto:${s.url}`
-                : s.url;
-            return (
+    <footer style={surface || undefined} className="mt-14">
+      <div
+        style={owns ? { maxWidth: contentWidth } : undefined}
+        className={cn(
+          "flex flex-col items-center gap-4 text-center",
+          owns && "mx-auto px-4 sm:px-6 lg:px-8",
+          surface
+            ? "py-12"
+            : cn("border-t border-border pt-8", owns && "pb-12"),
+        )}
+      >
+        {logo?.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logo.url}
+            alt=""
+            style={{ height: logo.height || 32 }}
+            className="w-auto max-w-[200px] object-contain opacity-80"
+          />
+        ) : null}
+
+        {socials.length ? (
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {socials.map((s, i) => {
+              const Icon = socialIcon(s.platform);
+              const href =
+                s.platform === "email" && !/^mailto:/.test(s.url)
+                  ? `mailto:${s.url}`
+                  : s.url;
+              return (
+                <a
+                  key={`${s.platform}-${i}`}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.platform}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-card text-text-secondary transition-colors hover:text-foreground"
+                  style={accent ? { borderColor: `${accent.color}33` } : undefined}
+                >
+                  <Icon className="h-4 w-4" />
+                </a>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {links.length ? (
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            {links.map((l, i) => (
               <a
-                key={`${s.platform}-${i}`}
-                href={href}
+                key={`${l.label}-${i}`}
+                href={l.url || "#"}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={s.platform}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-card text-text-secondary transition-colors hover:text-foreground"
-                style={accent ? { borderColor: `${accent.color}33` } : undefined}
+                className="text-sm text-text-secondary transition-colors hover:text-foreground"
               >
-                <Icon className="h-4 w-4" />
+                {l.label}
               </a>
-            );
-          })}
-        </div>
-      ) : null}
+            ))}
+          </div>
+        ) : null}
 
-      {links.length ? (
-        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-          {links.map((l, i) => (
-            <a
-              key={`${l.label}-${i}`}
-              href={l.url || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-text-secondary transition-colors hover:text-foreground"
-            >
-              {l.label}
-            </a>
-          ))}
-        </div>
-      ) : null}
+        {f.text ? (
+          <p className="max-w-xl text-xs text-text-tertiary">{f.text}</p>
+        ) : null}
 
-      {f.text ? (
-        <p className="max-w-xl text-xs text-text-tertiary">{f.text}</p>
-      ) : null}
-
-      {f.showBranding ? (
-        <p className="text-xs text-text-tertiary">Powered by Geiger Events</p>
-      ) : null}
+        {f.showBranding ? (
+          <p className="text-xs text-text-tertiary">Powered by Geiger Events</p>
+        ) : null}
+      </div>
     </footer>
   );
 }

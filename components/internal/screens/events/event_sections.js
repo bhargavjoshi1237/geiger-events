@@ -49,6 +49,8 @@ import {
   Handshake,
   Sparkles,
   HelpCircle,
+  PlayCircle,
+  LayoutGrid,
 } from "lucide-react";
 
 import {
@@ -74,7 +76,8 @@ import {
   HybridModeSection,
 } from "./distribution";
 import { RecurringEventsSection } from "./recurring_clone";
-import { HighlightsSection, FaqSection } from "./event_content";
+import { HighlightsSection, FaqSection, OnDemandVideoSection } from "./event_content";
+import { InfographicsSection } from "./infographics";
 import { ScheduleSection } from "./schedule";
 import { GuestsSection } from "./guests";
 import { OfferingsSection } from "./offerings";
@@ -139,7 +142,7 @@ export const NAV_GROUPS = [
         key: "basics",
         label: "Event details",
         icon: SquarePen,
-        desc: "Name, summary, and format for this event.",
+        desc: "Name, organizer, summary, and format for this event.",
         ownHeader: true,
       },
     ],
@@ -210,6 +213,20 @@ export const NAV_GROUPS = [
         label: "Sponsors",
         icon: Handshake,
         desc: "Attach the sponsors backing this event — shown on the page and in reporting.",
+        ownHeader: true,
+      },
+      {
+        key: "video",
+        label: "On-demand Video",
+        icon: PlayCircle,
+        desc: "Add videos attendees can watch any time — replays, trailers, or walkthroughs, linked from YouTube, Vimeo, or a direct file.",
+        ownHeader: true,
+      },
+      {
+        key: "infographics",
+        label: "Infographics",
+        icon: LayoutGrid,
+        desc: "Add infographic blocks to your page — carousels, split CTAs, quotes, footer bands, and info showcases with grid or flex layouts.",
         ownHeader: true,
       },
     ],
@@ -535,6 +552,8 @@ export const SECTIONS = {
   highlights: HighlightsSection,
   schedule: ScheduleSection,
   faq: FaqSection,
+  video: OnDemandVideoSection,
+  infographics: InfographicsSection,
   guests: GuestsSection,
   speakers: EventSpeakersSection,
   sponsors: EventSponsorsSection,

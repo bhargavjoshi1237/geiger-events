@@ -152,7 +152,9 @@ function PickerMap({ coords, onPick }) {
   }, [ready, coords?.lat, coords?.lng]);
 
   return (
-    <div className="relative h-full min-h-72 overflow-hidden rounded-xl border border-border bg-surface-card">
+    // `isolate` keeps Leaflet's z-200..1000 panes inside this box instead of
+    // letting them compete at the document root and paint over a dialog.
+    <div className="relative isolate h-full min-h-72 overflow-hidden rounded-xl border border-border bg-surface-card">
       <div
         ref={elRef}
         className="absolute inset-0 [&_.leaflet-container]:cursor-crosshair [&_.leaflet-container]:bg-surface-card"

@@ -28,19 +28,62 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useEventConfig } from "@/lib/events/use-event-config";
+import { Segmented } from "./theme_controls";
 import {
   uploadEventImage,
   removeEventImage,
   pathFromPublicUrl,
 } from "@/lib/supabase/storage";
 
-// Per-event schedule editor. Each item — { id, time, title, description, image }
-// — is stored in the event's metadata bag (like tickets/questions) via
-// useEventConfig, so the timeline grows without a migration and rehydrates on
-// reload. The public page renders these in the Schedule block (page_blocks.jsx).
-// Item images live in the shared event-media bucket through uploadEventImage.
+// Per-event schedule editor. Each item — { id, time, title, description, image,
+// layout, spacing, imagePosition } — is stored in the event's metadata bag (like
+// tickets/questions) via useEventConfig, so the timeline grows without a
+// migration and rehydrates on reload. The public page renders these in the
+// Schedule block (page_blocks.jsx). Item images live in the shared event-media
+// bucket through uploadEventImage.
 
-const EMPTY_ITEM = { time: "", title: "", description: "", image: "" };
+// How a schedule is laid out on the public page. A section-level style — saving
+// it on any item syncs it across the schedule.
+export const SCHEDULE_LAYOUTS = [
+  { key: "list", label: "List" },
+  { key: "flex", label: "Flex" },
+];
+
+// Breathing room between schedule items, in each layout.
+export const SCHEDULE_GAPS = [
+  { key: "tight", label: "Tight" },
+  { key: "normal", label: "Normal" },
+  { key: "wide", label: "Wide" },
+];
+
+// Where an item's image sits. "background" pins it behind the text with a
+// scrim; "top" runs it wide above the text; left/right thumb the side.
+export const SCHEDULE_IMAGE_POSITIONS = [
+  { key: "left", label: "Left" },
+  { key: "right", label: "Right" },
+  { key: "top", label: "Top" },
+  { key: "background", label: "Background" },
+];
+
+// How an item's image fills its frame. "fit" shows the whole image, letterboxed
+// where the frame's proportions differ; "stretch" forces it to fill and can
+// distort; "cover" crops the overflow.
+export const SCHEDULE_IMAGE_FITS = [
+  { key: "cover", label: "Cover" },
+  { key: "fit", label: "Fit" },
+  { key: "stretch", label: "Stretch" },
+];
+
+const EMPTY_ITEM = {
+  time: "",
+  title: "",
+  description: "",
+  image: "",
+  layout: "",
+  spacing: "normal",
+  imagePosition: "left",
+  imageFit: "cover",
+};
 
 // Author or edit a single schedule item — a required title plus an optional
 // time, description, and image. Matches the suite's create-dialog rhythm.
@@ -97,13 +140,17 @@ function ScheduleItemDialog({ open, onOpenChange, eventId, initial, onSave }) {
       title: draft.title.trim(),
       description: draft.description.trim(),
       image: draft.image || "",
+      layout: draft.layout || "",
+      spacing: draft.spacing || "normal",
+      imagePosition: draft.imagePosition || "left",
+      imageFit: draft.imageFit || "cover",
     });
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85vh] overflow-y-auto bg-background">
         <DialogHeader>
           <DialogTitle>
             {initial ? "Edit schedule item" : "Add schedule item"}
@@ -208,6 +255,50 @@ function ScheduleItemDialog({ open, onOpenChange, eventId, initial, onSave }) {
               </button>
             )}
           </Field>
+          <Field
+            label="Layout"
+            hint='"Flex" wraps the items into a responsive grid; "List" stacks them. Applied to every item.'
+          >
+            <Segmented
+              value={
+                draft.layout === "list" || draft.layout === "flex"
+                  ? draft.layout
+                  : "list"
+              }
+              onChange={(v) => set("layout")(v)}
+              options={SCHEDULE_LAYOUTS}
+            />
+          </Field>
+          <Field
+            label="Gap"
+            hint="Spacing between schedule items. Applies to every item."
+          >
+            <Segmented
+              value={draft.spacing || "normal"}
+              onChange={(v) => set("spacing")(v)}
+              options={SCHEDULE_GAPS}
+            />
+          </Field>
+          <Field
+            label="Image position"
+            hint='Where this item&apos;s image sits. "Background" pins it behind the text.'
+          >
+            <Segmented
+              value={draft.imagePosition || "left"}
+              onChange={(v) => set("imagePosition")(v)}
+              options={SCHEDULE_IMAGE_POSITIONS}
+            />
+          </Field>
+          <Field
+            label="Image fit"
+            hint="How the image fills its frame. Fit shows it whole, letterboxed; stretch distorts it to fill."
+          >
+            <Segmented
+              value={draft.imageFit || "cover"}
+              onChange={(v) => set("imageFit")(v)}
+              options={SCHEDULE_IMAGE_FITS}
+            />
+          </Field>
         </div>
 
         <DialogFooter>
@@ -235,6 +326,11 @@ export function ScheduleSection({ event, headerItem }) {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState(null); // { index, item } | null
 
+  // Layout and gap are section-level styles — the renderer reads them off the
+  // first item, so new items seed from there and edits sync across the list.
+  const sectionLayout = items[0]?.layout || "list";
+  const sectionSpacing = items[0]?.spacing || "normal";
+
   const addItem = (item) =>
     saveItems([...items, { ...item, id: `sch_${Date.now()}` }], {
       successMsg: "Schedule item added.",
@@ -242,7 +338,15 @@ export function ScheduleSection({ event, headerItem }) {
 
   const updateItem = (index, item) =>
     saveItems(
-      items.map((it, i) => (i === index ? { ...it, ...item } : it)),
+      items.map((it, i) =>
+        i === index
+          ? { ...it, ...item }
+          : {
+              ...it,
+              layout: item.layout || it.layout,
+              spacing: item.spacing || it.spacing,
+            },
+      ),
       { successMsg: "Schedule item updated." },
     );
 
@@ -374,6 +478,11 @@ export function ScheduleSection({ event, headerItem }) {
         open={addOpen}
         onOpenChange={setAddOpen}
         eventId={event.id}
+        initial={{
+          ...EMPTY_ITEM,
+          layout: sectionLayout,
+          spacing: sectionSpacing,
+        }}
         onSave={addItem}
       />
       <ScheduleItemDialog

@@ -61,7 +61,7 @@ function EventsReservedSeatingList() {
     >
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-8 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading events…
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading Events…
         </div>
       ) : rows.length ? (
         <div className="divide-y divide-border">

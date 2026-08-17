@@ -99,6 +99,14 @@ const operationPermissions = [
     scopeBy: "event",
   },
   {
+    // Custom CSS/JS and raw-HTML blocks ship to the public page unfiltered, so
+    // the page builder gates that surface separately from ordinary editing.
+    key: "events.page.customcode",
+    label: "Add custom code to a page",
+    group: "Events",
+    scopeBy: "event",
+  },
+  {
     key: "events.order.refund",
     label: "Refund an order",
     group: "Orders",
@@ -109,18 +117,18 @@ const operationPermissions = [
   },
   {
     key: "events.team.invite",
-    label: "Invite members",
-    group: "Team control",
+    label: "Invite Members",
+    group: "Team Control",
   },
   {
     key: "events.team.assign",
     label: "Assign roles",
-    group: "Team control",
+    group: "Team Control",
   },
   {
     key: "events.role.manage",
     label: "Create and edit roles",
-    group: "Team control",
+    group: "Team Control",
   },
   {
     key: "events.billing.manage",
@@ -173,6 +181,7 @@ const systemRoles = [
       "events.event.edit",
       "events.event.publish",
       "events.event.delete",
+      "events.page.customcode",
       "events.order.refund",
       "events.team.invite",
       "events.team.assign",

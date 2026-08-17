@@ -72,6 +72,15 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
     toast.success("Changes saved.");
   };
 
+  // The page builder saves on its own rather than sending the author back here
+  // to find Save. Returns false only on a real write failure — a missing DB
+  // returns null, which still leaves the design in local state.
+  const persistDesign = async (next) => {
+    setDesign(next);
+    onUpdate?.({ ...form, pageDesign: next });
+    return (await updateEventMeta(form.id, { pageDesign: next })) !== false;
+  };
+
   const viewLive = () => {
     if (typeof window !== "undefined") {
       window.open(
@@ -183,7 +192,9 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
           {active === "design" ? (
             <PageDesignSection
               design={design}
+              event={form}
               onChange={setDesign}
+              onPersist={persistDesign}
               onPreview={() => setPreviewOpen(true)}
               eventId={form?.id}
             />

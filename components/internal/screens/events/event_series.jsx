@@ -76,6 +76,7 @@ import {
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
+import { useDefaultOrganizer } from "@/lib/events/use-default-organizer";
 import { SeriesDetailScreen } from "./series_detail";
 
 const TODAY = "2026-06-27";
@@ -191,6 +192,8 @@ export function EventSeriesScreen() {
   const [userId, setUserId] = useState(null);
   const { openEventInTab } = useWorkspaceUrl();
   const { projectId } = useProject();
+  // Fallback host for a series event when the series has no organizer default.
+  const defaultOrganizer = useDefaultOrganizer();
 
   const usingDb = source === "db";
 
@@ -375,7 +378,7 @@ export function EventSeriesScreen() {
       sold: 0,
       revenue: 0,
       visibility: defaults.visibility || "Public",
-      organizer: defaults.organizer || "Ava Mitchell",
+      organizer: defaults.organizer || defaultOrganizer,
       summary: "",
       coverUrl: "",
       gallery: [],

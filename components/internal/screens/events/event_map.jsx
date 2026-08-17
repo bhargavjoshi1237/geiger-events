@@ -65,8 +65,75 @@ export function MapZoomControls({ onZoomIn, onZoomOut, className }) {
 }
 
 // Neutral world view used when we have neither a pinned venue nor a geocoded
-// address yet — so the panel always shows a real dark map rather than a blank.
+// address yet — so the panel always shows a real map rather than a blank.
 const DEFAULT_CENTER = { lat: 25, lng: 5 };
+
+// CARTO's keyless, OSM-attributed basemaps, one per scheme. Which one loads is
+// decided by the surface the map is sitting on, not by a prop — see detectScheme.
+const TILES = {
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+};
+
+// Perceived brightness of a CSS color, 0-255, or null if it isn't one.
+//
+// A computed color comes back in whatever space it was authored, and this has to
+// read all of them: `rgb()` for a plain declaration, `color(srgb r g b)` — 0-1
+// channels — for anything the browser resolved from a color-mix(), and
+// `oklch()/lab()` for the app's own tokens. Reading only rgb() is what made a
+// light brand still report as dark.
+function brightnessOf(color) {
+  let raw = String(color || "").trim();
+  if (!raw) return null;
+
+  const hex = raw.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
+  if (hex) {
+    const full =
+      hex.length === 3 ? hex.replace(/./g, (c) => c + c) : hex;
+    const n = parseInt(full, 16);
+    return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  }
+
+  // The color-space keyword can itself contain a digit ("display-p3"), so drop
+  // it before harvesting the channel numbers.
+  raw = raw.replace(/^color\(\s*[\w-]+/i, "color(");
+  const nums = (raw.match(/-?\d*\.?\d+/g) || []).map(Number);
+  if (nums.length < 3) return null;
+
+  if (/^rgba?\(/i.test(raw)) {
+    return 0.299 * nums[0] + 0.587 * nums[1] + 0.114 * nums[2];
+  }
+  if (/^color\(/i.test(raw)) {
+    return 255 * (0.299 * nums[0] + 0.587 * nums[1] + 0.114 * nums[2]);
+  }
+  // Perceptual lightness is the first component — 0-1 for ok*, 0-100 for lab/lch.
+  if (/^okl(ch|ab)\(/i.test(raw)) return 255 * nums[0];
+  if (/^l(ch|ab)\(/i.test(raw)) return 255 * (nums[0] / 100);
+  return null;
+}
+
+// "light" | "dark" for the surface the map is drawn on, or null if it can't be
+// read yet.
+//
+// A dark basemap under an imported light brand is the single loudest seam on a
+// themed event page. Rather than threading the theme through every caller, the
+// map reads the tokens it has already inherited: the themed page wrapper
+// overrides --background for its whole subtree, so the page color the map sees
+// *is* the brand's. Dashboard maps resolve to the app's dark tokens and are
+// unaffected.
+//
+// --background is preferred over the container's own computed background because
+// we author it as a plain hex, where --surface-card is a color-mix() the browser
+// re-serialises into another space.
+function detectScheme(el) {
+  if (!el) return null;
+  const cs = getComputedStyle(el);
+  const y =
+    brightnessOf(cs.getPropertyValue("--background")) ??
+    brightnessOf(cs.backgroundColor);
+  if (!Number.isFinite(y)) return null;
+  return y > 140 ? "light" : "dark";
+}
 
 // Escape user-supplied strings before they go into popup innerHTML.
 function escapeHtml(str) {
@@ -83,10 +150,14 @@ function escapeHtml(str) {
   );
 }
 
-// Dark, key-less map built on Leaflet + CARTO "dark_all" raster tiles (free,
-// OSM-attributed). Vanilla Leaflet is loaded dynamically inside the effect so
-// it never touches `window` during SSR. Markers use divIcon/circleMarker to
-// avoid Leaflet's bundler-unfriendly default marker images.
+// Key-less map built on Leaflet + CARTO raster tiles (free, OSM-attributed).
+// Vanilla Leaflet is loaded dynamically inside the effect so it never touches
+// `window` during SSR. Markers use divIcon/circleMarker to avoid Leaflet's
+// bundler-unfriendly default marker images.
+//
+// Every colour it draws — basemap, pin, popup link — comes from the CSS tokens
+// of whatever surface it lands on, so an imported brand re-skins the map along
+// with the rest of the page instead of leaving a dark hole in a light one.
 //
 // The map always renders. It centres on `coords` (with a venue pin + nearby
 // markers) when pinned; otherwise on `fallbackCenter` (a lightly geocoded
@@ -99,6 +170,8 @@ export function EventMap({
   label = "Venue",
   address = "",
 }) {
+  const containerRef = useRef(null);
+  const tileRef = useRef(null);
   const elRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef(null);
@@ -122,10 +195,13 @@ export function EventMap({
         scrollWheelZoom: false,
         attributionControl: false,
       }).setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 2);
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        { subdomains: "abcd", maxZoom: 19 },
-      ).addTo(map);
+      // Pick the basemap up front — requesting the wrong set of tiles and
+      // swapping them a moment later is a visible flash.
+      const initial = detectScheme(containerRef.current) || "dark";
+      tileRef.current = L.tileLayer(TILES[initial] || TILES.dark, {
+        subdomains: "abcd",
+        maxZoom: 19,
+      }).addTo(map);
       markersRef.current = L.layerGroup().addTo(map);
       mapInstanceRef.current = map;
       setReady(true);
@@ -140,9 +216,23 @@ export function EventMap({
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         markersRef.current = null;
+        tileRef.current = null;
       }
     };
   }, []);
+
+  // Follow the surface after every commit, so a brand import can flip the page
+  // from dark to light with the map already on screen. Kept imperative on
+  // purpose: this measures the DOM, and routing it through state would cost a
+  // render pass and paint one frame of the wrong basemap first.
+  useEffect(() => {
+    const el = containerRef.current;
+    const next = detectScheme(el);
+    if (!el || !next) return;
+    el.classList.toggle("ev-map-light", next === "light");
+    el.classList.toggle("ev-map-dark", next === "dark");
+    tileRef.current?.setUrl(TILES[next]);
+  });
 
   // Redraw markers and move the camera when the pin or nearby places change.
   useEffect(() => {
@@ -171,7 +261,9 @@ export function EventMap({
     if (coords) {
       const pin = L.divIcon({
         className: "",
-        html: `<span style="display:flex;height:18px;width:18px;border-radius:9999px;background:#ededed;border:3px solid #161616;box-shadow:0 0 0 2px #ededed"></span>`,
+        // Brand fill, ringed in the page colour — the same shape as before on
+        // the dark app tokens, and legible on any imported palette.
+        html: `<span style="display:flex;height:18px;width:18px;border-radius:9999px;background:var(--primary);border:3px solid var(--background);box-shadow:0 0 0 2px var(--primary)"></span>`,
         iconSize: [18, 18],
         iconAnchor: [9, 9],
       });
@@ -216,8 +308,16 @@ export function EventMap({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
-        "relative overflow-hidden rounded-xl border border-border bg-surface-card",
+        // ev-map-light / ev-map-dark are stamped on by the effect above; the
+        // tile-pane treatment differs per basemap (globals.css).
+        //
+        // `isolate` is load-bearing: Leaflet's panes and controls run z-index
+        // 200-1000, and `relative` alone doesn't open a stacking context — so
+        // without it those layers compete at the document root and paint over a
+        // z-50 dialog. Isolating scopes them to this box.
+        "relative isolate overflow-hidden rounded-xl border border-border bg-surface-card",
         className,
       )}
     >
@@ -276,7 +376,7 @@ function popupFooterHtml(lat, lng, linkLabel) {
       )}, ${lng.toFixed(5)}</span>`
     : "<span></span>";
   const linkHtml = hasCoords
-    ? `<a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#5b9dff;text-decoration:none">${linkIcon}<span>${escapeHtml(
+    ? `<a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:var(--ev-link, #5b9dff);text-decoration:none">${linkIcon}<span>${escapeHtml(
         linkLabel,
       )}</span></a>`
     : "";
@@ -461,15 +561,30 @@ function NearbyGroup({ group, collapse, limit = COLLAPSE_LIMIT }) {
   );
 }
 
-// Renders the non-empty groups of `[{ label, accentClass, items }]` as a
-// responsive grid. Nothing renders when every group is empty. Pass `collapse`
-// to cap each group at the first few rows behind a "Show all" toggle.
+// Given a set of groups headed for a 2-col grid, sink any short (< limit)
+// group to the end and trim the final row to its shorter mate's height, so a
+// short group in the bottom row never leaves a hole beside its partner.
+function packForGrid(groups, limit) {
+  const ordered = [...groups].sort(
+    (a, b) => Number(a.items.length < limit) - Number(b.items.length < limit),
+  );
+  const lastRowStart = ordered.length - (ordered.length % 2 === 0 ? 2 : 1);
+  const lastRow = ordered.slice(lastRowStart);
+  const tailLimit =
+    lastRow.length === 2
+      ? Math.min(limit, ...lastRow.map((g) => g.items.length))
+      : limit;
+  return ordered.map((g, i) => ({
+    group: g,
+    limit: i >= lastRowStart ? tailLimit : limit,
+  }));
+}
+
 export function NearbyList({ groups = [], className, collapse = false }) {
+  const [expanded, setExpanded] = useState(false);
   const shown = groups.filter((g) => g.items?.length);
   if (!shown.length) return null;
 
-  // Uncollapsed, groups have wildly different item counts and a grid leaves a
-  // tall hole beside every short one — column flow packs them tight instead.
   if (!collapse) {
     return (
       <div className={cn("gap-4 sm:columns-2 [&>*]:mb-4", className)}>
@@ -482,31 +597,40 @@ export function NearbyList({ groups = [], className, collapse = false }) {
     );
   }
 
-  // Collapsed, every full group is exactly COLLAPSE_LIMIT rows tall, so a real
-  // grid pairs evenly — provided the short groups sink to the end.
-  const ordered = [...shown].sort(
-    (a, b) =>
-      Number(a.items.length < COLLAPSE_LIMIT) -
-      Number(b.items.length < COLLAPSE_LIMIT),
-  );
-  // A short group in the bottom row would leave a hole beside its partner, so
-  // both are cut to the shorter one's height; the rest go behind "Show all".
-  const lastRowStart = ordered.length - (ordered.length % 2 === 0 ? 2 : 1);
-  const lastRow = ordered.slice(lastRowStart);
-  const tailLimit =
-    lastRow.length === 2
-      ? Math.min(COLLAPSE_LIMIT, ...lastRow.map((g) => g.items.length))
-      : COLLAPSE_LIMIT;
+  const visible = shown.slice(0, 2);
+  const rest = shown.slice(2);
+
   return (
-    <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2", className)}>
-      {ordered.map((g, i) => (
-        <NearbyGroup
-          key={g.label}
-          group={g}
-          collapse
-          limit={i >= lastRowStart ? tailLimit : COLLAPSE_LIMIT}
-        />
-      ))}
+    <div className={className}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {visible.map((g) => (
+          <NearbyGroup key={g.label} group={g} collapse />
+        ))}
+      </div>
+      {rest.length ? (
+        <>
+          {expanded ? (
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {packForGrid(rest, COLLAPSE_LIMIT).map(({ group, limit }) => (
+                <NearbyGroup key={group.label} group={group} collapse limit={limit} />
+              ))}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="mt-3 flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-xs font-medium text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-secondary"
+          >
+            {expanded ? "Show fewer categories" : `Show ${rest.length} More Categories`}
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 transition-transform",
+                expanded && "rotate-180",
+              )}
+            />
+          </button>
+        </>
+      ) : null}
     </div>
   );
 }

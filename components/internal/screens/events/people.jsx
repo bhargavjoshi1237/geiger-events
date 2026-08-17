@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Plus,
-  Mail,
   MoreHorizontal,
   Crown,
   ShieldCheck,
@@ -14,12 +13,14 @@ import {
   Loader2,
   UserPlus,
   Check,
+  Pencil,
+  ImagePlus,
+  X,
 } from "lucide-react";
 
 import {
   DataTable,
   Field,
-  SectionCard,
   EditorSectionHeader,
   EmptyState,
   Toolbar,
@@ -58,16 +59,15 @@ import {
   EVENT_TEAM_ROLE_FILTER_OPTIONS,
   initials,
 } from "./sample_data";
-import { formatRelativeTime } from "@/components/internal/screens/settings/constants";
 import { getUser } from "@/lib/supabase/user";
 import { listMembers } from "@/lib/supabase/team";
 import {
   listEventTeam,
   addEventTeamMember,
   updateEventTeamMember,
-  resendEventTeamInvite,
   softDeleteEventTeamMember,
 } from "@/lib/supabase/event_team";
+import { uploadEventImage } from "@/lib/supabase/storage";
 
 // Lucide components for the icon names carried by EVENT_TEAM_ROLES.
 const ROLE_ICONS = { Crown, ShieldCheck, Users, ScanLine, Eye };
@@ -88,10 +88,13 @@ function RoleBadge({ role }) {
   );
 }
 
-// Display name for a grant — invited outsiders only have an email until they join.
+// Display name for a grant — falls back to the email's local part, then a
+// placeholder, since neither field is required.
 function displayName(m) {
-  return m.name || m.email.split("@")[0] || "Teammate";
+  return m.name || (m.email || "").split("@")[0] || "Teammate";
 }
+
+const EMPTY_FORM = { name: "", email: "", avatarUrl: "", role: "Co-host" };
 
 export function CoHostsAdminsSection({ event, headerItem }) {
   const eventId = event?.id;
@@ -105,8 +108,13 @@ export function CoHostsAdminsSection({ event, headerItem }) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [invite, setInvite] = useState({ email: "", role: "Co-host" });
+  // One dialog serves both "add a co-host" and "edit their details" — editingId
+  // is null for an add, the member's id for an edit.
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [rosterRole, setRosterRole] = useState("Co-host");
   const [rosterPicked, setRosterPicked] = useState([]);
@@ -156,14 +164,10 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     };
   }, [projectId]);
 
-  const members = useMemo(
-    () => team.filter((m) => m.status !== "invited"),
-    [team],
-  );
-  const pending = useMemo(
-    () => team.filter((m) => m.status === "invited"),
-    [team],
-  );
+  // Access is granted directly, so there is no pending state to hold anyone in.
+  // Rows left over from the old email-invite flow (status 'invited') are listed
+  // alongside everyone else rather than disappearing.
+  const members = team;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -232,41 +236,100 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     }
   };
 
-  const sendInvite = async () => {
-    const email = invite.email.trim().toLowerCase();
-    if (!email.includes("@")) {
+  const openAdd = () => {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setFormOpen(true);
+  };
+
+  const openEdit = (m) => {
+    setEditingId(m.id);
+    setForm({
+      name: m.name || "",
+      email: m.email || "",
+      avatarUrl: m.avatarUrl || "",
+      role: m.role,
+    });
+    setFormOpen(true);
+  };
+
+  // Profile photos ride in the event's own media folder, so they inherit the
+  // creator-only storage RLS the rest of the event's uploads already use.
+  const pickAvatar = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    const url = await uploadEventImage(eventId, file);
+    setUploading(false);
+    if (url) {
+      setForm((f) => ({ ...f, avatarUrl: url }));
+    } else {
+      toast.error("Couldn't upload that photo.");
+    }
+  };
+
+  // Add grants access immediately — there is no invitation to accept. Editing
+  // reuses the same form, so both paths validate identically.
+  const saveMember = async () => {
+    const name = form.name.trim();
+    const email = form.email.trim().toLowerCase();
+    if (!name && !email) {
+      toast.error("Enter a name or an email address.");
+      return;
+    }
+    if (email && !email.includes("@")) {
       toast.error("Enter a valid email address.");
       return;
     }
-    if (team.some((m) => m.email.toLowerCase() === email)) {
+    if (
+      email &&
+      team.some(
+        (m) => m.id !== editingId && (m.email || "").toLowerCase() === email,
+      )
+    ) {
       toast.error("That person already has access to this event.");
       return;
     }
+    const patch = { name, email, avatarUrl: form.avatarUrl, role: form.role };
+
+    if (editingId) {
+      const before = team;
+      setTeam((prev) =>
+        prev.map((m) => (m.id === editingId ? { ...m, ...patch } : m)),
+      );
+      setFormOpen(false);
+      const saved = await updateEventTeamMember(editingId, patch);
+      if (saved) {
+        setTeam((prev) => prev.map((m) => (m.id === saved.id ? saved : m)));
+        toast.success("Details updated.");
+      } else {
+        setTeam(before);
+        toast.error("Couldn't save those details.");
+      }
+      return;
+    }
+
     const optimistic = {
+      ...patch,
       id: crypto.randomUUID(),
       eventId,
       projectId,
-      role: invite.role,
-      status: "invited",
-      name: "",
-      email,
-      invitedAt: new Date().toISOString(),
+      status: "active",
+      joinedAt: new Date().toISOString(),
     };
     setTeam((prev) => [...prev, optimistic]);
-    setInvite({ email: "", role: "Co-host" });
-    setInviteOpen(false);
-
+    setFormOpen(false);
+    setSaving(true);
     const saved = await addEventTeamMember({
       ...optimistic,
-      invitedBy: user?.id ?? null,
       createdBy: user?.id ?? null,
     });
+    setSaving(false);
     if (saved) {
       setTeam((prev) => prev.map((m) => (m.id === saved.id ? saved : m)));
-      toast.success("Invitation sent.");
+      toast.success(`${displayName(saved)} added.`);
     } else {
       setTeam((prev) => prev.filter((m) => m.id !== optimistic.id));
-      toast.error("Couldn't send the invitation.");
+      toast.error("Couldn't add them — please try again.");
     }
   };
 
@@ -291,16 +354,6 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     } else {
       setTeam(before);
       toast.error("Couldn't remove them — please try again.");
-    }
-  };
-
-  const resend = async (id) => {
-    const saved = await resendEventTeamInvite(id);
-    if (saved) {
-      setTeam((prev) => prev.map((m) => (m.id === saved.id ? saved : m)));
-      toast.success("Invitation re-sent.");
-    } else {
-      toast.error("Couldn't re-send the invitation.");
     }
   };
 
@@ -349,8 +402,7 @@ export function CoHostsAdminsSection({ event, headerItem }) {
               variant="ghost"
               size="icon-sm"
               aria-label="Member actions"
-              disabled={m.role === "Owner"}
-              className="text-muted-foreground hover:bg-surface-active hover:text-foreground disabled:opacity-30"
+              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -359,25 +411,38 @@ export function CoHostsAdminsSection({ event, headerItem }) {
             align="end"
             className="border-border bg-surface-subtle text-foreground"
           >
-            {EVENT_TEAM_ROLES.filter(
-              (r) => r.value !== "Owner" && r.value !== m.role,
-            ).map((r) => (
-              <DropdownMenuItem
-                key={r.value}
-                className="focus:bg-surface-hover"
-                onClick={() => changeRole(m.id, r.value)}
-              >
-                Make {r.value}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator className="bg-surface-hover" />
+            {/* The owner's photo and name stay editable; only their role and
+                their access are fixed, so the event always keeps an owner. */}
             <DropdownMenuItem
-              variant="destructive"
-              className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-              onClick={() => removeMember(m.id, "Member removed.")}
+              className="focus:bg-surface-hover"
+              onClick={() => openEdit(m)}
             >
-              Remove from event
+              <Pencil className="h-4 w-4" /> Edit details
             </DropdownMenuItem>
+            {m.role === "Owner" ? null : (
+              <>
+                <DropdownMenuSeparator className="bg-surface-hover" />
+                {EVENT_TEAM_ROLES.filter(
+                  (r) => r.value !== "Owner" && r.value !== m.role,
+                ).map((r) => (
+                  <DropdownMenuItem
+                    key={r.value}
+                    className="focus:bg-surface-hover"
+                    onClick={() => changeRole(m.id, r.value)}
+                  >
+                    Make {r.value}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator className="bg-surface-hover" />
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
+                  onClick={() => removeMember(m.id, "Member removed.")}
+                >
+                  Remove from event
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -402,13 +467,13 @@ export function CoHostsAdminsSection({ event, headerItem }) {
               className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => setRosterOpen(true)}
             >
-              <UserPlus className="h-4 w-4" /> Add from team
+              <UserPlus className="h-4 w-4" /> Add From Team
             </Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => setInviteOpen(true)}
+              onClick={openAdd}
             >
-              <Plus className="h-4 w-4" /> Invite member
+              <Plus className="h-4 w-4" /> Add Member
             </Button>
           </div>
         }
@@ -462,66 +527,24 @@ export function CoHostsAdminsSection({ event, headerItem }) {
           <EmptyState
             icon={Users}
             title="No one has access yet"
-            description="Add a teammate from your project roster, or invite someone by email."
+            description="Add a teammate from your project roster, or add a co-host directly."
             action={
               <Button
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => setInviteOpen(true)}
+                onClick={openAdd}
               >
-                <Plus className="h-4 w-4" /> Invite member
+                <Plus className="h-4 w-4" /> Add Member
               </Button>
             }
           />
         </div>
       )}
 
-      {pending.length ? (
-        <SectionCard title="Pending invitations">
-          <div className="space-y-2">
-            {pending.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-3"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface-subtle text-muted-foreground">
-                  <Mail className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {p.email}
-                  </p>
-                  <p className="text-xs text-text-secondary">
-                    Invited {formatRelativeTime(p.invitedAt)}
-                  </p>
-                </div>
-                <RoleBadge role={p.role} />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-text-secondary hover:bg-surface-active hover:text-foreground"
-                  onClick={() => resend(p.id)}
-                >
-                  Resend
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
-                  onClick={() => removeMember(p.id, "Invitation revoked.")}
-                >
-                  Revoke
-                </Button>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      ) : null}
-
       {/* Add existing project members ---------------------------------------- */}
       <Dialog open={rosterOpen} onOpenChange={setRosterOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add from team</DialogTitle>
+            <DialogTitle>Add From Team</DialogTitle>
             <DialogDescription>
               Give people already on this project access to this event.
             </DialogDescription>
@@ -586,8 +609,8 @@ export function CoHostsAdminsSection({ event, headerItem }) {
                 </div>
               ) : (
                 <p className="rounded-lg border border-border bg-surface-card px-3 py-3 text-xs text-text-secondary">
-                  Everyone on this project already has access. Invite someone new
-                  by email instead.
+                  Everyone on this project already has access. Use Add Member to
+                  bring in someone from outside it.
                 </p>
               )}
             </Field>
@@ -613,60 +636,136 @@ export function CoHostsAdminsSection({ event, headerItem }) {
         </DialogContent>
       </Dialog>
 
-      {/* Invite by email ------------------------------------------------------ */}
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+      {/* Add or edit a co-host ------------------------------------------------ */}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invite member</DialogTitle>
+            <DialogTitle>
+              {editingId ? "Edit Member" : "Add Member"}
+            </DialogTitle>
             <DialogDescription>
-              They&apos;ll get an email to help run this event with the role you pick.
+              {editingId
+                ? "Update how this person appears on the event team."
+                : "Give someone access to help run this event. They get it straight away — there's nothing to accept."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
-            <Field label="Email address">
+            <Field
+              label="Photo"
+              hint="Optional — their initials are used when there's no photo."
+            >
+              <div className="flex items-center gap-3">
+                <Avatar className="h-14 w-14">
+                  {form.avatarUrl ? (
+                    <AvatarImage src={form.avatarUrl} alt="" />
+                  ) : null}
+                  <AvatarFallback
+                    className={`border text-sm font-medium ${roleStyle(form.role).avatar}`}
+                  >
+                    {initials(form.name || form.email || "?")}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploading}
+                    className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    onClick={() =>
+                      document.getElementById("cohost-avatar-input")?.click()
+                    }
+                  >
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImagePlus className="h-4 w-4" />
+                    )}
+                    {form.avatarUrl ? "Replace" : "Upload"}
+                  </Button>
+                  {form.avatarUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                      onClick={() => setForm((f) => ({ ...f, avatarUrl: "" }))}
+                    >
+                      <X className="h-4 w-4" /> Remove
+                    </Button>
+                  ) : null}
+                </div>
+                <input
+                  id="cohost-avatar-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    pickAvatar(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            </Field>
+            <Field label="Name">
+              <Input
+                value={form.name}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
+                placeholder="Alex Morgan"
+              />
+            </Field>
+            <Field label="Email address" hint="Optional.">
               <Input
                 type="email"
-                value={invite.email}
+                value={form.email}
                 onChange={(e) =>
-                  setInvite((i) => ({ ...i, email: e.target.value }))
+                  setForm((f) => ({ ...f, email: e.target.value }))
                 }
                 placeholder="teammate@example.com"
               />
             </Field>
-            <Field label="Role">
-              <Select
-                value={invite.role}
-                onValueChange={(v) => setInvite((i) => ({ ...i, role: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EVENT_TEAM_ROLES.filter((r) => r.value !== "Owner").map((r) => (
-                    <SelectItem key={r.value} value={r.value}>
-                      {r.value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            {editingId && form.role === "Owner" ? null : (
+              <Field label="Role">
+                <Select
+                  value={form.role}
+                  onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EVENT_TEAM_ROLES.filter((r) => r.value !== "Owner").map(
+                      (r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.value}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
             <p className="rounded-lg border border-border bg-surface-card px-3 py-2 text-xs text-text-secondary">
-              {roleStyle(invite.role).description}
+              {roleStyle(form.role).description}
             </p>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
               className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              onClick={() => setInviteOpen(false)}
+              onClick={() => setFormOpen(false)}
             >
               Cancel
             </Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={sendInvite}
+              disabled={saving || uploading}
+              onClick={saveMember}
             >
-              Send invite
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {editingId ? "Save changes" : "Add member"}
             </Button>
           </DialogFooter>
         </DialogContent>

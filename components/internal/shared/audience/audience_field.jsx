@@ -68,7 +68,7 @@ export function AudienceField({ projectId, value, onChange }) {
             <SelectItem value="none">All guests (project-wide)</SelectItem>
             {events === null ? (
               <div className="flex items-center gap-2 px-2 py-2 text-xs text-text-secondary">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading events…
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading Events…
               </div>
             ) : (
               events.map((e) => (

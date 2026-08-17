@@ -72,6 +72,7 @@ import { createEvent } from "@/lib/supabase/events";
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
+import { useDefaultOrganizer } from "@/lib/events/use-default-organizer";
 
 // Lucide name (stored as data on the template) → component. Falls back to a
 // neutral icon so an unknown name never crashes the card.
@@ -295,6 +296,8 @@ export function TemplatesScreen() {
   const [userId, setUserId] = useState(null);
   const { openEventInTab } = useWorkspaceUrl();
   const { projectId } = useProject();
+  // Who an event built from a template is credited to on its public page.
+  const defaultOrganizer = useDefaultOrganizer();
 
   const usingDb = source === "db";
 
@@ -398,7 +401,7 @@ export function TemplatesScreen() {
       sold: 0,
       revenue: 0,
       visibility: bp.visibility || "Public",
-      organizer: "Ava Mitchell",
+      organizer: defaultOrganizer,
       summary: bp.summary || "",
       coverUrl: "",
       gallery: [],

@@ -11,6 +11,7 @@ import {
   Pencil,
   Sparkles,
   HelpCircle,
+  PlayCircle,
 } from "lucide-react";
 
 import { EditorSectionHeader, Field } from "@/components/internal/shared/screen_kit";
@@ -335,6 +336,44 @@ export function FaqSection({ event, headerItem }) {
           type: "textarea",
           placeholder:
             "Full refunds up to 7 days before the event. After that, tickets are transferable.",
+        },
+      ]}
+    />
+  );
+}
+
+export function OnDemandVideoSection({ event, headerItem }) {
+  return (
+    <ListSection
+      event={event}
+      headerItem={headerItem}
+      configKey="videos"
+      idPrefix="vid"
+      title="On-demand Video"
+      description="Recordings, trailers, or walkthroughs attendees can watch any time. Add a link — YouTube, Vimeo, or a direct video file — and it's ready to play."
+      itemLabel="Video"
+      itemDescription="A title and the link where it can be watched on demand."
+      addLabel="Add video"
+      emptyLabel="Add your first video"
+      emptyIcon={PlayCircle}
+      fields={[
+        {
+          key: "title",
+          label: "Title",
+          placeholder: "e.g. Keynote replay",
+        },
+        {
+          key: "url",
+          label: "Video link",
+          hint: "YouTube, Vimeo, or a direct mp4/webm file",
+          placeholder: "https://www.youtube.com/watch?v=…",
+        },
+        {
+          key: "description",
+          label: "Description",
+          hint: "Optional",
+          type: "textarea",
+          placeholder: "What this video is about, and who it's for.",
         },
       ]}
     />

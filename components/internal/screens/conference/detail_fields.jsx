@@ -90,7 +90,7 @@ function EventMeta({ event }) {
 function LoadingEvents() {
   return (
     <div className="flex items-center gap-2 py-4 text-sm text-text-secondary">
-      <Loader2 className="h-4 w-4 animate-spin" /> Loading events…
+      <Loader2 className="h-4 w-4 animate-spin" /> Loading Events…
     </div>
   );
 }

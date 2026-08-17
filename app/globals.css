@@ -240,6 +240,43 @@
   border-top-width: var(--ev-border-width, 1px);
   border-bottom-width: var(--ev-border-width, 1px);
 }
+/* Selection takes the brand's secondary color at low strength — enough to read
+   as theirs, weak enough that the text under it stays legible on any palette. */
+.ev-themed ::selection {
+  background-color: color-mix(in srgb, var(--ev-accent) 30%, transparent);
+}
+/* CTA hovers. themeButtonStyle() sets the resting fill as an inline style, which
+   outranks any selector — so these hover rules need !important to land at all.
+   Which class a button carries is decided by ctaHoverClass() in lib/events/theme.js.
+
+   .ev-cta — already filled (solid, non-gradient): darkens to the source site's
+   own hover fill, or a derived darkening. */
+.ev-themed .ev-cta {
+  transition: background-color 0.15s ease;
+}
+.ev-themed .ev-cta:hover {
+  background-color: var(--ev-brand-hover) !important;
+}
+/* .ev-cta-fill — not filled at rest (outline, soft): fills with the brand and
+   flips its lettering to the brand's on-color, so a white button with red text
+   sweeps to solid red with white text rather than just dimming. */
+.ev-themed .ev-cta-fill {
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.ev-themed .ev-cta-fill:hover {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+/* Links inside body copy take the brand's link color, underlined in a wash of
+   it rather than at full strength. */
+.ev-themed .ev-prose a {
+  color: var(--ev-link);
+  text-decoration-color: color-mix(in srgb, var(--ev-link) 45%, transparent);
+}
 
 
 .scrollbar-subtle {
@@ -313,17 +350,30 @@
   }
 }
 
-/* Leaflet (event map) — themed to match the dark suite chrome. Tiles are the
-   CARTO dark basemap; these rules lift the very dark tiles for legibility and
-   restyle the default light controls. */
+/* Leaflet (event map) — themed off the surface it lands on. Dashboard maps take
+   the CARTO dark basemap; a themed event page whose brand is light swaps to the
+   light one (see event_map.jsx → useScheme) and needs the opposite correction. */
 .leaflet-container {
   background: var(--surface-card);
   font-family: inherit;
 }
-/* Brighten the basemap so streets and labels read clearly against the dark
+/* Brighten the dark basemap so streets and labels read clearly against the dark
    surface (the raw CARTO dark tiles are near-black). */
 .leaflet-tile-pane {
   filter: brightness(1.45) contrast(1.05) saturate(1.05);
+}
+/* The light basemap is already bright — brightening it again washes the labels
+   out, so it only gets a touch of contrast to sit against a brand background. */
+.ev-map-light .leaflet-tile-pane {
+  filter: contrast(1.02) saturate(0.95);
+}
+/* Shadows sized for a dark canvas read as smudges on a light one. */
+.ev-map-light .event-map-marker {
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.18);
+}
+.ev-map-light .leaflet-popup-content-wrapper,
+.ev-map-light .leaflet-popup-tip {
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12) !important;
 }
 /* Zoom is a custom React control (MapZoomControls), so Leaflet's default
    `.leaflet-bar` buttons are disabled — no overrides needed here. */

@@ -129,7 +129,7 @@ export function NameSearchLookupScreen() {
       <Toolbar>
         <Select value={eventId} onValueChange={setEventId}>
           <SelectTrigger className="h-9 w-full bg-surface-card sm:max-w-xs">
-            <SelectValue placeholder={loadingEvents ? "Loading events…" : "Select an event"} />
+            <SelectValue placeholder={loadingEvents ? "Loading Events…" : "Select an event"} />
           </SelectTrigger>
           <SelectContent>
             {events.map((e) => (

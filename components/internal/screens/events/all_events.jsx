@@ -70,6 +70,7 @@ import { listVenues } from "@/lib/supabase/venues";
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
+import { useDefaultOrganizer } from "@/lib/events/use-default-organizer";
 import { EventDetailScreen } from "./event_detail";
 
 const STATUS_FILTER_OPTIONS = [
@@ -273,6 +274,9 @@ export function AllEventsScreen() {
   // Signed-in user — new events are stamped with created_by so only they can
   // upload that event's images (enforced by storage RLS).
   const [userId, setUserId] = useState(null);
+  // Who a new event is credited to on its public page — the creator, else the
+  // project. Editable afterwards under Event details.
+  const defaultOrganizer = useDefaultOrganizer();
 
   const usingDb = source === "db";
 
@@ -361,7 +365,7 @@ export function AllEventsScreen() {
       sold: 0,
       revenue: 0,
       visibility: draft.visibility,
-      organizer: "Ava Mitchell",
+      organizer: defaultOrganizer,
       summary: "",
       coverUrl: "",
       gallery: [],
@@ -589,7 +593,7 @@ export function AllEventsScreen() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading events…
+          Loading Events…
         </div>
       ) : (
         <DataTable

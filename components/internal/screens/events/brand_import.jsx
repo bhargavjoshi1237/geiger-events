@@ -29,7 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { buildThemePatch } from "@/lib/brand/to-theme";
 import { LOGO_HEIGHTS } from "@/lib/events/theme";
-import { uploadEventImage } from "@/lib/supabase/storage";
+import { uploadEventFont, uploadEventImage } from "@/lib/supabase/storage";
 import { Segmented } from "./theme_controls";
 
 // "Import" page-design mode — read a website, pull its brand, apply it to the
@@ -39,7 +39,7 @@ import { Segmented } from "./theme_controls";
 const CATEGORIES = [
   { key: "logo", label: "Logo", hint: "Brand mark for the header and footer" },
   { key: "colors", label: "Colors", hint: "Brand, background, text, and borders" },
-  { key: "fonts", label: "Fonts", hint: "Typefaces, weight, case, and tracking" },
+  { key: "fonts", label: "Fonts", hint: "Typefaces and their files, weight, case, and tracking" },
   { key: "shape", label: "Shape", hint: "Corners, borders, shadows, and buttons" },
   { key: "layout", label: "Layout", hint: "Content width and section spacing" },
   { key: "header", label: "Site header", hint: "Their nav links and main button" },
@@ -47,12 +47,58 @@ const CATEGORIES = [
   { key: "content", label: "Imagery & text", hint: "Hero image, tagline, and favicon" },
 ];
 
-// data: URL → File, so an extracted logo can go through the normal image upload.
-async function dataUrlToFile(dataUrl, mime) {
+// data: URL → File, so an extracted asset can go through the normal upload path.
+async function dataUrlToFile(dataUrl, mime, name = "logo") {
   const res = await fetch(dataUrl);
   const blob = await res.blob();
   const ext = (mime || blob.type || "image/png").split("/")[1]?.split("+")[0] || "png";
-  return new File([blob], `logo.${ext}`, { type: blob.type || mime });
+  return new File([blob], `${name}.${ext}`, { type: blob.type || mime });
+}
+
+// Filename-safe slug for a font family + weight, e.g. "Inter" 700 → inter-700.
+function faceSlug(face) {
+  const family = String(face?.family || "font")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  const weight = String(face?.weight || "").replace(/[^\d]/g, "").slice(0, 3);
+  return weight ? `${family || "font"}-${weight}` : family || "font";
+}
+
+// Re-host the self-hosted @font-face files the extractor downloaded. A brand's
+// own CDN almost never sends the CORS header a cross-origin @font-face needs, so
+// hotlinking their font silently fails on the published page and the type falls
+// back to a stand-in — storing a copy is what actually makes the imported
+// typeface render. Returns the faces stripped back to what the theme persists
+// (the base64 payload must never reach the metadata bag) plus how many we
+// re-hosted, so the toast can say so.
+async function hostFontFaces(faces, eventId) {
+  const list = Array.isArray(faces) ? faces : [];
+  if (!list.length) return { faces: [], hosted: 0 };
+
+  const uploads = await Promise.all(
+    list.map(async (face) => {
+      if (!face?.dataUrl || !eventId) return null;
+      try {
+        const file = await dataUrlToFile(face.dataUrl, face.mime, faceSlug(face));
+        const stored = await uploadEventFont(eventId, file);
+        return stored?.url || null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  return {
+    hosted: uploads.filter(Boolean).length,
+    faces: list.map((face, i) => ({
+      family: face.family,
+      src: uploads[i] || face.src,
+      weight: face.weight,
+      style: face.style,
+    })),
+  };
 }
 
 function LogoTile({ logo, active, onSelect }) {
@@ -130,8 +176,24 @@ export function ImportBrandDialog({
     setStatus("loading");
     setError("");
     try {
-      const res = await fetch(`/api/brand/extract?url=${encodeURIComponent(url.trim())}`);
-      const json = await res.json();
+      // basePath ("/events" in production) is not applied to fetch() — a bare
+      // "/api/…" would leave this app and hit the suite shell, which answers
+      // 200 with HTML and makes every import look like a failure.
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/brand/extract?url=${encodeURIComponent(url.trim())}`,
+      );
+      // A non-JSON body means the request never reached the route (a misrouted
+      // path, a gateway page) — say that rather than blaming the site.
+      const json = await res.json().catch(() => null);
+      if (!json) {
+        setError(
+          res.status === 504
+            ? "Reading that site took too long. Try again, or a simpler page."
+            : "The brand reader didn't respond. Refresh the page and try again.",
+        );
+        setStatus("idle");
+        return;
+      }
       if (json.error) {
         setError(json.error.message);
         setStatus("idle");
@@ -153,26 +215,54 @@ export function ImportBrandDialog({
   const commit = async () => {
     if (!data) return;
     setApplying(true);
-    let logoUrl = "";
 
+    // Upload every candidate the site offered, not just the picked one — the
+    // runner-ups stay selectable later from Brand & logo. The chosen mark is
+    // uploaded first and becomes the page logo; the list is what "imported
+    // designs" draws from.
+    let logoUrl = "";
+    let importedLogos = [];
     if (apply.logo && data.logos.length) {
       const chosen = data.logos[logoIndex] || data.logos[0];
-      try {
-        const file = await dataUrlToFile(chosen.dataUrl, chosen.mime);
-        // Compression off: canvas re-encoding destroys SVGs and flattens
-        // transparency, which is exactly what a logo needs to keep.
-        const uploaded = eventId
-          ? await uploadEventImage(eventId, file, { compress: false })
-          : null;
-        // Storage unconfigured or the write was refused — hotlink the source so
-        // the import still produces a visible logo.
-        logoUrl = uploaded?.url || chosen.url;
-      } catch {
-        logoUrl = chosen.url;
-      }
+      const picks = [
+        chosen,
+        ...data.logos.filter((l) => l !== chosen),
+      ].filter(
+        (l, i, arr) => arr.findIndex((x) => x.url === l.url) === i,
+      );
+      const results = await Promise.all(
+        picks.map(async (logo) => {
+          try {
+            const file = await dataUrlToFile(logo.dataUrl, logo.mime);
+            // Compression off: canvas re-encoding destroys SVGs and flattens
+            // transparency, which is exactly what a logo needs to keep.
+            const uploaded = eventId
+              ? await uploadEventImage(eventId, file, { compress: false })
+              : null;
+            // Storage unconfigured or the write was refused — hotlink the source
+            // so the import still produces a visible logo.
+            return { url: uploaded?.url || logo.url, kind: logo.kind };
+          } catch {
+            return { url: logo.url, kind: logo.kind };
+          }
+        }),
+      );
+      importedLogos = results.filter((r) => r.url);
+      logoUrl = importedLogos[0]?.url || "";
     }
 
-    const { patch, footer: nextFooter, notes } = buildThemePatch(data, {
+    // Self-hosted typefaces are stored under our own domain before the patch is
+    // built, so the theme persists our URL rather than the source site's — and
+    // never the base64 payload the extractor sent them down as.
+    let source = data;
+    let hostedFonts = 0;
+    if (apply.fonts && data.fonts?.faces?.length) {
+      const { faces, hosted } = await hostFontFaces(data.fonts.faces, eventId);
+      hostedFonts = hosted;
+      source = { ...data, fonts: { ...data.fonts, faces } };
+    }
+
+    const { patch, footer: nextFooter, notes } = buildThemePatch(source, {
       apply,
       current: theme,
       currentFooter: footer,
@@ -180,12 +270,18 @@ export function ImportBrandDialog({
       background: useBackground,
     });
 
-    onApply(patch, nextFooter);
+    onApply(
+      importedLogos.length ? { ...patch, importedLogos } : patch,
+      nextFooter,
+    );
     setApplying(false);
     onOpenChange(false);
+    const allNotes = hostedFonts
+      ? [...notes, `${hostedFonts} font file${hostedFonts === 1 ? "" : "s"} hosted`]
+      : notes;
     toast.success(
-      notes.length
-        ? `Brand imported — ${notes.join(", ")}`
+      allNotes.length
+        ? `Brand imported — ${allNotes.join(", ")}`
         : `Brand imported from ${data.site.host}`,
     );
     reset();
@@ -346,7 +442,15 @@ export function ImportBrandDialog({
                   ) : null}
                   {data.fonts?.faces?.length ? (
                     <span className="rounded-lg border border-border bg-surface-card px-2.5 py-1.5 text-xs text-muted-foreground">
-                      Self-hosted font ({data.fonts.faces.length} weights)
+                      {(() => {
+                        const all = data.fonts.faces;
+                        const got = all.filter((f) => f.dataUrl).length;
+                        // A face we couldn't download still hotlinks, which is
+                        // why the split matters enough to show.
+                        return got
+                          ? `Self-hosted font — ${got}/${all.length} weights copied`
+                          : `Self-hosted font (${all.length} weights)`;
+                      })()}
                     </span>
                   ) : null}
                 </div>
@@ -495,14 +599,18 @@ export function ImportBrandDialog({
 // ---------------------------------------------------------------------------
 
 export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
-  const [uploading, setUploading] = useState(false);
+  // Which surface an upload is flowing into ("header" | "footer"), or null.
+  const [uploading, setUploading] = useState(null);
   const logo = theme.logo || {};
+  const footerLogo = theme.footerLogo || {};
   const source = theme.source || {};
   const setLogo = (patch) => onChange({ logo: { ...logo, ...patch } });
+  const setFooterLogo = (patch) =>
+    onChange({ footerLogo: { ...footerLogo, ...patch } });
 
-  const pickFile = async (file) => {
+  const pickFile = async (file, surface) => {
     if (!file) return;
-    setUploading(true);
+    setUploading(surface);
     const uploaded = eventId
       ? await uploadEventImage(eventId, file, { compress: false })
       : null;
@@ -511,9 +619,22 @@ export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
       toast.error("Couldn't upload that image.");
       return;
     }
-    setLogo({ url: uploaded.url });
-    toast.success("Logo updated");
+    if (surface === "footer") {
+      setFooterLogo({ url: uploaded.url });
+      toast.success("Footer logo updated");
+    } else {
+      setLogo({ url: uploaded.url });
+      toast.success("Logo updated");
+    }
   };
+
+  // Designs a previous import pulled off a site. With none stored yet, the
+  // current header mark stands in — it's still selectable for the footer.
+  const designs = (theme.importedLogos || []).length
+    ? theme.importedLogos
+    : logo.url
+      ? [{ url: logo.url, kind: "" }]
+      : [];
 
   return (
     <div className="space-y-5">
@@ -536,9 +657,9 @@ export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
         </div>
       ) : null}
 
-      <Field label="Logo" hint="Shown in the page header and footer.">
-        <div className="flex items-center gap-3">
-          <div className="flex h-16 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-card p-2">
+      <Field label="Header logo" hint="Shown in the brand bar above the event.">
+        <div className="flex items-center gap-2">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-card p-1.5">
             {logo.url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -550,48 +671,115 @@ export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
               <ImageOff className="h-4 w-4 text-text-tertiary" />
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <Input
+            value={logo.url || ""}
+            onChange={(e) => setLogo({ url: e.target.value })}
+            placeholder="Paste an image URL"
+            className="h-8 flex-1 font-mono text-xs"
+          />
+          <div className="flex shrink-0 gap-1.5">
             <Button
-              size="sm"
+              size="icon-xs"
               variant="outline"
               asChild
+              aria-label={logo.url ? "Replace header logo" : "Upload header logo"}
               className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             >
               <label className="cursor-pointer">
-                {uploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                {uploading === "header" ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Upload className="h-4 w-4" />
+                  <Upload className="h-3 w-3" />
                 )}
-                {logo.url ? "Replace" : "Upload"}
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => pickFile(e.target.files?.[0])}
+                  onChange={(e) => pickFile(e.target.files?.[0], "header")}
                 />
               </label>
             </Button>
             {logo.url ? (
               <Button
-                size="sm"
+                size="icon-xs"
                 variant="outline"
+                aria-label="Remove header logo"
                 onClick={() => setLogo({ url: "" })}
                 className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
               >
-                <Trash2 className="h-4 w-4" /> Remove
+                <Trash2 className="h-3 w-3" />
               </Button>
             ) : null}
           </div>
         </div>
       </Field>
 
-      <Input
-        value={logo.url || ""}
-        onChange={(e) => setLogo({ url: e.target.value })}
-        placeholder="…or paste an image URL"
-        className="font-mono text-xs"
-      />
+      <Field
+        label="Footer logo"
+        hint="A different mark for the footer. Empty reuses the header logo."
+      >
+        <div className="flex items-center gap-2">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-card p-1.5">
+            {footerLogo.url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={footerLogo.url}
+                alt="Footer logo"
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : logo.url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logo.url}
+                alt="Header logo"
+                className="max-h-full max-w-full object-contain opacity-50"
+              />
+            ) : (
+              <ImageOff className="h-4 w-4 text-text-tertiary" />
+            )}
+          </div>
+          <Input
+            value={footerLogo.url || ""}
+            onChange={(e) => setFooterLogo({ url: e.target.value })}
+            placeholder="Paste an image URL"
+            className="h-8 flex-1 font-mono text-xs"
+          />
+          <div className="flex shrink-0 gap-1.5">
+            <Button
+              size="icon-xs"
+              variant="outline"
+              asChild
+              aria-label={footerLogo.url ? "Replace footer logo" : "Upload footer logo"}
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              <label className="cursor-pointer">
+                {uploading === "footer" ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Upload className="h-3 w-3" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => pickFile(e.target.files?.[0], "footer")}
+                />
+              </label>
+            </Button>
+            {footerLogo.url ? (
+              <Button
+                size="icon-xs"
+                variant="outline"
+                aria-label="Remove footer logo"
+                onClick={() => setFooterLogo({ url: "" })}
+                className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </Field>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Logo size">
@@ -601,14 +789,90 @@ export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
             options={LOGO_HEIGHTS}
           />
         </Field>
-        <Field label="Logo links to" hint="Leave blank for no link.">
-          <Input
-            value={logo.link || ""}
-            onChange={(e) => setLogo({ link: e.target.value })}
-            placeholder="https://…"
+        <Field label="Footer logo size">
+          <Segmented
+            value={Number(footerLogo.height) || Number(logo.height) || 32}
+            onChange={(v) => setFooterLogo({ height: v })}
+            options={LOGO_HEIGHTS}
           />
         </Field>
       </div>
+
+      <Field label="Logo links to" hint="Leave blank for no link.">
+        <Input
+          value={logo.link || ""}
+          onChange={(e) => setLogo({ link: e.target.value })}
+          placeholder="https://…"
+        />
+      </Field>
+
+      {designs.length ? (
+        <div>
+          <p className="text-sm font-medium text-foreground">Imported designs</p>
+          <p className="mb-1 text-xs text-text-tertiary">
+            Marks pulled from an imported site — assign or swap either slot.
+          </p>
+          <SettingsList>
+            {designs.map((d, i) => {
+              const inHeader = d.url === logo.url && !!logo.url;
+              const inFooter = d.url === footerLogo.url && !!footerLogo.url;
+              return (
+                <div
+                  key={`${d.url}-${i}`}
+                  className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-subtle p-1.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={d.url}
+                        alt={d.kind ? `${d.kind} design` : "Imported logo"}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {d.kind ? `${d.kind} mark` : `Design ${i + 1}`}
+                      </p>
+                      <p className="text-xs text-text-secondary">
+                        Assign to a slot below.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => setLogo({ url: d.url })}
+                      className={cn(
+                        "border-border bg-transparent",
+                        inHeader
+                          ? "text-primary hover:text-primary"
+                          : "text-muted-foreground hover:bg-surface-active hover:text-foreground",
+                      )}
+                    >
+                      <Check className="h-3 w-3" /> Header
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => setFooterLogo({ url: d.url })}
+                      className={cn(
+                        "border-border bg-transparent",
+                        inFooter
+                          ? "text-primary hover:text-primary"
+                          : "text-muted-foreground hover:bg-surface-active hover:text-foreground",
+                      )}
+                    >
+                      <Check className="h-3 w-3" /> Footer
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </SettingsList>
+        </div>
+      ) : null}
 
       <SettingsList>
         <SettingRow
@@ -618,8 +882,8 @@ export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
           onCheckedChange={(v) => setLogo({ showBar: v })}
         />
         <SettingRow
-          title="Show in footer"
-          description="Repeat the mark above the footer links."
+          title="Fall back to this logo in the footer"
+          description="Shown above the footer links when no separate footer logo is set."
           checked={logo.showInFooter !== false}
           onCheckedChange={(v) => setLogo({ showInFooter: v })}
         />

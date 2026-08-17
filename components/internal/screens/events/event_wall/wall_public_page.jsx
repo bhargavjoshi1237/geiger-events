@@ -12,7 +12,9 @@ import {
   themeStyle,
   themeAccent,
   resolveWidth,
+  pageBackgroundVideo,
 } from "@/lib/events/theme";
+import { coverKind } from "@/lib/events/gallery";
 import { resolveLayout, cardPriceLabel } from "./wall_layout";
 import { PageFooter } from "../page_footer";
 import { OrganiserProfileHeader } from "@/components/internal/screens/discovery/public_follow";
@@ -88,6 +90,31 @@ function FeaturedBadge({ accent }) {
   );
 }
 
+// The cover image on an event card — or its video, which plays muted where a
+// card needs a first frame (no player chrome fits a thumbnail).
+function CardCover({ event, className }) {
+  const url = event.coverUrl;
+  if (coverKind(url) === "video") {
+    return (
+      <video
+        src={url}
+        muted
+        playsInline
+        preload="metadata"
+        className={cn("h-full w-full bg-black object-cover", className)}
+      />
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt={`${event.name} cover`}
+      className={cn("h-full w-full object-cover", className)}
+    />
+  );
+}
+
 function EventCard({ event, accent, featured, layout, large = false }) {
   const meta = layout.cardMeta || {};
   const overlay = layout.cardStyle === "overlay" || large;
@@ -103,10 +130,8 @@ function EventCard({ event, accent, featured, layout, large = false }) {
         )}
       >
         {event.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={event.coverUrl}
-            alt={`${event.name} cover`}
+          <CardCover
+            event={event}
             className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
           />
         ) : (
@@ -165,10 +190,8 @@ function EventCard({ event, accent, featured, layout, large = false }) {
         }
       >
         {event.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={event.coverUrl}
-            alt={`${event.name} cover`}
+          <CardCover
+            event={event}
             className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
           />
         ) : (
@@ -219,6 +242,9 @@ export function WallPublicPageContent({ wall, events, profile }) {
   const accent = themeAccent(theme);
   const wrapperStyle = themeStyle(theme);
   const contentWidth = resolveWidth(theme);
+  // A video background can't be painted via CSS background-image, so it renders
+  // as a fixed layer under the content (raised with `relative z-10` below).
+  const bgVideo = pageBackgroundVideo(theme);
   const layout = resolveLayout(wall?.layout);
   const { featured, rest } = selectWallEvents(events, wall);
   const isEmpty = !featured.length && !rest.length;
@@ -242,8 +268,30 @@ export function WallPublicPageContent({ wall, events, profile }) {
       className="ev-themed min-h-screen bg-background text-foreground"
       style={wrapperStyle}
     >
+      {bgVideo ? (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-black"
+        >
+          <video
+            src={bgVideo.url}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            className="h-full w-full object-cover"
+          />
+          {bgVideo.scrim ? (
+            <div
+              className="absolute inset-0"
+              style={{ backgroundColor: bgVideo.scrim }}
+            />
+          ) : null}
+        </div>
+      ) : null}
       <div
-        className="mx-auto px-4 py-14 sm:px-6 lg:px-8"
+        className="relative z-10 mx-auto px-4 py-14 sm:px-6 lg:px-8"
         style={{ maxWidth: contentWidth }}
       >
         {banner ? (

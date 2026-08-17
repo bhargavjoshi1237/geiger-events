@@ -132,7 +132,7 @@ export function WallEventsSection({ wall }) {
       >
         {loading ? (
           <div className="flex items-center gap-2 py-6 text-sm text-text-secondary">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading events…
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading Events…
           </div>
         ) : (
           <div className="space-y-4">

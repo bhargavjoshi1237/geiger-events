@@ -12,9 +12,15 @@ import {
   Users,
   UploadCloud,
   Loader2,
+  Settings2,
 } from "lucide-react";
 
-import { EditorSectionHeader, Field } from "@/components/internal/shared/screen_kit";
+import {
+  EditorSectionHeader,
+  Field,
+  SettingsList,
+  SettingRow,
+} from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,15 +39,28 @@ import {
   removeEventImage,
   pathFromPublicUrl,
 } from "@/lib/supabase/storage";
+import {
+  GUEST_LAYOUTS,
+  GUEST_COLUMN_OPTIONS,
+  GUEST_IMAGE_SHAPES,
+  GUEST_IMAGE_FITS,
+  GUEST_CARD_STYLES,
+  GUEST_ALIGNS,
+  DEFAULT_GUEST_DISPLAY,
+  resolveGuestDisplay,
+} from "@/lib/events/guests";
+import { Segmented } from "./theme_controls";
 import { initials } from "./sample_data";
 
-// Featured-guest editor. Each guest — { id, name, role, bio, image } — is stored
-// in the event's metadata bag (like schedule/tickets) via useEventConfig, so the
-// list grows without a migration and rehydrates on reload. The public page
-// renders these in the Guests block (page_blocks.jsx). Photos live in the shared
-// event-media bucket through uploadEventImage.
+// Featured-guest editor. Each guest — { id, name, role, company, bio, image } —
+// is stored in the event's metadata bag (like schedule/tickets) via
+// useEventConfig, so the list grows without a migration and rehydrates on
+// reload. How they're laid out on the public page is a second bag beside it
+// (`guestsDisplay`, see lib/events/guests.js). The public page renders both in
+// the Guests block (page_blocks.jsx). Photos live in the shared event-media
+// bucket through uploadEventImage.
 
-const EMPTY_GUEST = { name: "", role: "", bio: "", image: "" };
+const EMPTY_GUEST = { name: "", role: "", company: "", bio: "", image: "" };
 
 function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
   const [draft, setDraft] = useState(EMPTY_GUEST);
@@ -92,6 +111,7 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
     onSave({
       name: draft.name.trim(),
       role: draft.role.trim(),
+      company: (draft.company || "").trim(),
       bio: draft.bio.trim(),
       image: draft.image || "",
     });
@@ -175,14 +195,24 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
               autoFocus
             />
           </Field>
-          <Field label="Role / title" hint="Optional" htmlFor="guest-role">
-            <Input
-              id="guest-role"
-              value={draft.role}
-              onChange={(e) => set("role")(e.target.value)}
-              placeholder="Keynote speaker"
-            />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Role / title" hint="Optional" htmlFor="guest-role">
+              <Input
+                id="guest-role"
+                value={draft.role}
+                onChange={(e) => set("role")(e.target.value)}
+                placeholder="VP, AI Software Product Management"
+              />
+            </Field>
+            <Field label="Company" hint="Optional" htmlFor="guest-company">
+              <Input
+                id="guest-company"
+                value={draft.company || ""}
+                onChange={(e) => set("company")(e.target.value)}
+                placeholder="NVIDIA"
+              />
+            </Field>
+          </div>
           <Field label="Bio" hint="Optional" htmlFor="guest-bio">
             <Textarea
               id="guest-bio"
@@ -214,10 +244,116 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
   );
 }
 
+// How the Guests block lays out on the public page. Every control writes
+// straight through (the section-config convention elsewhere in the editor), so
+// there's no Save button to miss — closing the dialog keeps what you picked.
+function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
+  const isGrid = display.layout === "grid";
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg bg-background">
+        <DialogHeader>
+          <DialogTitle>Guest layout</DialogTitle>
+          <DialogDescription>
+            How featured guests are arranged on your public event page.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Layout" hint="Grid shows photo cards; list stacks rows.">
+              <Segmented
+                value={display.layout}
+                onChange={onChange("layout")}
+                options={GUEST_LAYOUTS}
+              />
+            </Field>
+            {isGrid ? (
+              <Field label="Columns" hint="At desktop width; narrower screens step down.">
+                <Segmented
+                  value={display.columns}
+                  onChange={onChange("columns")}
+                  options={GUEST_COLUMN_OPTIONS}
+                />
+              </Field>
+            ) : null}
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Photo shape">
+              <Segmented
+                value={display.imageShape}
+                onChange={onChange("imageShape")}
+                options={GUEST_IMAGE_SHAPES}
+              />
+            </Field>
+            <Field
+              label="Photo framing"
+              hint="Fit inside keeps the whole image, with space around it."
+            >
+              <Segmented
+                value={display.imageFit}
+                onChange={onChange("imageFit")}
+                options={GUEST_IMAGE_FITS}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Card style" hint="Plain sits straight on the page.">
+              <Segmented
+                value={display.cardStyle}
+                onChange={onChange("cardStyle")}
+                options={GUEST_CARD_STYLES}
+              />
+            </Field>
+            {isGrid ? (
+              <Field label="Text alignment">
+                <Segmented
+                  value={display.align}
+                  onChange={onChange("align")}
+                  options={GUEST_ALIGNS}
+                />
+              </Field>
+            ) : null}
+          </div>
+
+          <SettingsList>
+            <SettingRow
+              title="Show bios"
+              description="The short introduction under each guest's name."
+              checked={display.showBio}
+              onCheckedChange={onChange("showBio")}
+            />
+          </SettingsList>
+        </div>
+
+        <DialogFooter>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => onOpenChange(false)}
+          >
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function GuestsSection({ event, headerItem }) {
   const [guests, , saveGuests] = useEventConfig(event, "guests", []);
+  const [rawDisplay, , saveDisplay] = useEventConfig(
+    event,
+    "guestsDisplay",
+    DEFAULT_GUEST_DISPLAY,
+  );
   const [addOpen, setAddOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editing, setEditing] = useState(null); // { index, guest } | null
+
+  const display = resolveGuestDisplay(rawDisplay);
+  const setDisplay = (key) => (value) => saveDisplay({ ...display, [key]: value });
 
   const addGuest = (guest) =>
     saveGuests([...guests, { ...guest, id: `gst_${Date.now()}` }], {
@@ -254,12 +390,23 @@ export function GuestsSection({ event, headerItem }) {
           "Feature speakers and special guests on your public event page."
         }
         action={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> Add guest
-          </Button>
+          <>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setAddOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> Add guest
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Guest layout settings"
+              onClick={() => setSettingsOpen(true)}
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          </>
         }
       />
 
@@ -289,9 +436,9 @@ export function GuestsSection({ event, headerItem }) {
                 <p className="truncate text-sm font-medium text-foreground">
                   {g.name}
                 </p>
-                {g.role ? (
+                {g.role || g.company ? (
                   <p className="truncate text-xs font-medium text-text-secondary">
-                    {g.role}
+                    {[g.role, g.company].filter(Boolean).join(" · ")}
                   </p>
                 ) : null}
                 {g.bio ? (
@@ -354,6 +501,12 @@ export function GuestsSection({ event, headerItem }) {
         </button>
       )}
 
+      <GuestDisplayDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        display={display}
+        onChange={setDisplay}
+      />
       <GuestDialog
         open={addOpen}
         onOpenChange={setAddOpen}

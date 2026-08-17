@@ -110,7 +110,9 @@ export default function VenueMap({ center, results = [], activeId, onSelect }) {
   }, [ready, highlight]);
 
   return (
-    <div className="relative h-full w-full">
+    // `isolate` keeps Leaflet's z-200..1000 panes inside this box instead of
+    // letting them compete at the document root and paint over a dialog.
+    <div className="relative isolate h-full w-full">
       <div
         ref={elRef}
         className="absolute inset-0 [&_.leaflet-container]:bg-surface-card"

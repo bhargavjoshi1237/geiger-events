@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, Suspense, lazy } from "react";
+import { toast } from "sonner";
 import {
   Check,
   GripVertical,
@@ -12,27 +13,10 @@ import {
   Pencil,
   Trash2,
   Plus,
+  Wand2,
+  Loader2,
+  UploadCloud,
   Image as ImageIcon,
-  FileText,
-  Sparkles,
-  Clock,
-  MapPin,
-  Users,
-  HelpCircle,
-  Heading,
-  Type,
-  Video,
-  Code,
-  MousePointerClick,
-  Minus,
-  AlignLeft,
-  Columns2,
-  ListCollapse,
-  MoveVertical,
-  Ticket,
-  Info,
-  ClipboardList,
-  Accessibility,
 } from "lucide-react";
 
 import {
@@ -41,6 +25,7 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -71,15 +56,23 @@ import {
   OVERLAY_STYLES,
   SIDEBAR_SIDES,
   BG_TYPES,
+  BG_OVERLAYS,
   HEADER_ALIGNS,
   BORDER_WIDTHS,
   BUTTON_WEIGHTS,
   DEFAULT_HEADER,
+  VIEWER_MODES,
   themeFontOptions,
 } from "@/lib/events/theme";
+import { useCan } from "@/context/rbac-context";
+import { hasTree } from "@/lib/events/page_migrate";
 import { Segmented, ColorField } from "./theme_controls";
 import { FooterEditor, DEFAULT_FOOTER } from "./page_footer";
 import { ImportBrandDialog, BrandLogoSection } from "./brand_import";
+import {
+  uploadEventImage,
+  uploadEventVideo,
+} from "@/lib/supabase/storage";
 
 // ---------------------------------------------------------------------------
 // Shared page-design model
@@ -101,7 +94,7 @@ function SiteHeaderEditor({ header, onChange }) {
     patch({ links: links.map((l, j) => (j === i ? { ...l, [key]: v } : l)) });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <SettingsList>
         <SettingRow
           title="Show the header bar"
@@ -169,12 +162,12 @@ function SiteHeaderEditor({ header, onChange }) {
         </div>
       </Field>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Header button" hint="Leave the label blank for no button.">
           <Input
             value={h.cta?.label || ""}
             onChange={(e) => patch({ cta: { ...h.cta, label: e.target.value } })}
-            placeholder="Get tickets"
+            placeholder="Get Tickets"
           />
         </Field>
         <Field label="Button links to">
@@ -201,352 +194,52 @@ function SiteHeaderEditor({ header, onChange }) {
   );
 }
 
-export const PAGE_MODES = [
-  { key: "standard", label: "Standard", desc: "Geiger's optimized, ready-to-go layout. No setup needed." },
-  { key: "themed", label: "Themed", desc: "Your brand — colors, fonts, cover, header, footer, and sections." },
-  { key: "imported", label: "Import", desc: "Match a website — we pull its logo, colors, and fonts for you." },
-  { key: "custom", label: "Custom", desc: "Everything in Themed, plus build the page and sidebar block by block." },
-];
+import {
+  PAGE_MODES,
+  BLOCK_WIDTH_OPTIONS,
+  BLOCK_ALIGN_OPTIONS,
+  BLOCK_BACKGROUND_OPTIONS,
+  DEFAULT_BLOCK_LAYOUT,
+  getBlockMeta,
+  addableBlocks,
+  createBlock,
+  defaultSidebarBlocks,
+} from "./page_block_library";
 
-export const ACCENTS = [
-  { key: "white", label: "Classic", color: "var(--foreground)", text: "#161616" },
-  { key: "violet", label: "Violet", color: "#8b5cf6", text: "#ffffff" },
-  { key: "emerald", label: "Emerald", color: "#10b981", text: "#06281d" },
-  { key: "sky", label: "Sky", color: "#0ea5e9", text: "#06212e" },
-  { key: "amber", label: "Amber", color: "#f59e0b", text: "#161616" },
-  { key: "rose", label: "Rose", color: "#f43f5e", text: "#ffffff" },
-];
+// The block catalog, option lists and page-design factories moved to
+// page_block_library.js so the page builder can read them without importing
+// this file (which renders the builder). Re-exported here so every existing
+// `from "./page_design"` import keeps resolving.
+export {
+  PAGE_MODES,
+  ACCENTS,
+  COVER_STYLES,
+  FONTS,
+  COLUMN_RATIO_OPTIONS,
+  COLUMN_ALIGN_OPTIONS,
+  COLUMN_KIND_OPTIONS,
+  BUTTON_ITEM_STYLES,
+  SPACER_SIZE_OPTIONS,
+  BLOCK_WIDTH_OPTIONS,
+  BLOCK_ALIGN_OPTIONS,
+  BLOCK_BACKGROUND_OPTIONS,
+  DEFAULT_BLOCK_LAYOUT,
+  BLOCK_LIBRARY,
+  SIDEBAR_BLOCK_LIBRARY,
+  getBlockMeta,
+  addableBlocks,
+  createBlock,
+  defaultSidebarBlocks,
+  defaultPageDesign,
+  resolveAccent,
+  resolveFont,
+} from "./page_block_library";
 
-export const COVER_STYLES = [
-  { key: "gradient", label: "Gradient" },
-  { key: "solid", label: "Solid" },
-  { key: "accent", label: "Accent tint" },
-];
-
-export const FONTS = [
-  { key: "sans", label: "Sans", className: "font-sans" },
-  { key: "serif", label: "Serif", className: "font-serif" },
-  { key: "mono", label: "Mono", className: "font-mono" },
-];
-
-// --- Block field option catalogs ---------------------------------------------
-
-export const COLUMN_RATIO_OPTIONS = [
-  { key: "1:1", label: "Even" },
-  { key: "1:2", label: "Narrow / wide" },
-  { key: "2:1", label: "Wide / narrow" },
-];
-
-export const COLUMN_ALIGN_OPTIONS = [
-  { key: "start", label: "Top" },
-  { key: "center", label: "Middle" },
-];
-
-export const COLUMN_KIND_OPTIONS = [
-  { key: "text", label: "Text" },
-  { key: "image", label: "Image" },
-];
-
-export const BUTTON_ITEM_STYLES = [
-  { key: "solid", label: "Solid" },
-  { key: "outline", label: "Outline" },
-];
-
-export const SPACER_SIZE_OPTIONS = [
-  { key: "sm", label: "Small" },
-  { key: "md", label: "Medium" },
-  { key: "lg", label: "Large" },
-];
-
-// --- Per-block layout --------------------------------------------------------
-// Applied by BlockShell in page_blocks.jsx. Every default is the "no wrapper"
-// value, so a block without layout renders exactly as it always has.
-
-export const BLOCK_WIDTH_OPTIONS = [
-  { key: "full", label: "Full" },
-  { key: "wide", label: "Wide" },
-  { key: "narrow", label: "Narrow" },
-];
-
-export const BLOCK_ALIGN_OPTIONS = [
-  { key: "left", label: "Left" },
-  { key: "center", label: "Center" },
-  { key: "right", label: "Right" },
-];
-
-export const BLOCK_BACKGROUND_OPTIONS = [
-  { key: "none", label: "None" },
-  { key: "surface", label: "Card" },
-  { key: "brand", label: "Brand tint" },
-];
-
-export const DEFAULT_BLOCK_LAYOUT = {
-  width: "full",
-  align: "left",
-  background: "none",
-};
-
-// Every block type the page understands. `singleton` blocks (the smart event
-// sections) can appear only once; content blocks can be added repeatedly and
-// carry editable `fields`.
-export const BLOCK_LIBRARY = [
-  { type: "about", label: "About", icon: FileText, category: "event", singleton: true },
-  { type: "expect", label: "What to expect", icon: Sparkles, category: "event", singleton: true },
-  { type: "schedule", label: "Schedule", icon: Clock, category: "event", singleton: true },
-  { type: "location", label: "Location & directions", icon: MapPin, category: "event", singleton: true },
-  { type: "whosgoing", label: "Who's going", icon: Users, category: "event", singleton: true },
-  { type: "guests", label: "Guests", icon: Users, category: "event", singleton: true },
-  { type: "faq", label: "FAQ", icon: HelpCircle, category: "event", singleton: true },
-  {
-    type: "heading",
-    label: "Heading",
-    icon: Heading,
-    category: "content",
-    defaultProps: { text: "Section heading" },
-    fields: [{ key: "text", label: "Heading text", type: "text" }],
-  },
-  {
-    type: "text",
-    label: "Text",
-    icon: Type,
-    category: "content",
-    defaultProps: { text: "Add your text here. Tell attendees what makes this event special." },
-    fields: [{ key: "text", label: "Text", type: "textarea" }],
-  },
-  {
-    type: "richtext",
-    label: "Rich text",
-    icon: AlignLeft,
-    category: "content",
-    defaultProps: {
-      text: "## What to expect\n\n- **Morning sessions:** timely, practical topics.\n- **Afternoons at your pace:** relax, explore, or connect.",
-    },
-    fields: [{ key: "text", label: "Content", type: "richtext" }],
-  },
-  {
-    type: "columns",
-    label: "Two columns",
-    icon: Columns2,
-    category: "content",
-    defaultProps: {
-      ratio: "1:1",
-      align: "start",
-      leftKind: "image",
-      leftUrl: "",
-      leftCaption: "",
-      leftText: "",
-      rightKind: "text",
-      rightText: "**What to expect:**\n\n- First highlight\n- Second highlight",
-      rightUrl: "",
-      rightCaption: "",
-    },
-    fields: [
-      { key: "ratio", label: "Column widths", type: "select", options: COLUMN_RATIO_OPTIONS },
-      { key: "align", label: "Vertical alignment", type: "select", options: COLUMN_ALIGN_OPTIONS },
-      { key: "leftKind", label: "Left column", type: "select", options: COLUMN_KIND_OPTIONS, group: "Left column" },
-      { key: "leftText", label: "Left content", type: "richtext", showWhen: { leftKind: "text" } },
-      { key: "leftUrl", label: "Left image URL", type: "text", showWhen: { leftKind: "image" } },
-      { key: "leftCaption", label: "Left caption", type: "text", showWhen: { leftKind: "image" } },
-      { key: "rightKind", label: "Right column", type: "select", options: COLUMN_KIND_OPTIONS, group: "Right column" },
-      { key: "rightText", label: "Right content", type: "richtext", showWhen: { rightKind: "text" } },
-      { key: "rightUrl", label: "Right image URL", type: "text", showWhen: { rightKind: "image" } },
-      { key: "rightCaption", label: "Right caption", type: "text", showWhen: { rightKind: "image" } },
-    ],
-  },
-  {
-    type: "accordion",
-    label: "Accordion",
-    icon: ListCollapse,
-    category: "content",
-    // Starts with no rows — a seeded example would publish verbatim.
-    defaultProps: { title: "Pricing & policies", items: [] },
-    fields: [
-      { key: "title", label: "Section title", type: "text", hint: "Leave empty for no heading." },
-      {
-        key: "items",
-        label: "Rows",
-        type: "items",
-        addLabel: "Add row",
-        itemFields: [
-          { key: "q", label: "Label", type: "text" },
-          { key: "a", label: "Content", type: "richtext" },
-        ],
-      },
-    ],
-  },
-  {
-    type: "buttons",
-    label: "Button group",
-    icon: MousePointerClick,
-    category: "content",
-    defaultProps: {
-      items: [{ label: "Register now", url: "#", style: "solid" }],
-    },
-    fields: [
-      {
-        key: "items",
-        label: "Buttons",
-        type: "items",
-        addLabel: "Add button",
-        itemFields: [
-          { key: "label", label: "Label", type: "text" },
-          { key: "url", label: "Link", type: "text" },
-          { key: "style", label: "Style", type: "select", options: BUTTON_ITEM_STYLES },
-        ],
-      },
-    ],
-  },
-  {
-    type: "spacer",
-    label: "Spacer",
-    icon: MoveVertical,
-    category: "content",
-    defaultProps: { size: "md" },
-    fields: [{ key: "size", label: "Height", type: "select", options: SPACER_SIZE_OPTIONS }],
-  },
-  {
-    type: "image",
-    label: "Image",
-    icon: ImageIcon,
-    category: "content",
-    defaultProps: { url: "", caption: "" },
-    fields: [
-      { key: "url", label: "Image URL", type: "text" },
-      { key: "caption", label: "Caption", type: "text" },
-    ],
-  },
-  {
-    type: "video",
-    label: "Video",
-    icon: Video,
-    category: "content",
-    defaultProps: { url: "" },
-    fields: [{ key: "url", label: "Video URL (YouTube, Vimeo…)", type: "text" }],
-  },
-  {
-    type: "embed",
-    label: "Embed",
-    icon: Code,
-    category: "content",
-    defaultProps: { code: "" },
-    fields: [{ key: "code", label: "Embed HTML", type: "textarea" }],
-  },
-  {
-    type: "cta",
-    label: "Call to action",
-    icon: MousePointerClick,
-    category: "content",
-    defaultProps: { title: "Ready to join us?", label: "Get tickets", url: "#" },
-    fields: [
-      { key: "title", label: "Heading", type: "text" },
-      { key: "label", label: "Button label", type: "text" },
-      { key: "url", label: "Button link", type: "text" },
-    ],
-  },
-  { type: "divider", label: "Divider", icon: Minus, category: "content", defaultProps: {} },
-];
-
-const DEFAULT_BLOCK_TYPES = [
-  "about",
-  "expect",
-  "schedule",
-  "location",
-  "whosgoing",
-  "guests",
-  "faq",
-];
-
-// Sidebar-only singletons. These are rendered by event_public_page.jsx (they
-// depend on checkout state), so they carry no renderer here — just identity for
-// the show/hide/reorder list. Content blocks from BLOCK_LIBRARY can be added
-// alongside them.
-export const SIDEBAR_BLOCK_LIBRARY = [
-  { type: "register", label: "Date & registration", icon: Ticket, category: "event", singleton: true, locked: true },
-  { type: "goodtoknow", label: "Good to know", icon: Info, category: "event", singleton: true },
-  { type: "atregistration", label: "At registration", icon: ClipboardList, category: "event", singleton: true },
-  { type: "guidelines", label: "Dietary & accessibility", icon: Accessibility, category: "event", singleton: true },
-];
-
-const DEFAULT_SIDEBAR_TYPES = [
-  "register",
-  "goodtoknow",
-  "atregistration",
-  "guidelines",
-];
-
-// Content blocks that make sense in a 380px column — the rest are main-column only.
-const SIDEBAR_CONTENT_TYPES = [
-  "heading",
-  "text",
-  "richtext",
-  "image",
-  "cta",
-  "buttons",
-  "divider",
-  "spacer",
-];
-
-export function getBlockMeta(type) {
-  return (
-    BLOCK_LIBRARY.find((b) => b.type === type) ||
-    SIDEBAR_BLOCK_LIBRARY.find((b) => b.type === type) ||
-    null
-  );
-}
-
-/** The blocks addable to one surface: the main column, or the sidebar. */
-export function addableBlocks(surface, existingTypes) {
-  const library =
-    surface === "sidebar"
-      ? [
-          ...SIDEBAR_BLOCK_LIBRARY,
-          ...BLOCK_LIBRARY.filter((b) => SIDEBAR_CONTENT_TYPES.includes(b.type)),
-        ]
-      : BLOCK_LIBRARY;
-  return library.filter(
-    (b) => b.category === "content" || !existingTypes.includes(b.type),
-  );
-}
-
-let blockCounter = 0;
-export function createBlock(type) {
-  const meta = getBlockMeta(type);
-  blockCounter += 1;
-  const id = meta?.singleton ? type : `${type}-${blockCounter}`;
-  return {
-    id,
-    type,
-    visible: true,
-    props: meta?.defaultProps ? { ...meta.defaultProps } : {},
-    ...(meta?.category === "content" ? { layout: { ...DEFAULT_BLOCK_LAYOUT } } : {}),
-  };
-}
-
-/** The sidebar's out-of-the-box block list — also the fallback for pages saved
- *  before the sidebar became block-driven. */
-export function defaultSidebarBlocks() {
-  return DEFAULT_SIDEBAR_TYPES.map(createBlock);
-}
-
-export function defaultPageDesign() {
-  return {
-    mode: "standard",
-    accent: "white",
-    cover: "gradient",
-    font: "sans",
-    showGallery: true,
-    blocks: DEFAULT_BLOCK_TYPES.map(createBlock),
-    sidebarBlocks: defaultSidebarBlocks(),
-  };
-}
-
-export function resolveAccent(key) {
-  return ACCENTS.find((a) => a.key === key) || ACCENTS[0];
-}
-
-export function resolveFont(key) {
-  return FONTS.find((f) => f.key === key) || FONTS[0];
-}
+// The builder is a whole editor's worth of code and only opens on demand, so it
+// loads lazily rather than riding along in the event editor's bundle.
+const PageBuilder = lazy(() =>
+  import("./builder/page_builder").then((m) => ({ default: m.PageBuilder })),
+);
 
 function moveItem(arr, index, dir) {
   const ni = index + dir;
@@ -938,17 +631,44 @@ function BlockList({ blocks, isCustom, onToggle, onMove, onRemove, onEdit }) {
 // Editor section (right-nav "Page design")
 // ---------------------------------------------------------------------------
 
-export function PageDesignSection({ design, onChange, onPreview, eventId }) {
+export function PageDesignSection({
+  design,
+  onChange,
+  onPersist,
+  onPreview,
+  eventId,
+  event,
+}) {
   // Which surface the add-block palette / editor dialog is acting on
   // ("main" | "sidebar"), or null when closed.
   const [adding, setAdding] = useState(null);
   const [editing, setEditing] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  // Background media upload lives here beside the URL input. Uploads go into
+  // the event's own media folder (same RLS as cover/gallery uploads).
+  const bgInput = useRef(null);
+  const [bgBusy, setBgBusy] = useState(false);
 
   const set = (patch) => onChange({ ...design, ...patch });
   const customizable = design.mode !== "standard";
   const isCustom = design.mode === "custom";
   const isImported = design.mode === "imported";
+
+  // Once a page has a builder tree, the tree is what renders — the flat block
+  // lists below are the pre-builder editor and would fight it.
+  const built = hasTree(design);
+  const canUseCustomCode = useCan("events.page.customcode");
+
+  // The builder saves on its own, rather than making the author exit and find
+  // the editor's Save button. Falls back to lifting state when no persister is
+  // wired (the preview-only paths).
+  const saveFromBuilder = async ({ tree, customCode }) => {
+    const next = { ...design, tree, customCode };
+    onChange(next);
+    if (!onPersist) return true;
+    return (await onPersist(next)) !== false;
+  };
 
   // Brand theme (Themed mode). Reads the resolved theme (explicit, or legacy
   // back-compat, or defaults) and writes an explicit `design.theme`.
@@ -959,6 +679,36 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
   const onBase = (base) =>
     setTheme({ base, colors: { ...theme.colors, ...BASE_PALETTES[base] } });
   const applyPreset = (preset) => set({ theme: preset.theme });
+
+  // Upload a background image or video straight to the event's media folder
+  // and point the background at it — the URL input stays for media hosted
+  // elsewhere. Mirrors the cover upload flow in Content & media.
+  const onBgFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const kind = file.type.startsWith("video/")
+      ? "video"
+      : file.type.startsWith("image/")
+        ? "image"
+        : null;
+    if (!kind) {
+      toast.error("Please choose an image or video file.");
+      return;
+    }
+    setBgBusy(true);
+    const res =
+      kind === "video"
+        ? await uploadEventVideo(eventId, file)
+        : await uploadEventImage(eventId, file);
+    setBgBusy(false);
+    if (!res?.url) {
+      toast.error("Upload failed — only the event's creator can add media.");
+      return;
+    }
+    setTheme({ background: { ...theme.background, type: kind, value: res.url } });
+    toast.success(kind === "video" ? "Background video set." : "Background image set.");
+  };
   const fontOptions = themeFontOptions(theme);
 
   // Selecting Import opens the dialog straight away the first time; afterwards it
@@ -1011,7 +761,7 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="space-y-3">
         {/* Page mode — shown without a card wrapper, the selector sits directly
             on the section surface. */}
@@ -1064,459 +814,586 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
           </div>
         </SectionCard>
       ) : (
-        <>
-          {isImported || theme.logo?.url || theme.source?.url ? (
+        <Tabs defaultValue="brand" className="gap-4">
+          {/* Fourteen stacked panels was a long scroll to find one control.
+              Grouped into tabs, each panel is a short list you can take in at
+              once, and the mode selector above stays the only thing you have
+              to scroll past. */}
+          <TabsList
+            variant="line"
+            className="w-full justify-start gap-1 overflow-x-auto border-b border-border pb-1"
+          >
+            <TabsTrigger value="brand" className="flex-none">
+              Brand
+            </TabsTrigger>
+            <TabsTrigger value="typography" className="flex-none">
+              Typography
+            </TabsTrigger>
+            <TabsTrigger value="layout" className="flex-none">
+              Layout
+            </TabsTrigger>
+            <TabsTrigger value="chrome" className="flex-none">
+              Header & footer
+            </TabsTrigger>
+            <TabsTrigger value="sections" className="flex-none">
+              Sections
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="brand" className="space-y-4">
+            {isImported || theme.logo?.url || theme.source?.url ? (
+              <SectionCard
+                title="Brand & logo"
+                description="The mark shown on your page, and where it came from."
+              >
+                <BrandLogoSection
+                  theme={theme}
+                  eventId={eventId}
+                  onChange={setTheme}
+                  onReimport={() => setImportOpen(true)}
+                />
+              </SectionCard>
+            ) : null}
+
             <SectionCard
-              title="Brand & logo"
-              description="The mark shown on your page, and where it came from."
+              title="Brand colors"
+              description="Your palette. Surfaces, borders, and buttons adapt automatically."
             >
-              <BrandLogoSection
-                theme={theme}
-                eventId={eventId}
-                onChange={setTheme}
-                onReimport={() => setImportOpen(true)}
-              />
+              <div className="space-y-4">
+                <Field label="Base">
+                  <Segmented value={theme.base} onChange={onBase} options={BASES} />
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <ColorField
+                    label="Brand / accent"
+                    value={theme.colors.brand}
+                    onChange={(v) => setColors({ brand: v })}
+                  />
+                  <ColorField
+                    label="Brand text"
+                    value={theme.colors.brandText}
+                    onChange={(v) => setColors({ brandText: v })}
+                  />
+                  <ColorField
+                    label="Gradient end"
+                    value={theme.colors.brandTo || theme.colors.brand}
+                    onChange={(v) => setColors({ brandTo: v })}
+                  />
+                  <ColorField
+                    label="Secondary"
+                    value={theme.colors.accent || theme.colors.brand}
+                    onChange={(v) => setColors({ accent: v })}
+                  />
+                  <ColorField
+                    label="Links"
+                    value={theme.colors.link || theme.colors.brand}
+                    onChange={(v) => setColors({ link: v })}
+                  />
+                  <ColorField
+                    label="Page background"
+                    value={theme.colors.bg}
+                    onChange={(v) => setColors({ bg: v })}
+                  />
+                  <ColorField
+                    label="Surface / cards"
+                    value={theme.colors.surface}
+                    onChange={(v) => setColors({ surface: v })}
+                  />
+                  <ColorField
+                    label="Text"
+                    value={theme.colors.text}
+                    onChange={(v) => setColors({ text: v })}
+                  />
+                  <ColorField
+                    label="Muted text"
+                    value={theme.colors.muted}
+                    onChange={(v) => setColors({ muted: v })}
+                  />
+                  <ColorField
+                    label="Border"
+                    value={theme.colors.border}
+                    onChange={(v) => setColors({ border: v })}
+                  />
+                </div>
+              </div>
             </SectionCard>
-          ) : null}
 
-          <SectionCard
-            title="Brand presets"
-            description="Start from a look, then fine-tune everything below."
-            action={
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setImportOpen(true)}
-                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <Globe className="h-4 w-4" /> Import from a site
-              </Button>
-            }
-          >
-            <div className="flex flex-wrap gap-2">
-              {THEME_PRESETS.map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => applyPreset(p)}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-border-strong hover:bg-surface-active hover:text-foreground"
-                >
-                  <span
-                    className="h-3.5 w-3.5 rounded-full border border-border"
-                    style={{ backgroundColor: p.theme.colors.brand }}
+            <SectionCard
+              title="Brand details"
+              description="The tagline under your event title, and the browser tab icon."
+            >
+              <div className="space-y-4">
+                <Field label="Tagline" hint="A short line under the event title.">
+                  <Input
+                    value={theme.tagline || ""}
+                    onChange={(e) => setTheme({ tagline: e.target.value })}
+                    placeholder="Two days of talks, workshops, and good coffee."
                   />
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </SectionCard>
+                </Field>
+                <Field label="Favicon URL" hint="Shown in the browser tab on the live page.">
+                  <Input
+                    value={theme.favicon || ""}
+                    onChange={(e) => setTheme({ favicon: e.target.value })}
+                    placeholder="https://…/favicon.ico"
+                    className="font-mono text-xs"
+                  />
+                </Field>
+              </div>
+            </SectionCard>
+          </TabsContent>
 
-          <SectionCard
-            title="Brand colors"
-            description="Your palette. Surfaces, borders, and buttons adapt automatically."
-          >
-            <div className="space-y-5">
-              <Field label="Base">
-                <Segmented value={theme.base} onChange={onBase} options={BASES} />
-              </Field>
+          <TabsContent value="typography" className="space-y-4">
+            <SectionCard title="Typography">
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Heading font">
+                    <Segmented
+                      value={theme.font.heading}
+                      onChange={(v) => setFont({ heading: v })}
+                      options={fontOptions}
+                    />
+                  </Field>
+                  <Field label="Body font">
+                    <Segmented
+                      value={theme.font.body}
+                      onChange={(v) => setFont({ body: v })}
+                      options={fontOptions}
+                    />
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Text size">
+                    <Segmented
+                      value={theme.font.scale}
+                      onChange={(v) => setFont({ scale: v })}
+                      options={FONT_SCALES}
+                    />
+                  </Field>
+                  <Field label="Heading weight">
+                    <Segmented
+                      value={theme.headingWeight}
+                      onChange={(v) => setTheme({ headingWeight: v })}
+                      options={HEADING_WEIGHTS}
+                    />
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Heading tracking"
+                    hint="Letter-spacing, in em. Negative tightens."
+                  >
+                    <Input
+                      type="number"
+                      step="0.005"
+                      value={theme.headingTracking || 0}
+                      onChange={(e) =>
+                        setTheme({ headingTracking: Number(e.target.value) || 0 })
+                      }
+                    />
+                  </Field>
+                  <Field label="Heading line height" hint="0 leaves it to the base style.">
+                    <Input
+                      type="number"
+                      step="0.05"
+                      value={theme.headingLineHeight || 0}
+                      onChange={(e) =>
+                        setTheme({ headingLineHeight: Number(e.target.value) || 0 })
+                      }
+                    />
+                  </Field>
+                </div>
+                <SettingsList>
+                  <SettingRow
+                    title="Uppercase headings"
+                    description="Render section headings in all caps."
+                    checked={theme.headingUpper}
+                    onCheckedChange={(v) => setTheme({ headingUpper: v })}
+                  />
+                </SettingsList>
+              </div>
+            </SectionCard>
+          </TabsContent>
+
+          <TabsContent value="layout" className="space-y-4">
+            <SectionCard title="Shape & style">
               <div className="grid gap-4 sm:grid-cols-2">
-                <ColorField
-                  label="Brand / accent"
-                  value={theme.colors.brand}
-                  onChange={(v) => setColors({ brand: v })}
-                />
-                <ColorField
-                  label="Brand text"
-                  value={theme.colors.brandText}
-                  onChange={(v) => setColors({ brandText: v })}
-                />
-                <ColorField
-                  label="Gradient end"
-                  value={theme.colors.brandTo || theme.colors.brand}
-                  onChange={(v) => setColors({ brandTo: v })}
-                />
-                <ColorField
-                  label="Secondary"
-                  value={theme.colors.accent || theme.colors.brand}
-                  onChange={(v) => setColors({ accent: v })}
-                />
-                <ColorField
-                  label="Links"
-                  value={theme.colors.link || theme.colors.brand}
-                  onChange={(v) => setColors({ link: v })}
-                />
-                <ColorField
-                  label="Page background"
-                  value={theme.colors.bg}
-                  onChange={(v) => setColors({ bg: v })}
-                />
-                <ColorField
-                  label="Surface / cards"
-                  value={theme.colors.surface}
-                  onChange={(v) => setColors({ surface: v })}
-                />
-                <ColorField
-                  label="Text"
-                  value={theme.colors.text}
-                  onChange={(v) => setColors({ text: v })}
-                />
-                <ColorField
-                  label="Muted text"
-                  value={theme.colors.muted}
-                  onChange={(v) => setColors({ muted: v })}
-                />
-                <ColorField
-                  label="Border"
-                  value={theme.colors.border}
-                  onChange={(v) => setColors({ border: v })}
-                />
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Typography">
-            <div className="space-y-5">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Heading font">
+                <Field label="Corner radius">
                   <Segmented
-                    value={theme.font.heading}
-                    onChange={(v) => setFont({ heading: v })}
-                    options={fontOptions}
+                    value={theme.radius}
+                    onChange={(v) => setTheme({ radius: v })}
+                    options={RADIUS_OPTIONS}
                   />
                 </Field>
-                <Field label="Body font">
+                <Field label="Button style">
                   <Segmented
-                    value={theme.font.body}
-                    onChange={(v) => setFont({ body: v })}
-                    options={fontOptions}
+                    value={theme.button}
+                    onChange={(v) => setTheme({ button: v })}
+                    options={BUTTON_STYLES}
                   />
                 </Field>
-              </div>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Text size">
+                <Field label="Card shadow">
                   <Segmented
-                    value={theme.font.scale}
-                    onChange={(v) => setFont({ scale: v })}
-                    options={FONT_SCALES}
+                    value={theme.elevation}
+                    onChange={(v) => setTheme({ elevation: v })}
+                    options={ELEVATIONS}
                   />
                 </Field>
-                <Field label="Heading weight">
+                <Field label="Spacing">
                   <Segmented
-                    value={theme.headingWeight}
-                    onChange={(v) => setTheme({ headingWeight: v })}
-                    options={HEADING_WEIGHTS}
+                    value={theme.density}
+                    onChange={(v) => setTheme({ density: v })}
+                    options={DENSITIES}
                   />
                 </Field>
-              </div>
-              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Content width">
+                  <Segmented
+                    value={theme.width}
+                    onChange={(v) => setTheme({ width: v })}
+                    options={WIDTHS}
+                  />
+                </Field>
+                <Field label="Border weight">
+                  <Segmented
+                    value={Number(theme.borderWidth ?? 1)}
+                    onChange={(v) => setTheme({ borderWidth: v })}
+                    options={BORDER_WIDTHS}
+                  />
+                </Field>
+                <Field label="Button weight">
+                  <Segmented
+                    value={theme.buttonWeight || ""}
+                    onChange={(v) => setTheme({ buttonWeight: v })}
+                    options={BUTTON_WEIGHTS}
+                  />
+                </Field>
                 <Field
-                  label="Heading tracking"
-                  hint="Letter-spacing, in em. Negative tightens."
+                  label="Exact corner radius"
+                  hint="Pixels. Blank uses the bucket above."
                 >
                   <Input
                     type="number"
-                    step="0.005"
-                    value={theme.headingTracking || 0}
-                    onChange={(e) =>
-                      setTheme({ headingTracking: Number(e.target.value) || 0 })
-                    }
-                  />
-                </Field>
-                <Field label="Heading line height" hint="0 leaves it to the base style.">
-                  <Input
-                    type="number"
-                    step="0.05"
-                    value={theme.headingLineHeight || 0}
-                    onChange={(e) =>
-                      setTheme({ headingLineHeight: Number(e.target.value) || 0 })
-                    }
-                  />
-                </Field>
-              </div>
-              <SettingsList>
-                <SettingRow
-                  title="Uppercase headings"
-                  description="Render section headings in all caps."
-                  checked={theme.headingUpper}
-                  onCheckedChange={(v) => setTheme({ headingUpper: v })}
-                />
-              </SettingsList>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Shape & style">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Corner radius">
-                <Segmented
-                  value={theme.radius}
-                  onChange={(v) => setTheme({ radius: v })}
-                  options={RADIUS_OPTIONS}
-                />
-              </Field>
-              <Field label="Button style">
-                <Segmented
-                  value={theme.button}
-                  onChange={(v) => setTheme({ button: v })}
-                  options={BUTTON_STYLES}
-                />
-              </Field>
-              <Field label="Card shadow">
-                <Segmented
-                  value={theme.elevation}
-                  onChange={(v) => setTheme({ elevation: v })}
-                  options={ELEVATIONS}
-                />
-              </Field>
-              <Field label="Spacing">
-                <Segmented
-                  value={theme.density}
-                  onChange={(v) => setTheme({ density: v })}
-                  options={DENSITIES}
-                />
-              </Field>
-              <Field label="Content width">
-                <Segmented
-                  value={theme.width}
-                  onChange={(v) => setTheme({ width: v })}
-                  options={WIDTHS}
-                />
-              </Field>
-              <Field label="Border weight">
-                <Segmented
-                  value={Number(theme.borderWidth ?? 1)}
-                  onChange={(v) => setTheme({ borderWidth: v })}
-                  options={BORDER_WIDTHS}
-                />
-              </Field>
-              <Field label="Button weight">
-                <Segmented
-                  value={theme.buttonWeight || ""}
-                  onChange={(v) => setTheme({ buttonWeight: v })}
-                  options={BUTTON_WEIGHTS}
-                />
-              </Field>
-              <Field
-                label="Exact corner radius"
-                hint="Pixels. Blank uses the bucket above."
-              >
-                <Input
-                  type="number"
-                  min="0"
-                  max="48"
-                  value={theme.radiusPx ?? ""}
-                  onChange={(e) =>
-                    setTheme({
-                      radiusPx: e.target.value === "" ? null : Number(e.target.value),
-                    })
-                  }
-                  placeholder="—"
-                />
-              </Field>
-              <Field label="Button corner radius" hint="Pixels. Blank matches cards.">
-                <Input
-                  type="number"
-                  min="0"
-                  max="48"
-                  value={theme.buttonRadiusPx ?? ""}
-                  onChange={(e) =>
-                    setTheme({
-                      buttonRadiusPx:
-                        e.target.value === "" ? null : Number(e.target.value),
-                    })
-                  }
-                  placeholder="—"
-                />
-              </Field>
-            </div>
-            <div className="mt-5">
-              <SettingsList>
-                <SettingRow
-                  title="Uppercase buttons"
-                  description="Render button labels in all caps."
-                  checked={theme.buttonUpper}
-                  onCheckedChange={(v) => setTheme({ buttonUpper: v })}
-                />
-              </SettingsList>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Site header"
-            description="A brand bar above the event — your logo, links, and a button."
-          >
-            <SiteHeaderEditor
-              header={theme.header}
-              onChange={(header) => setTheme({ header })}
-            />
-          </SectionCard>
-
-          <SectionCard
-            title="Header & layout"
-            description="How the top of your page and the ticket sidebar are arranged."
-          >
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Hero style">
-                <Segmented
-                  value={theme.hero}
-                  onChange={(v) => setTheme({ hero: v })}
-                  options={HERO_STYLES}
-                />
-              </Field>
-              <Field label="Cover style">
-                <Segmented
-                  value={theme.cover}
-                  onChange={(v) => setTheme({ cover: v })}
-                  options={COVER_OPTIONS}
-                />
-              </Field>
-              <Field label="Cover overlay" hint="Improves text legibility on a banner hero.">
-                <Segmented
-                  value={theme.coverOverlay}
-                  onChange={(v) => setTheme({ coverOverlay: v })}
-                  options={OVERLAY_STYLES}
-                />
-              </Field>
-              <Field label="Ticket sidebar">
-                <Segmented
-                  value={theme.sidebar}
-                  onChange={(v) => setTheme({ sidebar: v })}
-                  options={SIDEBAR_SIDES}
-                />
-              </Field>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Page background"
-            description="What sits behind your content, edge to edge."
-          >
-            <div className="space-y-4">
-              <Field label="Background">
-                <Segmented
-                  value={theme.background?.type || "surface"}
-                  onChange={(v) =>
-                    setTheme({ background: { ...theme.background, type: v } })
-                  }
-                  options={BG_TYPES}
-                />
-              </Field>
-              {theme.background?.type === "image" ? (
-                <Field label="Image URL" hint="A large, high-quality image works best.">
-                  <Input
-                    value={theme.background?.value || ""}
+                    min="0"
+                    max="48"
+                    value={theme.radiusPx ?? ""}
                     onChange={(e) =>
                       setTheme({
-                        background: { ...theme.background, value: e.target.value },
+                        radiusPx: e.target.value === "" ? null : Number(e.target.value),
                       })
                     }
-                    placeholder="https://…"
+                    placeholder="—"
                   />
                 </Field>
-              ) : null}
-            </div>
-          </SectionCard>
+                <Field label="Button corner radius" hint="Pixels. Blank matches cards.">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="48"
+                    value={theme.buttonRadiusPx ?? ""}
+                    onChange={(e) =>
+                      setTheme({
+                        buttonRadiusPx:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                    placeholder="—"
+                  />
+                </Field>
+              </div>
+              <div className="mt-5">
+                <SettingsList>
+                  <SettingRow
+                    title="Uppercase buttons"
+                    description="Render button labels in all caps."
+                    checked={theme.buttonUpper}
+                    onCheckedChange={(v) => setTheme({ buttonUpper: v })}
+                  />
+                </SettingsList>
+              </div>
+            </SectionCard>
 
-          <SectionCard
-            title="Brand details"
-            description="The tagline under your event title, and the browser tab icon."
-          >
-            <div className="space-y-5">
-              <Field label="Tagline" hint="A short line under the event title.">
-                <Input
-                  value={theme.tagline || ""}
-                  onChange={(e) => setTheme({ tagline: e.target.value })}
-                  placeholder="Two days of talks, workshops, and good coffee."
-                />
-              </Field>
-              <Field label="Favicon URL" hint="Shown in the browser tab on the live page.">
-                <Input
-                  value={theme.favicon || ""}
-                  onChange={(e) => setTheme({ favicon: e.target.value })}
-                  placeholder="https://…/favicon.ico"
-                  className="font-mono text-xs"
-                />
-              </Field>
-            </div>
-          </SectionCard>
+            <SectionCard
+              title="Page background"
+              description="What sits behind your content, edge to edge."
+            >
+              <div className="space-y-4">
+                <Field label="Background">
+                  <Segmented
+                    value={theme.background?.type || "surface"}
+                    onChange={(v) =>
+                      setTheme({ background: { ...theme.background, type: v } })
+                    }
+                    options={BG_TYPES}
+                  />
+                </Field>
+                {theme.background?.type === "image" ||
+                theme.background?.type === "video" ? (
+                  <>
+                    <input
+                      ref={bgInput}
+                      type="file"
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={onBgFile}
+                    />
+                    <Field
+                      label={
+                        theme.background?.type === "video"
+                          ? "Video URL"
+                          : "Image URL"
+                      }
+                      hint={
+                        theme.background?.type === "video"
+                          ? "A muted, looping clip behind your content. Scenario videos with minimal motion work best."
+                          : "A large, high-quality image works best."
+                      }
+                    >
+                      <div className="flex gap-2">
+                        <Input
+                          value={theme.background?.value || ""}
+                          onChange={(e) =>
+                            setTheme({
+                              background: { ...theme.background, value: e.target.value },
+                            })
+                          }
+                          placeholder="https://…"
+                          className="flex-1"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={bgBusy}
+                          onClick={() => bgInput.current?.click()}
+                          className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                        >
+                          {bgBusy ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <UploadCloud className="h-4 w-4" />
+                          )}
+                          Upload
+                        </Button>
+                      </div>
+                    </Field>
+                    <Field
+                      label="Overlay"
+                      hint={
+                        theme.background?.type === "video"
+                          ? "Sits between the video and your content. Dark makes cards and buttons stand out; the page color blends the video into the rest of the page."
+                          : "Sits between the photo and your content. Dark makes cards and buttons stand out; the page color blends the photo into the rest of the page."
+                      }
+                    >
+                      <Segmented
+                        value={theme.background?.overlay || "base"}
+                        onChange={(v) =>
+                          setTheme({ background: { ...theme.background, overlay: v } })
+                        }
+                        options={BG_OVERLAYS}
+                      />
+                    </Field>
+                    {(theme.background?.overlay || "base") !== "none" ? (
+                      <Field
+                        label="Overlay strength"
+                        hint="Higher hides more of the media. Below ~50% a busy background starts competing with body copy."
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={Number(theme.background?.dim ?? 80)}
+                            onChange={(e) =>
+                              setTheme({
+                                background: {
+                                  ...theme.background,
+                                  dim: Number(e.target.value),
+                                },
+                              })
+                            }
+                            aria-label="Overlay strength"
+                            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-active accent-primary"
+                          />
+                          <span className="w-12 shrink-0 text-right text-xs tabular-nums text-text-secondary">
+                            {Number(theme.background?.dim ?? 80)}%
+                          </span>
+                        </div>
+                      </Field>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            </SectionCard>
 
-          <SectionCard
-            title={isCustom ? "Page blocks" : "Sections"}
-            description={
-              isCustom
-                ? "Add, edit, reorder, and remove the blocks in the main column."
-                : "Show, hide, and reorder what appears on the page."
-            }
-            action={
-              isCustom ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                  onClick={() => setAdding("main")}
-                >
-                  <Plus className="h-4 w-4" /> Add block
-                </Button>
-              ) : null
-            }
-          >
-            <SettingsList>
-              <SettingRow
-                icon={ImageIcon}
-                title="Photo gallery"
-                description="Thumbnail strip under the cover image."
-                checked={design.showGallery}
-                onCheckedChange={(v) => set({ showGallery: v })}
+            <SectionCard
+              title="Viewer theme"
+              description="Which look visitors open the page in. They can still switch with the toggle on the page, and their choice is remembered."
+            >
+              <div className="space-y-4">
+                <Field label="Preferred theme" hint="Follow system uses each visitor's own light/dark preference.">
+                  <Segmented
+                    value={design.viewerMode || "auto"}
+                    onChange={(v) => set({ viewerMode: v })}
+                    options={VIEWER_MODES}
+                  />
+                </Field>
+              </div>
+            </SectionCard>
+          </TabsContent>
+
+          <TabsContent value="chrome" className="space-y-4">
+            <SectionCard
+              title="Site header"
+              description="A brand bar above the event — your logo, links, and a button."
+            >
+              <SiteHeaderEditor
+                header={theme.header}
+                onChange={(header) => setTheme({ header })}
               />
-            </SettingsList>
+            </SectionCard>
 
-            <div className="mt-3">
+            <SectionCard
+              title="Header & layout"
+              description="How the top of your page and the ticket sidebar are arranged."
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Hero style">
+                  <Segmented
+                    value={theme.hero}
+                    onChange={(v) => setTheme({ hero: v })}
+                    options={HERO_STYLES}
+                  />
+                </Field>
+                <Field label="Cover style">
+                  <Segmented
+                    value={theme.cover}
+                    onChange={(v) => setTheme({ cover: v })}
+                    options={COVER_OPTIONS}
+                  />
+                </Field>
+                <Field label="Cover overlay" hint="Improves text legibility on a banner hero.">
+                  <Segmented
+                    value={theme.coverOverlay}
+                    onChange={(v) => setTheme({ coverOverlay: v })}
+                    options={OVERLAY_STYLES}
+                  />
+                </Field>
+                <Field label="Ticket sidebar">
+                  <Segmented
+                    value={theme.sidebar}
+                    onChange={(v) => setTheme({ sidebar: v })}
+                    options={SIDEBAR_SIDES}
+                  />
+                </Field>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Footer"
+              description="Links, socials, and a closing line at the bottom of your page."
+            >
+              <FooterEditor
+                value={design.footer || DEFAULT_FOOTER}
+                onChange={(footer) => set({ footer })}
+              />
+            </SectionCard>
+          </TabsContent>
+
+          <TabsContent value="sections" className="space-y-4">
+            {isCustom ? (
+              <SectionCard
+                title="Page builder"
+                description="Lay the page out visually — sections, columns, blocks, dynamic text and custom code."
+                action={
+                  <Button
+                    size="sm"
+                    onClick={() => setBuilderOpen(true)}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Wand2 className="h-4 w-4" /> Open builder
+                  </Button>
+                }
+              >
+                <p className="text-sm leading-relaxed text-text-secondary">
+                  {built
+                    ? "This page is built with the visual builder. Open it to change the layout, edit blocks, or adjust how it looks on tablet and mobile."
+                    : "Opening the builder converts this page's current sections into an editable layout. Nothing changes on your public page until you save."}
+                </p>
+              </SectionCard>
+            ) : null}
+
+            {isCustom && built ? null : (
+            <>
+            <SectionCard
+              title={isCustom ? "Page blocks" : "Sections"}
+              description={
+                isCustom
+                  ? "Add, edit, reorder, and remove the blocks in the main column."
+                  : "Show, hide, and reorder what appears on the page."
+              }
+              action={
+                isCustom ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    onClick={() => setAdding("main")}
+                  >
+                    <Plus className="h-4 w-4" /> Add block
+                  </Button>
+                ) : null
+              }
+            >
+              <SettingsList>
+                <SettingRow
+                  icon={ImageIcon}
+                  title="Photo gallery"
+                  description="Images and videos from Content & media. Layout is set there."
+                  checked={design.showGallery}
+                  onCheckedChange={(v) => set({ showGallery: v })}
+                />
+              </SettingsList>
+
+              <div className="mt-3">
+                <BlockList
+                  blocks={mainBlocks}
+                  isCustom={isCustom}
+                  onEdit={(b) => setEditing({ block: b, surface: "main" })}
+                  {...mainHandlers}
+                />
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Sidebar"
+              description={
+                isCustom
+                  ? "The registration column — reorder the built-in cards, or add your own."
+                  : "Show, hide, and reorder the cards in the registration column."
+              }
+              action={
+                isCustom ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    onClick={() => setAdding("sidebar")}
+                  >
+                    <Plus className="h-4 w-4" /> Add block
+                  </Button>
+                ) : null
+              }
+            >
               <BlockList
-                blocks={mainBlocks}
+                blocks={sidebarBlocks}
                 isCustom={isCustom}
-                onEdit={(b) => setEditing({ block: b, surface: "main" })}
-                {...mainHandlers}
+                onEdit={(b) => setEditing({ block: b, surface: "sidebar" })}
+                {...sidebarHandlers}
               />
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Sidebar"
-            description={
-              isCustom
-                ? "The registration column — reorder the built-in cards, or add your own."
-                : "Show, hide, and reorder the cards in the registration column."
-            }
-            action={
-              isCustom ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                  onClick={() => setAdding("sidebar")}
-                >
-                  <Plus className="h-4 w-4" /> Add block
-                </Button>
-              ) : null
-            }
-          >
-            <BlockList
-              blocks={sidebarBlocks}
-              isCustom={isCustom}
-              onEdit={(b) => setEditing({ block: b, surface: "sidebar" })}
-              {...sidebarHandlers}
-            />
-          </SectionCard>
-
-          <SectionCard
-            title="Footer"
-            description="Links, socials, and a closing line at the bottom of your page."
-          >
-            <FooterEditor
-              value={design.footer || DEFAULT_FOOTER}
-              onChange={(footer) => set({ footer })}
-            />
-          </SectionCard>
-        </>
+            </SectionCard>
+            </>
+            )}
+          </TabsContent>
+        </Tabs>
       )}
 
       <AddBlockDialog
@@ -1541,6 +1418,25 @@ export function PageDesignSection({ design, onChange, onPreview, eventId }) {
         footer={design.footer || DEFAULT_FOOTER}
         onApply={applyImport}
       />
+
+      {builderOpen ? (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center gap-2 bg-background text-sm text-text-secondary">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading the builder…
+            </div>
+          }
+        >
+          <PageBuilder
+            design={design}
+            event={event}
+            eventId={eventId}
+            canUseCustomCode={canUseCustomCode}
+            onSave={saveFromBuilder}
+            onClose={() => setBuilderOpen(false)}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

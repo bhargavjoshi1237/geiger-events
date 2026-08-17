@@ -5,6 +5,10 @@ import { classifyPalette } from "@/lib/brand/to-theme";
 
 // Node runtime: extraction base64-encodes fetched images with Buffer.
 export const runtime = "nodejs";
+// Extraction fetches the page, its stylesheets, then its logos — comfortably
+// past a serverless function's default budget, which is why this worked locally
+// and 504'd in production.
+export const maxDuration = 60;
 
 // GET /api/brand/extract?url=acme.com
 // Reads a public website and returns its brand signals — logo candidates (as data
@@ -56,11 +60,17 @@ export async function GET(request) {
         Number.isFinite(result.borderWidth)
       ),
       layout: !!(result.width || result.density || result.pageGradient),
-      header: !!(result.nav?.length || result.cta),
+      header: !!(
+        result.nav?.length ||
+        result.cta ||
+        result.headerStyle?.background ||
+        result.headerStyle?.sticky
+      ),
       footer: !!(
         result.footer?.links?.length ||
         result.footer?.socials?.length ||
-        result.footer?.text
+        result.footer?.text ||
+        result.footerStyle?.background
       ),
       content: !!(result.tagline || result.heroImage || result.favicon),
       background: !!(result.background || result.heroImage),

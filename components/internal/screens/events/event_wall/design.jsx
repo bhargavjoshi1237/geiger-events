@@ -65,9 +65,6 @@ export function WallDesignSection({ wall }) {
     setLayoutKey({ cardMeta: { ...(layout.cardMeta || {}), [key]: v } });
   const setHeader = (next) =>
     setLayoutKey({ header: { ...(layout.header || {}), ...next } });
-
-  // One Save persists all three config sections (theme + layout + footer). Each
-  // merges into a different metadata key, so they never clobber one another.
   const onSave = async () => {
     await saveLayout(layout);
     await saveFooter(footer);
@@ -306,8 +303,20 @@ export function WallDesignSection({ wall }) {
               placeholder="https://…"
             />
           </Field>
-          {resolved.background?.type === "image" ? (
-            <Field label="Background image URL">
+          {resolved.background?.type === "image" ||
+          resolved.background?.type === "video" ? (
+            <Field
+              label={
+                resolved.background?.type === "video"
+                  ? "Background video URL"
+                  : "Background image URL"
+              }
+              hint={
+                resolved.background?.type === "video"
+                  ? "A muted, looping clip behind the header."
+                  : "Sits behind the header. Optional."
+              }
+            >
               <Input
                 value={resolved.background?.value || ""}
                 onChange={(e) =>

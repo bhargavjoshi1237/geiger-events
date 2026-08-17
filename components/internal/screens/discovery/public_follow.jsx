@@ -48,7 +48,9 @@ function readFollowing(projectId) {
   }
 }
 
-export function FollowButton({ projectId, organiserName }) {
+// `subtle` renders the outline treatment the event page's host row wants, where
+// a brand-filled button would compete with the ticket CTA beside it.
+export function FollowButton({ projectId, organiserName, subtle = false, className }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -88,7 +90,11 @@ export function FollowButton({ projectId, organiserName }) {
     return (
       <Button
         variant="outline"
-        className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+        size={subtle ? "sm" : undefined}
+        className={cn(
+          "border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground",
+          className,
+        )}
         disabled
       >
         <Check className="h-4 w-4" /> Following
@@ -98,7 +104,17 @@ export function FollowButton({ projectId, organiserName }) {
 
   return (
     <>
-      <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setOpen(true)}>
+      <Button
+        variant={subtle ? "outline" : undefined}
+        size={subtle ? "sm" : undefined}
+        className={cn(
+          subtle
+            ? "border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            : "bg-primary text-primary-foreground hover:bg-primary/90",
+          className,
+        )}
+        onClick={() => setOpen(true)}
+      >
         <BellPlus className="h-4 w-4" /> Follow
       </Button>
 

@@ -913,7 +913,7 @@ export function AgendaBuilderScreen() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading events…
+          Loading Events…
         </div>
       ) : filteredEvents.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

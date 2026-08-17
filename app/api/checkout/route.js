@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getEvent } from "@/lib/supabase/events";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
+import { checkoutBranding } from "@/lib/stripe/branding";
 import {
   validateEventDiscount,
   discountBase,
@@ -197,7 +198,11 @@ export async function POST(request) {
       });
       discounts = [{ coupon: coupon.id }];
     }
-    const session = await stripe.checkout.sessions.create({
+    // Carry the event page's imported brand onto Stripe's own page, so the
+    // buyer doesn't leave the site they think they're on. Omitted entirely for
+    // standard pages, which keep the account's Dashboard branding.
+    const branding = checkoutBranding(event.pageDesign);
+    const params = {
       mode: "payment",
       line_items: lineItems,
       customer_email: email,
@@ -242,7 +247,24 @@ export async function POST(request) {
         boothToken: boothToken || "",
         extra: extraJson,
       },
-    });
+    };
+
+    // Branding is cosmetic, so it must never be able to cost a sale: an image
+    // Stripe won't fetch or a colour it rejects fails the whole session, and the
+    // buyer would just see "Couldn't start checkout". Retry once unbranded.
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create(
+        branding ? { ...params, branding_settings: branding } : params,
+      );
+    } catch (e) {
+      if (!branding) throw e;
+      console.warn(
+        `[checkout.create] branding rejected for event ${eventId} — retrying unbranded:`,
+        e?.message,
+      );
+      session = await stripe.checkout.sessions.create(params);
+    }
     return NextResponse.json({ url: session.url });
   } catch (e) {
     console.error("[checkout.create]", e);
