@@ -2,12 +2,35 @@
 
 import React from "react";
 import { Panel, useReactFlow } from "@xyflow/react";
-import { Maximize, Minus, Plus } from "lucide-react";
+import { Lock, LockOpen, Magnet, Maximize, Minus, Plus } from "lucide-react";
 
-// Floating zoom controls for the workflow canvas, mirroring the Geiger Notes
-// board controls. Uses semantic tokens; sits bottom-left inside the canvas.
-export function ZoomControls() {
+import { cn } from "@/lib/utils";
+import { CANVAS_FIT_VIEW, SNAP_SIZES } from "../constants";
+
+const BTN =
+  "p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground";
+const ON = "bg-surface-active text-foreground";
+
+// Floating canvas controls, mirroring the Geiger Notes board controls: zoom
+// (in / out / fit), then the snap group (on-off + grid size) and a lock that
+// freezes nodes for read-only panning. Uses semantic tokens; sits bottom-left.
+export function ZoomControls({
+  snap,
+  onSnapChange,
+  snapSize,
+  onSnapSizeChange,
+  locked,
+  onLockedChange,
+}) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
+
+  // Cycles 8 → 16 → 24 → 8. Changing the size implies you want snapping on.
+  const cycleSnapSize = () => {
+    const next = SNAP_SIZES[(SNAP_SIZES.indexOf(snapSize) + 1) % SNAP_SIZES.length];
+    onSnapSizeChange(next);
+    if (!snap) onSnapChange(true);
+  };
+
   return (
     <Panel position="bottom-left">
       <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-surface-card/80 shadow-xl backdrop-blur-md">
@@ -15,7 +38,7 @@ export function ZoomControls() {
           type="button"
           aria-label="Zoom in"
           onClick={() => zoomIn({ duration: 300 })}
-          className="p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+          className={BTN}
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -23,17 +46,49 @@ export function ZoomControls() {
           type="button"
           aria-label="Zoom out"
           onClick={() => zoomOut({ duration: 300 })}
-          className="border-t border-border p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+          className={cn(BTN, "border-t border-border")}
         >
           <Minus className="h-4 w-4" />
         </button>
         <button
           type="button"
           aria-label="Fit view"
-          onClick={() => fitView({ duration: 300, padding: 0.2 })}
-          className="border-t border-border p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+          onClick={() => fitView({ duration: 300, ...CANVAS_FIT_VIEW })}
+          className={cn(BTN, "border-t border-border")}
         >
           <Maximize className="h-4 w-4" />
+        </button>
+
+        <button
+          type="button"
+          aria-label={snap ? "Turn snapping off" : "Turn snapping on"}
+          aria-pressed={snap}
+          onClick={() => onSnapChange(!snap)}
+          className={cn(BTN, "border-t border-border-strong", snap && ON)}
+        >
+          <Magnet className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          aria-label={`Snap grid: ${snapSize}px — change`}
+          onClick={cycleSnapSize}
+          className={cn(
+            BTN,
+            "border-t border-border text-center text-[11px] font-medium leading-4 tabular-nums",
+            snap && ON,
+          )}
+        >
+          {snapSize}
+        </button>
+
+        <button
+          type="button"
+          aria-label={locked ? "Unlock canvas" : "Lock canvas"}
+          aria-pressed={locked}
+          onClick={() => onLockedChange(!locked)}
+          className={cn(BTN, "border-t border-border-strong", locked && ON)}
+        >
+          {locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
         </button>
       </div>
     </Panel>

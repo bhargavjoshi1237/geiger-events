@@ -628,3 +628,39 @@ export function Field({
     </div>
   );
 }
+
+// Inline-editable title that sizes to its text. A hidden mirror span sets the
+// track width (the `size` attribute measures in default-font characters, which
+// leaves a huge gap before any trailing badge at heading sizes).
+export function InlineTitleInput({
+  value,
+  onChange,
+  className,
+  placeholder = "Untitled",
+  ...props
+}) {
+  return (
+    <span className="inline-grid max-w-full">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "invisible col-start-1 row-start-1 overflow-hidden whitespace-pre pr-[2px]",
+          className,
+        )}
+      >
+        {value || placeholder}
+      </span>
+      <input
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        spellCheck={false}
+        className={cn(
+          "col-start-1 row-start-1 w-full min-w-0 rounded-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+          className,
+        )}
+        {...props}
+      />
+    </span>
+  );
+}

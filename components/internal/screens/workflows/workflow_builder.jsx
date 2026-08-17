@@ -103,7 +103,8 @@ export function WorkflowBuilderScreen({
   onDelete,
 }) {
   const [form, setForm] = useState(workflow);
-  const [view, setView] = useState(workflow?.viewMode || "list");
+  // The builder always opens on the canvas; viewMode only records the last view.
+  const [view, setView] = useState("canvas");
   const [activeTab, setActiveTab] = useState("builder");
   const [activeSetting, setActiveSetting] = useState("general");
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -113,7 +114,7 @@ export function WorkflowBuilderScreen({
   if (workflow && workflow.id !== seedId) {
     setSeedId(workflow.id);
     setForm(workflow);
-    setView(workflow.viewMode || "list");
+    setView("canvas");
     setActiveTab("builder");
     setActiveSetting("general");
   }
@@ -226,6 +227,7 @@ export function WorkflowBuilderScreen({
             <WorkflowCanvas
               steps={form.steps}
               graph={form.graph}
+              active={isActive}
               onChange={handleCanvasChange}
             />
           )}

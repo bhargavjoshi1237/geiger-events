@@ -8,6 +8,7 @@ import {
   FileArchive,
   IdCard,
   Image as ImageIcon,
+  Layers2,
   Loader2,
   Printer,
 } from "lucide-react";
@@ -33,11 +34,12 @@ import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { getCheckinSettings, updateCheckinSettings } from "@/lib/supabase/checkin";
 import { listPassAttendees, tiersOf } from "@/lib/passes/attendees";
+import { rolesOf } from "@/lib/passes/roles";
 import { resolveTemplate } from "@/lib/passes/render";
 import { sheetGrid } from "@/lib/passes/stock";
 import { downloadCsv } from "@/components/internal/screens/registrations/csv";
 
-import { withLayout } from "@/lib/passes/layout";
+import { hasBackContent, sideLayout, withSides } from "@/lib/passes/layout";
 import { uploadBadgeImage } from "@/lib/supabase/storage";
 
 import { newPassTemplate, withDefaults } from "./constants";
@@ -57,6 +59,9 @@ const SAMPLE = {
   key: "sample",
   name: "Alex Morgan",
   company: "Northwind Studio",
+  title: "Principal Engineer",
+  role: "Attendee",
+  detail: "",
   tier: "",
   code: "A1B2C3D4",
   payload: "sample-pass-preview",
@@ -80,6 +85,9 @@ export function BadgePrintingScreen() {
   const [qrSettings, setQrSettings] = useState(() => withDefaults({}, "qrTickets"));
   const [selectedId, setSelectedId] = useState("");
   const [elementId, setElementId] = useState(null);
+  // Which face is being designed. Lives here, not in the canvas, because the
+  // layers rail and the inspector edit that side too.
+  const [side, setSide] = useState("front");
 
   // Events + the project's saved designs load together; both are needed before
   // anything can render.
@@ -97,12 +105,13 @@ export function BadgePrintingScreen() {
         // A project with no saved designs starts on one seeded from the legacy
         // preset. It's seeded into `saved` too, so an untouched screen is clean.
         // Designs saved before the free-layout editor carry only field toggles;
-        // withLayout converts them to positioned elements that draw the same.
+        // withSides converts them to positioned elements that draw the same, and
+        // gives every design the blank back it didn't have.
         const templates = (
           Array.isArray(merged.templates) && merged.templates.length
             ? merged.templates
             : [newPassTemplate(merged.defaultTemplate || "classic", { isDefault: true })]
-        ).map(withLayout);
+        ).map(withSides);
         const next = { ...merged, templates };
         setSlice(next);
         setSaved(next);
@@ -121,7 +130,7 @@ export function BadgePrintingScreen() {
     let alive = true;
     const load = async () => {
       setLoadingList(true);
-      const rows = await listPassAttendees(eventId);
+      const rows = await listPassAttendees(eventId, projectId);
       if (!alive) return;
       setAttendees(rows ?? []);
       setPreviewKey(rows?.[0]?.key || "");
@@ -131,7 +140,7 @@ export function BadgePrintingScreen() {
     return () => {
       alive = false;
     };
-  }, [eventId]);
+  }, [eventId, projectId]);
 
   const templates = useMemo(() => slice.templates || [], [slice.templates]);
   const event = useMemo(() => events.find((e) => e.id === eventId) || null, [events, eventId]);
@@ -140,6 +149,7 @@ export function BadgePrintingScreen() {
     [templates, selectedId],
   );
   const availableTiers = useMemo(() => tiersOf(attendees), [attendees]);
+  const availableRoles = useMemo(() => rolesOf(attendees), [attendees]);
   const previewIndex = useMemo(
     () => attendees.findIndex((a) => a.key === previewKey),
     [attendees, previewKey],
@@ -154,7 +164,7 @@ export function BadgePrintingScreen() {
   const counts = useMemo(() => {
     const out = {};
     for (const attendee of attendees) {
-      const template = resolveTemplate(templates, attendee.tier);
+      const template = resolveTemplate(templates, attendee.tier, attendee.role);
       if (template) out[template.id] = (out[template.id] || 0) + 1;
     }
     return out;
@@ -167,6 +177,17 @@ export function BadgePrintingScreen() {
   const updateTemplate = (patch) =>
     setTemplates(templates.map((t) => (t.id === selected?.id ? { ...t, ...patch } : t)));
 
+  // Write a patched layout back onto the face currently being designed. The
+  // front stays `template.layout` so designs saved before the back existed are
+  // untouched; the back lives under `template.back`.
+  const putLayout = useCallback(
+    (template, next) =>
+      side === "back"
+        ? { ...template, back: { ...(template.back || {}), layout: next } }
+        : { ...template, layout: next },
+    [side],
+  );
+
   // Layout edits merge into the open design; every element lives in its layout,
   // so the canvas, the layers rail and the inspector all write through here.
   const updateLayout = useCallback(
@@ -175,44 +196,48 @@ export function BadgePrintingScreen() {
         ...s,
         templates: (s.templates || []).map((t) =>
           t.id === (selected?.id || "")
-            ? { ...t, layout: { ...(t.layout || {}), ...patch } }
+            ? putLayout(t, { ...sideLayout(t, side), ...patch })
             : t,
         ),
       })),
-    [selected?.id],
+    [selected?.id, side, putLayout],
   );
 
   const element = useMemo(
-    () => (selected?.layout?.elements || []).find((el) => el.id === elementId) || null,
-    [selected, elementId],
+    () => (sideLayout(selected, side).elements || []).find((el) => el.id === elementId) || null,
+    [selected, side, elementId],
   );
 
   const updateElement = useCallback(
     (patch) =>
       setSlice((s) => ({
         ...s,
-        templates: (s.templates || []).map((t) =>
-          t.id === (selected?.id || "")
-            ? {
-                ...t,
-                layout: {
-                  ...(t.layout || {}),
-                  elements: (t.layout?.elements || []).map((el) =>
-                    el.id === elementId ? { ...el, ...patch } : el,
-                  ),
-                },
-              }
-            : t,
-        ),
+        templates: (s.templates || []).map((t) => {
+          if (t.id !== (selected?.id || "")) return t;
+          const layout = sideLayout(t, side);
+          return putLayout(t, {
+            ...layout,
+            elements: (layout.elements || []).map((el) =>
+              el.id === elementId ? { ...el, ...patch } : el,
+            ),
+          });
+        }),
       })),
-    [selected?.id, elementId],
+    [selected?.id, side, elementId, putLayout],
   );
 
   const deleteElement = (id) => {
     updateLayout({
-      elements: (selected?.layout?.elements || []).filter((el) => el.id !== id),
+      elements: (sideLayout(selected, side).elements || []).filter((el) => el.id !== id),
     });
     if (elementId === id) setElementId(null);
+  };
+
+  // Selection belongs to a face, so turning the card over clears it.
+  const changeSide = (next) => {
+    if (next === side) return;
+    setSide(next);
+    setElementId(null);
   };
 
   // Card artwork lands in storage under badges/<project>/ and the design stores
@@ -227,10 +252,11 @@ export function BadgePrintingScreen() {
   };
 
   const addTemplate = (preset) => {
-    const created = withLayout(newPassTemplate(preset, { isDefault: templates.length === 0 }));
+    const created = withSides(newPassTemplate(preset, { isDefault: templates.length === 0 }));
     setTemplates([...templates, created]);
     setSelectedId(created.id);
     setElementId(null);
+    setSide("front");
   };
 
   const duplicateTemplate = (id) => {
@@ -286,7 +312,7 @@ export function BadgePrintingScreen() {
     else toast.success(`Prepared ${attendees.length} passes.`);
   };
 
-  const handlePng = async () => {
+  const handlePng = async (sides) => {
     if (!selected) return;
     setBusy("png");
     const warning = await exportPassPng({
@@ -294,10 +320,11 @@ export function BadgePrintingScreen() {
       event: event || {},
       attendee: previewAttendee,
       qrSettings,
+      sides,
     });
     setBusy("");
     if (warning) toast.error(warning);
-    else toast.success("PNG downloaded.");
+    else toast.success(sides.length > 1 ? "Both sides downloaded." : "PNG downloaded.");
   };
 
   const handleZip = async () => {
@@ -327,6 +354,7 @@ export function BadgePrintingScreen() {
       [
         { header: "name", value: (a) => a.name },
         { header: "company", value: (a) => a.company || "" },
+        { header: "role", value: (a) => a.role || "" },
         { header: "tier", value: (a) => a.tier || "" },
         { header: "seat", value: (a) => a.seatLabel || "" },
         { header: "ticket_code", value: (a) => a.code },
@@ -376,16 +404,20 @@ export function BadgePrintingScreen() {
   const grid = selected ? sheetGrid(selected.sheet, selected.stock) : null;
   const zipping = busy.startsWith("zip");
   const passCount = attendees.length;
+  const backUsed = hasBackContent(selected);
   const meta = [
     loadingList ? "Loading Passes…" : `${passCount} Pass${passCount === 1 ? "" : "es"}`,
     `${templates.length} Design${templates.length === 1 ? "" : "s"}`,
+    backUsed ? "Double-sided" : null,
     grid ? `${grid.perPage} Per ${grid.page.wMm > 214 ? "Letter" : "A4"}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
   const stepperLabel = attendees.length
-    ? `${previewAttendee.name}${previewAttendee.seatLabel ? ` · ${previewAttendee.seatLabel}` : ""}`
+    ? [previewAttendee.name, previewAttendee.role, previewAttendee.seatLabel]
+        .filter(Boolean)
+        .join(" · ")
     : "Sample attendee — nobody has registered yet";
 
   return (
@@ -415,6 +447,7 @@ export function BadgePrintingScreen() {
             onSelect={(id) => {
               setSelectedId(id);
               setElementId(null);
+              setSide("front");
             }}
             onAdd={addTemplate}
             onDuplicate={duplicateTemplate}
@@ -438,9 +471,15 @@ export function BadgePrintingScreen() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 border-border bg-surface-subtle shadow-xl">
-                <DropdownMenuItem onClick={handlePng}>
-                  <ImageIcon className="h-4 w-4" /> PNG of this pass
+                <DropdownMenuItem onClick={() => handlePng([side])}>
+                  <ImageIcon className="h-4 w-4" />
+                  PNG of this {side === "back" ? "back" : "front"}
                 </DropdownMenuItem>
+                {backUsed ? (
+                  <DropdownMenuItem onClick={() => handlePng(["front", "back"])}>
+                    <Layers2 className="h-4 w-4" /> PNG of both sides
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onClick={handleZip}>
                   <FileArchive className="h-4 w-4" /> ZIP of all passes
                 </DropdownMenuItem>
@@ -476,6 +515,7 @@ export function BadgePrintingScreen() {
             {selected ? (
               <LayersPanel
                 template={selected}
+                side={side}
                 selectedId={elementId}
                 onSelect={setElementId}
                 onChange={updateLayout}
@@ -495,6 +535,8 @@ export function BadgePrintingScreen() {
               canStep={attendees.length > 1}
               onPrev={() => stepPreview(-1)}
               onNext={() => stepPreview(1)}
+              side={side}
+              onSideChange={changeSide}
               selectedId={elementId}
               onSelect={setElementId}
               onLayoutChange={updateLayout}
@@ -506,7 +548,9 @@ export function BadgePrintingScreen() {
               <Inspector
                 template={selected}
                 element={element}
+                side={side}
                 availableTiers={availableTiers}
+                availableRoles={availableRoles}
                 qrSettings={qrSettings}
                 onChange={updateTemplate}
                 onLayoutChange={updateLayout}

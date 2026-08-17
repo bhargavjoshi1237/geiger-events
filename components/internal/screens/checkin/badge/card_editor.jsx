@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { passSvg } from "@/lib/passes/render";
 import { stockSize } from "@/lib/passes/stock";
-import { newElement } from "@/lib/passes/layout";
+import { newElement, sideLayout } from "@/lib/passes/layout";
 import { cn } from "@/lib/utils";
 
 // Direct manipulation over the rendered pass. The SVG underneath is exactly what
@@ -54,6 +54,7 @@ export function CardEditor({
   event,
   attendee,
   qrSettings,
+  side = "front",
   selectedId,
   onSelect,
   onChange,
@@ -78,16 +79,16 @@ export function CardEditor({
   };
 
   const { wMm, hMm } = stockSize(template?.stock);
-  const elements = useMemo(() => template?.layout?.elements || [], [template]);
+  const elements = useMemo(() => sideLayout(template, side).elements || [], [template, side]);
 
   const svg = useMemo(
     () =>
       passSvg(
         template || {},
         { event: event || {}, attendee: attendee || {}, qrSettings: qrSettings || {} },
-        { preview: true },
+        { preview: true, side },
       ),
-    [template, event, attendee, qrSettings],
+    [template, event, attendee, qrSettings, side],
   );
 
   const px = (mm) => mm * scale;

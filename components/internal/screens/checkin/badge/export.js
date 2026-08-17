@@ -1,7 +1,7 @@
 "use client";
 
 import { passSvg, resolveTemplate } from "@/lib/passes/render";
-import { collectImageUrls } from "@/lib/passes/layout";
+import { collectImageUrls, hasBackContent } from "@/lib/passes/layout";
 import { zipStore } from "@/lib/passes/zip";
 
 // Raster export. The SVG the preview and printer already use goes into an
@@ -82,20 +82,26 @@ function svgToPngBlob(svg) {
   });
 }
 
-// One PNG for the previewed pass. Returns null on success or an error message.
-export async function exportPassPng({ template, event, attendee, qrSettings }) {
+// One PNG per requested side of the previewed pass. Returns null on success or
+// an error message.
+export async function exportPassPng({ template, event, attendee, qrSettings, sides = ["front"] }) {
   // Inlined whenever a URL is set: the renderer decides where each image is used
   // (background, section, badge corner, QR centre), so gating here would desync
   // export from what the preview shows.
   const { images, failed } = await inlineTemplateImages(template);
+  const base = `${slug(event?.name)}-${slug(attendee?.name)}`;
   try {
-    const svg = passSvg(
-      template,
-      { event, attendee, qrSettings, images, logoHref: images[template.logoUrl] || "" },
-      { dpi: DPI },
-    );
-    const blob = await svgToPngBlob(svg);
-    downloadBlob(blob, `${slug(event?.name)}-${slug(attendee?.name)}.png`);
+    for (const side of sides) {
+      const svg = passSvg(
+        template,
+        { event, attendee, qrSettings, images, logoHref: images[template.logoUrl] || "" },
+        { dpi: DPI, side },
+      );
+      const blob = await svgToPngBlob(svg);
+      // Only name the side when both were asked for, so the single-side download
+      // keeps the filename it has always had.
+      downloadBlob(blob, sides.length > 1 ? `${base}-${side}.png` : `${base}.png`);
+    }
     return failed
       ? "Exported, but an image couldn't be loaded — check that its host allows cross-origin reads."
       : null;
@@ -130,23 +136,30 @@ export async function exportPassesZip({
   try {
     for (let i = 0; i < attendees.length; i += 1) {
       const attendee = attendees[i];
-      const template = resolveTemplate(templates, attendee.tier);
+      const template = resolveTemplate(templates, attendee.tier, attendee.role);
       if (!template) continue;
       const images = assets.get(template.id) || {};
-      const svg = passSvg(
-        template,
-        { event, attendee, qrSettings, images, logoHref: images[template.logoUrl] || "" },
-        { dpi: DPI },
-      );
-      const blob = await svgToPngBlob(svg);
 
       // Two attendees can share a name; suffix the duplicates.
-      const base = `${slug(attendee.name)}-${attendee.code || i + 1}`;
-      const seen = (used.get(base) || 0) + 1;
-      used.set(base, seen);
-      const name = seen > 1 ? `${base}-${seen}.png` : `${base}.png`;
+      const stem = `${slug(attendee.name)}-${attendee.code || i + 1}`;
+      const seen = (used.get(stem) || 0) + 1;
+      used.set(stem, seen);
+      const base = seen > 1 ? `${stem}-${seen}` : stem;
 
-      files.push({ name, data: new Uint8Array(await blob.arrayBuffer()) });
+      // A double-sided design contributes both faces, side-suffixed.
+      const sides = hasBackContent(template) ? ["front", "back"] : ["front"];
+      for (const side of sides) {
+        const svg = passSvg(
+          template,
+          { event, attendee, qrSettings, images, logoHref: images[template.logoUrl] || "" },
+          { dpi: DPI, side },
+        );
+        const blob = await svgToPngBlob(svg);
+        files.push({
+          name: sides.length > 1 ? `${base}-${side}.png` : `${base}.png`,
+          data: new Uint8Array(await blob.arrayBuffer()),
+        });
+      }
       onProgress?.(i + 1, attendees.length);
     }
 

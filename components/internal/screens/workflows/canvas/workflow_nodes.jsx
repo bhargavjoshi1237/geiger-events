@@ -49,7 +49,8 @@ function NodeCard({ accent, kindLabel, data, selected, showTarget = true }) {
           <p className="truncate text-sm font-medium text-foreground">
             {entry?.label || data?.type || "Step"}
           </p>
-          <p className="mt-0.5 line-clamp-2 text-xs text-text-secondary">
+          {/* Two lines reserved either way, so every node card is the same height. */}
+          <p className="mt-0.5 line-clamp-2 min-h-8 text-xs text-text-secondary">
             {summary}
           </p>
         </div>

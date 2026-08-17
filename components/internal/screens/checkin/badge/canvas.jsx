@@ -14,6 +14,8 @@ import { useTheme } from "next-themes";
 import {
   ChevronLeft,
   ChevronRight,
+  CreditCard,
+  IdCard,
   Image as ImageIcon,
   Lock,
   Magnet,
@@ -35,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { stockSize } from "@/lib/passes/stock";
+import { hasBackContent } from "@/lib/passes/layout";
 import { cn } from "@/lib/utils";
 import { CardEditor } from "./card_editor";
 
@@ -42,30 +45,60 @@ import { CardEditor } from "./card_editor";
 // further; the editor divides pointer deltas by both.
 const PX_PER_MM = 4;
 
-// The pass itself, as a directly-editable object on the worktable.
+// The pass itself, as a directly-editable object on the worktable. Both faces
+// are mounted at once inside a 3D flip container, so switching side turns the
+// card over rather than swapping its contents.
 function PassNode({ data }) {
   const { getZoom } = useReactFlow();
   const { wMm, hMm } = stockSize(data.template?.stock);
+  const flipped = data.side === "back";
+
+  const face = (side) => (
+    <CardEditor
+      template={data.template}
+      event={data.event}
+      attendee={data.attendee}
+      qrSettings={data.qrSettings}
+      side={side}
+      selectedId={data.selectedId}
+      onSelect={data.onSelect}
+      onChange={data.onLayoutChange}
+      tool={data.tool}
+      onToolDone={data.onToolDone}
+      scale={PX_PER_MM}
+      getZoom={getZoom}
+      snap={data.snap}
+      snapMm={data.snapMm}
+    />
+  );
 
   return (
     <div>
-      <CardEditor
-        template={data.template}
-        event={data.event}
-        attendee={data.attendee}
-        qrSettings={data.qrSettings}
-        selectedId={data.selectedId}
-        onSelect={data.onSelect}
-        onChange={data.onLayoutChange}
-        tool={data.tool}
-        onToolDone={data.onToolDone}
-        scale={PX_PER_MM}
-        getZoom={getZoom}
-        snap={data.snap}
-        snapMm={data.snapMm}
-      />
+      <div style={{ width: wMm * PX_PER_MM, height: hMm * PX_PER_MM, perspective: 1600 }}>
+        <div
+          className="relative h-full w-full transition-transform duration-500 ease-out will-change-transform [transform-style:preserve-3d]"
+          style={{ transform: flipped ? "rotateY(-180deg)" : "rotateY(0deg)" }}
+        >
+          {/* The face turned away keeps its DOM but must not take pointers, or
+              clicks land on the card you can't see. */}
+          <div
+            className={cn("absolute inset-0 [backface-visibility:hidden]", flipped && "pointer-events-none")}
+          >
+            {face("front")}
+          </div>
+          <div
+            className={cn(
+              "absolute inset-0 [backface-visibility:hidden]",
+              !flipped && "pointer-events-none",
+            )}
+            style={{ transform: "rotateY(180deg)" }}
+          >
+            {face("back")}
+          </div>
+        </div>
+      </div>
       <p className="mt-2 text-center text-[11px] text-text-tertiary">
-        {wMm} × {hMm} mm
+        {wMm} × {hMm} mm · {flipped ? "Back" : "Front"}
       </p>
     </div>
   );
@@ -185,6 +218,13 @@ const TOOLS = [
   ["image", ImageIcon, "Add an image slot"],
 ];
 
+// Which face is being designed. Icons rather than words so the strip stays the
+// same size as the tool rail beside it.
+const SIDE_TABS = [
+  ["front", IdCard, "Front of the card"],
+  ["back", CreditCard, "Back of the card"],
+];
+
 function CanvasInner({
   template,
   event,
@@ -196,6 +236,8 @@ function CanvasInner({
   onPrev,
   onNext,
   canStep,
+  side,
+  onSideChange,
   selectedId,
   onSelect,
   onLayoutChange,
@@ -206,6 +248,7 @@ function CanvasInner({
   const [snap, setSnap] = useState(true);
   const [snapMm, setSnapMm] = useState(2);
   const onToolDone = useCallback(() => setTool("select"), []);
+  const backUsed = useMemo(() => hasBackContent(template), [template]);
 
   const seeded = useMemo(
     () => [
@@ -245,6 +288,7 @@ function CanvasInner({
                 event,
                 attendee,
                 qrSettings,
+                side,
                 selectedId,
                 onSelect,
                 onLayoutChange,
@@ -264,6 +308,7 @@ function CanvasInner({
     qrSettings,
     grid,
     passCount,
+    side,
     selectedId,
     onSelect,
     onLayoutChange,
@@ -296,6 +341,35 @@ function CanvasInner({
     >
       <Background color="var(--canvas-dots)" gap={16} size={1} variant="dots" />
       <CanvasControls locked={locked} onToggleLock={() => setLocked((v) => !v)} />
+
+      {/* Front / back. Switching flips the card rather than replacing it, so it
+          stays obvious which face you're looking at. */}
+      <Panel position="top-center">
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface-card/80 p-1 shadow-xl backdrop-blur-md">
+          {SIDE_TABS.map(([key, Icon, label]) => (
+            <button
+              key={key}
+              type="button"
+              aria-label={label}
+              aria-pressed={side === key}
+              title={label}
+              onClick={() => onSideChange?.(key)}
+              className={cn(
+                "relative flex items-center justify-center rounded-md px-3 py-1.5 transition-colors",
+                side === key
+                  ? "bg-primary/15 text-foreground"
+                  : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {/* A dot on the back tab when there's something printed on it. */}
+              {key === "back" && backUsed ? (
+                <span className="absolute right-1.5 top-1 h-1.5 w-1.5 rounded-full bg-primary" />
+              ) : null}
+            </button>
+          ))}
+        </div>
+      </Panel>
 
       {/* Tool strip: pick a tool, then drag on the card to create that element. */}
       <Panel position="top-left">

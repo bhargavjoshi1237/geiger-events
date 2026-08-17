@@ -26,6 +26,14 @@ import {
   GitBranch,
 } from "lucide-react";
 
+// Canvas fit options, shared by the initial fit and the Fit-view control.
+// maxZoom caps the fit so a short workflow opens zoomed OUT (an overview)
+// instead of blowing one or two nodes up to fill the canvas.
+export const CANVAS_FIT_VIEW = { padding: 0.35, maxZoom: 0.75 };
+
+// Grid sizes the canvas snaps node drags to; the size button cycles this list.
+export const SNAP_SIZES = [8, 16, 24];
+
 // --- Status & scope lookups --------------------------------------------------
 
 export const WORKFLOW_STATUS_MAP = {

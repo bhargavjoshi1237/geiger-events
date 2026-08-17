@@ -24,18 +24,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { FIELD_CATALOG, elementLabel, newElement } from "@/lib/passes/layout";
+import { FIELD_CATALOG, elementLabel, newElement, sideLayout } from "@/lib/passes/layout";
 
 import { PanelSection } from "./panel";
 
 const KIND_ICON = { text: Type, qr: QrCode, image: ImageIcon, box: Square };
 
-const GROUPS = ["Event", "Attendee", "Ticket", "Other"];
+const GROUPS = ["Event", "Attendee", "Ticket", "Pass", "Other"];
 
-// The left rail: everything on the card, front to back. Select to edit, toggle
-// to hide it from print, reorder to change what overlaps what.
-export function LayersPanel({ template, selectedId, onSelect, onChange }) {
-  const elements = template?.layout?.elements || [];
+// The left rail: everything on the face being designed, front-most first. Select
+// to edit, toggle to hide it from print, reorder to change what overlaps what.
+export function LayersPanel({ template, side = "front", selectedId, onSelect, onChange }) {
+  const elements = sideLayout(template, side).elements || [];
   const set = (next) => onChange({ elements: next });
 
   const patch = (id, p) => set(elements.map((el) => (el.id === id ? { ...el, ...p } : el)));
@@ -78,7 +78,7 @@ export function LayersPanel({ template, selectedId, onSelect, onChange }) {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <PanelSection label="On the card">
+      <PanelSection label={side === "back" ? "On the back" : "On the front"}>
         <div className="space-y-1">
           {/* Front-most first reads the way the card looks. */}
           {[...elements].reverse().map((el) => {
@@ -160,7 +160,9 @@ export function LayersPanel({ template, selectedId, onSelect, onChange }) {
 
           {!elements.length ? (
             <p className="px-1 py-2 text-xs text-text-tertiary">
-              Nothing on the card yet — add a field below, or draw a section on the canvas.
+              {side === "back"
+                ? "The back is blank — it only prints once you put something on it."
+                : "Nothing on the card yet — add a field below, or draw a section on the canvas."}
             </p>
           ) : null}
         </div>

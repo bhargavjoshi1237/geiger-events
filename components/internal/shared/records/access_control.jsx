@@ -113,11 +113,10 @@ export function AccessControlField({ projectId, value, onChange }) {
 
   return (
     <div className="space-y-3">
-      {/* Free vs restricted */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { free: true, title: "Free to watch", desc: "Anyone with access can play it." },
-          { free: false, title: "Paid / restricted", desc: "Membership, purchase, or rental." },
+          { free: true, title: "Free To Watch", desc: "Anyone with access can play it." },
+          { free: false, title: "Paid / Restricted", desc: "Membership, purchase, or rental." },
         ].map((opt) => {
           const active = v.free === opt.free;
           return (

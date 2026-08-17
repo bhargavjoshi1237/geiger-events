@@ -1,12 +1,17 @@
 "use client";
 
 import { passSvg, resolveTemplate } from "@/lib/passes/render";
+import { hasBackContent } from "@/lib/passes/layout";
 import { sheetGrid } from "@/lib/passes/stock";
 
-// Builds the print sheet: attendees grouped by the template their tier resolves
-// to, each group laid out on its own paginated grid. Named @page rules let two
-// templates with different page sizes print in one job; browsers that don't
-// support them fall back to the default page size, which still prints.
+// Builds the print sheet: attendees grouped by the template their role or tier
+// resolves to, each group laid out on its own paginated grid. Named @page rules
+// let two templates with different page sizes print in one job; browsers that
+// don't support them fall back to the default page size, which still prints.
+//
+// A design with something on its back emits a back sheet straight after each
+// front sheet, with the columns mirrored so the faces line up when the stack is
+// fed through for a long-edge duplex pass.
 
 const escapeHtml = (s) =>
   String(s ?? "").replace(/[&<>"]/g, (c) =>
@@ -23,7 +28,7 @@ const chunk = (list, size) => {
 export function groupByTemplate(templates, attendees) {
   const groups = new Map();
   for (const attendee of attendees) {
-    const template = resolveTemplate(templates, attendee.tier);
+    const template = resolveTemplate(templates, attendee.tier, attendee.role);
     if (!template) continue;
     if (!groups.has(template.id)) groups.set(template.id, { template, attendees: [] });
     groups.get(template.id).attendees.push(attendee);
@@ -55,23 +60,43 @@ export function buildPrintDocument({ templates, event, attendees, qrSettings }) 
     );
 
     const cropMarks = group.template.sheet?.cropMarks ? CROP_MARKS : "";
-    for (const page of chunk(group.attendees, grid.perPage)) {
-      const cells = page
+    const duplex =
+      hasBackContent(group.template) && group.template.sheet?.printBacks !== false;
+
+    const sheetHtml = (rows, side) => {
+      const cells = rows
         .map(
           (attendee) =>
-            `<div class="cell">${cropMarks}${passSvg(group.template, {
-              event,
-              attendee,
-              qrSettings,
-              logoHref: group.template.logoUrl || "",
-            })}</div>`,
+            `<div class="cell">${cropMarks}${
+              attendee
+                ? passSvg(
+                    group.template,
+                    { event, attendee, qrSettings, logoHref: group.template.logoUrl || "" },
+                    { side },
+                  )
+                : ""
+            }</div>`,
         )
         .join("");
-      sheets.push(
+      return (
         `<div class="sheet ${pageName}">` +
-          `<div class="grid" style="grid-template-columns:repeat(${grid.cols},${grid.wMm}mm);` +
-          `gap:${grid.gutter}mm">${cells}</div></div>`,
+        `<div class="grid" style="grid-template-columns:repeat(${grid.cols},${grid.wMm}mm);` +
+        `gap:${grid.gutter}mm">${cells}</div></div>`
       );
+    };
+
+    for (const page of chunk(group.attendees, grid.perPage)) {
+      sheets.push(sheetHtml(page, "front"));
+      if (duplex) {
+        // Pad the last page to a full grid before mirroring, or a half-used
+        // sheet's backs land in the wrong columns.
+        const padded = [...page, ...Array(grid.perPage - page.length).fill(null)];
+        const mirrored = [];
+        for (let r = 0; r < grid.rows; r += 1) {
+          mirrored.push(...padded.slice(r * grid.cols, (r + 1) * grid.cols).reverse());
+        }
+        sheets.push(sheetHtml(mirrored, "back"));
+      }
     }
   });
 

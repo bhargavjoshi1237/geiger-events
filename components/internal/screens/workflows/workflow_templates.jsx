@@ -92,7 +92,7 @@ export function WorkflowTemplatesScreen() {
       eventId: null,
       steps: instantiateSteps(template.steps),
       graph: {},
-      viewMode: "list",
+      viewMode: "canvas",
       runCount: 0,
       lastRunAt: null,
       createdBy: user?.id || null,

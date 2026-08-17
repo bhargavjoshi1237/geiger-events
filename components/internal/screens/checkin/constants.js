@@ -2,6 +2,8 @@
 // Config only — never row data. The data layer (lib/supabase/checkin.js) returns
 // raw config bags; screens merge these defaults so every field is present.
 
+import { defaultEffects } from "@/lib/passes/effects";
+
 // --- Formatters --------------------------------------------------------------
 
 export const formatDate = (iso) => {
@@ -204,9 +206,73 @@ export const BADGE_TEMPLATES = [
       accent: "#f5c451",
       bg: "#141414",
       textColor: "#f5f5f5",
+      roles: ["VIP"],
       stock: { preset: "lanyard-portrait", wMm: 85.73, hMm: 136.53 },
       qr: { sizeMm: 32, position: "bottom-center" },
-      fields: { eventName: true, name: true, company: true, tier: true, ticketCode: true, date: false, qr: true },
+      effects: { finish: "foil", finishStrength: 30, foilColor: "#f5c451", sheenAngle: 35 },
+      fields: { eventName: true, name: true, company: true, tier: true, role: true, ticketCode: true, date: false, qr: true },
+    },
+  },
+  // --- Role designs. Same card, bound to who's wearing it rather than what
+  // they paid — so speakers, crew and press each print their own.
+  {
+    value: "speaker",
+    label: "Speaker",
+    desc: "Foil-finished lanyard for everyone presenting.",
+    design: {
+      accent: "#f59e0b",
+      bg: "#111014",
+      textColor: "#f8fafc",
+      roles: ["Speaker"],
+      stock: { preset: "lanyard-portrait", wMm: 85.73, hMm: 136.53 },
+      qr: { sizeMm: 30, position: "bottom-center" },
+      effects: { finish: "foil", finishStrength: 38, foilColor: "#f59e0b", sheenAngle: 30, emboss: 25 },
+      fields: { eventName: true, name: true, company: true, tier: false, role: true, ticketCode: false, date: false, qr: true },
+    },
+  },
+  {
+    value: "crew",
+    label: "Crew & staff",
+    desc: "Fluorescent edge so staff are visible across a room.",
+    design: {
+      accent: "#22c55e",
+      bg: "#0b0f0c",
+      textColor: "#f0fdf4",
+      roles: ["Staff", "Crew", "Volunteer", "Organiser"],
+      stock: { preset: "lanyard-portrait", wMm: 85.73, hMm: 136.53 },
+      qr: { sizeMm: 28, position: "bottom-center" },
+      effects: { glowColor: "#39ff14", glowStrength: 70, glowSpread: 3.5 },
+      fields: { eventName: false, name: true, company: false, tier: false, role: true, ticketCode: false, date: false, qr: true },
+    },
+  },
+  {
+    value: "guest",
+    label: "Guest",
+    desc: "Soft gloss card for plus-ones and invitees.",
+    design: {
+      accent: "#0ea5e9",
+      bg: "#ffffff",
+      textColor: "#111111",
+      roles: ["Guest"],
+      stock: { preset: "name-badge", wMm: 88.9, hMm: 57.15 },
+      qr: { sizeMm: 18, position: "bottom-right" },
+      effects: { finish: "gloss", finishStrength: 35, sheenAngle: 35 },
+      fields: { eventName: true, name: true, company: false, tier: false, role: true, ticketCode: true, date: false, qr: true },
+    },
+  },
+  {
+    value: "press",
+    label: "Press & partners",
+    desc: "High-contrast accreditation for media, sponsors, and exhibitors.",
+    design: {
+      accent: "#ef4444",
+      bg: "#ffffff",
+      textColor: "#111111",
+      roles: ["Press", "Sponsor", "Exhibitor", "Vendor"],
+      stock: { preset: "lanyard-portrait", wMm: 85.73, hMm: 136.53 },
+      qr: { sizeMm: 28, position: "bottom-center" },
+      effects: { finish: "matte", finishStrength: 45 },
+      fields: { eventName: true, name: true, company: true, tier: false, role: true, ticketCode: false, date: false, qr: true },
     },
   },
 ];
@@ -219,17 +285,23 @@ export const newPassTemplate = (preset = "classic", overrides = {}) => {
     id: crypto.randomUUID(),
     name: seed.label,
     isDefault: false,
+    // Two independent bindings: which ticket tiers and which pass roles this
+    // design prints for. A role match is the more specific one.
     tiers: [],
+    roles: [],
     accent: "#6366f1",
     bg: "#ffffff",
     textColor: "#111111",
     showLogo: false,
     logoUrl: "",
     stock: { preset: "name-badge", wMm: 88.9, hMm: 57.15 },
-    sheet: { page: "a4", marginMm: 10, gutterMm: 4, cropMarks: false },
+    sheet: { page: "a4", marginMm: 10, gutterMm: 4, cropMarks: false, printBacks: true },
     qr: { sizeMm: 18, position: "bottom-right" },
-    fields: { eventName: true, name: true, company: true, tier: false, ticketCode: true, date: false, qr: true },
+    fields: { eventName: true, name: true, company: true, tier: false, role: false, ticketCode: true, date: false, qr: true },
     ...seed.design,
+    // Card-level finish, applied over both sides. A preset only names the
+    // effects it cares about; the rest stay at their defaults.
+    effects: { ...defaultEffects(), ...(seed.design?.effects || {}) },
     ...overrides,
   };
 };

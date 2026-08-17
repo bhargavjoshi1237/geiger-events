@@ -14,6 +14,7 @@ import {
 import { SecondaryScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
   Field,
+  InlineTitleInput,
   SectionCard,
   SettingsList,
   SettingRow,
@@ -190,7 +191,7 @@ export function CampaignEditor({
 
   return (
     <SecondaryScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
           <button
             type="button"
@@ -200,17 +201,16 @@ export function CampaignEditor({
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </button>
           <div className="flex flex-wrap items-center gap-2.5">
-            <input
+            <InlineTitleInput
               value={name}
-              size={Math.max(name.length, 6)}
-              spellCheck={false}
               onChange={(e) => setName(e.target.value)}
               aria-label="Campaign name"
-              className="min-w-0 max-w-full rounded-sm bg-transparent text-2xl font-semibold tracking-tight text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:text-3xl"
+              placeholder="Untitled campaign"
+              className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
             />
-            <StatusPill status={status} map={CAMPAIGN_STATUS_MAP} />
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
+            <StatusPill status={status} map={CAMPAIGN_STATUS_MAP} />
             <Badge variant={channelMeta.variant}>
               <channelMeta.icon className="h-3 w-3" /> {channelMeta.label}
             </Badge>
@@ -253,17 +253,18 @@ export function CampaignEditor({
                 </SelectContent>
               </Select>
             </Field>
-            <div className="flex items-end">
-              <div className="flex w-full items-center gap-3 rounded-lg border border-border bg-surface-card px-4 py-2.5">
-                <Users className="h-4 w-4 text-text-tertiary" />
-                <div>
-                  <p className="text-lg font-semibold text-foreground tabular-nums leading-none">
-                    {recipients.toLocaleString("en-US")}
-                  </p>
-                  <p className="mt-1 text-xs text-text-secondary">estimated recipients</p>
-                </div>
+            {/* Mirrors the Select's box so both controls line up on one row. */}
+            <Field label="Estimated recipients">
+              <div className="flex h-10 w-full items-center gap-2.5 rounded-md border border-border bg-surface-card px-3 text-sm">
+                <Users className="h-4 w-4 shrink-0 text-text-tertiary" />
+                <span className="font-semibold tabular-nums text-foreground">
+                  {recipients.toLocaleString("en-US")}
+                </span>
+                <span className="truncate text-text-secondary">
+                  {recipients === 1 ? "contact" : "contacts"}
+                </span>
               </div>
-            </div>
+            </Field>
           </div>
         </SectionCard>
 

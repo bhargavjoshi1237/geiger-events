@@ -10,6 +10,7 @@ import {
   Zap,
 } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,12 +46,17 @@ const newStepId = () =>
       : Math.random().toString(36).slice(2)
   }`;
 
+// Selects are sized from the shared input-box tokens (not the default h-10) so
+// a select and an input sitting in the same row are exactly the same height.
+const SELECT_AS_INPUT =
+  "!h-auto !rounded-[var(--input-box-radius)] !px-[var(--input-box-padding-x)] !py-[var(--input-box-padding-y)] leading-5";
+
 // One config control, rendered from a catalog field descriptor.
 function FieldControl({ field, value, onChange }) {
   if (field.type === "select") {
     return (
       <Select value={value || field.default} onValueChange={onChange}>
-        <SelectTrigger className="h-9">
+        <SelectTrigger className={SELECT_AS_INPUT}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -64,12 +70,14 @@ function FieldControl({ field, value, onChange }) {
     );
   }
   if (field.type === "textarea") {
+    // Fixed height + no resize: a stretched textarea is what made step cards
+    // ragged next to one another.
     return (
       <Textarea
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={field.label}
-        rows={2}
+        className="h-[84px] min-h-0 resize-none"
       />
     );
   }
@@ -286,7 +294,16 @@ export function WorkflowStepList({ steps, onChange }) {
               {entry?.fields?.length ? (
                 <div className="mt-3 grid gap-3 pl-12 sm:grid-cols-2">
                   {entry.fields.map((field) => (
-                    <div key={field.key} className="space-y-1.5">
+                    // A textarea — or a lone field — takes the full row so no
+                    // card is left with a half-empty column.
+                    <div
+                      key={field.key}
+                      className={cn(
+                        "space-y-1.5",
+                        (field.type === "textarea" || entry.fields.length === 1) &&
+                          "sm:col-span-2",
+                      )}
+                    >
                       <label className="text-xs font-medium text-text-secondary">
                         {field.label}
                       </label>

@@ -285,7 +285,7 @@ export function AllWorkflowsScreen() {
       eventId: draft.scope === "event" ? draft.eventId : null,
       steps: [triggerStep],
       graph: {},
-      viewMode: "list",
+      viewMode: "canvas",
       runCount: 0,
       lastRunAt: null,
       createdBy: userId,

@@ -18,6 +18,7 @@ import {
 import {
   EmptyState,
   Field,
+  InlineTitleInput,
   ScreenHeader,
   SearchInput,
   Toolbar,
@@ -314,13 +315,12 @@ function EditHeader({
           Back
         </button>
         <div className="flex flex-wrap items-center gap-2.5">
-          <input
+          <InlineTitleInput
             value={name}
-            size={Math.max(name.length, 6)}
-            spellCheck={false}
             onChange={(e) => setName(e.target.value)}
             aria-label={`${singular} name`}
-            className="min-w-0 max-w-full rounded-sm bg-transparent text-2xl font-semibold tracking-tight text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:text-3xl"
+            placeholder={`Untitled ${singular.toLowerCase()}`}
+            className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
           />
           {kinds.length > 1 ? (
             <Badge variant="neutral">{kindLabel(kinds, record.kind)}</Badge>

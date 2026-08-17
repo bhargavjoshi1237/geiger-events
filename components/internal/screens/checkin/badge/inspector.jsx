@@ -6,6 +6,7 @@ import { Switch, Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { PAGE_PRESETS, STOCK_PRESETS, sheetGrid, stockSize } from "@/lib/passes/stock";
 import { qrErrorCorrection } from "@/lib/passes/qr";
 import {
@@ -17,7 +18,16 @@ import {
   defaultAdjust,
   defaultCardBorder,
   elementLabel,
+  hasBackContent,
+  sideBg,
+  sideLayout,
 } from "@/lib/passes/layout";
+import {
+  ANGLED_FINISHES,
+  FINISH_OPTIONS,
+  defaultEffects,
+} from "@/lib/passes/effects";
+import { PASS_ROLES, PASS_ROLE_MAP } from "@/lib/passes/roles";
 
 import { PanelSection, PanelRow, PanelDivider } from "./panel";
 import { ImageField } from "./image_field";
@@ -126,6 +136,124 @@ function AdjustControls({ el, patch }) {
         onClick={() => patch({ adjust: defaultAdjust() })}
       >
         Reset adjustments
+      </Button>
+    </>
+  );
+}
+
+// The finishes a real card comes back from the printer with. Card-level, so the
+// treatment carries across both faces the way a laminate or foil does.
+function EffectControls({ effects, onChange }) {
+  const e = { ...defaultEffects(), ...(effects || {}) };
+  const set = (sub) => onChange({ effects: { ...e, ...sub } });
+  const finish = e.finish || "none";
+
+  return (
+    <>
+      <SelectField
+        label="Finish"
+        hint="How the surface catches the light."
+        value={finish}
+        onChange={(v) => set({ finish: v })}
+        options={FINISH_OPTIONS}
+      />
+      {finish !== "none" ? (
+        <>
+          <SliderField
+            label="Finish strength"
+            value={e.finishStrength}
+            onChange={(v) => set({ finishStrength: v })}
+            min={0}
+            max={100}
+            suffix="%"
+          />
+          {finish === "foil" ? (
+            <ColorField
+              label="Foil colour"
+              value={e.foilColor}
+              fallback="#d4af37"
+              onChange={(foilColor) => set({ foilColor })}
+            />
+          ) : null}
+          {ANGLED_FINISHES.has(finish) ? (
+            <SliderField
+              label="Sheen angle"
+              value={e.sheenAngle}
+              onChange={(sheenAngle) => set({ sheenAngle })}
+              min={-90}
+              max={90}
+              suffix="°"
+            />
+          ) : null}
+        </>
+      ) : null}
+
+      <PanelDivider />
+      <p className="text-xs font-medium uppercase tracking-wider text-text-tertiary">
+        Fluorescent
+      </p>
+      <ColorField
+        label="Glow colour"
+        hint="Neon ink along the card's edge — how crew badges read across a room."
+        value={e.glowColor}
+        fallback="#39ff14"
+        onChange={(glowColor) => set({ glowColor })}
+      />
+      {e.glowColor ? (
+        <>
+          <SliderField
+            label="Glow strength"
+            value={e.glowStrength}
+            onChange={(glowStrength) => set({ glowStrength })}
+            min={0}
+            max={100}
+            suffix="%"
+          />
+          <SliderField
+            label="Glow spread"
+            value={e.glowSpread}
+            onChange={(glowSpread) => set({ glowSpread })}
+            min={0.5}
+            max={12}
+            step={0.5}
+            suffix=" mm"
+          />
+        </>
+      ) : null}
+
+      <PanelDivider />
+      <SliderField
+        label="Emboss"
+        hint="A bevelled edge, lit from the top left."
+        value={e.emboss}
+        onChange={(emboss) => set({ emboss })}
+        min={0}
+        max={100}
+        suffix="%"
+      />
+      <SliderField
+        label="Vignette"
+        value={e.vignette}
+        onChange={(vignette) => set({ vignette })}
+        min={0}
+        max={100}
+        suffix="%"
+      />
+      <SliderField
+        label="Grain"
+        hint="Paper texture over the whole card."
+        value={e.grain}
+        onChange={(grain) => set({ grain })}
+        min={0}
+        max={100}
+        suffix="%"
+      />
+      <Button
+        variant="outline"
+        className="w-full border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+        onClick={() => onChange({ effects: defaultEffects() })}
+      >
+        Reset finish
       </Button>
     </>
   );
@@ -360,6 +488,8 @@ export function Inspector({
   template,
   element,
   availableTiers,
+  availableRoles = [],
+  side = "front",
   qrSettings,
   onChange,
   onLayoutChange,
@@ -373,16 +503,30 @@ export function Inspector({
 
   const stock = template.stock || {};
   const sheet = template.sheet || {};
-  const layout = template.layout || {};
+  const layout = sideLayout(template, side);
   const tiers = Array.isArray(template.tiers) ? template.tiers : [];
+  const roles = Array.isArray(template.roles) ? template.roles : [];
   const grid = sheetGrid(sheet, stock);
   const { wMm, hMm } = stockSize(stock);
   const artwork = element && (element.kind === "image" || element.kind === "box");
+  const backUsed = hasBackContent(template);
+
+  // Each face carries its own card colour, so a dark back over a light front is
+  // one control rather than two designs.
+  const setCardBg = (bg) =>
+    side === "back" ? patch({ back: { ...(template.back || {}), bg } }) : patch({ bg });
 
   const toggleTier = (tier) => {
     const has = tiers.some((t) => t.toLowerCase() === tier.toLowerCase());
     patch({
       tiers: has ? tiers.filter((t) => t.toLowerCase() !== tier.toLowerCase()) : [...tiers, tier],
+    });
+  };
+
+  const toggleRole = (role) => {
+    const has = roles.some((r) => r.toLowerCase() === role.toLowerCase());
+    patch({
+      roles: has ? roles.filter((r) => r.toLowerCase() !== role.toLowerCase()) : [...roles, role],
     });
   };
 
@@ -398,6 +542,13 @@ export function Inspector({
   const unlisted = availableTiers.filter(
     (t) => !tiers.some((x) => x.toLowerCase() === t.toLowerCase()),
   );
+
+  // Every role in the catalog, plus anything an event turned up that isn't in
+  // it, so the list is the same on every event rather than whoever showed up.
+  const roleChoices = [
+    ...PASS_ROLES.map((r) => r.value),
+    ...availableRoles.filter((r) => !PASS_ROLE_MAP[r]),
+  ];
 
   // Applying a font to every text element at once — a per-element override still
   // wins afterwards, this is just the quick way to restyle a whole design.
@@ -521,12 +672,12 @@ export function Inspector({
             </>
           ) : null}
 
-          <PanelSection label="Card">
+          <PanelSection label={side === "back" ? "Card · back" : "Card · front"}>
             <ColorField
               label="Background"
-              value={template.bg}
+              value={sideBg(template, side)}
               fallback="#ffffff"
-              onChange={(bg) => patch({ bg })}
+              onChange={setCardBg}
             />
             <SelectField
               label="Font for all text"
@@ -586,6 +737,15 @@ export function Inspector({
               suffix="mm"
             />
           </PanelSection>
+
+          <PanelDivider />
+
+          <PanelSection label="Finish & effects">
+            <p className="text-xs leading-snug text-text-tertiary">
+              Applied to the whole card, front and back.
+            </p>
+            <EffectControls effects={template.effects} onChange={onChange} />
+          </PanelSection>
         </TabsContent>
 
         <TabsContent value="binding" className="mt-0">
@@ -596,6 +756,46 @@ export function Inspector({
               onChange={(name) => patch({ name })}
               placeholder="e.g. VIP lanyard"
             />
+          </PanelSection>
+
+          <PanelDivider />
+
+          <PanelSection label="Pass roles">
+            <p className="text-xs leading-snug text-text-tertiary">
+              Who wears this pass — speakers, crew, press, and the other people an event prints
+              badges for. A role binding beats a tier binding, so a speaker who also bought a
+              ticket still gets the speaker card.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {roleChoices.map((role) => {
+                const on = roles.some((r) => r.toLowerCase() === role.toLowerCase());
+                const present = availableRoles.includes(role);
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    title={PASS_ROLE_MAP[role]?.desc || role}
+                    onClick={() => toggleRole(role)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors",
+                      on
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-surface-card text-text-secondary hover:border-border-strong hover:text-foreground",
+                    )}
+                  >
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: PASS_ROLE_MAP[role]?.accent || "#6366f1" }}
+                    />
+                    {role}
+                    {/* A dot-less role is one nobody on this event holds yet. */}
+                    {present ? null : (
+                      <span className="text-[10px] text-text-tertiary">—</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </PanelSection>
 
           <PanelDivider />
@@ -739,8 +939,27 @@ export function Inspector({
                 />
               }
             />
+            <PanelRow
+              title="Print the back"
+              description={
+                backUsed
+                  ? "A mirrored back sheet after every front sheet"
+                  : "The back is blank — nothing to print"
+              }
+              muted={!backUsed}
+              control={
+                <Switch
+                  checked={sheet.printBacks !== false}
+                  disabled={!backUsed}
+                  onCheckedChange={(v) => patchIn("sheet", { printBacks: v })}
+                />
+              }
+            />
             <p className="text-xs text-text-tertiary">
               {grid.cols} across × {grid.rows} down — {grid.perPage} per page.
+              {backUsed && sheet.printBacks !== false
+                ? " Back sheets are column-mirrored for a long-edge duplex flip."
+                : ""}
             </p>
           </PanelSection>
         </TabsContent>
