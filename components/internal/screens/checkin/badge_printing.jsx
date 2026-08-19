@@ -31,9 +31,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useProject } from "@/context/project-context";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listEvents } from "@/lib/supabase/events";
 import { getCheckinSettings, updateCheckinSettings } from "@/lib/supabase/checkin";
-import { listPassAttendees, tiersOf } from "@/lib/passes/attendees";
+import { LanyardBadge } from "@/components/internal/shared/lanyard/lanyard_badge";
+import { SAMPLE_ATTENDEE, listPassAttendees, tiersOf } from "@/lib/passes/attendees";
 import { rolesOf } from "@/lib/passes/roles";
 import { resolveTemplate } from "@/lib/passes/render";
 import { sheetGrid } from "@/lib/passes/stock";
@@ -53,24 +55,11 @@ import { exportPassPng, exportPassesZip } from "./badge/export";
 const isUpcoming = (e) =>
   !e.date || new Date(e.date) >= new Date(new Date().toDateString());
 
-// Stands in for a real attendee so the designer is usable before anyone has
-// registered. The payload is deliberately not a real id.
-const SAMPLE = {
-  key: "sample",
-  name: "Alex Morgan",
-  company: "Northwind Studio",
-  title: "Principal Engineer",
-  role: "Attendee",
-  detail: "",
-  tier: "",
-  code: "A1B2C3D4",
-  payload: "sample-pass-preview",
-  seat: 1,
-  of: 1,
-};
-
 export function BadgePrintingScreen() {
   const { projectId } = useProject();
+  // An event still in the URL means another screen handed off to this one (the
+  // event editor's Badge Printing section) — open on that event's passes.
+  const { eventId: handedOffEventId } = useWorkspaceUrl();
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState("");
   const [attendees, setAttendees] = useState([]);
@@ -98,7 +87,12 @@ export function BadgePrintingScreen() {
         if (!alive) return;
         const upcoming = (rows ?? []).filter(isUpcoming);
         setEvents(upcoming);
-        setEventId((cur) => cur || upcoming[0]?.id || "");
+        // The handed-off event only wins if it's one this screen can show; a
+        // past event isn't in the list and would leave the picker blank.
+        const handedOff = upcoming.some((e) => e.id === handedOffEventId)
+          ? handedOffEventId
+          : "";
+        setEventId((cur) => cur || handedOff || upcoming[0]?.id || "");
 
         const config = settings?.config || {};
         const merged = withDefaults(config, "badge");
@@ -123,7 +117,7 @@ export function BadgePrintingScreen() {
     return () => {
       alive = false;
     };
-  }, [projectId]);
+  }, [projectId, handedOffEventId]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -155,7 +149,7 @@ export function BadgePrintingScreen() {
     [attendees, previewKey],
   );
   const previewAttendee = useMemo(
-    () => attendees[previewIndex] || attendees[0] || SAMPLE,
+    () => attendees[previewIndex] || attendees[0] || SAMPLE_ATTENDEE,
     [attendees, previewIndex],
   );
 
@@ -511,16 +505,35 @@ export function BadgePrintingScreen() {
 
         {/* Three separate surfaces: fields rail · draggable canvas · inspector rail. */}
         <div className="flex min-h-0 flex-1 gap-3">
-          <aside className="hidden w-1/5 shrink-0 overflow-hidden rounded-xl border border-border bg-surface-subtle md:block">
-            {selected ? (
-              <LayersPanel
+          {/* The design as it will actually be worn, over the layers rail. It
+              tracks whatever is being edited, so a change on the canvas lands on
+              the hanging card a moment later. */}
+          <aside className="hidden w-1/5 shrink-0 flex-col gap-3 md:flex">
+            <div className="shrink-0 overflow-hidden rounded-xl border border-border bg-surface-subtle">
+              <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
+                <p className="text-sm font-medium text-foreground">Worn preview</p>
+                <span className="text-[11px] text-text-tertiary">Drag to swing</span>
+              </div>
+              <LanyardBadge
                 template={selected}
-                side={side}
-                selectedId={elementId}
-                onSelect={setElementId}
-                onChange={updateLayout}
+                event={event || {}}
+                attendee={previewAttendee}
+                qrSettings={qrSettings}
+                height={300}
               />
-            ) : null}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-surface-subtle">
+              {selected ? (
+                <LayersPanel
+                  template={selected}
+                  side={side}
+                  selectedId={elementId}
+                  onSelect={setElementId}
+                  onChange={updateLayout}
+                />
+              ) : null}
+            </div>
           </aside>
 
           <div className="min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-background">

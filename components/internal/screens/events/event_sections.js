@@ -51,6 +51,7 @@ import {
   HelpCircle,
   PlayCircle,
   LayoutGrid,
+  IdCard,
 } from "lucide-react";
 
 import {
@@ -97,6 +98,7 @@ import { RsvpOptionsSection } from "./rsvp";
 import { CoHostsAdminsSection } from "./people";
 import { OverviewSection } from "./overview";
 import { AlertsSection } from "./alerts";
+import { EventBadgeSection } from "./event_badge";
 import { GuidelinesSection } from "./guidelines";
 import { TicketAttachmentsSection } from "../tickets/event_attachments";
 import { EventTicketsSection } from "../tickets/event_tickets";
@@ -445,6 +447,13 @@ export const NAV_GROUPS = [
         desc: "On-site sales, self-service kiosk, and tap-to-enter for this event.",
         ownHeader: true,
       },
+      {
+        key: "badge",
+        label: "Badge Printing",
+        icon: IdCard,
+        desc: "Print attendee passes for this event and choose the design they print on.",
+        ownHeader: true,
+      },
     ],
   },
   {
@@ -585,6 +594,7 @@ export const SECTIONS = {
   gateszones: GatesZonesSection,
   sessions: SessionsSection,
   doorkiosk: DoorKioskSection,
+  badge: EventBadgeSection,
   url: CustomUrlSection,
   seo: SeoSharingSection,
   calendar: AddToCalendarSection,

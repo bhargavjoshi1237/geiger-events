@@ -1,7 +1,8 @@
 "use client";
 
 import { passSvg, resolveTemplate } from "@/lib/passes/render";
-import { collectImageUrls, hasBackContent } from "@/lib/passes/layout";
+import { hasBackContent } from "@/lib/passes/layout";
+import { inlineTemplateImages } from "@/lib/passes/inline";
 import { zipStore } from "@/lib/passes/zip";
 
 // Raster export. The SVG the preview and printer already use goes into an
@@ -26,41 +27,6 @@ function downloadBlob(blob, filename) {
   link.remove();
   // Give the download a tick to start before the URL goes away.
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-// An SVG loaded into an <img> can't fetch external resources, so a remote logo
-// has to become a data URI before export. Returns "" when it can't be read
-// (usually a missing CORS header) and the caller warns.
-export async function inlineLogo(url) {
-  if (!url) return "";
-  if (url.startsWith("data:")) return url;
-  try {
-    const res = await fetch(url, { mode: "cors" });
-    if (!res.ok) return "";
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => resolve("");
-      reader.readAsDataURL(blob);
-    });
-  } catch (e) {
-    console.error("[passes.inlineLogo]", e);
-    return "";
-  }
-}
-
-// Every image a template references, as a url -> data-URI map. One pass per
-// template, so a 500-pass ZIP fetches each asset once.
-export async function inlineTemplateImages(template) {
-  const images = {};
-  let failed = false;
-  for (const url of collectImageUrls(template)) {
-    const href = await inlineLogo(url);
-    if (href) images[url] = href;
-    else failed = true;
-  }
-  return { images, failed };
 }
 
 function svgToPngBlob(svg) {

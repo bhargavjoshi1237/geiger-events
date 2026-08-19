@@ -9,6 +9,7 @@ import {
   CalendarClock,
   UserCog,
   ExternalLink,
+  IdCard,
   MapPin,
   Plus,
   Trash2,
@@ -44,6 +45,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getEventNotes, saveEventNotes } from "@/lib/supabase/notes";
 import { EventDatePicker } from "./date_time_fields";
+import { EventPassShowcase } from "./event_badge";
 import {
   EVENT_STATUS_MAP,
   EVENT_TYPE_MAP,
@@ -298,7 +300,13 @@ function PreLaunchNotes({ eventId, className }) {
   );
 }
 
-export function OverviewSection({ event, onPatch, onCommit, onViewLive }) {
+export function OverviewSection({
+  event,
+  onPatch,
+  onCommit,
+  onNavigate,
+  onViewLive,
+}) {
   // Overview controls take effect immediately — `commit` persists right away
   // (DB + list); `patch` (live, save-on-Save) is the fallback if no committer.
   const commit = onCommit || onPatch || (() => {});
@@ -431,6 +439,23 @@ export function OverviewSection({ event, onPatch, onCommit, onViewLive }) {
           <GlanceRow icon={UserCog} label={event.organizer} />
         </div>
       </SectionCard>
+
+      {/* The event's pass, hanging from its lanyard. Renders only once badge
+          printing is on for this event and a design resolves. */}
+      <EventPassShowcase
+        event={event}
+        className="pt-4"
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={() => onNavigate?.("badge")}
+          >
+            <IdCard className="h-4 w-4" /> Badge printing
+          </Button>
+        }
+      />
 
       {/* Pre-launch checklist (editable, persisted notes) — full width. */}
       <PreLaunchNotes eventId={event.id} className="border-t border-border pt-6" />
