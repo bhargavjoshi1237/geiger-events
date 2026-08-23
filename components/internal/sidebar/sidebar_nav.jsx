@@ -101,6 +101,7 @@ import {
   PackageCheck,
   Blocks,
   PanelLeft,
+  Gem,
 } from "lucide-react";
 
 // Sidebar navigation for Geiger Events.
@@ -254,6 +255,15 @@ export const workspaceNav = [
       { title: "Disputes & Chargebacks", icon: Scale },
       { title: "Order Settings", icon: Settings },
     ],
+  },
+
+  {
+    // Premium hospitality bundles sold against an event ("VIP packages"), on a
+    // standalone sales page rather than the event's own live page. This entry is
+    // always visible because its screen is where the feature gets switched on;
+    // the per-event authoring section only appears once it is.
+    title: "Packages",
+    icon: Gem,
   },
 
   {

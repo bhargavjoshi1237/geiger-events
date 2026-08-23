@@ -350,6 +350,30 @@
   }
 }
 
+/* Ambient float for the landing page's scattered event posters. Rotation stays
+   on the element's own `rotate` property so the drift never overwrites it. */
+@keyframes ev-poster-drift {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -6px;
+  }
+}
+
+.ev-poster-drift {
+  animation-name: ev-poster-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ev-poster-drift {
+    animation: none;
+  }
+}
+
 /* Leaflet (event map) — themed off the surface it lands on. Dashboard maps take
    the CARTO dark basemap; a themed event page whose brand is light swaps to the
    light one (see event_map.jsx → useScheme) and needs the opposite correction. */

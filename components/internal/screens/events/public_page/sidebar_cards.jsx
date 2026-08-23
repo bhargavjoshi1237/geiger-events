@@ -2,6 +2,7 @@
 
 import {
   Accessibility,
+  Armchair,
   CalendarCheck,
   Check,
   ChevronRight,
@@ -12,6 +13,8 @@ import {
   Languages,
   Loader2,
   Share2,
+  ShieldCheck,
+  Smartphone,
   Ticket,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { accessCodesEnabled } from "@/lib/events/access_codes";
+import { ticketSelectionActive } from "@/lib/events/ticket_selection";
+import { activeCtas, ctaIsExternal, normalizeCtas } from "@/lib/events/ctas";
 import {
   eventCountdown,
   eventTimezoneLabel,
@@ -30,6 +35,15 @@ import { GUIDELINE_CATEGORY_MAP } from "@/components/internal/screens/registrati
 
 import { formatDate } from "../sample_data";
 import { MONTHS, tierAccentDot } from "./constants";
+import { SectionNoteBadge } from "./section_note";
+
+// Feature-highlight chips for the selection-mode buttons, keyed by the ids
+// persisted in event.ticketSelection.features.
+const SELECTION_FEATURES = {
+  plan: { icon: Armchair, label: "Selection based on plan" },
+  insurance: { icon: ShieldCheck, label: "Cancellation insurance" },
+  digital: { icon: Smartphone, label: "Digital ticket" },
+};
 
 function TicketOption({ ticket, index, selected, setSelected, accent }) {
   const isActive = selected === index;
@@ -127,6 +141,7 @@ export function RegisterCard({
   showRemaining,
   primaryBtnStyle,
   ctaHover,
+  note,
   onCheckout,
 }) {
   const [, m, d] = event.date.split("-").map(Number);
@@ -146,6 +161,33 @@ export function RegisterCard({
         color: accent.color,
       }
     : undefined;
+
+  // Extra organizer CTAs stacked under the built-in button, plus its optional
+  // relabel. These stay enabled when the event is sold out — a waitlist or an
+  // enquiry link is most useful exactly then.
+  const extraCtas = activeCtas(event);
+  const primaryLabel = normalizeCtas(event?.ctas).primaryLabel.trim();
+
+  // Selection modes (seating plan vs by price). Null when the organizer hasn't
+  // enabled them — the card then falls back to its single register button.
+  const selection = ticketSelectionActive(event);
+  const featureChips = selection
+    ? (Array.isArray(selection.features) ? selection.features : [])
+        .map((id) => SELECTION_FEATURES[id])
+        .filter(Boolean)
+    : [];
+  // Numbered footnotes under the buttons: seat assignment always (when a seat
+  // route shows), sold-out only when the event is sold out.
+  const footnotes = selection
+    ? [
+        selection.mode !== "price" && selection.autoAssignNote.trim()
+          ? selection.autoAssignNote.trim()
+          : null,
+        soldOut && selection.soldOutNote.trim()
+          ? selection.soldOutNote.trim()
+          : null,
+      ].filter(Boolean)
+    : [];
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
@@ -180,8 +222,9 @@ export function RegisterCard({
       </div>
 
       <div className="space-y-2 p-4">
-        <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-text-secondary">
           Select ticket
+          <SectionNoteBadge text={note} />
         </p>
         {accessCodesEnabled(event) && gatedIds.size > 0 ? (
           <div className="flex items-center gap-2 pb-1">
@@ -225,24 +268,116 @@ export function RegisterCard({
       </div>
 
       <div className="space-y-3 border-t border-border p-4">
-        <Button
-          style={soldOut ? undefined : primaryBtnStyle}
-          disabled={soldOut}
-          className={cn(
-            "w-full disabled:opacity-60",
-            soldOut || !ctaHover ? "hover:opacity-90" : ctaHover,
-          )}
-          onClick={onCheckout}
-        >
-          {soldOut ? (
-            "Sold out"
-          ) : (
-            <>
-              {tickets[selected].price === 0 ? "Register" : "Get Tickets"}
-              <ChevronRight className="h-4 w-4" />
-            </>
-          )}
-        </Button>
+        {selection ? (
+          <div className="space-y-2">
+            {selection.mode !== "price" ? (
+              <Button
+                style={soldOut ? undefined : primaryBtnStyle}
+                disabled={soldOut}
+                className={cn(
+                  "w-full disabled:opacity-60",
+                  soldOut || !ctaHover ? "hover:opacity-90" : ctaHover,
+                )}
+                onClick={() => onCheckout("seats")}
+              >
+                <Armchair className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 truncate">
+                  {selection.seatsLabel || "Seat selection via the seating plan"}
+                </span>
+              </Button>
+            ) : null}
+            {selection.mode !== "seats" ? (
+              <Button
+                variant="outline"
+                disabled={soldOut}
+                className="w-full border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground disabled:opacity-60"
+                onClick={() => onCheckout("price")}
+              >
+                <Ticket className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 truncate">
+                  {selection.priceLabel || "Selection by price"}
+                </span>
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <Button
+            style={soldOut ? undefined : primaryBtnStyle}
+            disabled={soldOut}
+            className={cn(
+              "w-full disabled:opacity-60",
+              soldOut || !ctaHover ? "hover:opacity-90" : ctaHover,
+            )}
+            onClick={() => onCheckout(null)}
+          >
+            {soldOut ? (
+              "Sold out"
+            ) : (
+              <>
+                {primaryLabel ||
+                  (tickets[selected].price === 0 ? "Register" : "Get Tickets")}
+                <ChevronRight className="h-4 w-4" />
+              </>
+            )}
+          </Button>
+        )}
+
+        {extraCtas.length ? (
+          <div className="space-y-2">
+            {extraCtas.map((cta) => {
+              const external = ctaIsExternal(cta.href);
+              return (
+                <Button
+                  key={cta.id}
+                  asChild
+                  variant={cta.style === "ghost" ? "ghost" : "outline"}
+                  style={cta.style === "primary" ? primaryBtnStyle : undefined}
+                  className={cn(
+                    "w-full",
+                    cta.style === "primary"
+                      ? ctaHover || "hover:opacity-90"
+                      : "border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground",
+                    cta.style === "ghost" && "border-0",
+                  )}
+                >
+                  <a
+                    href={cta.href}
+                    target={external ? "_blank" : undefined}
+                    rel={external ? "noopener noreferrer" : undefined}
+                  >
+                    <span className="min-w-0 truncate">{cta.label}</span>
+                  </a>
+                </Button>
+              );
+            })}
+          </div>
+        ) : null}
+        {featureChips.length ? (
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 pt-0.5">
+            {featureChips.map(({ icon: Icon, label }) => (
+              <span
+                key={label}
+                className="flex items-center gap-1.5 text-[11px] font-medium text-text-secondary"
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {footnotes.length ? (
+          <div className="space-y-1 border-t border-border pt-2.5">
+            {footnotes.map((text, i) => (
+              <p
+                key={text}
+                className="flex items-start gap-1 text-[11px] leading-snug text-text-tertiary"
+              >
+                <sup className="mt-0.5 font-medium">{i + 1}</sup>
+                <span>{text}</span>
+              </p>
+            ))}
+          </div>
+        ) : null}
         {showRemaining ? (
           <p className="flex items-center justify-center gap-1.5 text-xs text-text-secondary">
             <Ticket className="h-3.5 w-3.5" />
@@ -276,10 +411,13 @@ export function RegisterCard({
   );
 }
 
-export function GoodToKnowCard({ event, TypeIcon, language }) {
+export function GoodToKnowCard({ event, TypeIcon, language, note }) {
   return (
     <div className="rounded-2xl border border-border bg-surface-subtle p-4">
-      <p className="mb-3 text-sm font-semibold text-foreground">Good To Know</p>
+      <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
+        Good To Know
+        <SectionNoteBadge text={note} />
+      </p>
       <div className="space-y-3 text-sm">
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-2 text-text-secondary">
@@ -306,13 +444,14 @@ export function GoodToKnowCard({ event, TypeIcon, language }) {
   );
 }
 
-export function AtRegistrationCard({ questions }) {
+export function AtRegistrationCard({ questions, note }) {
   if (!questions.length) return null;
 
   return (
     <div className="rounded-2xl border border-border bg-surface-subtle p-4">
       <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
         <ClipboardList className="h-4 w-4 text-muted-foreground" /> At registration
+        <SectionNoteBadge text={note} />
       </p>
       <ul className="space-y-2">
         {questions.map((q) => (
@@ -326,14 +465,15 @@ export function AtRegistrationCard({ questions }) {
   );
 }
 
-export function GuidelinesCard({ guidelines }) {
+export function GuidelinesCard({ guidelines, note }) {
   if (!guidelines.length) return null;
 
   return (
     <div className="rounded-2xl border border-border bg-surface-subtle p-4">
       <p className="mb-4 flex items-center gap-2 border-b border-border pb-3 text-sm font-semibold text-foreground">
-        <Accessibility className="h-4 w-4 text-muted-foreground" />
-        Dietary & Accessibility
+        <Accessibility className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1">Dietary & Accessibility</span>
+        <SectionNoteBadge text={note} />
       </p>
       <div className="flex flex-col gap-4">
         {guidelines.map((g, i) => {

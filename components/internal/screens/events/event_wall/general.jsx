@@ -12,7 +12,7 @@ import { updateWall } from "@/lib/supabase/event_wall";
 // Wall name/tagline/logo are real event_wall columns (not the metadata bag),
 // so they persist through updateWall() directly, matching how the per-event
 // Visibility column commits — not the metadata-merge RPC other sections use.
-export function WallGeneralSection({ wall }) {
+export function WallGeneralSection({ wall, onWallChange }) {
   const { projectId } = useProject();
   const [form, setForm] = useState({
     name: wall?.name || "",
@@ -26,8 +26,12 @@ export function WallGeneralSection({ wall }) {
     setSaving(true);
     const res = await updateWall(projectId, form);
     setSaving(false);
-    if (res) toast.success("Changes saved.");
-    else toast.error("Couldn't save changes.");
+    if (res) {
+      // Design edits the same logo/tagline columns — hand the saved row up so
+      // it doesn't come back holding what this save replaced.
+      onWallChange?.(res);
+      toast.success("Changes saved.");
+    } else toast.error("Couldn't save changes.");
   };
 
   return (

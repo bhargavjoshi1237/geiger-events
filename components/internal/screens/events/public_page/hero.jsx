@@ -11,7 +11,7 @@ import { EVENT_TYPE_MAP, formatDate, initials } from "../sample_data";
 import { resolveGallery, coverKind } from "@/lib/events/gallery";
 import { PhotoGallery } from "../page_gallery";
 
-function CoverImage({ event }) {
+export function CoverImage({ event }) {
   if (!event.coverUrl) return null;
   if (coverKind(event.coverUrl) === "video") {
     // A video cover plays muted on its own — the hero has no player chrome for
@@ -37,7 +37,7 @@ function CoverImage({ event }) {
   );
 }
 
-function venueLine(event) {
+export function venueLine(event) {
   return `${event.venue}${event.city && event.city !== "Remote" ? `, ${event.city}` : ""}`;
 }
 
@@ -97,7 +97,7 @@ function TitleMeta({ event, themed, theme, tags, centered, onVenueClick }) {
   );
 }
 
-function galleryStripOf(event, effective) {
+export function galleryStripOf(event, effective) {
   const gallery = Array.isArray(event.gallery) ? event.gallery : [];
   return effective.showGallery && gallery.length ? (
     <PhotoGallery
@@ -129,7 +129,7 @@ function CoverWrap({ event, effective, TypeIcon }) {
   );
 }
 
-function HostsBlock({ event, hosts }) {
+export function HostsBlock({ event, hosts }) {
   if (!hosts.length) return null;
 
   return (

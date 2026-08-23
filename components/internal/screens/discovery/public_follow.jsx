@@ -2,7 +2,7 @@
 
 import React, { useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
-import { BellPlus, Check, Globe, Loader2, MapPin } from "lucide-react";
+import { BellPlus, Check, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -172,75 +172,4 @@ export function FollowButton({ projectId, organiserName, subtle = false, classNa
   );
 }
 
-// Organiser identity bar shown on the public wall above the event list. Sources
-// its fields from the profile, falling back to the wall's own branding. Rendered
-// only when a profile row exists.
-export function OrganiserProfileHeader({ profile, wall, centered }) {
-  if (!profile) return null;
-  const name = profile.displayName || wall?.name || "Our Events";
-  const bio = profile.bio || "";
-  const links = Array.isArray(profile.links) ? profile.links.filter((l) => l?.url) : [];
-
-  return (
-    <div
-      className={cn(
-        "mb-10 flex flex-col gap-4 rounded-2xl border border-border bg-surface-subtle p-5 sm:p-6",
-        centered ? "items-center text-center" : "items-start",
-      )}
-    >
-      <div className={cn("flex w-full flex-col gap-4 sm:flex-row sm:items-center", centered && "sm:justify-center")}>
-        {profile.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={profile.avatarUrl}
-            alt=""
-            className="h-16 w-16 shrink-0 rounded-full border border-border object-cover"
-          />
-        ) : null}
-        <div className={cn("min-w-0 flex-1", centered && "text-center")}>
-          <h2 className="text-xl font-semibold text-foreground">{name}</h2>
-          {profile.location ? (
-            <p className={cn("mt-1 flex items-center gap-1.5 text-sm text-text-secondary", centered && "justify-center")}>
-              <MapPin className="h-3.5 w-3.5" /> {profile.location}
-            </p>
-          ) : null}
-        </div>
-        <div className="shrink-0">
-          <FollowButton projectId={profile.projectId || wall?.projectId} organiserName={name} />
-        </div>
-      </div>
-
-      {bio ? (
-        <p className={cn("max-w-2xl text-sm text-text-secondary", centered && "mx-auto")}>{bio}</p>
-      ) : null}
-
-      {links.length || profile.website ? (
-        <div className={cn("flex flex-wrap gap-x-4 gap-y-1.5", centered && "justify-center")}>
-          {profile.website ? (
-            <a
-              href={profile.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-foreground"
-            >
-              <Globe className="h-3.5 w-3.5" /> Website
-            </a>
-          ) : null}
-          {links.map((link, i) => (
-            <a
-              key={`${link.url}-${i}`}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-text-secondary transition-colors hover:text-foreground"
-            >
-              {link.label || link.url}
-            </a>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-export default OrganiserProfileHeader;
+export default FollowButton;

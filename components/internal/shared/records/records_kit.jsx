@@ -360,6 +360,9 @@ export function RecordsScreen({ mod, api }) {
   const [filters, setFilters] = useState(() =>
     Object.fromEntries(mod.filters.map((f) => [f.key, "all"])),
   );
+  const [sorts, setSorts] = useState(() =>
+    Object.fromEntries((mod.sorts || []).map((s) => [s.key, "none"])),
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { recordId, openRecord, closeRecord } = useWorkspaceUrl();
@@ -401,13 +404,28 @@ export function RecordsScreen({ mod, api }) {
 
   const stats = useMemo(() => mod.stats(records, { presence }), [records, mod, presence]);
 
+  // Applied after filtering; each dropdown is a high/low toggle over one
+  // numeric getter, so multiple sorts just apply in sequence.
+  const sorted = useMemo(() => {
+    let list = filtered;
+    for (const s of mod.sorts || []) {
+      const dir = sorts[s.key];
+      if (dir !== "asc" && dir !== "desc") continue;
+      list = [...list].sort((a, b) => {
+        const diff = (Number(s.get(a)) || 0) - (Number(s.get(b)) || 0);
+        return dir === "asc" ? diff : -diff;
+      });
+    }
+    return list;
+  }, [filtered, sorts, mod]);
+
   // Column renderers read their row's measured numbers off `_presence`.
   const rows = useMemo(
     () =>
       mod.usesPresence
-        ? filtered.map((r) => ({ ...r, _presence: presence[r.id] || null }))
-        : filtered,
-    [filtered, presence, mod],
+        ? sorted.map((r) => ({ ...r, _presence: presence[r.id] || null }))
+        : sorted,
+    [sorted, presence, mod],
   );
 
   // `pending` is a create-dialog image ({ file, preview, upload }) that had to
@@ -594,6 +612,15 @@ export function RecordsScreen({ mod, api }) {
               value={filters[f.key]}
               onValueChange={(v) => setFilters((prev) => ({ ...prev, [f.key]: v }))}
               options={f.options}
+              height="h-9"
+            />
+          ))}
+          {(mod.sorts || []).map((s) => (
+            <FilterDropdown
+              key={s.key}
+              value={sorts[s.key]}
+              onValueChange={(v) => setSorts((prev) => ({ ...prev, [s.key]: v }))}
+              options={s.options}
               height="h-9"
             />
           ))}

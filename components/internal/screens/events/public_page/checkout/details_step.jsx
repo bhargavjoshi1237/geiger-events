@@ -207,6 +207,8 @@ export function DetailsStep({ event, checkout, accent, accentStyle, daConfig }) 
         />
       ) : null}
 
+      {checkout.disclaimerSlot("checkout-summary")}
+
       <DetailsTotals event={event} checkout={checkout} />
 
       <Button
@@ -231,6 +233,8 @@ export function DetailsStep({ event, checkout, accent, accentStyle, daConfig }) 
           </>
         )}
       </Button>
+
+      {checkout.disclaimerSlot("checkout-pay")}
 
       {!isFree &&
       !(requiresApproval && !approvedResume) &&

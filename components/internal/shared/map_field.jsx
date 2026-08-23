@@ -38,14 +38,14 @@ const MARKING = "pointer-events-none absolute border-current opacity-30";
 
 // Sport markings, drawn from the shape rather than stored, so a map never has
 // to carry pitch furniture in its config.
-function Markings({ shape }) {
+function Markings({ shape, stroke }) {
   if (shape === "pitch" || shape === "court" || shape === "rink") {
     return (
       <>
-        <span className={cn(MARKING, "left-1/2 top-0 h-full border-l")} />
+        <span className={cn(MARKING, "left-1/2 top-0 h-full border-l")} style={stroke} />
         <span
           className={cn(MARKING, "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border")}
-          style={{ width: "24%", aspectRatio: "1" }}
+          style={{ width: "24%", aspectRatio: "1", ...stroke }}
         />
       </>
     );
@@ -54,18 +54,25 @@ function Markings({ shape }) {
     return (
       <span
         className={cn(MARKING, "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border")}
-        style={{ width: "70%", aspectRatio: "1" }}
+        style={{ width: "70%", aspectRatio: "1", ...stroke }}
       />
     );
   }
   return null;
 }
 
-export function MapField({ field, className }) {
+// `scale` is the canvas's live zoom. Every stroke and corner here is drawn in
+// the layer's own space, so without counter-scaling a 1px edge and an 8px
+// corner come out as a 15px band and a 120px curve the moment a buyer drills
+// into a section — which is what turned the pitch into a giant grey slab
+// behind the chairs.
+export function MapField({ field, className, scale = 1 }) {
   if (!field || field.shape === "none") return null;
 
   const shape = field.shape || "stage";
   const label = field.label || shape.toUpperCase();
+  const zoomed = scale > 1.001;
+  const stroke = zoomed ? { borderWidth: `${1 / scale}px` } : undefined;
 
   return (
     <div
@@ -82,10 +89,15 @@ export function MapField({ field, className }) {
         width: `${Number(field.width) || 0}%`,
         height: `${Number(field.height) || 0}%`,
         transform: field.rotation ? `rotate(${field.rotation}deg)` : undefined,
+        ...stroke,
+        ...(zoomed && shape !== "rink" ? { borderRadius: `${8 / scale}px` } : null),
       }}
     >
-      <Markings shape={shape} />
-      <span className="relative px-2 text-[10px] font-medium uppercase tracking-widest text-text-secondary">
+      <Markings shape={shape} stroke={stroke} />
+      <span
+        className="relative px-2 text-[10px] font-medium uppercase tracking-widest text-text-secondary"
+        style={zoomed ? { transform: `scale(${1 / scale})` } : undefined}
+      >
         {label}
       </span>
     </div>

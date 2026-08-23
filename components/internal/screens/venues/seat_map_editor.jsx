@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   Loader2,
   Plus,
+  RefreshCw,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -18,8 +19,8 @@ import {
   SectionCard,
   StatsBar,
 } from "@/components/internal/shared/screen_kit";
-import { MapCanvas } from "@/components/internal/shared/map_canvas";
 import { MapField } from "@/components/internal/shared/map_field";
+import { VenueChart } from "@/components/internal/shared/venue_chart";
 import { MapFloorPanel } from "@/components/internal/shared/map_floor_panel";
 import {
   Button,
@@ -39,14 +40,17 @@ import {
 } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 import { generateSeats, sectionSeatCount } from "@/lib/seating/generate";
+import { aspectRatio } from "@/lib/seating/geometry";
+import { measureSeatPitch } from "@/lib/seating/viewport";
 import { parseManifest } from "@/lib/seating/csv";
-import { BOWL_SHAPES, bowlSeatCount, generateBowl } from "@/lib/seating/bowl";
+import { BOWL_SHAPES, bowlSeatCount, planBowl, suggestField } from "@/lib/seating/bowl";
 import {
   createBowl,
   createSection,
   deleteSection,
   getSeatMap,
   importManifest,
+  rebuildMapSeats,
   regenerateSectionSeats,
   updateSeat,
   updateSeatMap,
@@ -68,6 +72,37 @@ const SEAT_KIND_STYLE = {
   obstructed: "bg-amber-400/20 border-amber-400/40",
   house: "bg-violet-400/20 border-violet-400/40",
 };
+
+// The same five kinds for the canvas, which cannot resolve a class name. Keep
+// in step with SEAT_KIND_STYLE above.
+const SEAT_KIND_HEX = {
+  standard: "#6b7280",
+  wheelchair: "#38bdf8",
+  companion: "#7dd3fc",
+  obstructed: "#fbbf24",
+  house: "#a78bfa",
+};
+
+// A stable identity for "this section has no chairs to show", so the chart
+// isn't handed a fresh array on every render.
+const EMPTY_SEATS = [];
+
+// A section's box, in percent of the ELEMENT, for the window currently drawn.
+// This is what keeps the draggable overlay sitting exactly on the block the
+// canvas painted underneath it.
+function boxInWindow(section, window_, ar) {
+  if (!window_?.spanX || !window_?.spanY) return null;
+  const x = (Number(section.x) || 0) * ar;
+  const y = Number(section.y) || 0;
+  const width = (Number(section.width) || 0) * ar;
+  const height = Number(section.height) || 0;
+  return {
+    left: ((x - window_.xMin) / window_.spanX) * 100,
+    top: ((y - window_.yMin) / window_.spanY) * 100,
+    width: (width / window_.spanX) * 100,
+    height: (height / window_.spanY) * 100,
+  };
+}
 
 const DEFAULT_LAYOUT = {
   rows: 8,
@@ -172,10 +207,40 @@ function ImportDialog({ open, onOpenChange, onImport }) {
   );
 }
 
+// A miniature of exactly what will be written: the same percent geometry, the
+// same CSS rotation, on a box with the map's own aspect ratio. Seeing the ring
+// before committing is the difference between "generate and hope" and a
+// deliberate choice, and it makes any future layout bug obvious at a glance.
+function BowlPreview({ drafts, field, aspect }) {
+  return (
+    <div
+      className="relative w-full overflow-hidden rounded-lg border border-border bg-background"
+      style={{ aspectRatio: aspect }}
+      aria-hidden="true"
+    >
+      <MapField field={field} />
+      {drafts.map((s) => (
+        <span
+          key={`${s.name}-${s.sortOrder}`}
+          className="absolute rounded-[1px] border border-sky-400/40 bg-sky-400/15"
+          style={{
+            left: `${s.x}%`,
+            top: `${s.y}%`,
+            width: `${s.width}%`,
+            height: `${s.height}%`,
+            transform: s.rotation ? `rotate(${s.rotation}deg)` : undefined,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 // Lay a whole bowl out in one go. Everything here is a preview over the pure
-// generator — nothing is written until the organiser confirms, and the seat
-// count is shown first because a two-tier arena is tens of thousands of rows.
-function BowlDialog({ open, onOpenChange, field, onGenerate, hasSections }) {
+// generator — nothing is written until the organiser confirms, and the shape
+// and seat count are shown first because a two-tier arena is tens of thousands
+// of rows.
+function BowlDialog({ open, onOpenChange, field, aspect, onGenerate, hasSections }) {
   const [draft, setDraft] = useState({
     shape: "oval",
     tiers: 2,
@@ -188,22 +253,42 @@ function BowlDialog({ open, onOpenChange, field, onGenerate, hasSections }) {
   });
   const [busy, setBusy] = useState(false);
 
+  // A bowl is defined around its centre feature, so laying one out means
+  // placing that too. A fresh map still carries the legacy proscenium strip
+  // pinned to the top edge, which no ring can surround — left alone, every
+  // generated bowl collapsed into a sliver in the corner.
+  const suggested = useMemo(() => suggestField(draft.shape, field), [draft.shape, field]);
+  const currentFits = useMemo(
+    () => planBowl({ ...draft, field, aspect }).fits,
+    [draft, field, aspect],
+  );
+  const [repositionChoice, setRepositionChoice] = useState(null);
+  // Defaults to on whenever the feature where it stands can't host this shape,
+  // and stays wherever the organiser puts it once they've decided.
+  const reposition = repositionChoice ?? !currentFits;
+  const usedField = reposition ? suggested : field;
+
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
   const num = (key) => (e) => set(key)(Number(e.target.value) || 0);
 
-  const preview = useMemo(() => generateBowl({ ...draft, field }), [draft, field]);
+  const plan = useMemo(
+    () => planBowl({ ...draft, field: usedField, aspect }),
+    [draft, usedField, aspect],
+  );
+  const preview = plan.drafts;
   const isRounds = draft.shape === "rounds";
+  const trimmed = !isRounds && plan.tiers < plan.requestedTiers;
 
   const submit = async () => {
     setBusy(true);
-    const ok = await onGenerate(preview);
+    const ok = await onGenerate(preview, reposition ? usedField : null);
     setBusy(false);
     if (ok) onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto bg-background">
         <DialogHeader>
           <DialogTitle>Generate the bowl</DialogTitle>
           <DialogDescription>
@@ -213,6 +298,7 @@ function BowlDialog({ open, onOpenChange, field, onGenerate, hasSections }) {
         </DialogHeader>
 
         <div className="grid gap-4">
+          <BowlPreview drafts={preview} field={usedField} aspect={aspect} />
           <Field label="Shape" hint={BOWL_SHAPES.find((s) => s.value === draft.shape)?.hint}>
             <Select value={draft.shape} onValueChange={set("shape")}>
               <SelectTrigger>
@@ -318,14 +404,47 @@ function BowlDialog({ open, onOpenChange, field, onGenerate, hasSections }) {
             </>
           )}
 
-          <p className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-text-secondary tabular-nums">
-            {preview.length} sections · {bowlSeatCount(preview).toLocaleString("en-US")} seats
-            {hasSections ? (
-              <span className="mt-1 block text-red-400">
-                This replaces every section already on this map.
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-surface-subtle p-3">
+            <input
+              type="checkbox"
+              checked={reposition}
+              onChange={(e) => setRepositionChoice(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-primary"
+            />
+            <span className="text-xs">
+              <span className="block font-medium text-foreground">
+                Place the {suggested.label.toLowerCase()} for this shape
               </span>
+              <span className="mt-0.5 block text-text-tertiary">
+                {currentFits
+                  ? "Off keeps the central feature exactly where you put it."
+                  : "The feature where it stands now leaves no room for a ring."}
+              </span>
+            </span>
+          </label>
+
+          <div className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-text-secondary">
+            <p className="tabular-nums">
+              {preview.length} sections · {bowlSeatCount(preview).toLocaleString("en-US")} seats
+              {trimmed ? ` · ${plan.tiers} of ${plan.requestedTiers} tiers` : null}
+            </p>
+            {!plan.fits ? (
+              <p className="mt-1 text-amber-400">
+                The central feature leaves no room for a ring. Tick the box above, or make it
+                smaller on the Floor panel.
+              </p>
+            ) : trimmed ? (
+              <p className="mt-1 text-text-tertiary">
+                Only {plan.tiers} tier{plan.tiers > 1 ? "s" : ""} fit around the feature at this
+                depth — reduce the tier depth to get the rest.
+              </p>
             ) : null}
-          </p>
+            {hasSections ? (
+              <p className="mt-1 text-red-400">
+                This replaces every section already on this map.
+              </p>
+            ) : null}
+          </div>
         </div>
 
         <DialogFooter>
@@ -561,6 +680,7 @@ export function SeatMapEditor({ mapId, onBack }) {
   const [selectedId, setSelectedId] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [bowlOpen, setBowlOpen] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
   // Panning is suppressed while a block is being dragged, so the floor doesn't
   // slide out from under it.
   const [dragging, setDragging] = useState(false);
@@ -588,14 +708,48 @@ export function SeatMapEditor({ mapId, onBack }) {
     };
   }, [mapId, reloadToken]);
 
+  // Every seat position depends on the canvas shape, so the aspect travels with
+  // each generator call rather than being assumed.
+  const aspect = map?.aspect || "16/10";
+  // Mirrored into a ref for the window-level drag listener, which is bound once
+  // and would otherwise close over the aspect from the first render.
+  const aspectRef = useRef(aspect);
+  useEffect(() => {
+    aspectRef.current = aspect;
+  }, [aspect]);
+
   const selected = useMemo(
     () => sections.find((s) => s.id === selectedId) || null,
     [sections, selectedId],
   );
 
+  // Chairs are rebuilt by deleting them, which cascades to whatever has been
+  // sold off them — so the destructive paths refuse and say why.
+  const seatsLocked = () =>
+    toast.error("This map has seats already sold, comped or held — rebuilding them would wipe those. Release them from the event's box office first.");
+
   const selectedSeats = useMemo(
-    () => (selected ? seats.filter((s) => s.sectionId === selected.id) : []),
+    () => (selected ? seats.filter((s) => s.sectionId === selected.id) : EMPTY_SEATS),
     [seats, selected],
+  );
+
+  // The window the canvas is currently drawing, published by the chart. The
+  // draggable section boxes are positioned against it so the two layers can
+  // never disagree about where a block is.
+  const [chartWindow, setChartWindow] = useState(null);
+  const ar = useMemo(() => aspectRatio(map?.aspect), [map?.aspect]);
+  const seatPitch = useMemo(
+    () => measureSeatPitch(selectedSeats, map?.aspect),
+    [selectedSeats, map?.aspect],
+  );
+  // The editor colours by availability nowhere — a section is just a block with
+  // a name and a count until someone prices it on an event.
+  const sectionMetaFor = useMemo(
+    () => (section) => ({
+      available: section.kind === "ga" ? section.capacity : sectionSeatCount(section),
+      price: null,
+    }),
+    [],
   );
 
   const stats = useMemo(() => {
@@ -657,7 +811,12 @@ export function SeatMapEditor({ mapId, onBack }) {
       toast.error("Couldn't save the layout.");
       return;
     }
-    const count = await regenerateSectionSeats(merged);
+    const count = await regenerateSectionSeats(merged, aspect);
+    if (count === "locked") {
+      seatsLocked();
+      reload();
+      return;
+    }
     if (count === false) {
       toast.error("Couldn't rebuild the seats.");
       return;
@@ -682,7 +841,7 @@ export function SeatMapEditor({ mapId, onBack }) {
       toast.error("Couldn't add the section.");
       return;
     }
-    const count = await regenerateSectionSeats(created);
+    const count = await regenerateSectionSeats(created, aspect);
     if (count === false) toast.error("Section added, but its seats didn't generate.");
     reload();
     setSelectedId(created.id);
@@ -719,16 +878,47 @@ export function SeatMapEditor({ mapId, onBack }) {
       toast.error("Couldn't save the rotation.");
       return;
     }
-    await regenerateSectionSeats(saved);
+    if ((await regenerateSectionSeats(saved, aspect)) === "locked") seatsLocked();
     reload();
   };
 
-  const runBowl = async (drafts) => {
-    const result = await createBowl(mapId, drafts, { replace: sections.length > 0 });
+  // Repairs a map whose chairs were generated before the coordinate fix: the
+  // blocks are already right, only the seats need re-laying.
+  const runRebuild = async () => {
+    setRebuilding(true);
+    const result = await rebuildMapSeats(mapId, aspect);
+    setRebuilding(false);
+    if (result === "locked") {
+      seatsLocked();
+      return;
+    }
+    if (!result) {
+      toast.error("Couldn't rebuild the seats.");
+      return;
+    }
+    reload();
+    toast.success(
+      `Rebuilt ${result.seats.toLocaleString("en-US")} seats across ${result.sections} sections.`,
+    );
+  };
+
+  // `nextField` is set when the dialog repositioned the central feature to suit
+  // the chosen shape — the ring is built around it, so it has to be saved with
+  // the sections or the map would draw a bowl around a feature somewhere else.
+  const runBowl = async (drafts, nextField) => {
+    const result = await createBowl(mapId, drafts, {
+      replace: sections.length > 0,
+      aspect,
+    });
+    if (result === "locked") {
+      seatsLocked();
+      return false;
+    }
     if (!result) {
       toast.error("Couldn't generate the bowl.");
       return false;
     }
+    if (nextField) patchConfig({ field: nextField });
     reload();
     setSelectedId(null);
     if (result.partial) {
@@ -742,7 +932,7 @@ export function SeatMapEditor({ mapId, onBack }) {
   };
 
   const runImport = async (parsed) => {
-    const result = await importManifest(mapId, parsed);
+    const result = await importManifest(mapId, parsed, aspect);
     if (!result) {
       toast.error("Couldn't import the manifest.");
       return false;
@@ -803,12 +993,18 @@ export function SeatMapEditor({ mapId, onBack }) {
       // No movement between down and up is a plain click, not a drag.
       if (!drag?.next) return;
       // Persist the final geometry, then rebuild chairs so they follow the box.
+      // The aspect comes through a ref because this listener is bound once.
       updateSection(drag.id, drag.next).then(async (row) => {
         if (!row) {
           toast.error("Couldn't save the position.");
           return;
         }
-        await regenerateSectionSeats(row);
+        const rebuilt = await regenerateSectionSeats(row, aspectRef.current);
+        if (rebuilt === "locked") {
+          toast.error(
+            "This section has seats already sold or held — move it back, or release them from the event's box office first.",
+          );
+        }
         reload();
       });
     };
@@ -872,6 +1068,23 @@ export function SeatMapEditor({ mapId, onBack }) {
           >
             <Upload className="h-4 w-4" /> Import CSV
           </Button>
+          {sections.length > 0 ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={rebuilding}
+              onClick={runRebuild}
+              title="Re-lay every section's chairs from its current position and layout."
+              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              {rebuilding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Rebuild seats
+            </Button>
+          ) : null}
           <Button
             size="sm"
             className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -885,96 +1098,102 @@ export function SeatMapEditor({ mapId, onBack }) {
       <StatsBar stats={stats} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
-        {/* Floor */}
-        <MapCanvas
-          ref={canvasRef}
-          aspect={map.aspect}
-          background={map.background}
-          panDisabled={dragging}
-          onCanvasPointerDown={() => setSelectedId(null)}
-          overlay={
-            sections.length === 0 ? (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <p className="text-sm text-text-secondary">
-                  Generate a bowl, add a section, or import a CSV manifest.
-                </p>
-              </div>
-            ) : null
-          }
+        {/* Floor. ECharts draws the venue — the field, every section, and the
+            selected block's chairs — because that is the part whose cost grows
+            with the venue. The section boxes on top stay real DOM: there are
+            only ever a few dozen of them, and dragging, resizing, focus rings
+            and keyboard nudge are free there and hand-written on a canvas.
+            Both layers read the SAME window, so they cannot drift apart. */}
+        <div
+          className="relative overflow-hidden rounded-xl border border-border bg-surface-subtle"
+          style={{ aspectRatio: map.aspect }}
+          onPointerDown={() => setSelectedId(null)}
         >
-          <MapField field={map.field} />
+          <VenueChart
+            ref={canvasRef}
+            className="absolute inset-0"
+            aspect={map.aspect}
+            sections={sections}
+            seats={selected ? selectedSeats : EMPTY_SEATS}
+            field={map.field}
+            seatPitch={seatPitch}
+            panDisabled={dragging}
+            onViewChange={setChartWindow}
+            seatState={(seat) => seat.kind || "standard"}
+            seatColors={SEAT_KIND_HEX}
+            // Every chair is clickable here — a click changes its KIND rather
+            // than buying it.
+            seatInteractive={() => true}
+            onSeatClick={cycleSeatKind}
+            seatLabel={(seat) => `Row ${seat.rowLabel} seat ${seat.seatLabel}, ${seat.kind}`}
+            sectionMeta={sectionMetaFor}
+          />
 
-          {/* The selected section's chairs are drawn in CANVAS space, not inside
-              the block: a rotated section's seats legitimately fall outside its
-              box, and nesting them would rotate them a second time. */}
-          {selected
-            ? selectedSeats.map((seat) => (
-                <button
-                  key={seat.id}
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    cycleSeatKind(seat);
-                  }}
-                  aria-label={`Row ${seat.rowLabel} seat ${seat.seatLabel}, ${seat.kind}`}
-                  title={`${seat.rowLabel}${seat.seatLabel} · ${seat.kind}`}
-                  className={cn(
-                    "absolute z-10 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border",
-                    SEAT_KIND_STYLE[seat.kind] || SEAT_KIND_STYLE.standard,
-                  )}
-                  style={{ left: `${seat.x}%`, top: `${seat.y}%` }}
-                />
-              ))
-            : null}
+          {sections.length === 0 ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <p className="text-sm text-text-secondary">
+                Generate a bowl, add a section, or import a CSV manifest.
+              </p>
+            </div>
+          ) : null}
 
-          {sections.map((section) => {
-            const isSelected = section.id === selectedId;
-            const count =
-              section.kind === "ga" ? section.capacity : sectionSeatCount(section);
-            return (
-              <div
-                key={section.id}
-                role="button"
-                tabIndex={0}
-                onPointerDown={(e) => onPointerDown(e, section, "move")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") setSelectedId(section.id);
-                }}
-                aria-label={`${section.name}, ${count} seats`}
-                className={cn(
-                  "absolute cursor-move rounded-lg border transition-colors",
-                  section.kind === "ga"
-                    ? "border-amber-400/30 bg-amber-400/10"
-                    : "border-sky-400/30 bg-sky-400/10",
-                  isSelected && "ring-2 ring-primary",
-                )}
-                style={{
-                  left: `${section.x}%`,
-                  top: `${section.y}%`,
-                  width: `${section.width}%`,
-                  height: `${section.height}%`,
-                  transform: section.rotation ? `rotate(${section.rotation}deg)` : undefined,
-                }}
-              >
-                <span className="pointer-events-none absolute left-2 top-1.5 text-[10px] font-medium uppercase tracking-wide text-foreground">
-                  {section.name}
-                </span>
-                <span className="pointer-events-none absolute right-2 top-1.5 text-[10px] tabular-nums text-text-secondary">
-                  {count}
-                </span>
+          {/* The editable layer. Positioned against the chart's own window, so
+              it pans and zooms with the venue underneath it. */}
+          <div className="pointer-events-none absolute inset-0">
+            {chartWindow
+              ? sections.map((section) => {
+                  const isSelected = section.id === selectedId;
+                  const count =
+                    section.kind === "ga" ? section.capacity : sectionSeatCount(section);
+                  const box = boxInWindow(section, chartWindow, ar);
+                  if (!box) return null;
+                  return (
+                    <div
+                      key={section.id}
+                      role="button"
+                      tabIndex={0}
+                      onPointerDown={(e) => onPointerDown(e, section, "move")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") setSelectedId(section.id);
+                      }}
+                      aria-label={`${section.name}, ${count} seats`}
+                      className={cn(
+                        "pointer-events-auto absolute cursor-move rounded-lg border transition-colors",
+                        section.kind === "ga"
+                          ? "border-amber-400/30 bg-amber-400/10"
+                          : "border-sky-400/30 bg-sky-400/10",
+                        isSelected && "ring-2 ring-primary",
+                      )}
+                      style={{
+                        left: `${box.left}%`,
+                        top: `${box.top}%`,
+                        width: `${box.width}%`,
+                        height: `${box.height}%`,
+                        transform: section.rotation
+                          ? `rotate(${section.rotation}deg)`
+                          : undefined,
+                      }}
+                    >
+                      <span className="pointer-events-none absolute left-2 top-1.5 text-[10px] font-medium uppercase tracking-wide text-foreground">
+                        {section.name}
+                      </span>
+                      <span className="pointer-events-none absolute right-2 top-1.5 text-[10px] tabular-nums text-text-secondary">
+                        {count}
+                      </span>
 
-                {isSelected ? (
-                  <span
-                    role="presentation"
-                    onPointerDown={(e) => onPointerDown(e, section, "resize")}
-                    className="absolute -bottom-1 -right-1 h-3 w-3 cursor-se-resize rounded-sm border border-primary bg-background"
-                  />
-                ) : null}
-              </div>
-            );
-          })}
-        </MapCanvas>
+                      {isSelected ? (
+                        <span
+                          role="presentation"
+                          onPointerDown={(e) => onPointerDown(e, section, "resize")}
+                          className="absolute -bottom-1 -right-1 h-3 w-3 cursor-se-resize rounded-sm border border-primary bg-background"
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })
+              : null}
+          </div>
+        </div>
 
         {/* Panel */}
         <div className="space-y-4">
@@ -1026,6 +1245,7 @@ export function SeatMapEditor({ mapId, onBack }) {
         open={bowlOpen}
         onOpenChange={setBowlOpen}
         field={map.field}
+        aspect={aspect}
         hasSections={sections.length > 0}
         onGenerate={runBowl}
       />

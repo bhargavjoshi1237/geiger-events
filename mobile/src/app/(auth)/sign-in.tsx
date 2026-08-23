@@ -29,6 +29,18 @@ const FEATURES = [
   { icon: "calendar" as const, label: "Add events to your calendar" },
 ];
 
+// Feature bullets share one icon tile so the list reads as a set.
+function FeatureRow({ icon, label }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string }) {
+  return (
+    <View style={styles.feature}>
+      <View style={styles.featureTile}>
+        <Feather name={icon} size={14} color={colors.mutedForeground} />
+      </View>
+      <Text style={styles.featureLabel}>{label}</Text>
+    </View>
+  );
+}
+
 export default function SignInScreen() {
   const router = useRouter();
   const session = useSession();
@@ -69,6 +81,10 @@ export default function SignInScreen() {
       style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      {/* Ghosted brand mark anchors the otherwise empty canvas. */}
+      <View pointerEvents="none" style={styles.watermark}>
+        <BrandMark size={340} color={colors.muted} />
+      </View>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -77,7 +93,7 @@ export default function SignInScreen() {
         <View style={styles.card}>
           <View style={styles.header}>
             <View style={styles.markTile}>
-              <BrandMark size={24} />
+              <BrandMark size={30} />
             </View>
             <Text style={styles.title}>Geiger Events</Text>
             <Text style={styles.subtitle}>Your tickets, orders, and memberships.</Text>
@@ -106,10 +122,7 @@ export default function SignInScreen() {
                 <Button title="Continue" onPress={submitEmail} loading={busy} fullWidth />
                 <View style={styles.divider} />
                 {FEATURES.map((f) => (
-                  <View key={f.label} style={styles.feature}>
-                    <Feather name={f.icon} size={16} color={colors.mutedForeground} />
-                    <Text style={styles.featureLabel}>{f.label}</Text>
-                  </View>
+                  <FeatureRow key={f.label} icon={f.icon} label={f.label} />
                 ))}
               </View>
             ) : null}
@@ -200,6 +213,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  watermark: {
+    position: "absolute",
+    bottom: -spacing.xxl,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    opacity: 0.55,
+  },
   scroll: {
     flexGrow: 1,
     justifyContent: "center",
@@ -210,22 +231,27 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 400,
     backgroundColor: colors.surfaceSubtle,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.xxl,
+    paddingVertical: spacing.xxl + spacing.md,
+    paddingHorizontal: spacing.xl,
     gap: spacing.xl,
   },
   header: {
-    alignItems: "flex-start",
-    gap: spacing.xs,
+    alignItems: "center",
+    gap: spacing.sm,
   },
   markTile: {
-    width: 40,
-    height: 40,
+    width: 56,
+    height: 56,
     borderRadius: radius.lg,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surfaceCard,
-    marginBottom: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
   },
   title: {
     ...type.title,
@@ -233,6 +259,8 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...type.body,
+    fontSize: 13,
+    lineHeight: 19,
     color: colors.textSecondary,
   },
   step: {
@@ -250,11 +278,20 @@ const styles = StyleSheet.create({
   feature: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: spacing.md,
+  },
+  featureTile: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm + 2,
   },
   featureLabel: {
     ...type.caption,
-    fontSize: 12,
     color: colors.textSecondary,
   },
   emailText: {

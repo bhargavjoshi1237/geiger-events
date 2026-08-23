@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { validateEventDiscount } from "@/lib/supabase/discounts";
 import { buyTicket } from "@/lib/supabase/orders";
-import { holdSeats } from "@/lib/supabase/seating";
+import { holdSeats, releaseSeats } from "@/lib/supabase/seating";
 import { holdBooths } from "@/lib/supabase/expo";
 import {
   registerForEvent,
@@ -21,6 +21,7 @@ import {
   saveTicketAnswers,
 } from "@/lib/supabase/ticket_questions";
 
+import { makeDisclaimerSlot } from "../disclaimer";
 import { derivePricing } from "./pricing";
 import {
   seatKey,
@@ -38,11 +39,13 @@ export function useCheckout({
   ticket: baseTicket,
   remaining,
   live,
+  entry,
   onPurchased,
   resumeResult,
   approvedResume,
   daConfig,
 }) {
+  const disclaimerSlot = makeDisclaimerSlot(event);
   const seating = event?.seating || null;
   const seatingOn = Boolean(seating?.seatMapId);
   const seatMode = seating?.mode || "map-first";
@@ -63,11 +66,23 @@ export function useCheckout({
 
   const ticket = seatTicket || boothTicket || baseTicket;
 
-  const [step, setStep] = useState(
+  // Which step a freshly-opened checkout lands on. The page can request a
+  // route via `entry` — "seats" enters through the seating plan, "price"
+  // skips it and goes straight to ticket details; anything else uses the
+  // event's default flow.
+  const defaultEntryStep =
     (seatingOn && (seating?.mode || "map-first") === "map-first" && "seats") ||
-      (expoOn && "booths") ||
-      "details",
-  );
+    (expoOn && "booths") ||
+    "details";
+  const entryStep =
+    entry === "price"
+      ? (expoOn && "booths") || "details"
+      : entry === "seats" &&
+          seatingOn &&
+          (seating?.mode || "map-first") === "map-first"
+        ? "seats"
+        : defaultEntryStep;
+  const [step, setStep] = useState(entryStep);
   const [qty, setQty] = useState(1);
   const [slotId, setSlotId] = useState(null);
   const [purSelections, setPurSelections] = useState({});
@@ -82,6 +97,28 @@ export function useCheckout({
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Seat holds outlive the picker — it unmounts as soon as the buyer moves to
+  // the details step — so the dialog owns releasing them. They go back on sale
+  // when checkout is abandoned, and only then; a completed order keeps them.
+  const seatHoldRef = useRef(null);
+  useEffect(() => {
+    seatHoldRef.current = seatSel?.seatIds?.length ? seatSel.token : null;
+  }, [seatSel]);
+
+  // Set once the seats are spoken for — by a completed order, or by a Stripe
+  // redirect that already extended the hold. Releasing in either case would
+  // put seats the buyer has paid for back on sale.
+  const keepHoldRef = useRef(false);
+  useEffect(() => {
+    if (!open) return undefined;
+    keepHoldRef.current = false;
+    return () => {
+      if (!keepHoldRef.current && seatHoldRef.current && event?.id) {
+        releaseSeats(event.id, seatHoldRef.current);
+      }
+    };
+  }, [open, event?.id]);
 
   const attributedRef = useRef(null);
   useEffect(() => {
@@ -225,7 +262,7 @@ export function useCheckout({
         setDonationCustom("");
         setAttendees([]);
       } else {
-        setStep("details");
+        setStep(entryStep);
         setQty(1);
         setName(approvedResume?.name || "");
         setEmail(approvedResume?.email || "");
@@ -357,6 +394,8 @@ export function useCheckout({
       boothToken: boothSel?.token ?? null,
     });
     if (res.ok) {
+      // The seats are sold now — the hold must not be released on close.
+      keepHoldRef.current = true;
       if (approvedResume) setRegStatus("Confirmed");
       else {
         const regRes = await doRegister();
@@ -445,6 +484,9 @@ export function useCheckout({
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
+        // Handing off to Stripe against the 30-minute hold taken above — the
+        // unmount that follows this navigation must not release it.
+        keepHoldRef.current = true;
         setRedirectUrl(data.url);
         return;
       }
@@ -691,5 +733,8 @@ export function useCheckout({
     applyDiscount,
     removeDiscount,
     headerLabel,
+    // The same slot helper the public page uses, so a step names the slot it
+    // offers and stays unaware of where else the disclaimer is placed.
+    disclaimerSlot,
   };
 }

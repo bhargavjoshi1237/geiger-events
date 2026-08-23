@@ -5,6 +5,17 @@ import LoginScreen from "@/components/portal/login_screen";
 
 export const metadata = { title: "Sign in · Geiger Events" };
 
+// The sign-in's feature list is pinned to the bottom of the layout viewport, so
+// the on-screen keyboard must not resize it: `resizes-visual` overlays the
+// keyboard (Android Chrome 108+, like iOS already does) and only the visual
+// viewport pans to reveal the focused input — the footer text stays put.
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-visual",
+};
+
 // /login is the members auth screen. A signed-in member normally goes straight
 // to /members — EXCEPT when arriving from the internal workspace (?workspace=1),
 // where that bounce would wrongly send a would-be suite user to the portal; there

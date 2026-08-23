@@ -117,16 +117,25 @@ function WatchCard({ item, onOpen }: { item: WatchItem; onOpen: () => void }) {
           end={{ x: 0, y: 0 }}
           style={StyleSheet.absoluteFill}
         />
+        {/* Frosted disc reads as a button; the bare icon didn't. */}
         <View style={styles.playWrap} pointerEvents="none">
-          <Feather
-            name={premiere ? "clock" : "play"}
-            size={36}
-            color={colors.primary}
-          />
+          <View style={styles.playDisc}>
+            <Feather
+              name={premiere ? "clock" : "play"}
+              size={22}
+              color={colors.primary}
+              style={!premiere ? styles.playGlyph : undefined}
+            />
+          </View>
         </View>
         {item.duration && !premiere ? (
           <View style={styles.duration}>
             <Text style={styles.durationText}>{item.duration}</Text>
+          </View>
+        ) : null}
+        {premiere ? (
+          <View style={styles.premiereChip}>
+            <Text style={styles.premiereChipText}>Premieres {fmtDateTime(item.premiereAt)}</Text>
           </View>
         ) : null}
       </View>
@@ -142,9 +151,7 @@ function WatchCard({ item, onOpen }: { item: WatchItem; onOpen: () => void }) {
           <Text style={styles.included} numberOfLines={1}>
             Included with {item.planName}
           </Text>
-          {premiere ? (
-            <Text style={styles.premiere}>Premieres {fmtDateTime(item.premiereAt)}</Text>
-          ) : leaving ? (
+          {!premiere && leaving ? (
             <Pill
               label={`Leaves in ${days} ${days === 1 ? "day" : "days"}`}
               tone="warning"
@@ -162,7 +169,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   title: {
-    ...type.title,
+    ...type.display,
     color: colors.foreground,
   },
   subtitle: {
@@ -198,14 +205,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  playDisc: {
+    width: 52,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.chipScrim,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+  },
+  // Nudge the play glyph right so it optically centres inside the disc.
+  playGlyph: {
+    marginLeft: 3,
+  },
   duration: {
     position: "absolute",
     right: spacing.sm,
     bottom: spacing.sm,
-    backgroundColor: colors.overlay,
-    borderRadius: radius.sm,
-    paddingVertical: 2,
-    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.chipScrim,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.pill,
+    paddingVertical: 3,
+    paddingHorizontal: spacing.sm + 2,
   },
   durationText: {
     ...type.caption,
@@ -213,12 +236,29 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontVariant: ["tabular-nums"],
   },
+  premiereChip: {
+    position: "absolute",
+    left: spacing.md,
+    bottom: spacing.md,
+    backgroundColor: `${colors.warning}26`,
+    borderWidth: 1,
+    borderColor: `${colors.warning}4D`,
+    borderRadius: radius.pill,
+    paddingVertical: 3,
+    paddingHorizontal: spacing.sm + 2,
+  },
+  premiereChipText: {
+    ...type.caption,
+    fontSize: 10,
+    color: colors.warning,
+    fontVariant: ["tabular-nums"],
+  },
   body: {
     gap: spacing.xs,
     padding: spacing.lg,
   },
   name: {
-    ...type.label,
+    ...type.body,
     fontWeight: "600",
     color: colors.foreground,
   },
@@ -236,12 +276,7 @@ const styles = StyleSheet.create({
   included: {
     flex: 1,
     ...type.caption,
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textTertiary,
-  },
-  premiere: {
-    ...type.caption,
-    fontSize: 10,
-    color: colors.warning,
   },
 });

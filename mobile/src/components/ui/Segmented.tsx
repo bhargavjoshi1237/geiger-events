@@ -67,8 +67,10 @@ export function Segmented({ options, value, onChange }: SegmentedProps) {
 
 const styles = StyleSheet.create({
   track: {
-    backgroundColor: colors.surfaceActive,
-    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md + 2,
     padding: 3,
   },
   inner: {
@@ -80,13 +82,18 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: colors.surfaceDialog,
-    borderRadius: radius.md - 3,
+    borderRadius: radius.md - 1,
+    shadowColor: colors.background,
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   segment: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    height: 32,
+    height: 36,
   },
   label: {
     ...type.label,

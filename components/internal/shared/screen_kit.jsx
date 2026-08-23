@@ -200,16 +200,12 @@ const STATS_BAR_COLS = {
   4: "grid-cols-2 md:grid-cols-4",
 };
 
-/**
- * Single-card KPI row with divider-separated cells and animated values, as on
- * the Events Overview screen. Each stat: { label, value, delta?, trend?, footer? }.
- */
 export function StatsBar({ stats, columns = 4, className }) {
   const cols = STATS_BAR_COLS[columns] || STATS_BAR_COLS[4];
 
   return (
     <Card
-      className={cn(
+      className={cn(  
         "gap-0 overflow-hidden rounded-xl border-border bg-surface-subtle py-0 text-foreground",
         className,
       )}
@@ -251,7 +247,7 @@ export function StatsBar({ stats, columns = 4, className }) {
                   ) : null}
                 </div>
                 {stat.footer ? (
-                  <span className="mt-1 block text-[11px] text-text-tertiary">
+                  <span className="mt-1 block text-[11px] text-text-tertiary capitalize">
                     {stat.footer}
                   </span>
                 ) : null}

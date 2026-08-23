@@ -7,7 +7,7 @@
 // re-executes embedded <script> tags when the renderer says scripts may run —
 // true on the published page, false inside the builder canvas.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import {
   Code2,
   ListChecks,
@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useExternalResources } from "@/lib/events/custom_code";
 
 // A small curated set rather than all of lucide — an icon picker with 1,500
 // entries is worse than one with sixteen good ones.
@@ -74,6 +75,16 @@ function RawHtml({ props, ctx }) {
   const ref = useRef(null);
   const html = props.html || "";
   const runScripts = !!ctx?.runScripts;
+  const clone = props.clone || {};
+  const scope = useId();
+
+  // Assets extracted from the source page the markup was cloned from. Styles
+  // apply in every context (so the block renders styled here and on the page);
+  // scripts run only where scripts are allowed, never in the canvas.
+  useExternalResources(ref, clone.enabled ? clone.assets : [], {
+    runScripts,
+    scope: `raw-html-${scope}`,
+  });
 
   useEffect(() => {
     if (!runScripts || !ref.current || !html) return;
@@ -246,7 +257,11 @@ export const STRUCTURE_COMPONENTS = [
     // Custom code is what this component exists for, so it inherits the same
     // permission gate as the page-level CSS/JS editor.
     requiresCustomCode: true,
-    defaultProps: { html: "", className: "" },
+    defaultProps: {
+      html: "",
+      className: "",
+      clone: { url: "", enabled: false, assets: [] },
+    },
     fields: [
       {
         key: "html",
@@ -260,6 +275,12 @@ export const STRUCTURE_COMPONENTS = [
         label: "Wrapper class",
         type: "text",
         hint: "A class of your own to target from custom CSS.",
+      },
+      {
+        key: "clone",
+        label: "Source styles & scripts",
+        type: "clone-assets",
+        hint: "Paste the page this HTML was cloned from, fetch its CSS and JS, then switch it on for the block to render clean.",
       },
     ],
     render: RawHtml,

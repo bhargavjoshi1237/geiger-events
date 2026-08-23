@@ -8,9 +8,13 @@ import { cn } from "@/lib/utils";
 import { parseRichText } from "@/lib/events/richtext";
 import { resolveGuestDisplay, GUEST_GRID_COLUMNS, GUEST_SHAPE_CLASS, GUEST_FIT_CLASS, } from "@/lib/events/guests";
 import { initials } from "./sample_data";
+import { getSectionNote, SectionNoteBadge } from "./public_page/section_note";
 import { EventMap, NearbyList, WeatherCard, nearbyGroups, flattenPlaces, GETTING_THERE_GROUPS, AROUND_VENUE_GROUPS, } from "./event_map";
 import { geocodeAddress } from "@/lib/map/geo";
 import { getVenue } from "@/lib/supabase/venues";
+import { formatScheduleTime } from "@/lib/events/schedule_items";
+import { ClipContent } from "@/components/internal/shared/web_clip/clip_content";
+import { isClipFilled } from "@/lib/clip/model";
 function SectionTitle({ icon: Icon, children }) {
     return (<h2 className="flex items-center gap-2 text-xl font-semibold text-foreground">
       {Icon ? <Icon className="h-5 w-5 text-text-secondary"/> : null}
@@ -96,8 +100,10 @@ function ScheduleItemCopy({ slot, onBg = false }) {
 function ScheduleTime({ slot, onBg = false }) {
     if (!slot.time)
         return null;
+    // Items store "HH:mm"; anything an organizer typed as a label ("TBA") comes
+    // back from the formatter untouched.
     return (<span className={cn("shrink-0 whitespace-nowrap text-sm font-medium tabular-nums sm:min-w-[6.5rem]", onBg ? "text-white/90" : "text-text-secondary")}>
-      {slot.time}
+      {formatScheduleTime(slot.time)}
     </span>);
 }
 function scheduleImageFit(slot) {
@@ -134,47 +140,73 @@ const SCHEDULE_GAP_CLASSES = {
     normal: { pad: "p-4", grid: "gap-4", stack: "space-y-7", rail: -1.75 },
     wide: { pad: "p-5", grid: "gap-6", stack: "space-y-10", rail: -2.5 },
 };
-function ScheduleListItems({ items, gapClass }) {
+// A whole-item custom markup block — organizer-authored, like the page
+// builder's raw-HTML block. Time, title, image, and image settings are all
+// skipped; the HTML stands alone as the item (and as the section when the
+// frame is "bare").
+function ScheduleHtmlItem({ slot }) {
+    return (<div className="ev-raw-html" dangerouslySetInnerHTML={{ __html: slot.description }}/>);
+}
+function isHtmlSlot(slot) {
+    return slot.contentType === "html" && !!String(slot.description || "").trim();
+}
+// A component clipped off another website. Its CSS is already scoped to a
+// generated class by the extractor, so it renders inline here without a shadow
+// root or an iframe — see components/internal/shared/web_clip.
+function isClipSlot(slot) {
+    return slot.contentType === "clip" && isClipFilled(slot.clip);
+}
+// Both whole-item modes stand alone: time, title, and image are all skipped.
+function isStandaloneSlot(slot) {
+    return isHtmlSlot(slot) || isClipSlot(slot);
+}
+function ScheduleStandalone({ slot }) {
+    if (isClipSlot(slot))
+        return <ClipContent clip={slot.clip}/>;
+    return <ScheduleHtmlItem slot={slot}/>;
+}
+export function ScheduleSlot({ slot, topClass = "mb-3 h-40", bodyGap = "gap-2" }) {
+    if (isStandaloneSlot(slot))
+        return <ScheduleStandalone slot={slot}/>;
+    const pos = slot.imagePosition || "left";
+    const bg = !!slot.image && pos === "background";
+    if (bg)
+        return <ScheduleBackground slot={slot}/>;
     return (<>
-      {items.map((slot, i) => {
-            const pos = slot.imagePosition || "left";
-            const bg = !!slot.image && pos === "background";
-            return (<div key={slot.id || slot.title} className={cn(gapClass.pad, i !== items.length - 1 && "border-b border-border")}>
-            {bg ? (<ScheduleBackground slot={slot}/>) : (<>
-                <ScheduleTopImage slot={slot} pos={pos} className="mb-3 h-40"/>
-                <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
-                  <ScheduleTime slot={slot}/>
-                  <ScheduleSideImage slot={slot} pos={pos}/>
-                  <ScheduleItemCopy slot={slot}/>
-                </div>
-              </>)}
-          </div>);
-        })}
+      <ScheduleTopImage slot={slot} pos={pos} className={topClass}/>
+      <div className={cn("flex flex-col sm:flex-row sm:gap-4", bodyGap)}>
+        <ScheduleTime slot={slot}/>
+        <ScheduleSideImage slot={slot} pos={pos}/>
+        <ScheduleItemCopy slot={slot}/>
+      </div>
+    </>);
+}
+function ScheduleListItems({ items, gapClass, bare = false }) {
+    // "bare" drops the section's outer panel entirely — each item stands
+    // alone, so a single item becomes the whole Schedule section.
+    if (bare) {
+        return (<div className={gapClass.stack}>
+          {items.map((slot) => (<ScheduleSlot key={slot.id || slot.title} slot={slot}/>))}
+        </div>);
+    }
+    return (<>
+      {items.map((slot, i) => (<div key={slot.id || slot.title} className={cn(gapClass.pad, i !== items.length - 1 && "border-b border-border")}>
+          <ScheduleSlot slot={slot}/>
+        </div>))}
     </>);
 }
 function ScheduleFlexItems({ items, gapClass }) {
     return (<div className={cn("grid sm:grid-cols-2", gapClass.grid)}>
-      {items.map((slot, i) => {
-            const pos = slot.imagePosition || "left";
-            const bg = !!slot.image && pos === "background";
-            return (<div key={slot.id || slot.title} className="overflow-hidden rounded-xl border border-border bg-surface-card">
-            {bg ? (<ScheduleBackground slot={slot}/>) : (<>
-                <ScheduleTopImage slot={slot} pos={pos} className="h-36"/>
-                <div className="flex flex-col gap-3 p-4 sm:flex-row sm:gap-4">
-                  <ScheduleTime slot={slot}/>
-                  <ScheduleSideImage slot={slot} pos={pos}/>
-                  <ScheduleItemCopy slot={slot}/>
-                </div>
-              </>)}
-          </div>);
-        })}
+      {items.map((slot) => (isStandaloneSlot(slot)
+            ? (<ScheduleStandalone key={slot.id || slot.title} slot={slot}/>)
+            : (<div key={slot.id || slot.title} className="overflow-hidden rounded-xl border border-border bg-surface-card">
+                <ScheduleSlot slot={slot} topClass="h-36" bodyGap="gap-3 p-4"/>
+              </div>)))}
     </div>);
 }
 function ScheduleTimelineItems({ items, gapClass }) {
     return (<ol className={cn("relative", gapClass.stack)}>
       {items.map((slot, i) => {
-            const pos = slot.imagePosition || "left";
-            const bg = !!slot.image && pos === "background";
             const last = i === items.length - 1;
             return (<li key={slot.id || slot.title} className="relative pl-10">
             
@@ -182,14 +214,7 @@ function ScheduleTimelineItems({ items, gapClass }) {
                         bottom: `${gapClass.rail || 0}rem`,
                     }}/>) : null}
             <span className="absolute left-0 top-1.5 h-[13px] w-[13px] rounded-full border-2 border-border bg-surface-card"/>
-            {bg ? (<ScheduleBackground slot={slot}/>) : (<div className="space-y-2">
-                <ScheduleTopImage slot={slot} pos={pos} className="h-32"/>
-                <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
-                  <ScheduleTime slot={slot}/>
-                  <ScheduleSideImage slot={slot} pos={pos}/>
-                  <ScheduleItemCopy slot={slot}/>
-                </div>
-              </div>)}
+            {isStandaloneSlot(slot) ? (<ScheduleStandalone slot={slot}/>) : (<ScheduleSlot slot={slot} topClass="mb-2 h-32"/>)}
           </li>);
         })}
     </ol>);
@@ -198,17 +223,24 @@ function ScheduleBlock({ event }) {
     const items = Array.isArray(event.schedule) ? event.schedule : [];
     if (!items.length)
         return null;
-    const layout = items[0]?.layout || "list";
-    const gapClass = SCHEDULE_GAP_CLASSES[items[0]?.spacing] || SCHEDULE_GAP_CLASSES.normal;
-    return (<section className="space-y-4">
-      <SectionTitle icon={Clock}>Schedule</SectionTitle>
-      <div className="overflow-hidden rounded-xl border border-border bg-surface-subtle">
-        {layout === "flex" || layout === "cards" ? (<div className="p-3">
+    const head = items[0] || {};
+    const layout = head.layout || "list";
+    const gapClass = SCHEDULE_GAP_CLASSES[head.spacing] || SCHEDULE_GAP_CLASSES.normal;
+    const bare = head.frame === "bare";
+    const note = String(head.sectionNote || "").trim();
+    const inner = layout === "flex" || layout === "cards" ? (<div className={cn(!bare && "p-3")}>
             <ScheduleFlexItems items={items} gapClass={gapClass}/>
           </div>) : layout === "timeline" ? (<div className="p-4 sm:p-5">
             <ScheduleTimelineItems items={items} gapClass={gapClass}/>
-          </div>) : (<ScheduleListItems items={items} gapClass={gapClass}/>)}
-      </div>
+          </div>) : (<ScheduleListItems items={items} gapClass={gapClass} bare={bare}/>);
+    return (<section className="space-y-4">
+      <SectionTitle icon={Clock}>Schedule</SectionTitle>
+      {note ? (<p className="-mt-2 text-sm leading-relaxed text-muted-foreground">
+          {note}
+        </p>) : null}
+      {bare ? (inner) : (<div className="overflow-hidden rounded-xl border border-border bg-surface-subtle">
+          {inner}
+        </div>)}
     </section>);
 }
 function NoteCard({ icon: Icon, title, text }) {
@@ -1037,7 +1069,18 @@ export function PageBlock({ block, event, accent }) {
     const Renderer = BLOCK_RENDERERS[block.type];
     if (!Renderer)
         return null;
-    return (<BlockShell layout={block.layout} accent={accent}>
+    const note = getSectionNote(event, block.type);
+    const content = (<BlockShell layout={block.layout} accent={accent}>
       <Renderer event={event} props={block.props || {}} accent={accent}/>
     </BlockShell>);
+    if (!note)
+        return content;
+    // Organizer note for this section: an "i" pinned to the block's top-right
+    // corner opens the full text.
+    return (<div className="relative">
+      <div className="absolute right-0 top-0 z-10">
+        <SectionNoteBadge text={note}/>
+      </div>
+      {content}
+    </div>);
 }

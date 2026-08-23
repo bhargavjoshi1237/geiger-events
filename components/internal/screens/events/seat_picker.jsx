@@ -1,13 +1,20 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Accessibility, Loader2, Sparkles, Timer } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, Timer } from "lucide-react";
 
 import { Button } from "@geiger/ui";
-import { cn } from "@/lib/utils";
 import { currency } from "@/components/internal/screens/tickets/constants";
 import { buildPriceTiers } from "@/lib/seating/price_tiers";
+import {
+  ACCESSIBLE_KINDS,
+  buildSeatOffers,
+  filterOffers,
+  offerPriceRange,
+  sortOffers,
+} from "@/lib/seating/offers";
+import { buildRowQuality } from "@/lib/seating/quality";
 import {
   getEventSeating,
   holdSeats,
@@ -15,7 +22,11 @@ import {
   seatToken,
 } from "@/lib/supabase/seating";
 
-import { SeatMapView } from "./seat_map_view";
+import { VenueChart } from "@/components/internal/shared/venue_chart";
+import { measureSeatPitch } from "@/lib/seating/viewport";
+import { cn } from "@/lib/utils";
+
+import { SeatOffers } from "./seat_offers";
 
 // Buyer-facing seat selection. Loads the event's map through the anon RPC,
 // holds every selected seat with a TTL, and reports the selection upward.
@@ -23,8 +34,10 @@ import { SeatMapView } from "./seat_map_view";
 // map-first  — the section the buyer clicks decides the ticket and the price.
 // type-first — the ticket is already chosen; only sections mapped to it are
 //              selectable, and exactly `requiredQty` seats must be picked.
-
-const ACCESSIBLE_KINDS = new Set(["wheelchair", "companion"]);
+//
+// The map is paired with an OFFERS rail (seat_offers.jsx) listing every row on
+// sale, because a map alone can't answer the question buyers actually arrive
+// with: "where are N seats together inside my budget?"
 
 function Countdown({ expiresAt, onExpire }) {
   const [left, setLeft] = useState(0);
@@ -60,16 +73,37 @@ export function SeatPicker({
   requiredQty = 0,
   onChange,
   accent,
+  // The rail's primary action — the buyer confirms from beside their seats
+  // rather than hunting for a button below the map.
+  onConfirm,
+  confirmLabel = "Reserve seats",
+  // The way back to the previous checkout step. It shares the picker's one
+  // control strip rather than getting a footer band of its own.
+  onBack,
+  // Checkout owns the holds: the picker is unmounted the moment the buyer
+  // moves to the details step, and dropping the holds there would put the
+  // seats back on sale mid-purchase.
+  releaseOnUnmount = false,
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState([]);
-  const [activeSectionId, setActiveSectionId] = useState(null);
   const [expiresAt, setExpiresAt] = useState(null);
   const [accessibleOnly, setAccessibleOnly] = useState(false);
   const [taken, setTaken] = useState(() => new Set());
   const [busy, setBusy] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  // Offers rail: how it's sorted, the price ceiling (null = no ceiling), and
+  // which row the buyer came in through.
+  // "Best seats" leads: most events sell a section at one price, and a price
+  // sort has nothing to say about a list where every row costs the same.
+  const [sort, setSort] = useState("best");
+  const [maxPrice, setMaxPrice] = useState(null);
+  const [selectedOfferId, setSelectedOfferId] = useState(null);
+  const [party, setParty] = useState(1);
+  // The map moves in response to events (a row picked, a reset), never as a
+  // consequence of the offer list changing underneath it.
+  const chartRef = useRef(null);
 
   const mode = seating?.mode || "map-first";
   const sectionTiers = useMemo(() => seating?.sectionTiers || {}, [seating?.sectionTiers]);
@@ -90,12 +124,16 @@ export function SeatPicker({
     };
   }, [event?.id, reloadToken]);
 
-  // Drop this session's holds when the picker unmounts (buyer closed checkout).
+  // Only drop this session's holds on unmount when nobody upstream owns them.
+  // Inside checkout this is off: advancing a step unmounts the picker, and
+  // releasing there handed the buyer's seats back to everyone else while they
+  // were still filling in their details.
   useEffect(() => {
+    if (!releaseOnUnmount) return undefined;
     return () => {
       if (event?.id && token) releaseSeats(event.id, token);
     };
-  }, [event?.id, token]);
+  }, [event?.id, token, releaseOnUnmount]);
 
   const ticketById = useMemo(() => {
     const map = new Map();
@@ -106,6 +144,19 @@ export function SeatPicker({
   const seatsById = useMemo(() => {
     const map = new Map();
     for (const seat of data?.seats ?? []) map.set(seat.id, seat);
+    return map;
+  }, [data]);
+
+  // Seats grouped by section, built once. Every section block on the map needs
+  // its own seat list to show an availability count, and filtering the whole
+  // array per section made a 20,000-seat arena quadratic on every render.
+  const seatsBySection = useMemo(() => {
+    const map = new Map();
+    for (const seat of data?.seats ?? []) {
+      const list = map.get(seat.sectionId);
+      if (list) list.push(seat);
+      else map.set(seat.sectionId, [seat]);
+    }
     return map;
   }, [data]);
 
@@ -133,8 +184,9 @@ export function SeatPicker({
   };
 
   const sectionMeta = (section) => {
-    const seats = (data?.seats ?? []).filter((s) => s.sectionId === section.id);
-    const open = seats.filter((s) => !taken.has(s.id)).length;
+    const seats = seatsBySection.get(section.id) ?? [];
+    let open = 0;
+    for (const seat of seats) if (!taken.has(seat.id)) open += 1;
     const price = priceForSection(section.id);
     return {
       available: section.kind === "ga" ? section.capacity : open,
@@ -145,14 +197,16 @@ export function SeatPicker({
   const seatState = (seat) => {
     if (selected.includes(seat.id)) return "selected";
     if (taken.has(seat.id)) return "sold";
-    if (accessibleOnly && !ACCESSIBLE_KINDS.has(seat.kind)) return "sold";
+    // Open, just hidden by the accessible filter — never call it sold.
+    if (accessibleOnly && !ACCESSIBLE_KINDS.has(seat.kind)) return "filtered";
     if (ACCESSIBLE_KINDS.has(seat.kind)) return "accessible";
     return "available";
   };
 
   const seatLabel = (seat, state) => {
     const price = priceForSection(seat.sectionId);
-    return `Row ${seat.rowLabel} seat ${seat.seatLabel}, ${state}${
+    const said = state === "filtered" ? "hidden by the accessible filter" : state;
+    return `Row ${seat.rowLabel} seat ${seat.seatLabel}, ${said}${
       price ? `, ${currency(price)}` : ""
     }`;
   };
@@ -202,6 +256,21 @@ export function SeatPicker({
   const toggleSeat = (seat) => {
     const isSelected = selected.includes(seat.id);
     let next = isSelected ? selected.filter((id) => id !== seat.id) : [...selected, seat.id];
+    // Picking chairs by hand means the buyer is no longer on a listed row.
+    setSelectedOfferId(null);
+
+    // In map-first the SECTION sets the ticket and the price, and an order
+    // carries one ticket — so a selection spanning two sections would be billed
+    // entirely at the first one's price. Keep it to a single section.
+    if (!isSelected && mode === "map-first") {
+      const others = next
+        .map((id) => seatsById.get(id))
+        .filter((s) => s && s.sectionId !== seat.sectionId);
+      if (others.length) {
+        toast.error("Seats in one order have to come from the same section.");
+        return;
+      }
+    }
 
     // A wheelchair space and its companion seat sell together.
     if (!isSelected && seat.companionOf) next = [...new Set([...next, seat.companionOf])];
@@ -226,38 +295,106 @@ export function SeatPicker({
     applySelection(next);
   };
 
-  // Pick the best contiguous block in the highest-priced open section.
-  const bestAvailable = () => {
-    const qty = mode === "type-first" && requiredQty > 0 ? requiredQty : 1;
-    const sections = [...(data?.sections ?? [])]
-      .filter((s) => s.kind !== "ga" && !disabledSectionIds.has(s.id))
-      .sort((a, b) => priceForSection(b.id) - priceForSection(a.id));
+  // How many seats sit together in one pick. type-first already knows, so the
+  // rail only offers the choice in map-first.
+  const partySize = mode === "type-first" && requiredQty > 0 ? requiredQty : party;
 
-    for (const section of sections) {
-      const rows = new Map();
-      for (const seat of data.seats.filter((s) => s.sectionId === section.id)) {
-        if (!rows.has(seat.rowLabel)) rows.set(seat.rowLabel, []);
-        rows.get(seat.rowLabel).push(seat);
-      }
-      for (const rowSeats of rows.values()) {
-        const ordered = [...rowSeats].sort((a, b) => a.x - b.x);
-        let run = [];
-        for (const seat of ordered) {
-          run = taken.has(seat.id) ? [] : [...run, seat.id];
-          if (run.length === qty) {
-            setActiveSectionId(section.id);
-            applySelection(run);
-            return;
-          }
-        }
-      }
+  // How good each row is, from the map's own geometry. Independent of who is
+  // selling what, so it survives every filter the buyer applies — and it is the
+  // only thing that can rank a venue selling at a single price.
+  const rowQuality = useMemo(
+    () =>
+      buildRowQuality({
+        sections: data?.sections ?? [],
+        seats: data?.seats ?? [],
+        field: data?.field,
+        aspect: data?.aspect,
+      }),
+    [data],
+  );
+
+  // Every row that is actually on sale — the list beside the map. Built from
+  // the same data the map draws, so the two can never disagree.
+  const allOffers = useMemo(
+    () =>
+      buildSeatOffers({
+        sections: data?.sections ?? [],
+        seats: data?.seats ?? [],
+        taken,
+        sectionTiers,
+        tickets,
+        aspect: data?.aspect,
+        quantity: partySize,
+        accessibleOnly,
+        quality: rowQuality,
+      }).filter((o) => !disabledSectionIds.has(o.sectionId)),
+    [data, taken, sectionTiers, tickets, partySize, accessibleOnly, disabledSectionIds, rowQuality],
+  );
+
+  const range = useMemo(() => offerPriceRange(allOffers), [allOffers]);
+
+  // How big a chair may be drawn. Measured from the venue's own chairs, because
+  // an arena and a studio theatre disagree by an order of magnitude.
+  const seatPitch = useMemo(
+    () => measureSeatPitch(data?.seats ?? [], data?.aspect),
+    [data],
+  );
+
+  const visibleOffers = useMemo(
+    () =>
+      sortOffers(
+        // A ceiling at or above the dearest offer is no ceiling at all —
+        // otherwise switching filters can shrink the range under the buyer's
+        // slider and empty the list.
+        filterOffers(allOffers, { maxPrice: maxPrice >= range.max ? null : maxPrice }),
+        sort,
+      ),
+    [allOffers, maxPrice, range.max, sort],
+  );
+
+  // The best seat on sale, whatever the buyer is currently sorting by. It leads
+  // the rail, and with one flat ticket price it is the only recommendation on
+  // the panel.
+  const bestOffer = useMemo(
+    () => sortOffers(visibleOffers, "best").find((o) => o.fits) || null,
+    [visibleOffers],
+  );
+
+  // Every seat of one row, for framing the map on it.
+  const seatsOfOffer = (offer) =>
+    (data?.seats ?? []).filter(
+      (s) => s.sectionId === offer.sectionId && s.rowLabel === offer.rowLabel,
+    );
+
+  // Picking a row from the list moves the map to it and takes the adjacent
+  // block the offer already worked out.
+  const chooseOffer = (offer) => {
+    if (!offer) return;
+    chartRef.current?.focusSeats(seatsOfOffer(offer));
+    if (!offer.fits || !offer.seatIds.length) {
+      // Still open the row — it has seats, just not `partySize` in a run — so
+      // the buyer can take what's there rather than hitting a dead end.
+      setSelectedOfferId(null);
+      toast.error(
+        `Row ${offer.rowLabel} hasn't got ${partySize} together. Pick from what's open.`,
+      );
+      return;
     }
-    toast.error("No block of that size is open. Try picking seats individually.");
+    setSelectedOfferId(offer.id);
+    applySelection(offer.seatIds);
+  };
+
+  const clearSelection = () => {
+    setSelected([]);
+    setSelectedOfferId(null);
+    setExpiresAt(null);
+    releaseSeats(event.id, token);
+    report([]);
   };
 
   if (loading) {
     return (
-      <div className="flex h-48 items-center justify-center text-text-secondary">
+      <div className="flex h-full min-h-48 items-center justify-center text-text-secondary">
         <Loader2 className="h-5 w-5 animate-spin" />
       </div>
     );
@@ -265,7 +402,7 @@ export function SeatPicker({
 
   if (!data) {
     return (
-      <p className="py-6 text-center text-sm text-text-secondary">
+      <p className="flex h-full min-h-48 items-center justify-center text-center text-sm text-text-secondary">
         Seating isn&apos;t available for this event.
       </p>
     );
@@ -275,37 +412,47 @@ export function SeatPicker({
   const total = selectedSeats.reduce((sum, seat) => sum + priceForSection(seat.sectionId), 0);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    // One flex column that fills whatever room the dialog gives it, so the map
+    // and the rail grow into the space instead of leaving a dead band under a
+    // fixed-ratio canvas.
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      {/* Every control that isn't the map or the rail, on ONE strip. */}
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
+          {onBack ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={onBack}
+              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Button>
+          ) : null}
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            disabled={busy}
-            onClick={bestAvailable}
+            disabled={busy || !visibleOffers.length}
+            // "Best" means the best SEAT, not whatever happens to be at the top
+            // of the sort the buyer is currently browsing by.
+            onClick={() =>
+              chooseOffer(
+                sortOffers(visibleOffers, "best").find((o) => o.fits) || visibleOffers[0],
+              )
+            }
             className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
             <Sparkles className="h-4 w-4" /> Best available
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            aria-pressed={accessibleOnly}
-            onClick={() => setAccessibleOnly((v) => !v)}
-            className={cn(
-              "text-muted-foreground hover:bg-surface-active hover:text-foreground",
-              accessibleOnly && "bg-surface-active text-foreground",
-            )}
-          >
-            <Accessibility className="h-4 w-4" /> Accessible
           </Button>
         </div>
         <Countdown
           expiresAt={expiresAt}
           onExpire={() => {
             setSelected([]);
+            setSelectedOfferId(null);
             setExpiresAt(null);
             report([]);
             setReloadToken((t) => t + 1);
@@ -314,43 +461,142 @@ export function SeatPicker({
         />
       </div>
 
-      <SeatMapView
+      {/* The map bleeds to the edges of the dialog and the rail sits beside it.
+          Nothing floats over the venue: whatever the buyer is aiming at stays
+          visible while they read the list. */}
+      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <VenueChart
+          ref={chartRef}
+          className="min-h-[17rem] bg-surface-subtle lg:min-h-0"
+          sections={data.sections}
+          seats={data.seats}
+          field={data.field}
+          aspect={data.aspect}
+          seatPitch={seatPitch}
+          seatState={seatState}
+          onSeatClick={toggleSeat}
+          sectionMeta={sectionMeta}
+          disabledSectionIds={disabledSectionIds}
+          seatLabel={seatLabel}
+          colorBySectionId={priceTiers.colorBySectionId}
+          formatPrice={currency}
+        />
+
+        <div className="min-h-[20rem] overflow-hidden border-t border-border bg-surface-subtle lg:min-h-0 lg:border-l lg:border-t-0">
+          <SeatOffers
+            offers={visibleOffers}
+            sort={sort}
+            onSortChange={setSort}
+            maxPrice={maxPrice}
+            priceRange={range}
+            onMaxPriceChange={setMaxPrice}
+            accessibleOnly={accessibleOnly}
+            onAccessibleChange={setAccessibleOnly}
+            quantity={partySize}
+            onQuantityChange={mode === "map-first" ? setParty : undefined}
+            bestOffer={bestOffer}
+            selectedOfferId={selectedOfferId}
+            onSelectOffer={chooseOffer}
+            formatPrice={currency}
+            accent={accent}
+          />
+        </div>
+      </div>
+
+      {/* What the buyer has got and what it costs, on one bar under both panels
+          — the map and the list are both about CHOOSING, and the decision to
+          buy shouldn't be buried in the scroll of either one. */}
+      <SelectionBar
+        seats={selectedSeats}
         sections={data.sections}
-        seats={data.seats}
-        field={data.field}
-        background={data.background}
-        aspect={data.aspect}
-        activeSectionId={activeSectionId}
-        onSectionChange={setActiveSectionId}
-        seatState={seatState}
-        onSeatClick={toggleSeat}
-        sectionMeta={sectionMeta}
-        disabledSectionIds={disabledSectionIds}
-        seatLabel={seatLabel}
-        colorBySectionId={priceTiers.colorBySectionId}
+        total={total}
         legend={priceTiers.legend}
         formatPrice={currency}
+        onClear={clearSelection}
+        onConfirm={onConfirm}
+        confirmLabel={confirmLabel}
+        busy={busy}
+        accent={accent}
       />
+    </div>
+  );
+}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-        <p className="text-sm text-text-secondary">
-          {selectedSeats.length === 0
-            ? mode === "type-first" && requiredQty > 0
-              ? `Choose ${requiredQty} seat${requiredQty > 1 ? "s" : ""}`
-              : "Choose your seats"
-            : selectedSeats
-                .map((seat) => `${seat.rowLabel}${seat.seatLabel}`)
-                .join(", ")}
-        </p>
-        {selectedSeats.length > 0 ? (
-          <p
-            className="text-sm font-medium tabular-nums text-foreground"
-            style={accent ? { color: accent } : undefined}
+// The price bands, and — once seats are held — what they are and what they cost.
+// One row that swaps its contents rather than two that fight for the space.
+function SelectionBar({
+  seats,
+  sections,
+  total,
+  legend,
+  formatPrice,
+  onClear,
+  onConfirm,
+  confirmLabel,
+  busy,
+  accent,
+}) {
+  const first = seats[0];
+  const section = first ? sections.find((s) => s.id === first.sectionId) : null;
+  const labels = seats.map((s) => s.seatLabel).join(", ");
+
+  return (
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-border bg-surface-subtle px-3 py-2">
+      {/* The canvas can't be read by a screen reader, so the selection is
+          announced from here instead. */}
+      <p aria-live="polite" className="sr-only">
+        {seats.length
+          ? `${seats.length} seat${seats.length === 1 ? "" : "s"} held in section ${
+              section?.name ?? ""
+            }, row ${first?.rowLabel ?? ""}, ${formatPrice(total)} total.`
+          : "No seats selected."}
+      </p>
+
+      {seats.length === 0 ? (
+        <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {(legend ?? []).map((band) => (
+            <li
+              key={band.key}
+              className="inline-flex items-center gap-1.5 text-xs text-text-secondary"
+            >
+              <span className={cn("h-2 w-2 rounded-full", band.dot)} />
+              <span className="tabular-nums">{formatPrice(band.price)}</span>
+              {band.label ? <span className="text-text-tertiary">{band.label}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="min-w-0 text-sm">
+          <span className="font-medium text-foreground">
+            Sec {section?.name || "—"} · Row {first?.rowLabel} ·{" "}
+            {seats.length > 1 ? "Seats" : "Seat"} {labels}
+          </span>
+          <button
+            type="button"
+            onClick={onClear}
+            className="ml-2 text-xs text-text-tertiary underline-offset-2 transition-colors hover:text-foreground hover:underline"
           >
-            {selectedSeats.length} × seat · {currency(total)}
-          </p>
-        ) : null}
-      </div>
+            Clear
+          </button>
+        </div>
+      )}
+
+      {seats.length > 0 ? (
+        <div className="flex items-center gap-3">
+          <span className="text-base font-semibold tabular-nums text-foreground">
+            {formatPrice(total)}
+          </span>
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            style={accent ? { backgroundColor: accent } : undefined}
+          >
+            {confirmLabel}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

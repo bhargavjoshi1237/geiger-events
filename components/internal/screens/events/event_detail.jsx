@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useIdleRecenter } from "@/lib/hooks/use-idle-recenter";
+import { useAddons } from "@/context/addons-context";
 
 import { EVENT_STATUS_MAP, formatDate } from "./sample_data";
 import { EventPublicPage } from "./event_public_page";
@@ -24,6 +25,9 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
   // The active editor section lives in the URL (?section=<key>) so a refresh
   // keeps the user on the same tab inside the event.
   const { section: active, setSection: setActive } = useWorkspaceUrl();
+  // Project-wide feature switches, for sections gated on something outside the
+  // event record (Packages).
+  const { isEnabled } = useAddons();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [screenQuery, setScreenQuery] = useState("");
   const [design, setDesign] = useState(
@@ -92,13 +96,16 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
   };
 
   const ActiveSection = SECTIONS[active] || SECTIONS.overview;
+  const sectionCtx = { isEnabled };
 
   // Right-hand section nav, filtered by the search box. Group names also count
   // as matches (typing "Tickets" surfaces every ticket-related topic).
   const normalizedQuery = screenQuery.trim().toLowerCase().replace(/[-_]/g, " ");
   const navGroups = NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((i) => !i.showIf || i.showIf(form)),
+    // `showIf` gets the event plus a context bag, so a section can be gated on
+    // something outside the event record — a project-wide feature switch.
+    items: group.items.filter((i) => !i.showIf || i.showIf(form, sectionCtx)),
   }))
     .map((group) => ({
       ...group,

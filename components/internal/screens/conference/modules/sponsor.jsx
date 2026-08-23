@@ -11,6 +11,7 @@ import {
   nameField,
   c,
   currency,
+  numberSort,
 } from "@/components/internal/shared/records/builders";
 import { mediaSection, imageField } from "./shared";
 
@@ -29,6 +30,7 @@ export const SPONSOR_MODULE = {
   search: (r) =>
     `${r.name} ${r.config.contactName || ""} ${r.config.description || ""}`,
   filters: [],
+  sorts: [numberSort("amount", (r) => r.config.amount, "Amount donated")],
   columns: [
     avatarNameCol((r) => r.config.description, { shape: "square" }),
     textCol("contact", "Contact", (r) => r.config.contactName),

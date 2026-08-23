@@ -37,6 +37,7 @@ export function navPermissionKey(title) {
 const NAV_SECTIONS = [
   "Overview",
   "Events",
+  "Packages",
   "Venues",
   "Event Design",
   "Sourcing",

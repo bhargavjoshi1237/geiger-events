@@ -157,6 +157,8 @@ export function DoneStep({ event, checkout, accentStyle, daConfig, live, onClose
           Done
         </Button>
       )}
+
+      {checkout.disclaimerSlot("checkout-done", "w-full text-left")}
     </div>
   );
 }

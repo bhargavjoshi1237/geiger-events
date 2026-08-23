@@ -1,16 +1,18 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ListRow } from "@/components/ui/ListRow";
 import { Screen } from "@/components/ui/Screen";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
+import { firstName } from "@/lib/format";
 import { usePortalData } from "@/state/data";
 import { useSession } from "@/state/session";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -18,13 +20,32 @@ import { colors, radius, spacing, type } from "@/theme/tokens";
 export default function MoreScreen() {
   const router = useRouter();
   const { counts } = usePortalData();
-  const { signOut } = useSession();
+  const { member, signOut } = useSession();
   const scrollY = useSharedValue(0);
   const [confirmOut, setConfirmOut] = useState(false);
 
   return (
     <Screen scroll onScroll={(y) => (scrollY.value = y)}>
       <ScreenHeader title="More" subtitle="Everything that's not a tab." scrollY={scrollY} />
+
+      {/* Identity card doubles as the account entry point. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open account"
+        onPress={() => router.push("/account")}
+        style={({ pressed }) => [styles.profileCard, pressed && styles.pressed]}
+      >
+        <Avatar name={member?.name} email={member?.email} size={44} />
+        <View style={styles.profileStack}>
+          <Text style={styles.profileName} numberOfLines={1}>
+            {member?.name || firstName(member?.name, member?.email)}
+          </Text>
+          <Text style={styles.profileEmail} numberOfLines={1}>
+            {member?.email}
+          </Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.textTertiary} />
+      </Pressable>
 
       <SectionTitle>Purchases</SectionTitle>
       <Card style={styles.groupCard}>
@@ -72,11 +93,6 @@ export default function MoreScreen() {
 
       <SectionTitle>Account</SectionTitle>
       <Card style={styles.groupCard}>
-        <ListRow
-          leading={<IconTile icon="user" />}
-          title="Account"
-          onPress={() => router.push("/account")}
-        />
         <ListRow
           leading={<IconTile icon="log-out" danger />}
           title="Sign out"
@@ -128,6 +144,34 @@ function Count({ value }: { value: number }) {
 }
 
 const styles = StyleSheet.create({
+  profileCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  profileStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  profileName: {
+    ...type.label,
+    fontWeight: "600",
+    color: colors.foreground,
+  },
+  profileEmail: {
+    ...type.caption,
+    color: colors.textSecondary,
+  },
   groupCard: {
     padding: 0,
     paddingHorizontal: spacing.lg,

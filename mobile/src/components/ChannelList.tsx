@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
@@ -52,7 +53,7 @@ export function ChannelList({ kind, emptyTitle, emptyMessage, routeBase }: Chann
           entering={FadeInDown.delay(stagger(idx)).springify()}
           layout={LinearTransition}
         >
-          <Card onPress={() => router.push(`${routeBase}/${c.id}`)} style={styles.card}>
+          <Card onPress={() => router.push(`${routeBase}/${c.id}` as Href)} style={styles.card}>
             <View style={styles.row}>
               <View style={styles.stack}>
                 <View style={styles.titleRow}>
@@ -149,7 +150,6 @@ const styles = StyleSheet.create({
   },
   time: {
     ...type.caption,
-    fontSize: 10,
     color: colors.textTertiary,
   },
 });

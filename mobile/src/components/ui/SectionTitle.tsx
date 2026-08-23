@@ -8,7 +8,8 @@ type SectionTitleProps = {
   action?: React.ReactNode;
 };
 
-// Heading row with an optional right-hand action.
+// Uppercase micro-kicker that opens each section; keeps hierarchy without
+// competing with card titles.
 export function SectionTitle({ children, action }: SectionTitleProps) {
   return (
     <View style={styles.row}>
@@ -24,9 +25,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   title: {
-    ...type.heading,
-    color: colors.foreground,
+    ...type.kicker,
+    textTransform: "uppercase",
+    color: colors.textSecondary,
+    flexShrink: 1,
   },
 });

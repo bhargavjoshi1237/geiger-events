@@ -27,6 +27,7 @@ import { AllWorkflowsScreen } from "./workflows/all_workflows";
 import { WorkflowTemplatesScreen } from "./workflows/workflow_templates";
 import { RunHistoryScreen } from "./workflows/run_history";
 import { VenuesScreen } from "./venues/all_venues";
+import { PackagesSettingsScreen } from "./packages/packages_settings";
 import { OrganiserProfileScreen } from "./discovery/organiser_profile";
 import { TicketTypesScreen } from "./tickets/ticket_types";
 import { TicketTiersScreen } from "./tickets/ticket_tiers";
@@ -172,6 +173,11 @@ export const SCREEN_REGISTRY = {
   Templates: TemplatesScreen,
   "Event Series": EventSeriesScreen,
   "Event Wall": EventWallScreen,
+
+  // Packages area (workspace-level). A single destination holding the
+  // project-wide switch; the packages themselves are authored per event, in the
+  // event editor's Packages section.
+  Packages: PackagesSettingsScreen,
 
   // Venues area (workspace-level). The sectioned venue editor opens by
   // selecting a row (?venue=<id>); per-venue concerns are its sections.

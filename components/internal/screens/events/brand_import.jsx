@@ -35,6 +35,10 @@ import { Segmented } from "./theme_controls";
 // "Import" page-design mode — read a website, pull its brand, apply it to the
 // event page. Extraction runs server-side (/api/brand/extract); this file owns
 // the picking, the logo upload, and turning a selection into a theme patch.
+//
+// The dialog is surface-agnostic: the event editor passes `eventId` and gets
+// the event's media folder, while the Event Wall passes its own `uploader` and
+// narrows `categories` to what its page can actually render.
 
 const CATEGORIES = [
   { key: "logo", label: "Logo", hint: "Brand mark for the header and footer" },
@@ -73,16 +77,16 @@ function faceSlug(face) {
 // typeface render. Returns the faces stripped back to what the theme persists
 // (the base64 payload must never reach the metadata bag) plus how many we
 // re-hosted, so the toast can say so.
-async function hostFontFaces(faces, eventId) {
+async function hostFontFaces(faces, uploadFont) {
   const list = Array.isArray(faces) ? faces : [];
   if (!list.length) return { faces: [], hosted: 0 };
 
   const uploads = await Promise.all(
     list.map(async (face) => {
-      if (!face?.dataUrl || !eventId) return null;
+      if (!face?.dataUrl) return null;
       try {
         const file = await dataUrlToFile(face.dataUrl, face.mime, faceSlug(face));
-        const stored = await uploadEventFont(eventId, file);
+        const stored = await uploadFont(file);
         return stored?.url || null;
       } catch {
         return null;
@@ -145,17 +149,32 @@ export function ImportBrandDialog({
   open,
   onOpenChange,
   eventId,
+  uploader,
+  categories,
   theme,
   footer,
   onApply,
 }) {
+  // What this surface can take. A wall has no site-header bar, so offering to
+  // import someone's nav would produce settings nothing renders.
+  const offered = categories
+    ? CATEGORIES.filter((c) => categories.includes(c.key))
+    : CATEGORIES;
+  // Where assets land. Falls back to the event's own media folder, which is
+  // what every caller did before the wall grew its own.
+  const uploadImage =
+    uploader?.image ||
+    ((file, options) => (eventId ? uploadEventImage(eventId, file, options) : null));
+  const uploadFont =
+    uploader?.font || ((file) => (eventId ? uploadEventFont(eventId, file) : null));
+
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | done
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
   const [logoIndex, setLogoIndex] = useState(0);
   const [apply, setApply] = useState(
-    Object.fromEntries(CATEGORIES.map((c) => [c.key, true])),
+    Object.fromEntries(offered.map((c) => [c.key, true])),
   );
   const [useBackground, setUseBackground] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -203,7 +222,7 @@ export function ImportBrandDialog({
       setLogoIndex(0);
       // Only offer what the site actually gave us.
       setApply(
-        Object.fromEntries(CATEGORIES.map((c) => [c.key, !!json.found[c.key]])),
+        Object.fromEntries(offered.map((c) => [c.key, !!json.found[c.key]])),
       );
       setStatus("done");
     } catch {
@@ -236,9 +255,7 @@ export function ImportBrandDialog({
             const file = await dataUrlToFile(logo.dataUrl, logo.mime);
             // Compression off: canvas re-encoding destroys SVGs and flattens
             // transparency, which is exactly what a logo needs to keep.
-            const uploaded = eventId
-              ? await uploadEventImage(eventId, file, { compress: false })
-              : null;
+            const uploaded = await uploadImage(file, { compress: false });
             // Storage unconfigured or the write was refused — hotlink the source
             // so the import still produces a visible logo.
             return { url: uploaded?.url || logo.url, kind: logo.kind };
@@ -257,7 +274,7 @@ export function ImportBrandDialog({
     let source = data;
     let hostedFonts = 0;
     if (apply.fonts && data.fonts?.faces?.length) {
-      const { faces, hosted } = await hostFontFaces(data.fonts.faces, eventId);
+      const { faces, hosted } = await hostFontFaces(data.fonts.faces, uploadFont);
       hostedFonts = hosted;
       source = { ...data, fonts: { ...data.fonts, faces } };
     }
@@ -456,7 +473,8 @@ export function ImportBrandDialog({
                 </div>
               ) : null}
 
-              {data.nav?.length || data.cta ? (
+              {offered.some((c) => c.key === "header") &&
+              (data.nav?.length || data.cta) ? (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-text-secondary">
                     Site header — their nav
@@ -514,7 +532,7 @@ export function ImportBrandDialog({
                   What to apply
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {CATEGORIES.map((c) => {
+                  {offered.map((c) => {
                     const available = data.found[c.key];
                     return (
                       <label

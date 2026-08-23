@@ -1,5 +1,5 @@
 import { Stack, router } from "expo-router";
-import * as Notifications from "expo-notifications";
+import type { Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
@@ -7,9 +7,13 @@ import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { AnimatedSplash } from "@/components/AnimatedSplash";
+import { Splash } from "@/components/Splash";
 import { ToastProvider } from "@/components/ui/Toast";
-import { configureNotificationHandler, notificationRoute } from "@/lib/push";
+import {
+  addNotificationResponseHandler,
+  configureNotificationHandler,
+  notificationRoute,
+} from "@/lib/push";
 import { PortalDataProvider } from "@/state/data";
 import { LivePlayerProvider } from "@/state/live_player";
 import { SessionProvider, useSession } from "@/state/session";
@@ -46,14 +50,16 @@ function RootNavigator() {
     void SplashScreen.hideAsync();
   }, []);
 
-  // Route tapped notifications into the app.
-  useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const route = notificationRoute(response.notification.request.content.data ?? {});
-      if (route) router.push(route);
-    });
-    return () => sub.remove();
-  }, []);
+  // Route tapped notifications into the app; a no-op under Expo Go.
+  useEffect(
+    () =>
+      addNotificationResponseHandler((data) => {
+        const route = notificationRoute(data);
+        // The mapper only emits known route strings, but typed routes need the hint.
+        if (route) router.push(route as Href);
+      }),
+    [],
+  );
 
   return (
     <>
@@ -69,7 +75,7 @@ function RootNavigator() {
         <Stack.Screen name="(app)" />
       </Stack>
       {!splashDone ? (
-        <AnimatedSplash ready={status !== "loading"} onFinish={() => setSplashDone(true)} />
+        <Splash ready={status !== "loading"} onFinish={() => setSplashDone(true)} />
       ) : null}
     </>
   );

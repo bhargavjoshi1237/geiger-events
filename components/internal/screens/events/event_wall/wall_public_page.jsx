@@ -1,273 +1,391 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { CalendarX2, Clock, MapPin, Star, Ticket } from "lucide-react";
+import React, { useMemo, useState, useSyncExternalStore } from "react";
+import {
+  Clock,
+  Facebook,
+  Github,
+  Globe,
+  Instagram,
+  LayoutGrid,
+  Linkedin,
+  List,
+  Search,
+  Twitch,
+  Twitter,
+  X,
+  Youtube,
+} from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { EVENT_TYPE_MAP, formatDate } from "../sample_data";
 import {
   resolveTheme,
   themeStyle,
   themeAccent,
+  themeFontFaceCss,
+  themeWebfonts,
   resolveWidth,
   pageBackgroundVideo,
 } from "@/lib/events/theme";
-import { coverKind } from "@/lib/events/gallery";
-import { resolveLayout, cardPriceLabel } from "./wall_layout";
 import { PageFooter } from "../page_footer";
-import { OrganiserProfileHeader } from "@/components/internal/screens/discovery/public_follow";
+import { FollowButton } from "@/components/internal/screens/discovery/public_follow";
+import { resolveLayout } from "./wall_layout";
+import {
+  applyFilters,
+  byStatus,
+  formatClock,
+  gmtOffsetLabel,
+  typeCounts,
+} from "./wall_agenda";
+import { WallEventList } from "./wall_event_list";
+import { WallSidebar } from "./wall_calendar";
 
-const DEFAULT_FILTERS = { status: "upcoming", sortBy: "date_asc" };
+// The published Event Wall (/w/<slug>): an organiser's identity above a
+// date-grouped agenda, with a calendar, an upcoming/past switch, and a map of
+// where the events are alongside it.
+//
+// Status, type, day, search, and view are viewer state — the wall's saved
+// `filters` and `layout` only seed them, so browsing never writes anything back.
 
-// Apply the wall's status filter, featured-first ordering, and sort — pure
-// so both the public route and any future preview can share it.
-export function selectWallEvents(events, wall) {
-  const filters = { ...DEFAULT_FILTERS, ...(wall?.filters || {}) };
-  const featured = Array.isArray(wall?.featured) ? wall.featured : [];
-  const today = new Date().toISOString().slice(0, 10);
+const SOCIAL_ICONS = [
+  [/instagram\./i, Instagram],
+  [/(twitter\.|x\.com)/i, Twitter],
+  [/(youtube\.|youtu\.be)/i, Youtube],
+  [/linkedin\./i, Linkedin],
+  [/facebook\./i, Facebook],
+  [/github\./i, Github],
+  [/twitch\./i, Twitch],
+];
 
-  let list = Array.isArray(events) ? events : [];
-  if (filters.status === "upcoming") list = list.filter((e) => e.date >= today);
-  else if (filters.status === "past") list = list.filter((e) => e.date < today);
+// Match a link to its brand icon by host, falling back to a globe. Matching on
+// the URL rather than the label means an unlabelled link still gets its icon.
+function socialIcon(link) {
+  const haystack = `${link.url || ""} ${link.label || ""}`;
+  for (const [pattern, Icon] of SOCIAL_ICONS) {
+    if (pattern.test(haystack)) return Icon;
+  }
+  return Globe;
+}
 
-  const sorted = [...list].sort((a, b) => {
-    if (filters.sortBy === "date_desc") return b.date.localeCompare(a.date);
-    if (filters.sortBy === "recent") {
-      return (b.createdAt || "").localeCompare(a.createdAt || "");
+// A single half-minute clock shared by every readout on the page. It's an
+// external store rather than state-in-an-effect so the snapshot stays stable
+// between ticks, and so the server snapshot can be `null`: the server has no
+// idea what timezone the reader is in, and rendering a guess mismatches on
+// hydration for every visitor outside UTC.
+let clockNow = null;
+const clockListeners = new Set();
+let clockTimer = null;
+
+function subscribeClock(onChange) {
+  clockListeners.add(onChange);
+  if (!clockTimer) {
+    clockNow = Date.now();
+    clockTimer = setInterval(() => {
+      clockNow = Date.now();
+      clockListeners.forEach((listener) => listener());
+    }, 30000);
+  }
+  return () => {
+    clockListeners.delete(onChange);
+    if (!clockListeners.size) {
+      clearInterval(clockTimer);
+      clockTimer = null;
+      clockNow = null;
     }
-    return a.date.localeCompare(b.date);
-  });
-
-  const featuredEvents = featured
-    .map((id) => sorted.find((e) => e.id === id))
-    .filter(Boolean);
-  const rest = sorted.filter((e) => !featured.includes(e.id));
-  return { featured: featuredEvents, rest };
+  };
 }
 
-// Shared meta lines (date / venue / price), styled for overlay vs classic cards.
-function CardMeta({ event, meta, overlay }) {
-  const price = meta.price ? cardPriceLabel(event) : null;
-  return (
-    <div className={cn("space-y-1", overlay ? "text-white/85" : "text-text-secondary")}>
-      {meta.date ? (
-        <span className="flex items-center gap-1.5 text-sm">
-          <Clock className="h-3.5 w-3.5" />
-          {formatDate(event.date)} · {event.time}
-        </span>
-      ) : null}
-      {meta.venue ? (
-        <span className="flex items-center gap-1.5 text-sm">
-          <MapPin className="h-3.5 w-3.5" />
-          {event.venue}
-          {event.city && event.city !== "Remote" ? `, ${event.city}` : ""}
-        </span>
-      ) : null}
-      {price ? (
-        <span
-          className={cn(
-            "flex items-center gap-1.5 text-sm font-medium",
-            overlay ? "text-white" : "text-foreground",
-          )}
-        >
-          <Ticket className="h-3.5 w-3.5" /> {price}
-        </span>
-      ) : null}
-    </div>
+function useLocalNow() {
+  const stamp = useSyncExternalStore(
+    subscribeClock,
+    () => clockNow,
+    () => null,
   );
+  return stamp ? new Date(stamp) : null;
 }
 
-function FeaturedBadge({ accent }) {
+// Compact "4:56 PM GMT+5:30" for the route's top bar.
+export function WallClock({ className }) {
+  const now = useLocalNow();
   return (
-    <span
-      className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
-      style={{ backgroundColor: accent.color, color: accent.text }}
-    >
-      <Star className="h-3 w-3" /> Featured
+    <span className={cn("text-sm text-text-secondary tabular-nums", className)}>
+      {now ? `${formatClock(now)} ${gmtOffsetLabel(now)}` : ""}
     </span>
   );
 }
 
-// The cover image on an event card — or its video, which plays muted where a
-// card needs a first frame (no player chrome fits a thumbnail).
-function CardCover({ event, className }) {
-  const url = event.coverUrl;
-  if (coverKind(url) === "video") {
+// "Times in GMT+5:30 — 4:56 PM", under the organiser's name.
+function LocalTimeLine() {
+  const now = useLocalNow();
+
+  return (
+    <p className="flex h-5 items-center gap-1.5 text-sm text-text-secondary">
+      {now ? (
+        <>
+          <Clock className="h-3.5 w-3.5" />
+          Times in {gmtOffsetLabel(now)} —{" "}
+          <span className="text-text-tertiary">{formatClock(now)}</span>
+        </>
+      ) : null}
+    </p>
+  );
+}
+
+function SocialLinks({ profile }) {
+  const links = [
+    ...(profile?.website ? [{ url: profile.website, label: "Website" }] : []),
+    ...(Array.isArray(profile?.links) ? profile.links.filter((l) => l?.url) : []),
+  ];
+  if (!links.length) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      {links.map((link, i) => {
+        const Icon = socialIcon(link);
+        return (
+          <a
+            key={`${link.url}-${i}`}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={link.label || link.url}
+            title={link.label || link.url}
+            className="text-text-secondary transition-colors hover:text-foreground"
+          >
+            <Icon className="h-[18px] w-[18px]" />
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+// Cards / list switch, matching the pair of icon buttons in the section header.
+function ViewToggle({ view, onView }) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface-subtle p-0.5">
+      {[
+        ["cards", LayoutGrid, "Card view"],
+        ["list", List, "List view"],
+      ].map(([key, Icon, label]) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onView(key)}
+          aria-label={label}
+          aria-pressed={view === key}
+          className={cn(
+            "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
+            view === key
+              ? "bg-surface-active text-foreground"
+              : "text-text-secondary hover:text-foreground",
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Collapsed to an icon until used, so the header stays quiet on a wall with
+// three events and still scales to one with sixty.
+function SearchControl({ query, onQuery }) {
+  const [open, setOpen] = useState(false);
+
+  if (!open && !query) {
     return (
-      <video
-        src={url}
-        muted
-        playsInline
-        preload="metadata"
-        className={cn("h-full w-full bg-black object-cover", className)}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Search events"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface-subtle text-text-secondary transition-colors hover:text-foreground"
+      >
+        <Search className="h-4 w-4" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface-subtle pl-2.5 pr-1">
+      <Search className="h-4 w-4 shrink-0 text-text-secondary" />
+      <input
+        autoFocus
+        value={query}
+        onChange={(e) => onQuery(e.target.value)}
+        placeholder="Search events"
+        aria-label="Search events"
+        className="w-36 bg-transparent text-sm text-foreground outline-none placeholder:text-text-tertiary sm:w-48"
       />
-    );
-  }
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={url}
-      alt={`${event.name} cover`}
-      className={cn("h-full w-full object-cover", className)}
-    />
+      <button
+        type="button"
+        onClick={() => {
+          onQuery("");
+          setOpen(false);
+        }}
+        aria-label="Clear search"
+        className="flex h-6 w-6 items-center justify-center rounded-md text-text-secondary transition-colors hover:text-foreground"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }
 
-function EventCard({ event, accent, featured, layout, large = false }) {
-  const meta = layout.cardMeta || {};
-  const overlay = layout.cardStyle === "overlay" || large;
-
-  // Overlay / spotlight — text sits over a darkened cover image.
-  if (overlay) {
-    return (
-      <Link
-        href={`/e/${event.id}`}
-        className={cn(
-          "ev-surface group relative flex overflow-hidden rounded-2xl border border-border",
-          large ? "min-h-[240px] sm:aspect-[21/9]" : "aspect-[4/3]",
-        )}
-      >
-        {event.coverUrl ? (
-          <CardCover
-            event={event}
-            className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-          />
-        ) : (
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `linear-gradient(135deg, ${accent.color}55, ${accent.color}11)`,
-            }}
-          />
-        )}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage:
-              "linear-gradient(to top, rgb(0 0 0 / 0.82), rgb(0 0 0 / 0.15) 55%, transparent)",
-          }}
-        />
-        <div className="relative z-10 mt-auto flex w-full flex-col gap-2 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            {featured ? <FeaturedBadge accent={accent} /> : null}
-            {meta.type ? (
-              <Badge
-                variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}
-                className="w-fit"
-              >
-                {event.type}
-              </Badge>
-            ) : null}
-          </div>
-          <p
+function TypeChips({ chips, type, onType, accent }) {
+  if (chips.length < 2) return null;
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {chips.map(({ type: key, count }) => {
+        const active = type === key;
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onType(active ? "" : key)}
+            aria-pressed={active}
             className={cn(
-              "font-semibold text-white",
-              large ? "text-2xl" : "text-lg",
+              "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors",
+              active
+                ? "border-transparent"
+                : "border-border bg-surface-subtle text-text-secondary hover:text-foreground",
             )}
+            style={
+              active ? { backgroundColor: accent.color, color: accent.text } : undefined
+            }
           >
-            {event.name}
-          </p>
-          <CardMeta event={event} meta={meta} overlay />
-        </div>
-      </Link>
-    );
-  }
-
-  // Classic — cover on top, meta below.
-  return (
-    <Link
-      href={`/e/${event.id}`}
-      className="ev-surface group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface-subtle transition-colors hover:border-border-strong"
-    >
-      <div
-        className="relative flex aspect-[16/9] items-center justify-center overflow-hidden text-[#3a3a3a]"
-        style={
-          event.coverUrl
-            ? undefined
-            : { backgroundImage: `linear-gradient(135deg, ${accent.color}33, transparent)` }
-        }
-      >
-        {event.coverUrl ? (
-          <CardCover
-            event={event}
-            className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-          />
-        ) : (
-          <MapPin className="h-8 w-8" />
-        )}
-        {featured ? (
-          <span className="absolute left-3 top-3">
-            <FeaturedBadge accent={accent} />
-          </span>
-        ) : null}
-      </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        {meta.type ? (
-          <Badge
-            variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}
-            className="w-fit"
-          >
-            {event.type}
-          </Badge>
-        ) : null}
-        <p className="text-base font-semibold text-foreground">{event.name}</p>
-        <div className="mt-auto">
-          <CardMeta event={event} meta={meta} overlay={false} />
-        </div>
-      </div>
-    </Link>
+            {key}
+            <span className={cn("text-xs", active ? "opacity-70" : "text-text-tertiary")}>
+              {count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
-// Columns → responsive grid class. `auto` keeps the width-based default.
-function columnsClass(columns, wide) {
-  switch (columns) {
-    case "2":
-      return "sm:grid-cols-2";
-    case "3":
-      return "sm:grid-cols-2 lg:grid-cols-3";
-    case "4":
-      return "sm:grid-cols-2 lg:grid-cols-4";
-    default:
-      return wide ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2";
-  }
+// Organiser identity: banner, overlapping avatar, name, local time, and socials.
+function WallHero({ wall, profile, banner, accent }) {
+  const name = profile?.displayName || wall?.name || "Our Events";
+  const avatar = wall?.logoUrl || profile?.avatarUrl || "";
+  const managedBy = profile?.displayName || wall?.name;
+
+  return (
+    <header className="relative">
+      {banner ? (
+        <div className="overflow-hidden rounded-2xl border border-border">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={banner} alt="" className="h-44 w-full object-cover sm:h-72" />
+        </div>
+      ) : null}
+
+      <div className={cn("flex items-end justify-between gap-4", banner && "-mt-8")}>
+        {avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatar}
+            alt=""
+            className=""
+          />
+        ) : (
+          <span />
+        )}
+        <FollowButton
+          projectId={profile?.projectId || wall?.projectId}
+          organiserName={name}
+        />
+      </div>
+
+      <div className="mt-5 space-y-2">
+        {/* <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          {name}
+        </h1> */}
+        <LocalTimeLine />
+        {managedBy ? (
+          <p className="text-sm text-text-secondary">Events managed by {managedBy}</p>
+        ) : null}
+        {wall?.tagline ? (
+          <p className="max-w-xl text-sm text-text-secondary">{wall.tagline}</p>
+        ) : null}
+        {profile?.bio ? (
+          <p className="max-w-2xl text-sm text-text-secondary">{profile.bio}</p>
+        ) : null}
+        <div className="pt-1">
+          <SocialLinks profile={profile} />
+        </div>
+      </div>
+
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 -top-24 -z-10 h-64"
+        style={{
+          background: `radial-gradient(60% 100% at 50% 0%, color-mix(in srgb, ${accent.color} 16%, transparent), transparent 72%)`,
+        }}
+      />
+    </header>
+  );
 }
 
 // Chrome-less body shared by the public route (app/w/[slug]/page.js).
 export function WallPublicPageContent({ wall, events, profile }) {
-  const design = { theme: wall?.theme };
-  const theme = resolveTheme(design);
+  const theme = resolveTheme({ theme: wall?.theme });
   const accent = themeAccent(theme);
   const wrapperStyle = themeStyle(theme);
   const contentWidth = resolveWidth(theme);
   // A video background can't be painted via CSS background-image, so it renders
   // as a fixed layer under the content (raised with `relative z-10` below).
   const bgVideo = pageBackgroundVideo(theme);
+  // A brand import can bring the source site's own typeface — either linked from
+  // Google Fonts or re-hosted from its @font-face rules. Without these the page
+  // asks for a family the browser has never heard of and falls back silently.
+  const webfonts = themeWebfonts(theme);
+  const fontFaceCss = themeFontFaceCss(theme);
   const layout = resolveLayout(wall?.layout);
-  const { featured, rest } = selectWallEvents(events, wall);
-  const isEmpty = !featured.length && !rest.length;
+  const banner = layout.header.bannerUrl || profile?.bannerUrl || "";
 
-  const centered = layout.header.align !== "left";
-  const banner = layout.header.bannerUrl;
-  const spotlight = layout.featuredStyle === "spotlight" && featured.length > 0;
-  const gridClass = columnsClass(layout.columns, contentWidth === "88rem");
+  const [view, setView] = useState(layout.defaultView);
+  const [status, setStatus] = useState(
+    wall?.filters?.status === "past" ? "past" : "upcoming",
+  );
+  const [type, setType] = useState("");
+  const [day, setDay] = useState("");
+  const [query, setQuery] = useState("");
 
-  const logo = wall?.logoUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={wall.logoUrl}
-      alt=""
-      className={cn("h-10 w-auto", centered && !banner ? "mx-auto" : "")}
-    />
-  ) : null;
+  const scoped = useMemo(() => byStatus(events, status), [events, status]);
+  const chips = useMemo(() => typeCounts(scoped), [scoped]);
+  const visible = useMemo(
+    () => applyFilters(scoped, { type, day, query }),
+    [scoped, type, day, query],
+  );
+
+  // A day picked in one status doesn't exist in the other, and a type chip can
+  // vanish with it — drop both rather than show an empty list with no cause.
+  const changeStatus = (next) => {
+    setStatus(next);
+    setDay("");
+    setType("");
+  };
+
+  const emptyMessage =
+    type || day || query
+      ? "No events match these filters."
+      : status === "past"
+        ? "No past events yet."
+        : "No events to show right now — check back soon.";
 
   return (
     <div
       className="ev-themed min-h-screen bg-background text-foreground"
       style={wrapperStyle}
     >
+      {webfonts.map((w) => (
+        <link key={w.css} rel="stylesheet" href={w.css} precedence="default" />
+      ))}
+      {fontFaceCss ? (
+        <style dangerouslySetInnerHTML={{ __html: fontFaceCss }} />
+      ) : null}
+
       {bgVideo ? (
         <div
           aria-hidden
@@ -290,115 +408,56 @@ export function WallPublicPageContent({ wall, events, profile }) {
           ) : null}
         </div>
       ) : null}
-      <div
-        className="relative z-10 mx-auto px-4 py-14 sm:px-6 lg:px-8"
-        style={{ maxWidth: contentWidth }}
-      >
-        {banner ? (
-          <div className="relative mb-10 overflow-hidden rounded-2xl border border-border">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={banner}
-              alt=""
-              className="h-44 w-full object-cover sm:h-60"
-            />
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                backgroundImage:
-                  "linear-gradient(to top, rgb(0 0 0 / 0.82), rgb(0 0 0 / 0.25) 60%, rgb(0 0 0 / 0.2))",
-              }}
-            />
-            <div
-              className={cn(
-                "absolute inset-0 flex flex-col justify-end gap-2 p-6 sm:p-8",
-                centered && "items-center text-center",
-              )}
-            >
-              {logo}
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                {wall?.name || "Our Events"}
-              </h1>
-              {wall?.tagline ? (
-                <p className="max-w-xl text-sm text-white/85 sm:text-base">
-                  {wall.tagline}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ) : (
+
+      <div className="relative z-10 isolate">
+        <div
+          className="mx-auto px-4 pb-12 pt-6 sm:px-6 lg:px-8"
+          style={{ maxWidth: contentWidth }}
+        >
+          <WallHero wall={wall} profile={profile} banner={banner} accent={accent} />
+        </div>
+
+        {/* The agenda sits on its own band so the identity above it reads as a
+            header rather than as the first item in the list. */}
+        <div className="border-t border-border bg-surface-subtle/25">
           <div
-            className={cn(
-              "mb-10 space-y-3",
-              centered ? "text-center" : "text-left",
-            )}
+            className="mx-auto px-4 py-10 sm:px-6 lg:px-8"
+            style={{ maxWidth: contentWidth }}
           >
-            {logo}
-            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              {wall?.name || "Our Events"}
-            </h1>
-            {wall?.tagline ? (
-              <p
-                className={cn(
-                  "max-w-xl text-sm text-text-secondary sm:text-base",
-                  centered && "mx-auto",
-                )}
-              >
-                {wall.tagline}
-              </p>
-            ) : null}
-          </div>
-        )}
-
-        <OrganiserProfileHeader profile={profile} wall={wall} centered={centered} />
-
-        {isEmpty ? (
-          <div className="flex flex-col items-center gap-3 py-20 text-center text-text-secondary">
-            <CalendarX2 className="h-10 w-10" />
-            <p className="text-sm">No events to show right now — check back soon.</p>
-          </div>
-        ) : (
-          <>
-            {spotlight ? (
-              <div className="mb-8 space-y-6">
-                {featured.map((e) => (
-                  <EventCard
-                    key={e.id}
-                    event={e}
-                    accent={accent}
-                    layout={layout}
-                    featured
-                    large
-                  />
-                ))}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                Events
+              </h2>
+              <div className="flex items-center gap-2">
+                <ViewToggle view={view} onView={setView} />
+                <SearchControl query={query} onQuery={setQuery} />
               </div>
-            ) : null}
-
-            <div className={cn("grid grid-cols-1 gap-6", gridClass)}>
-              {!spotlight
-                ? featured.map((e) => (
-                    <EventCard
-                      key={e.id}
-                      event={e}
-                      accent={accent}
-                      layout={layout}
-                      featured
-                    />
-                  ))
-                : null}
-              {rest.map((e) => (
-                <EventCard
-                  key={e.id}
-                  event={e}
-                  accent={accent}
-                  layout={layout}
-                />
-              ))}
             </div>
-          </>
-        )}
 
-        <PageFooter footer={wall?.footer} accent={accent} />
+            <TypeChips chips={chips} type={type} onType={setType} accent={accent} />
+
+            <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <WallEventList
+                events={visible}
+                view={view}
+                meta={layout.cardMeta}
+                accent={accent}
+                featuredIds={wall?.featured}
+                emptyMessage={emptyMessage}
+              />
+              <WallSidebar
+                events={scoped}
+                status={status}
+                onStatus={changeStatus}
+                day={day}
+                onDay={setDay}
+                accent={accent}
+              />
+            </div>
+
+            <PageFooter footer={wall?.footer} accent={accent} />
+          </div>
+        </div>
       </div>
     </div>
   );

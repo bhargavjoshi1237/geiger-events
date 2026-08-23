@@ -22,6 +22,7 @@ import {
 import { Header } from "@/components/header";
 import EventsPlaygroundShowcase from "@/components/EventsPlaygroundShowcase";
 import SpotlightShowcase from "@/components/landing/spotlight_showcase";
+import PosterFieldCta from "@/components/landing/poster_field_cta";
 import DeviceFrame from "@/components/landing/device_frame";
 import {
   FunnelSpotlight,
@@ -988,32 +989,11 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        <section className="relative z-20 overflow-hidden px-4 py-16 sm:px-6 sm:py-24 lg:py-32">
-          <div className="container mx-auto relative z-10 flex flex-col items-center text-center">
-            <h3 className="mb-4 text-xs font-semibold tracking-widest text-foreground0 uppercase sm:text-sm">
-              Open source from day one
-            </h3>
-            <h2 className="mb-8 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-3xl font-black tracking-tighter text-transparent drop-shadow-lg sm:mb-10 sm:text-5xl lg:text-6xl">
-              Try Geiger Now
-            </h2>
-            <div className="flex w-full max-w-md flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-              <Link
-                href={dashboardHref}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-zinc-100 px-6 text-sm font-medium text-zinc-950 transition-colors hover:bg-white sm:w-auto"
-              >
-                Studio
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <a
-                href="#"
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-zinc-100 px-6 text-sm font-medium text-zinc-950 transition-colors hover:bg-white sm:w-auto"
-              >
-                Contact Sales
-                <ArrowRight className="h-4 w-4" />
-              </a>
-            </div>
-          </div>
-        </section>
+        {/* Closing CTA, set in a scattered field of event posters — the breadth
+            of what the platform runs, shown rather than listed. */}
+        <div className="relative z-20 mt-16 sm:mt-24">
+          <PosterFieldCta dashboardHref={dashboardHref} />
+        </div>
       </main>
 
       <Footer />

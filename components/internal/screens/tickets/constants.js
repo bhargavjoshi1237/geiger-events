@@ -5,7 +5,17 @@ import { defaultEntitlements } from "@/lib/memberships/entitlements";
 
 // --- Formatters --------------------------------------------------------------
 
-export const currency = (n) => `$${Number(n || 0).toLocaleString("en-US")}`;
+// Money never renders with one decimal place: a price of 2015.3 was reaching
+// buyers as "$2,015.3". Whole amounts stay whole so dashboards don't fill up
+// with ".00", but anything with a fraction gets both digits.
+export const currency = (n) => {
+  const value = Number(n || 0);
+  const digits = Number.isInteger(value) ? 0 : 2;
+  return `$${value.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`;
+};
 
 export const formatDate = (iso) => {
   if (!iso) return "No date";

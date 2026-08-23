@@ -141,9 +141,22 @@ export function EventSeatingSection({ event, headerItem }) {
     return "available";
   };
 
+  // Grouped once rather than filtered per section — the box office renders one
+  // block per section, and a big arena made that quadratic on every refresh.
+  const seatsBySection = useMemo(() => {
+    const map = new Map();
+    for (const seat of live?.seats ?? []) {
+      const list = map.get(seat.sectionId);
+      if (list) list.push(seat);
+      else map.set(seat.sectionId, [seat]);
+    }
+    return map;
+  }, [live]);
+
   const sectionMeta = (section) => {
-    const seats = live?.seats?.filter((s) => s.sectionId === section.id) ?? [];
-    const taken = seats.filter((s) => soldIds.has(s.id) || blockedIds.has(s.id)).length;
+    const seats = seatsBySection.get(section.id) ?? [];
+    let taken = 0;
+    for (const seat of seats) if (soldIds.has(seat.id) || blockedIds.has(seat.id)) taken += 1;
     return {
       available: section.kind === "ga" ? section.capacity : seats.length - taken,
     };

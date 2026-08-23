@@ -10,7 +10,12 @@ export function Countdown({ dateStr }: { dateStr: string | null }) {
   const parts = useCountdown(dateStr);
   if (!parts) return null;
   if (parts.done) {
-    return <Text style={styles.done}>Happening now</Text>;
+    return (
+      <View style={styles.donePill}>
+        <View style={styles.doneDot} />
+        <Text style={styles.doneText}>Happening now</Text>
+      </View>
+    );
   }
   const cells = [
     { value: parts.days, label: "days" },
@@ -53,17 +58,16 @@ const styles = StyleSheet.create({
   },
   cell: {
     alignItems: "center",
-    gap: 2,
+    gap: spacing.xs,
   },
   valueFrame: {
-    height: type.title.lineHeight + spacing.md,
-    minWidth: 46,
+    height: 44,
+    minWidth: 48,
+    paddingHorizontal: spacing.sm,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surfaceCard,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
   },
   valueAbs: {
     position: "absolute",
@@ -73,16 +77,35 @@ const styles = StyleSheet.create({
   },
   value: {
     ...type.title,
-    fontSize: 18,
+    fontSize: 19,
     color: colors.foreground,
     fontVariant: ["tabular-nums"],
   },
   label: {
     ...type.caption,
+    fontSize: 10,
     textTransform: "uppercase",
     color: colors.textTertiary,
   },
-  done: {
+  donePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    alignSelf: "flex-start",
+    backgroundColor: `${colors.success}1A`,
+    borderWidth: 1,
+    borderColor: `${colors.success}40`,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  doneDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.success,
+  },
+  doneText: {
     ...type.label,
     fontWeight: "600",
     color: colors.success,

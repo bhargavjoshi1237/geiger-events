@@ -10,8 +10,8 @@
 // Fields marked `bindable` get an "Insert dynamic value" button that writes a
 // binding token at the caret.
 
-import React, { useCallback, useRef } from "react";
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import React, { useCallback, useRef, useState } from "react";
+import { AlertTriangle, ArrowDown, ArrowUp, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import { Field } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
@@ -286,9 +286,140 @@ function ItemsControl({ field, value, onChange }) {
   );
 }
 
+/** Render a "clone assets from a source page" control. Value is `{ url, enabled, assets }`:
+ *  a pasted Raw HTML block's source URL plus the CSS/JS URLs extracted from it. */
+function CloneAssetsControl({ field, value, onChange }) {
+  const clone = value && typeof value === "object" ? value : {};
+  const url = clone.url || "";
+  const assets = Array.isArray(clone.assets) ? clone.assets : [];
+  const enabled = !!clone.enabled;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const patch = (next) => onChange({ ...clone, ...next });
+
+  const run = async () => {
+    if (!url.trim()) {
+      setError("Enter the page URL first.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      // basePath ("/events" in production) is not applied to fetch() — a bare
+      // "/api/…" would leave this app and hit the suite shell.
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/clone-assets?url=${encodeURIComponent(url.trim())}`,
+      );
+      const json = await res.json().catch(() => null);
+      if (!json || json.error) {
+        setError(json?.error?.message || "The asset reader didn't respond. Try again.");
+        return;
+      }
+      const next = json.assets || [];
+      patch({ assets: next, enabled: next.length > 0 });
+    } catch {
+      setError("Something went wrong reading that page. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const css = assets.filter((a) => a.kind === "css").length;
+  const js = assets.length - css;
+
+  return (
+    <Field label={field.label} hint={field.hint}>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Input
+            value={url}
+            placeholder="https://example.com/the-page"
+            onChange={(e) => patch({ url: e.target.value })}
+            className="h-8 bg-surface-subtle font-mono text-xs"
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={busy || !url.trim()}
+            onClick={run}
+            className="shrink-0"
+          >
+            {busy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            Fetch
+          </Button>
+        </div>
+
+        {error ? (
+          <p className="flex items-center gap-1.5 text-xs text-red-400">
+            <AlertTriangle className="h-3.5 w-3.5" /> {error}
+          </p>
+        ) : null}
+
+        {assets.length ? (
+          <div className="space-y-2 rounded-lg border border-border bg-surface-card px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs text-text-secondary">
+                  {css} stylesheet{css === 1 ? "" : "s"} · {js} script{js === 1 ? "" : "s"}
+                </p>
+              </div>
+              <Switch
+                checked={enabled}
+                onCheckedChange={(v) => patch({ enabled: v })}
+              />
+            </div>
+            <p className="text-[0.7rem] text-text-tertiary">
+              {enabled
+                ? "Loaded on your public page."
+                : "Off — loaded only while switched on."}
+            </p>
+            <div className="space-y-1">
+              {assets.slice(0, 6).map((a, i) => (
+                <p
+                  key={`${a.url}-${i}`}
+                  className="truncate font-mono text-[0.7rem] text-text-secondary"
+                >
+                  <span
+                    className={cn(
+                      "mr-1 rounded px-1 py-px text-[0.65rem] font-semibold",
+                      a.kind === "css"
+                        ? "bg-blue-500/15 text-blue-300"
+                        : "bg-purple-500/15 text-purple-300",
+                    )}
+                  >
+                    {a.kind === "css" ? "css" : "js"}
+                  </span>
+                  {a.url}
+                </p>
+              ))}
+              {assets.length > 6 ? (
+                <p className="text-[0.7rem] text-text-tertiary">
+                  +{assets.length - 6} more
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : enabled ? (
+          <p className="text-[0.7rem] text-text-tertiary">
+            Switched on but no assets yet — fetch them from the page URL above.
+          </p>
+        ) : null}
+      </div>
+    </Field>
+  );
+}
+
 /** Render one field of a component's schema. */
 export function BuilderField({ field, value, onChange }) {
   switch (field.type) {
+    case "clone-assets":
+      return <CloneAssetsControl field={field} value={value} onChange={onChange} />;
     case "select":
       return (
         <Field label={field.label} hint={field.hint}>

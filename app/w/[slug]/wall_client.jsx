@@ -6,7 +6,10 @@ import Image from "next/image";
 import { ArrowLeft, CalendarX2, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { WallPublicPageContent } from "@/components/internal/screens/events/event_wall/wall_public_page";
+import {
+  WallClock,
+  WallPublicPageContent,
+} from "@/components/internal/screens/events/event_wall/wall_public_page";
 import { getWallBySlug } from "@/lib/supabase/event_wall";
 import { listListableEvents } from "@/lib/supabase/events";
 import { getPublicProfile } from "@/lib/supabase/discovery";
@@ -79,7 +82,7 @@ export default function WallClient({ slug }) {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex items-center gap-3 bg-background/80 px-4 py-3 backdrop-blur sm:px-6">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 bg-background/80 px-4 py-3 backdrop-blur sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center">
             <Image
@@ -93,6 +96,15 @@ export default function WallClient({ slug }) {
             Geiger Studios
           </span>
         </Link>
+        <div className="flex shrink-0 items-center gap-4">
+          <WallClock className="hidden sm:inline" />
+          <Link
+            href="/login"
+            className="rounded-full border border-border bg-surface-subtle px-3.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-active"
+          >
+            Sign In
+          </Link>
+        </div>
       </header>
 
       <WallPublicPageContent wall={wall} events={events} profile={profile} />

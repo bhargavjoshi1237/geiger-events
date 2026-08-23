@@ -6,6 +6,7 @@ import {
   themeAccent,
   resolveWidth,
   resolveHero,
+  resolveLayout,
   resolveSidebar,
   themeButtonStyle,
   coverOverlayStyle,
@@ -58,6 +59,8 @@ export function usePageTheme({ design, live, themeOverride }) {
   ).filter((b) => b.visible);
 
   const hero = themed ? resolveHero(theme) : "classic";
+  // Standard mode has no design editor, so it stays on the classic arrangement.
+  const layout = themed ? resolveLayout(theme) : "classic";
   const sidebarLeft = themed && resolveSidebar(theme) === "left";
   const primaryBtnStyle = themed ? themeButtonStyle(theme, accent) : accentStyle;
   const ctaHover = themed ? ctaHoverClass(theme) : "";
@@ -93,6 +96,7 @@ export function usePageTheme({ design, live, themeOverride }) {
     orderedBlocks,
     sidebarBlocks,
     hero,
+    layout,
     sidebarLeft,
     primaryBtnStyle,
     ctaHover,

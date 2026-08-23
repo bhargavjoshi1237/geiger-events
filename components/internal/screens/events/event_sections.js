@@ -49,9 +49,12 @@ import {
   Handshake,
   Sparkles,
   HelpCircle,
+  Info,
   PlayCircle,
   LayoutGrid,
   IdCard,
+  MousePointerClick,
+  Gem,
 } from "lucide-react";
 
 import {
@@ -90,6 +93,7 @@ import { EventDonationSection } from "./event_donation";
 import { EventAccessCodesSection } from "./event_access_codes";
 import { EventReservedSection } from "./event_reserved";
 import { EventSeatingSection } from "./event_seating";
+import { TicketSelectionSection } from "./ticket_selection";
 import { EventExpoSection } from "./event_expo";
 import { EventGroupSection } from "./event_group";
 import { EventBundlesSection } from "./event_bundles";
@@ -100,6 +104,12 @@ import { OverviewSection } from "./overview";
 import { AlertsSection } from "./alerts";
 import { EventBadgeSection } from "./event_badge";
 import { GuidelinesSection } from "./guidelines";
+import { PageNotesSection } from "./page_notes";
+import { PageDisclaimerSection } from "./page_disclaimer";
+import { EventCtasSection } from "./event_ctas";
+import { EventPackagesSection } from "./event_packages";
+import { EventPackagesPageSection } from "./packages_page_editor";
+import { PACKAGES_ADDON_ID } from "@/lib/events/packages";
 import { TicketAttachmentsSection } from "../tickets/event_attachments";
 import { EventTicketsSection } from "../tickets/event_tickets";
 import { TicketRulesSection } from "../tickets/event_ticket_rules";
@@ -197,6 +207,19 @@ export const NAV_GROUPS = [
         ownHeader: true,
       },
       {
+        key: "notes",
+        label: "Section Notes",
+        icon: Info,
+        desc: "Attach a short note to any page section — it shows as an “i” next to the section's heading.",
+      },
+      {
+        key: "disclaimer",
+        label: "Disclaimer",
+        icon: FileText,
+        desc: "Clear fine print you can type out and place anywhere on the page or inside checkout — above the footer, under the pay button, and more.",
+        ownHeader: true,
+      },
+      {
         key: "guests",
         label: "Guests",
         icon: Users,
@@ -290,6 +313,34 @@ export const NAV_GROUPS = [
         icon: Package,
         desc: "Add-ons and choices buyers pick at checkout — optionally priced and ticket-based.",
         ownHeader: true,
+      },
+      {
+        key: "packages",
+        label: "Packages",
+        icon: Gem,
+        desc: "Premium bundles — VIP tiers with their own inclusions and pricing, sold from this event's packages page.",
+        ownHeader: true,
+        showIf: (e, ctx) => !!ctx?.isEnabled?.(PACKAGES_ADDON_ID),
+      },
+      {
+        key: "packagespage",
+        label: "Packages Page",
+        icon: Gem,
+        desc: "The standalone page your packages sell from — its copy, its sections, and its own design.",
+        ownHeader: true,
+        showIf: (e, ctx) => !!ctx?.isEnabled?.(PACKAGES_ADDON_ID),
+      },
+      {
+        key: "ctas",
+        label: "Call to action",
+        icon: MousePointerClick,
+        desc: "The buttons on your tickets card — Get Tickets is always there; add your own beneath it for waitlists, enquiries, or sponsor packs.",
+      },
+      {
+        key: "ticketselection",
+        label: "Ticket Selection",
+        icon: Armchair,
+        desc: "Offer two routes on the tickets card — seat selection via the seating plan, or selection by price.",
       },
       {
         key: "slots",
@@ -561,6 +612,8 @@ export const SECTIONS = {
   highlights: HighlightsSection,
   schedule: ScheduleSection,
   faq: FaqSection,
+  notes: PageNotesSection,
+  disclaimer: PageDisclaimerSection,
   video: OnDemandVideoSection,
   infographics: InfographicsSection,
   guests: GuestsSection,
@@ -571,6 +624,10 @@ export const SECTIONS = {
   guidelines: GuidelinesSection,
   tickets: EventTicketsSection,
   offerings: OfferingsSection,
+  packages: EventPackagesSection,
+  packagespage: EventPackagesPageSection,
+  ctas: EventCtasSection,
+  ticketselection: TicketSelectionSection,
   slots: SlotsSection,
   purchasables: PurchasablesSection,
   discounts: EventDiscountsSection,

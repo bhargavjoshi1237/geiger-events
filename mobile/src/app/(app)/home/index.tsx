@@ -69,14 +69,8 @@ export default function HomeScreen() {
     <Screen scroll refreshing={refreshing} onRefresh={refreshAll}>
       <View style={styles.headRow}>
         <View style={styles.headStack}>
-          <Text style={styles.greeting}>
-            {greeting()}, {firstName(member?.name, member?.email)}
-          </Text>
-          <Text style={styles.subtitle}>
-            {nextTicket
-              ? "Here's what's coming up."
-              : "You're all caught up — no upcoming events."}
-          </Text>
+          <Text style={styles.greeting}>{greeting()},</Text>
+          <Text style={styles.name}>{firstName(member?.name, member?.email)}</Text>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -97,15 +91,26 @@ export default function HomeScreen() {
             <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
               <NextEventHero ticket={nextTicket} onOpen={() => router.push(`/tickets/${nextTicket.id}`)} />
             </Animated.View>
-          ) : null}
+          ) : (
+            <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+              <Text style={styles.caughtUp}>You&apos;re all caught up — no upcoming events.</Text>
+            </Animated.View>
+          )}
 
           <Animated.View entering={FadeInDown.delay(stagger(1)).springify()}>
-            <View style={styles.statsGrid}>
-              <StatTile icon="calendar" label="Upcoming" value={stats.upcoming} />
-              <StatTile icon="credit-card" label="Tickets" value={stats.tickets} />
-              <StatTile icon="check-circle" label="Memberships" value={stats.memberships} />
-              <StatTile icon="dollar-sign" label="Total spent" value={stats.spent} money />
-            </View>
+            <Card>
+              <View style={styles.statsRow}>
+                <StatCell label="Upcoming" value={stats.upcoming} />
+                <View style={styles.statsDivider} />
+                <StatCell label="Tickets" value={stats.tickets} />
+              </View>
+              <View style={styles.statsRule} />
+              <View style={styles.statsRow}>
+                <StatCell label="Memberships" value={stats.memberships} />
+                <View style={styles.statsDivider} />
+                <StatCell label="Total spent" value={money(stats.spent)} />
+              </View>
+            </Card>
           </Animated.View>
 
           {availablePlans > 0 && stats.memberships === 0 ? (
@@ -114,10 +119,10 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Become a member"
                 onPress={() => router.push("/memberships")}
-                style={styles.memberCard}
+                style={({ pressed }) => [styles.memberCard, pressed && styles.pressed]}
               >
                 <View style={styles.memberIcon}>
-                  <Feather name="check-circle" size={20} color={colors.primary} />
+                  <Feather name="star" size={18} color={colors.primary} />
                 </View>
                 <View style={styles.memberText}>
                   <Text style={styles.memberTitle}>Become a member</Text>
@@ -126,7 +131,7 @@ export default function HomeScreen() {
                     {availablePlans === 1 ? "plan" : "plans"} available.
                   </Text>
                 </View>
-                <Feather name="arrow-right" size={16} color={colors.primary} />
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </Pressable>
             </Animated.View>
           ) : null}
@@ -182,45 +187,46 @@ function NextEventHero({ ticket, onOpen }: { ticket: Ticket; onOpen: () => void 
 
   return (
     <View style={styles.hero}>
-      <EventCover uri={ticket.coverUrl} name={ticket.eventName} height={180} radius={0} />
-      <LinearGradient
-        colors={[colors.overlay, "transparent"]}
-        start={{ x: 0, y: 1 }}
-        end={{ x: 0, y: 0 }}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.heroText}>
-        <Text style={styles.heroKicker}>Your next event</Text>
-        <Text style={styles.heroName} numberOfLines={2}>
-          {ticket.eventName}
-        </Text>
-        <View style={styles.heroLine}>
-          <Feather name="calendar" size={13} color={colors.primary} />
-          <Text style={styles.heroLineText}>
+      <View>
+        <EventCover uri={ticket.coverUrl} name={ticket.eventName} height={210} radius={0} />
+        <LinearGradient
+          colors={[colors.overlay, "transparent"]}
+          start={{ x: 0, y: 1 }}
+          end={{ x: 0, y: 0 }}
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Kicker chip floats top-left so it reads even over busy artwork. */}
+        <View style={styles.heroChip} pointerEvents="none">
+          <Text style={styles.heroChipText}>Next up</Text>
+        </View>
+        <View style={styles.heroText} pointerEvents="none">
+          <Text style={styles.heroName} numberOfLines={2}>
+            {ticket.eventName}
+          </Text>
+          <Text style={styles.heroLine} numberOfLines={1}>
             {ticket.eventDate ? fmtDay(ticket.eventDate) : "Date TBA"}
             {ticket.eventTime ? ` · ${ticket.eventTime}` : ""}
           </Text>
+          {loc ? (
+            <Text style={styles.heroLine} numberOfLines={1}>
+              {loc}
+            </Text>
+          ) : null}
         </View>
-        {loc ? (
-          <View style={styles.heroLine}>
-            <Feather name="map-pin" size={13} color={colors.primary} />
-            <Text style={styles.heroLineText}>{loc}</Text>
-          </View>
-        ) : null}
       </View>
       <View style={styles.heroBody}>
         <Countdown dateStr={ticket.eventDate} />
         <View style={styles.heroActions}>
-          <Button title="View ticket" onPress={onOpen} fullWidth icon="credit-card" />
-          <View style={styles.heroIconRow}>
-            {hasCalendar ? (
-              <HeroIconButton icon="calendar" label="Add to calendar" onPress={() => void shareEventICS(ticket)} />
-            ) : null}
-            {hasDirections ? (
-              <HeroIconButton icon="navigation" label="Directions" onPress={() => void openDirections(ticket)} />
-            ) : null}
+          <View style={styles.heroPrimaryWrap}>
+            <Button title="View ticket" onPress={onOpen} fullWidth icon="credit-card" />
           </View>
+          {hasCalendar ? (
+            <HeroIconButton icon="calendar" label="Add to calendar" onPress={() => void shareEventICS(ticket)} />
+          ) : null}
+          {hasDirections ? (
+            <HeroIconButton icon="navigation" label="Directions" onPress={() => void openDirections(ticket)} />
+          ) : null}
         </View>
       </View>
     </View>
@@ -249,30 +255,19 @@ function HeroIconButton({
   );
 }
 
-function StatTile({
-  icon,
-  label,
-  value,
-  money: isMoney,
-}: {
-  icon: React.ComponentProps<typeof Feather>["name"];
-  label: string;
-  value: number;
-  money?: boolean;
-}) {
+// One stat cell of the 2×2 strip; value may be an animated number or a string.
+function StatCell({ label, value }: { label: string; value: number | string }) {
   return (
-    <View style={styles.statTile}>
-      <View style={styles.statLabelRow}>
-        <Feather name={icon} size={14} color={colors.textSecondary} />
-        <Text style={styles.statLabel}>{label}</Text>
-      </View>
-      <AnimatedValue target={value} money={isMoney} />
+    <View style={styles.statCell}>
+      <Text style={styles.statLabel}>{label}</Text>
+      {typeof value === "number" ? <AnimatedValue target={value} /> : null}
+      {typeof value === "string" ? <Text style={styles.statValueString}>{value}</Text> : null}
     </View>
   );
 }
 
 // Counts up to the target on mount with a 420ms withTiming counter.
-function AnimatedValue({ target, money: isMoney }: { target: number; money?: boolean }) {
+function AnimatedValue({ target }: { target: number }) {
   const reduced = useReducedMotion();
   const [shown, setShown] = useState(reduced ? target : 0);
   const progress = useSharedValue(0);
@@ -287,9 +282,7 @@ function AnimatedValue({ target, money: isMoney }: { target: number; money?: boo
     (v) => runOnJS(setShown)(v),
   );
 
-  return (
-    <Text style={styles.statValue}>{isMoney ? money(shown) : String(Math.round(shown))}</Text>
-  );
+  return <Text style={styles.statValue}>{String(Math.round(shown))}</Text>;
 }
 
 const styles = StyleSheet.create({
@@ -301,33 +294,44 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   headStack: {
     flex: 1,
-    gap: spacing.xs,
   },
   greeting: {
-    ...type.display,
-    color: colors.foreground,
-  },
-  subtitle: {
     ...type.body,
     color: colors.textSecondary,
+  },
+  name: {
+    ...type.display,
+    color: colors.foreground,
   },
   bell: {
     width: 44,
     height: 44,
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: spacing.xs,
   },
   bellDot: {
     position: "absolute",
-    top: 9,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 10,
+    right: 10,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: colors.primary,
+  },
+  caughtUp: {
+    ...type.heading,
+    color: colors.textSecondary,
+    textAlign: "center",
+    paddingVertical: spacing.lg,
   },
   hero: {
     overflow: "hidden",
@@ -335,6 +339,22 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.lg,
     backgroundColor: colors.surfaceSubtle,
+  },
+  heroChip: {
+    position: "absolute",
+    top: spacing.md,
+    left: spacing.md,
+    backgroundColor: colors.chipScrim,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  heroChipText: {
+    ...type.kicker,
+    textTransform: "uppercase",
+    color: colors.primary,
   },
   heroText: {
     position: "absolute",
@@ -344,24 +364,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.lg,
   },
-  heroKicker: {
-    ...type.caption,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.primary,
-  },
   heroName: {
     ...type.title,
     color: colors.primary,
   },
   heroLine: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs + 2,
-  },
-  heroLineText: {
     ...type.caption,
-    flexShrink: 1,
     color: colors.primary,
   },
   heroBody: {
@@ -369,11 +377,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   heroActions: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.md,
   },
-  heroIconRow: {
-    flexDirection: "row",
-    gap: spacing.md,
+  heroPrimaryWrap: {
+    flex: 1,
   },
   heroIconBtn: {
     width: 48,
@@ -388,33 +397,38 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.6,
   },
-  statsGrid: {
+  // A single quiet card replaces four bordered tiles; hairline rules divide it.
+  statsRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
+    alignItems: "stretch",
   },
-  statTile: {
-    flexGrow: 1,
-    flexBasis: "42%",
-    gap: spacing.sm,
-    backgroundColor: colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+  statsDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xs,
   },
-  statLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
+  statsRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginVertical: spacing.lg,
+  },
+  statCell: {
+    flex: 1,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
   statLabel: {
-    ...type.caption,
-    color: colors.textSecondary,
+    ...type.kicker,
+    textTransform: "uppercase",
+    color: colors.textTertiary,
   },
   statValue: {
     ...type.title,
-    fontSize: 22,
+    color: colors.foreground,
+    fontVariant: ["tabular-nums"],
+  },
+  statValueString: {
+    ...type.title,
     color: colors.foreground,
     fontVariant: ["tabular-nums"],
   },
@@ -429,8 +443,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   memberIcon: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: `${colors.primary}26`,
@@ -453,11 +467,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   viewAllText: {
-    ...type.caption,
+    ...type.label,
+    fontSize: 12,
     color: colors.textSecondary,
   },
   ordersCard: {
     padding: 0,
+    // Rows are full-bleed, so inset their content from the card's left/right edges.
+    paddingHorizontal: spacing.md,
   },
   orderTrailing: {
     flexDirection: "row",

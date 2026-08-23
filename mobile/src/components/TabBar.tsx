@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(32,32,32,0.72)",
+    backgroundColor: colors.chipScrim,
   },
   indicator: {
     position: "absolute",
@@ -174,12 +174,14 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: "absolute",
-    top: -2,
-    right: -7,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    top: -3,
+    right: -8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.surfaceStrong,
   },
   label: {
     ...type.caption,

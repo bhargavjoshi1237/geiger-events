@@ -18,13 +18,15 @@ const TONES: Record<PillTone, string> = {
   neutral: colors.mutedForeground,
 };
 
-// Status chip: a coloured dot + label on a 15% tint at 30% border.
+// Status chip: a coloured dot + tinted label on a 15% tint at 30% border.
 export function Pill({ label, tone }: PillProps) {
   const tint = TONES[tone];
   return (
-    <View style={[styles.pill, { backgroundColor: `${tint}26`, borderColor: `${tint}4D` }]}>
+    <View style={[styles.pill, { backgroundColor: `${tint}1A`, borderColor: `${tint}40` }]}>
       <View style={[styles.dot, { backgroundColor: tint }]} />
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: tint }]} numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -37,16 +39,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radius.pill,
     paddingVertical: 3,
-    paddingHorizontal: spacing.sm + 2,
+    paddingHorizontal: spacing.sm,
     alignSelf: "flex-start",
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   label: {
     ...type.caption,
-    color: colors.foreground,
+    fontSize: 10,
+    lineHeight: 14,
   },
 });

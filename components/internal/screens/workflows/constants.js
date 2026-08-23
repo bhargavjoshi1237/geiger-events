@@ -1,8 +1,3 @@
-// Constants & lookups for the Workflows area. Config only — no row data (that is
-// fetched through lib/supabase/workflows.js). These catalogs drive BOTH the
-// linear step-list builder and the drag-drop canvas palette, so a trigger/
-// action/condition is defined once here and rendered by either view.
-
 import {
   Ticket,
   ClipboardCheck,
@@ -26,15 +21,9 @@ import {
   GitBranch,
 } from "lucide-react";
 
-// Canvas fit options, shared by the initial fit and the Fit-view control.
-// maxZoom caps the fit so a short workflow opens zoomed OUT (an overview)
-// instead of blowing one or two nodes up to fill the canvas.
 export const CANVAS_FIT_VIEW = { padding: 0.35, maxZoom: 0.75 };
 
-// Grid sizes the canvas snaps node drags to; the size button cycles this list.
 export const SNAP_SIZES = [8, 16, 24];
-
-// --- Status & scope lookups --------------------------------------------------
 
 export const WORKFLOW_STATUS_MAP = {
   Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
@@ -54,12 +43,7 @@ export const STATUS_FILTER_OPTIONS = [
   { value: "Draft", label: "Draft" },
 ];
 
-// --- Trigger catalog ---------------------------------------------------------
-// key, label, icon, group, description. The trigger is always the first node of
-// a workflow (steps[0], kind "trigger").
-
 export const TRIGGER_CATALOG = [
-  // Ticketing & registration
   {
     key: "ticket.purchased",
     label: "Ticket purchased",
@@ -95,7 +79,6 @@ export const TRIGGER_CATALOG = [
     group: "Ticketing & registration",
     description: "A payment attempt fails.",
   },
-  // Attendance & lifecycle
   {
     key: "attendee.checked_in",
     label: "Attendee checked in",
@@ -132,10 +115,6 @@ export const TRIGGER_CATALOG = [
     description: "A registered attendee did not check in.",
   },
 ];
-
-// --- Condition catalog -------------------------------------------------------
-// Branch steps (kind "condition"). `fields` describes the inline config the
-// builder renders. Conditions split flow into yes / no branches.
 
 export const CONDITION_CATALOG = [
   {
@@ -192,11 +171,7 @@ export const CONDITION_CATALOG = [
   },
 ];
 
-// --- Action catalog ----------------------------------------------------------
-// Action steps (kind "action"). `fields` drives the inline config controls.
-
 export const ACTION_CATALOG = [
-  // Messaging & tagging
   {
     key: "send.email",
     label: "Send email",
@@ -257,7 +232,6 @@ export const ACTION_CATALOG = [
       { key: "message", label: "Message", type: "textarea", default: "" },
     ],
   },
-  // Advanced
   {
     key: "flow.wait",
     label: "Wait / delay",
@@ -316,9 +290,6 @@ export const ACTION_CATALOG = [
   },
 ];
 
-// --- Catalog helpers ---------------------------------------------------------
-
-// Every catalog entry indexed by key, for O(1) lookup in renderers.
 const ALL_ENTRIES = [
   ...TRIGGER_CATALOG,
   ...CONDITION_CATALOG,
@@ -330,13 +301,11 @@ export function catalogEntry(key) {
   return ENTRY_BY_KEY[key] || null;
 }
 
-// Trigger filter options for the All Workflows toolbar (catalog + "all").
 export const TRIGGER_FILTER_OPTIONS = [
   { value: "all", label: "All triggers" },
   ...TRIGGER_CATALOG.map((t) => ({ value: t.key, label: t.label })),
 ];
 
-// Group an array of catalog entries by their `group` for grouped pickers.
 export function groupByGroup(entries) {
   const groups = [];
   const index = new Map();
@@ -351,7 +320,6 @@ export function groupByGroup(entries) {
   return groups;
 }
 
-// Default config for a freshly-added step: each field's `default`.
 export function defaultConfig(entry) {
   const config = {};
   for (const field of entry?.fields || []) {
@@ -360,8 +328,6 @@ export function defaultConfig(entry) {
   return config;
 }
 
-// A short, human-readable one-line summary of a step's config — shown on canvas
-// nodes and step cards. Falls back to the entry's description when empty.
 export function summarizeConfig(entry, config) {
   if (!entry?.fields?.length) return entry?.description || "";
   const parts = entry.fields
@@ -373,13 +339,6 @@ export function summarizeConfig(entry, config) {
     .filter(Boolean);
   return parts.length ? parts.join(" · ") : entry?.description || "Not configured";
 }
-
-// --- Template gallery --------------------------------------------------------
-// Curated starter workflows shown on the Workflow Templates tab. Config, not row
-// data — a fixed catalog (like the trigger/action catalogs above). "Use" mints a
-// real workflow from `trigger` + `steps` and opens it in the builder. Each step
-// is { kind, type, config }; the trigger is always steps[0]. Card icons come from
-// the trigger's catalog entry, so templates never store their own icon.
 
 export const WORKFLOW_TEMPLATE_CATEGORY_MAP = {
   Ticketing: { label: "Ticketing", variant: "info" },
@@ -512,11 +471,6 @@ export const WORKFLOW_TEMPLATES = [
   },
 ];
 
-// --- Run history -------------------------------------------------------------
-// Outcome of a single workflow execution. No runner exists yet, so the Run
-// History screen reads an (empty) events.workflow_runs table and shows its empty
-// state until executions land.
-
 export const RUN_STATUS_MAP = {
   Success: { label: "Success", variant: "success", dotClass: "bg-emerald-400" },
   Failed: { label: "Failed", variant: "danger", dotClass: "bg-red-400" },
@@ -532,8 +486,6 @@ export const RUN_STATUS_FILTER_OPTIONS = [
   { value: "Skipped", label: "Skipped" },
 ];
 
-// --- Formatters --------------------------------------------------------------
-
 export function formatRelativeDate(value) {
   if (!value) return "—";
   const d = new Date(value);
@@ -545,7 +497,6 @@ export function formatRelativeDate(value) {
   });
 }
 
-// Date + time, for run timestamps (runs are finer-grained than workflows).
 export function formatDateTime(value) {
   if (!value) return "—";
   const d = new Date(value);
@@ -558,7 +509,6 @@ export function formatDateTime(value) {
   });
 }
 
-// Human-readable run duration from milliseconds.
 export function formatDuration(ms) {
   const n = Number(ms);
   if (!n || Number.isNaN(n) || n < 0) return "—";

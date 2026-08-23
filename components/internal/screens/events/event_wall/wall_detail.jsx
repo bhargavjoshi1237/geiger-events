@@ -137,7 +137,14 @@ export function EventWallScreen() {
             </h2>
             <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
           </div>
-          <ActiveSection wall={wall} headerItem={activeItem} />
+          {/* Sections seed their own state from `wall`, so one that writes the
+              row's own columns lifts the result back here — otherwise the next
+              section to mount reads the values it replaced. */}
+          <ActiveSection
+            wall={wall}
+            headerItem={activeItem}
+            onWallChange={setWall}
+          />
         </div>
 
         <aside className="order-1 lg:order-2">

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Armchair, Loader2, MoreHorizontal, Plus } from "lucide-react";
+import { Armchair, Loader2, LucideFlag, LucidePencil, LucideTrash, MoreHorizontal, Pen, Plus } from "lucide-react";
 
 import {
   EmptyState,
@@ -279,11 +279,11 @@ export function SeatMapsSection({ venue }) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="border-border bg-surface-subtle">
                     <DropdownMenuItem onClick={() => setOpenId(map.id)}>
-                      Open editor
+                      <LucidePencil className="h-4 w-4" /> Open Editor
                     </DropdownMenuItem>
                     {STATUS_OPTIONS.filter((s) => s !== map.status).map((s) => (
                       <DropdownMenuItem key={s} onClick={() => handleStatus(map, s)}>
-                        Mark {s.toLowerCase()}
+                        <LucideFlag className="h-4 w-4" /> Mark {s.toLowerCase()}
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />
@@ -291,7 +291,7 @@ export function SeatMapsSection({ venue }) {
                       className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
                       onClick={() => handleDelete(map)}
                     >
-                      Delete
+                      <LucideTrash className="h-4 w-4" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

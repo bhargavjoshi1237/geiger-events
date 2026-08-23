@@ -58,7 +58,7 @@ export function TicketStub({
             {image ? (
               <Image source={{ uri: image }} contentFit="cover" transition={200} style={StyleSheet.absoluteFill} />
             ) : (
-              <Feather name={icon} size={14} color={colors.textTertiary} />
+              <Feather name={icon} size={18} color={colors.textTertiary} />
             )}
           </View>
           <View style={styles.stack}>
@@ -76,7 +76,7 @@ export function TicketStub({
           <View style={styles.metaRow}>
             {meta.map((item, idx) => (
               <React.Fragment key={`${item.label}-${idx}`}>
-                {idx > 0 ? <Text style={styles.metaSep}>|</Text> : null}
+                {idx > 0 ? <Text style={styles.metaSep}>·</Text> : null}
                 {item.pill ? (
                   <Pill label={item.pill.label} tone={item.pill.tone} />
                 ) : (
@@ -140,17 +140,17 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     minWidth: 0,
-    gap: spacing.sm,
+    gap: spacing.md,
     padding: spacing.lg,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   chip: {
-    width: 28,
-    height: 28,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -165,7 +165,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   name: {
-    ...type.label,
+    ...type.body,
+    fontWeight: "600",
     color: colors.foreground,
   },
   description: {
@@ -176,13 +177,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
-    columnGap: spacing.xs + 2,
+    columnGap: spacing.sm,
     rowGap: 2,
   },
   metaSep: {
     ...type.caption,
     color: colors.textTertiary,
-    opacity: 0.5,
+    fontSize: 14,
+    lineHeight: 15,
   },
   meta: {
     ...type.caption,
@@ -221,22 +223,28 @@ const styles = StyleSheet.create({
   notchBottom: {
     bottom: -6,
   },
+  // The stub is visually a separate tear-off piece: darker plate behind the
+  // perforation, big count, tracked label.
   stub: {
-    width: 96,
+    width: 88,
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
+    gap: 3,
     paddingHorizontal: spacing.sm,
+    backgroundColor: colors.surfaceSubtle,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: colors.border,
   },
   stubValue: {
     ...type.title,
-    fontSize: 18,
     color: colors.foreground,
     fontVariant: ["tabular-nums"],
   },
   stubLabel: {
     ...type.caption,
+    fontSize: 10,
     textTransform: "uppercase",
+    letterSpacing: 1.2,
     color: colors.textTertiary,
   },
 });

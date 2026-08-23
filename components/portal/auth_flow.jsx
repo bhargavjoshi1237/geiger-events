@@ -3,22 +3,31 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
-import { Loader2, Mail, Ticket, QrCode, CalendarPlus } from "lucide-react";
+import { ArrowRight, Bell, Loader2, Mail, QrCode, WifiOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Field } from "@/components/internal/shared/screen_kit";
+import { cn } from "@/lib/utils";
 import { portalPostJson } from "@/lib/portal/portal_fetch";
 
 const FEATURES = [
-  { icon: Ticket, label: "All your tickets in one place" },
   { icon: QrCode, label: "Scan to get in at the door" },
-  { icon: CalendarPlus, label: "Add events to your calendar" },
+  { icon: Bell, label: "Push for gate changes and refunds" },
+  { icon: WifiOff, label: "Passes work with no signal" },
 ];
 
 // basePath-aware; see lib/portal/portal_fetch.js for why bare fetch() breaks in
 // production.
 const postJson = portalPostJson;
+
+// Mockup-styled field. Deliberately a bare <input> rather than the shared
+// <Input>, whose radius/padding are pinned with !important utilities we'd have
+// to fight to get the taller rounded look (and the inline mail icon).
+const FIELD_CLASS =
+  "h-[52px] w-full rounded-[14px] border border-border bg-surface-card px-4 text-[16px] text-foreground shadow-none outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-ring/50";
+
+// White pill CTA — the mockup's black-on-white button.
+const CTA_CLASS =
+  "h-[52px] w-full rounded-[14px] bg-primary text-[17px] font-semibold tracking-[-0.01em] text-primary-foreground hover:bg-primary/90";
 
 // Email-first members auth. Steps: email -> password | setup-prompt -> check-email;
 // a ?setup= token enters at set-password. First password / reset always goes
@@ -76,111 +85,119 @@ export function AuthFlow({ initialSetupToken = null, workspace = false }) {
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-4">
-      <div className="relative w-full max-w-sm space-y-5 rounded-2xl bg-surface-subtle p-6">
-        <div className="space-y-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-card ">
-            <Image
-              src={`${basePath}/logo1.svg`}
-              alt="Geiger Events"
-              width={22}
-              height={22}
-              className="geiger-logo"
-              priority
-            />
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-lg font-semibold text-foreground">Geiger Events</h1>
-            <p className="text-sm text-text-secondary">
-              {workspace
-                ? "Sign in to open your workspace."
-                : "Your tickets, orders, and memberships."}
-            </p>
-          </div>
-        </div>
+    // Single flex column: content block grows, feature list sits after it — so
+    // the footer is laid out once against the layout viewport and never moves
+    // when the keyboard overlays the screen (see /login viewport export).
+    // The `dark` class pins this screen to the dark palette from the mockup
+    // regardless of the visitor's system theme.
+    <div className="dark relative flex min-h-[100dvh] flex-col bg-background">
+      <main className="mx-auto w-full max-w-sm flex-1 px-6 pb-12 pt-[max(6rem,16dvh)]">
+        <Image
+          src={`${basePath}/logo1.svg`}
+          alt="Geiger Events"
+          width={36}
+          height={22}
+          className="mb-10"
+          priority
+        />
+        <h1 className="text-[32px] font-bold leading-[1.1] tracking-[-0.02em] text-foreground">
+          Your tickets,
+          <br />
+          ready at the door.
+        </h1>
 
         {step === "email" && (
-          <form onSubmit={submitEmail} className="space-y-4">
-            <Field label="Email">
-              <Input
-                type="email"
-                value={email}
-                autoFocus
-                required
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@email.com"
-              />
-            </Field>
-            <Button
-              type="submit"
-              disabled={busy}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
-            </Button>
-            {!workspace ? (
-              <ul className="space-y-2 border-t border-border pt-4">
-                {FEATURES.map((f) => (
-                  <li key={f.label} className="flex items-center gap-2.5 text-xs text-text-secondary">
-                    <f.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    {f.label}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </form>
+          <>
+            <p className="mt-4 max-w-[21rem] text-[15px] leading-relaxed text-text-secondary">
+              {workspace
+                ? "Sign in to open your workspace."
+                : "Sign in with the email you bought with — your account already exists."}
+            </p>
+            <form onSubmit={submitEmail} className="mt-7 space-y-5">
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="email"
+                  value={email}
+                  autoFocus
+                  required
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  aria-label="Email"
+                  autoComplete="email"
+                  className={cn(FIELD_CLASS, "pl-11")}
+                />
+              </div>
+              <Button type="submit" disabled={busy} className={CTA_CLASS}>
+                Continue
+                {busy ? (
+                  <Loader2 className="size-[18px] animate-spin" />
+                ) : (
+                  <ArrowRight className="size-[18px]" />
+                )}
+              </Button>
+            </form>
+          </>
         )}
 
         {step === "password" && (
-          <form onSubmit={submitPassword} className="space-y-4">
-            <p className="text-sm text-text-secondary">{email}</p>
-            <Field label="Password">
-              <Input
+          <>
+            <p className="mt-4 max-w-[21rem] text-[15px] leading-relaxed text-text-secondary">
+              Signing in as{" "}
+              <span className="text-foreground">{email}</span>
+            </p>
+            <form onSubmit={submitPassword} className="mt-7 space-y-5">
+              <input
                 type="password"
                 value={password}
                 autoFocus
                 required
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                aria-label="Password"
+                autoComplete="current-password"
+                className={FIELD_CLASS}
               />
-            </Field>
-            <Button
-              type="submit"
-              disabled={busy}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Log in"}
-            </Button>
-            <button
-              type="button"
-              onClick={sendSetup}
-              className="w-full text-xs text-text-tertiary hover:text-muted-foreground"
-            >
-              Forgot password?
-            </button>
-          </form>
+              <Button type="submit" disabled={busy} className={CTA_CLASS}>
+                Log in
+                {busy ? (
+                  <Loader2 className="size-[18px] animate-spin" />
+                ) : (
+                  <ArrowRight className="size-[18px]" />
+                )}
+              </Button>
+              <button
+                type="button"
+                onClick={sendSetup}
+                className="w-full pt-1 text-center text-xs text-text-tertiary transition-colors hover:text-foreground"
+              >
+                Forgot password?
+              </button>
+            </form>
+          </>
         )}
 
         {step === "setup-prompt" && (
-          <div className="space-y-4">
-            <p className="text-sm text-text-secondary">
+          <div className="mt-8 space-y-3">
+            <p className="max-w-[38ch] text-sm leading-relaxed text-text-secondary">
               Your account <span className="text-foreground">{email}</span> needs a
               password. We&apos;ll email you a secure link to set one.
             </p>
-            <Button
-              onClick={sendSetup}
-              disabled={busy}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Email me a set-up link"}
+            <Button onClick={sendSetup} disabled={busy} className={CTA_CLASS}>
+              Email me a set-up link
+              {busy ? (
+                <Loader2 className="size-[18px] animate-spin" />
+              ) : (
+                <ArrowRight className="size-[18px]" />
+              )}
             </Button>
           </div>
         )}
 
         {step === "check-email" && (
-          <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <Mail className="h-8 w-8 text-text-tertiary" />
-            <p className="text-sm text-text-secondary">
+          <div className="mt-8 flex items-start gap-3">
+            <Mail className="mt-0.5 size-[18px] shrink-0 text-text-tertiary" />
+            <p className="max-w-[38ch] text-sm leading-relaxed text-text-secondary">
               If <span className="text-foreground">{email}</span> has an account, a
               link is on its way. Check your inbox to set your password.
             </p>
@@ -188,47 +205,73 @@ export function AuthFlow({ initialSetupToken = null, workspace = false }) {
         )}
 
         {step === "no-account" && (
-          <div className="space-y-3 text-center">
-            <p className="text-sm text-text-secondary">
+          <div className="mt-8 space-y-3">
+            <p className="max-w-[38ch] text-sm leading-relaxed text-text-secondary">
               We couldn&apos;t find an account for{" "}
               <span className="text-foreground">{email}</span>. Buy a ticket to any
               event and your account is created automatically.
             </p>
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => setStep("email")}
-              className="text-xs text-text-tertiary hover:text-muted-foreground"
+              className="h-11 w-full rounded-[14px] border-border bg-transparent text-sm font-medium text-foreground hover:bg-surface-hover"
             >
               Try another email
-            </button>
+            </Button>
           </div>
         )}
 
         {step === "set-password" && (
-          <form onSubmit={submitSetPassword} className="space-y-4">
-            <p className="text-sm text-text-secondary">
+          <>
+            <p className="mt-4 max-w-[36ch] text-[15px] leading-relaxed text-text-secondary">
               Choose a password for your account.
             </p>
-            <Field label="New password" hint="At least 8 characters.">
-              <Input
+            <form onSubmit={submitSetPassword} className="mt-7 space-y-5">
+              <input
                 type="password"
                 value={password}
                 autoFocus
                 required
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                aria-label="New password"
+                autoComplete="new-password"
+                className={FIELD_CLASS}
               />
-            </Field>
-            <Button
-              type="submit"
-              disabled={busy}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Set password & sign in"}
-            </Button>
-          </form>
+              <p className="text-xs text-text-tertiary">At least 8 characters.</p>
+              <Button type="submit" disabled={busy} className={CTA_CLASS}>
+                Set password &amp; sign in
+                {busy ? (
+                  <Loader2 className="size-[18px] animate-spin" />
+                ) : (
+                  <ArrowRight className="size-[18px]" />
+                )}
+              </Button>
+            </form>
+          </>
         )}
-      </div>
+      </main>
+
+      {/* Pinned to the bottom of the layout viewport (main's flex-1 pushes it
+          there). With interactiveWidget=resizes-visual on /login the keyboard
+          covers it instead of pushing it up, so it never shifts while typing.
+          Skipped in workspace context and emailed set-up links. */}
+      {!workspace && !initialSetupToken ? (
+        <footer className="mx-auto w-full max-w-sm shrink-0 px-6 pb-[calc(1.75rem+env(safe-area-inset-bottom))]">
+          <ul className="space-y-3">
+            {FEATURES.map((f) => (
+              <li
+                key={f.label}
+                className="flex items-center gap-3 text-[13px] text-text-secondary"
+              >
+                <f.icon className="size-4 shrink-0 text-muted-foreground" />
+                {f.label}
+              </li>
+            ))}
+          </ul>
+        </footer>
+      ) : null}
     </div>
   );
 }

@@ -141,6 +141,20 @@ export const configFilter = (key, values, allLabel) => ({
   options: [{ value: "all", label: allLabel }, ...optionsFrom(values)],
 });
 
+// --- Sorts -------------------------------------------------------------------
+
+// A high/low toggle over a numeric getter, rendered as one more Toolbar
+// dropdown alongside the filters.
+export const numberSort = (key, get, label) => ({
+  key,
+  get,
+  options: [
+    { value: "none", label: `Sort: ${label}` },
+    { value: "desc", label: `${label}: high to low` },
+    { value: "asc", label: `${label}: low to high` },
+  ],
+});
+
 // --- Field specs -------------------------------------------------------------
 
 export const nameField = (label = "Name", placeholder) => ({

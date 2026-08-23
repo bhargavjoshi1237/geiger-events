@@ -20,12 +20,25 @@ import { ErrorStep } from "./error_step";
 export function TicketCheckout(props) {
   const { open, onClose, event, live, accent, daConfig } = props;
   const checkout = useCheckout(props);
-  const { step, headerLabel } = checkout;
+  const { step, headerLabel, disclaimerSlot } = checkout;
   const accentStyle = { backgroundColor: accent.color, color: accent.text };
+
+  // Seat and booth picking are map-plus-rail layouts and need the room; every
+  // other step is a single column of fields and stays narrow. The map steps
+  // also take a DEFINITE height rather than a cap, so the map and the rail can
+  // grow into the dialog instead of sitting above a band of dead space.
+  const wide = step === "seats" || step === "booths";
+  // Only the seat map fills its container end to end; the booth picker still
+  // scrolls, so it keeps the capped height.
+  const fills = step === "seats";
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col overflow-hidden">
+      <DialogContent
+        className={`flex flex-col overflow-hidden transition-[max-width] ${
+          wide ? "max-w-6xl" : "max-w-lg"
+        } ${fills ? "h-[88vh] max-h-[88vh]" : "max-h-[85vh]"}`}
+      >
         <DialogHeader className="shrink-0">
           <DialogTitle>{headerLabel}</DialogTitle>
           <DialogDescription>
@@ -33,7 +46,15 @@ export function TicketCheckout(props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          className={`flex-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+            fills ? "min-h-0 overflow-hidden" : "overflow-y-auto"
+          }`}
+        >
+          {/* Sits above whichever step is showing, so it reads as terms for the
+              whole purchase rather than for one field. */}
+          {disclaimerSlot("checkout-top", "mb-4")}
+
           {step === "seats" ? (
             <SeatsStep event={event} checkout={checkout} accent={accent} />
           ) : null}

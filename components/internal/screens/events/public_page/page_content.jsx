@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 
 import { PageBlock } from "../page_blocks";
 import { PageTree } from "../page_render";
@@ -15,7 +15,8 @@ import { typeIconFor } from "./constants";
 import { usePageData } from "./use_page_data";
 import { usePageTheme } from "./use_page_theme";
 import { BrandBar } from "./brand_bar";
-import { BannerHero, HeroRegion } from "./hero";
+import { BannerHero, HeroRegion, HostsBlock, galleryStripOf } from "./hero";
+import { PageLayout } from "./layouts";
 import {
   RegisterCard,
   GoodToKnowCard,
@@ -24,6 +25,8 @@ import {
 } from "./sidebar_cards";
 import { VenueDetailsDialog } from "./venue_dialog";
 import { TicketCheckout } from "./checkout/ticket_checkout";
+import { makeDisclaimerSlot } from "./disclaimer";
+import { getSectionNote } from "./section_note";
 
 export function EventPublicPageContent({
   event,
@@ -75,6 +78,7 @@ export function EventPublicPageContent({
     orderedBlocks,
     sidebarBlocks,
     hero,
+    layout,
     sidebarLeft,
     primaryBtnStyle,
     ctaHover,
@@ -109,6 +113,18 @@ export function EventPublicPageContent({
   const soldOut = Number.isFinite(remaining) && remaining <= 0;
   const checkoutRemaining = Number.isFinite(remaining) ? remaining : 9999;
   const showRemaining = event.regSettings?.showRemaining !== false;
+
+  // Which route opened the checkout: "seats" enters via the seating plan,
+  // "price" skips straight to ticket details, null keeps the default flow.
+  const [checkoutEntry, setCheckoutEntry] = useState(null);
+  const openCheckout = (entry) => {
+    setCheckoutEntry(entry || null);
+    setCheckoutOpen(true);
+  };
+
+  // Organizer-typed disclaimer, rendered at whichever page slots it's placed in.
+  // Every layout calls this by slot name and stays unaware of the config shape.
+  const disclaimerSlot = makeDisclaimerSlot(event);
 
   const regQuestions = Array.isArray(event.questions)
     ? event.questions.map((q) => q.label).filter(Boolean)
@@ -161,17 +177,29 @@ export function EventPublicPageContent({
         showRemaining={showRemaining}
         primaryBtnStyle={primaryBtnStyle}
         ctaHover={ctaHover}
-        onCheckout={() => setCheckoutOpen(true)}
+        note={getSectionNote(event, "register")}
+        onCheckout={openCheckout}
       />
     ),
     goodtoknow: (
-      <GoodToKnowCard event={event} TypeIcon={TypeIcon} language={language} />
+      <GoodToKnowCard
+        event={event}
+        TypeIcon={TypeIcon}
+        language={language}
+        note={getSectionNote(event, "goodtoknow")}
+      />
     ),
     atregistration: regQuestions.length ? (
-      <AtRegistrationCard questions={regQuestions} />
+      <AtRegistrationCard
+        questions={regQuestions}
+        note={getSectionNote(event, "atregistration")}
+      />
     ) : null,
     guidelines: guidelines.length ? (
-      <GuidelinesCard guidelines={guidelines} />
+      <GuidelinesCard
+        guidelines={guidelines}
+        note={getSectionNote(event, "guidelines")}
+      />
     ) : null,
   };
 
@@ -200,6 +228,19 @@ export function EventPublicPageContent({
       : []),
   ];
 
+  // Sidebar entries resolved to elements, keeping their type so a layout can
+  // pull the registration panel out and place the rest somewhere else.
+  const sidebarNodes = sidebarBlocks.map((b) => ({
+    id: b.id,
+    type: b.type,
+    node:
+      b.type in sidebarCards ? (
+        <React.Fragment key={b.id}>{sidebarCards[b.type]}</React.Fragment>
+      ) : (
+        <PageBlock key={b.id} block={b} event={event} accent={accent} />
+      ),
+  }));
+
   const brandBar = (
     <BrandBar
       headerCfg={headerCfg}
@@ -209,6 +250,49 @@ export function EventPublicPageContent({
       onShare={onShare}
     />
   );
+
+  // Everything a layout can arrange, rendered once here so no layout has to
+  // know about themes, tickets or the block catalog — it only decides where
+  // each piece sits and how big it is.
+  const layoutCtx = {
+    event,
+    theme,
+    themed,
+    accent,
+    contentWidth,
+    sectionGapStyle,
+    coverClass,
+    coverStyle,
+    bannerOverlay,
+    hero,
+    sidebarLeft,
+    brandBar,
+    heroRegion,
+    disclaimerSlot,
+    parts: {
+      gallery: galleryStripOf(event, effective),
+      hostsBlock: <HostsBlock event={event} hosts={hosts} />,
+    },
+    blocks: contentBlocks.map((b) => ({
+      ...b,
+      node: <PageBlock key={b.id} block={b} event={event} accent={accent} />,
+    })),
+    sidebarNodes,
+    sidebarRest: sidebarNodes.filter((b) => b.type !== "register"),
+    register: sidebarCards.register,
+    meta: { tags, TypeIcon, hosts, language },
+    cta: {
+      tickets,
+      selected,
+      setSelected,
+      soldOut,
+      remaining,
+      showRemaining,
+      primaryBtnStyle,
+      ctaHover,
+      onCheckout: openCheckout,
+    },
+  };
 
   return (
     <div
@@ -248,67 +332,36 @@ export function EventPublicPageContent({
         </div>
       ) : null}
 
-      {built && hero === "none" && !headerCfg ? null : (
-        <div
-          className={cn(
-            "relative z-10 mx-auto px-4 sm:px-6 lg:px-8",
-            built ? "pt-12" : "py-16",
-          )}
-          style={{ maxWidth: contentWidth }}
-        >
-          {brandBar}
-          {hero === "banner" ? (
-            <BannerHero
-              event={event}
-              tags={tags}
-              coverClass={coverClass}
-              coverStyle={coverStyle}
-              bannerOverlay={bannerOverlay}
-            />
-          ) : null}
-          {built ? (
+      {/* A built page owns its own body via PageTree — it only takes the brand
+          bar and hero from here, and only when they're switched on. */}
+      {built ? (
+        hero === "none" && !headerCfg ? null : (
+          <div
+            className="relative z-10 mx-auto px-4 pt-12 sm:px-6 lg:px-8"
+            style={{ maxWidth: contentWidth }}
+          >
+            {disclaimerSlot("top", "mb-8")}
+            {brandBar}
+            {hero === "banner" ? (
+              <BannerHero
+                event={event}
+                tags={tags}
+                coverClass={coverClass}
+                coverStyle={coverStyle}
+                bannerOverlay={bannerOverlay}
+              />
+            ) : null}
             <div
               className={cn("min-w-0", themed ? "flex flex-col" : "space-y-10")}
               style={sectionGapStyle}
             >
               {heroRegion}
+              {disclaimerSlot("hero")}
             </div>
-          ) : (
-            <div
-              className={cn(
-                "grid grid-cols-1 gap-10 lg:gap-16",
-                sidebarLeft
-                  ? "lg:grid-cols-[380px_1fr]"
-                  : "lg:grid-cols-[1fr_380px]",
-              )}
-            >
-              <div
-                className={cn("min-w-0", themed ? "flex flex-col" : "space-y-10")}
-                style={sectionGapStyle}
-              >
-                {heroRegion}
-                {contentBlocks.map((b) => (
-                  <PageBlock key={b.id} block={b} event={event} accent={accent} />
-                ))}
-              </div>
-
-              <div
-                className={cn(
-                  "space-y-4 lg:sticky lg:top-20 lg:self-start",
-                  sidebarLeft && "lg:order-first",
-                )}
-              >
-                {sidebarBlocks.map((b) =>
-                  b.type in sidebarCards ? (
-                    <React.Fragment key={b.id}>{sidebarCards[b.type]}</React.Fragment>
-                  ) : (
-                    <PageBlock key={b.id} block={b} event={event} accent={accent} />
-                  ),
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )
+      ) : (
+        <PageLayout layout={layout} ctx={layoutCtx} />
       )}
 
       {built ? (
@@ -328,6 +381,12 @@ export function EventPublicPageContent({
         </div>
       ) : null}
 
+      {disclaimerSlot(
+        "above-footer",
+        "relative z-10 mx-auto w-full px-4 pb-8 sm:px-6 lg:px-8",
+        { maxWidth: contentWidth },
+      )}
+
       <div className="relative z-10">
         <PageFooter
           footer={effective.footer}
@@ -338,13 +397,21 @@ export function EventPublicPageContent({
         />
       </div>
 
+      {disclaimerSlot(
+        "below-footer",
+        "relative z-10 mx-auto w-full px-4 pt-8 sm:px-6 lg:px-8",
+        { maxWidth: contentWidth },
+      )}
+
       <TicketCheckout
         open={checkoutOpen}
         onClose={() => {
           setCheckoutOpen(false);
+          setCheckoutEntry(null);
           setResumeResult(null);
           setApprovedResume(null);
         }}
+        entry={checkoutEntry}
         event={event}
         ticket={tickets[selected]}
         remaining={checkoutRemaining}

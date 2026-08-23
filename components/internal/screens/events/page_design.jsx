@@ -67,6 +67,7 @@ import {
 import { useCan } from "@/context/rbac-context";
 import { hasTree } from "@/lib/events/page_migrate";
 import { Segmented, ColorField } from "./theme_controls";
+import { LayoutPicker } from "./layout_picker";
 import { FooterEditor, DEFAULT_FOOTER } from "./page_footer";
 import { ImportBrandDialog, BrandLogoSection } from "./brand_import";
 import {
@@ -1015,6 +1016,16 @@ export function PageDesignSection({
           </TabsContent>
 
           <TabsContent value="layout" className="space-y-4">
+            <SectionCard
+              title="Page layout"
+              description="How the page is arranged — where the cover, the sections and the ticket panel sit, and how big each one gets. Your colors, type and content stay exactly as they are."
+            >
+              <LayoutPicker
+                value={theme.layout}
+                onChange={(v) => setTheme({ layout: v })}
+              />
+            </SectionCard>
+
             <SectionCard title="Shape & style">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Corner radius">
@@ -1252,8 +1263,12 @@ export function PageDesignSection({
             </SectionCard>
 
             <SectionCard
-              title="Header & layout"
-              description="How the top of your page and the ticket sidebar are arranged."
+              title="Hero & cover"
+              description={
+                (theme.layout || "classic") === "classic"
+                  ? "How the top of your page and the ticket sidebar are arranged."
+                  : "Cover treatment for your page. Hero style and sidebar side only apply to the Classic layout — the one you've picked defines its own top."
+              }
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Hero style">

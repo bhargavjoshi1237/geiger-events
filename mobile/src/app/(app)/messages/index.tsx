@@ -157,7 +157,6 @@ const styles = StyleSheet.create({
   },
   time: {
     ...type.caption,
-    fontSize: 10,
     color: colors.textTertiary,
   },
   fab: {

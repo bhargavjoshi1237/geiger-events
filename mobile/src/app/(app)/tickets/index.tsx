@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   title: {
-    ...type.title,
+    ...type.display,
     color: colors.foreground,
   },
   subtitle: {

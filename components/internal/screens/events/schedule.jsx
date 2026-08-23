@@ -13,12 +13,23 @@ import {
   UploadCloud,
   Loader2,
   Image as ImgIcon,
+  Code as CodeIcon,
+  AlignLeft,
+  Globe,
+  ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 
 import { EditorSectionHeader, Field } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   Dialog,
   DialogContent,
@@ -27,51 +38,73 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
-import { Segmented } from "./theme_controls";
+import {
+  applySection,
+  formatScheduleTime,
+  sectionSettings,
+} from "@/lib/events/schedule_items";
+import { clipHostLabel, isClipFilled } from "@/lib/clip/model";
+import { removeClipAssets } from "@/lib/clip/assets";
+import {
+  ClipAppearance,
+  ClipPruner,
+  WebClipDialog,
+} from "@/components/internal/shared/web_clip";
+import { ScheduleSlot } from "./page_blocks";
+import { ScheduleStyleButton, ChoiceRow } from "./schedule_style";
+import { ScheduleTimeField, TimeLabelBadge } from "./schedule_time";
 import {
   uploadEventImage,
   removeEventImage,
   pathFromPublicUrl,
 } from "@/lib/supabase/storage";
 
-// Per-event schedule editor. Each item — { id, time, title, description, image,
-// layout, spacing, imagePosition } — is stored in the event's metadata bag (like
-// tickets/questions) via useEventConfig, so the timeline grows without a
-// migration and rehydrates on reload. The public page renders these in the
-// Schedule block (page_blocks.jsx). Item images live in the shared event-media
-// bucket through uploadEventImage.
+// Per-event schedule editor. Each item — { id, time, title, description,
+// contentType, image, imagePosition, imageFit, clip } — is stored in the event's
+// metadata bag (like tickets/questions) via useEventConfig, so the timeline
+// grows without a migration and rehydrates on reload. The public page renders
+// these in the Schedule block (page_blocks.jsx), and the dialog's preview pane
+// uses that same renderer rather than a lookalike.
+//
+// Layout, gap, frame and the section note are section-level and live on the
+// header (schedule_style.jsx), not in here — see lib/events/schedule_items.js.
 
-// How a schedule is laid out on the public page. A section-level style — saving
-// it on any item syncs it across the schedule.
-export const SCHEDULE_LAYOUTS = [
-  { key: "list", label: "List" },
-  { key: "flex", label: "Flex" },
+// What an item is. "html" and "clip" both replace the whole item: time, title,
+// and image are skipped and the content stands alone.
+export const SCHEDULE_CONTENT_TYPES = [
+  {
+    key: "text",
+    label: "Standard",
+    hint: "Time, title, description and an image",
+    icon: AlignLeft,
+  },
+  {
+    key: "clip",
+    label: "Clip from web",
+    hint: "Pull a component off any public page",
+    icon: Globe,
+  },
+  {
+    key: "html",
+    label: "Custom HTML",
+    hint: "Your own markup, rendered as-is",
+    icon: CodeIcon,
+  },
 ];
 
-// Breathing room between schedule items, in each layout.
-export const SCHEDULE_GAPS = [
-  { key: "tight", label: "Tight" },
-  { key: "normal", label: "Normal" },
-  { key: "wide", label: "Wide" },
-];
-
-// Where an item's image sits. "background" pins it behind the text with a
-// scrim; "top" runs it wide above the text; left/right thumb the side.
 export const SCHEDULE_IMAGE_POSITIONS = [
   { key: "left", label: "Left" },
   { key: "right", label: "Right" },
   { key: "top", label: "Top" },
-  { key: "background", label: "Background" },
+  { key: "background", label: "Behind" },
 ];
 
-// How an item's image fills its frame. "fit" shows the whole image, letterboxed
-// where the frame's proportions differ; "stretch" forces it to fill and can
-// distort; "cover" crops the overflow.
 export const SCHEDULE_IMAGE_FITS = [
-  { key: "cover", label: "Cover" },
-  { key: "fit", label: "Fit" },
-  { key: "stretch", label: "Stretch" },
+  { key: "cover", label: "Cover", hint: "Fills the frame, crops the overflow" },
+  { key: "fit", label: "Fit", hint: "Shows the whole image, letterboxed" },
+  { key: "stretch", label: "Stretch", hint: "Fills the frame, distorts" },
 ];
 
 const EMPTY_ITEM = {
@@ -79,17 +112,127 @@ const EMPTY_ITEM = {
   title: "",
   description: "",
   image: "",
-  layout: "",
-  spacing: "normal",
+  sectionNote: "",
+  contentType: "text",
   imagePosition: "left",
   imageFit: "cover",
+  clip: null,
 };
 
-// Author or edit a single schedule item — a required title plus an optional
-// time, description, and image. Matches the suite's create-dialog rhythm.
-function ScheduleItemDialog({ open, onOpenChange, eventId, initial, onSave }) {
+// Miniature diagrams of where an image sits relative to the text. Four words in
+// a pill row said nothing; four shapes say it without a label.
+function PositionArt({ kind }) {
+  const img = "rounded-[2px] bg-current";
+  const txt = "rounded-[2px] bg-current/35";
+  if (kind === "top") {
+    return (
+      <div className="flex h-7 w-full flex-col gap-1 opacity-80">
+        <span className={cn(img, "h-3")} />
+        <span className={cn(txt, "h-1.5")} />
+        <span className={cn(txt, "h-1.5 w-2/3")} />
+      </div>
+    );
+  }
+  if (kind === "background") {
+    return (
+      <div className={cn("relative h-7 w-full opacity-80", img)}>
+        <span className="absolute inset-x-1 top-2 h-1.5 rounded-[2px] bg-background/70" />
+        <span className="absolute inset-x-1 top-4 h-1.5 w-1/2 rounded-[2px] bg-background/70" />
+      </div>
+    );
+  }
+  return (
+    <div
+      className={cn(
+        "flex h-7 w-full gap-1 opacity-80",
+        kind === "right" && "flex-row-reverse",
+      )}
+    >
+      <span className={cn(img, "h-full w-1/3 shrink-0")} />
+      <div className="flex flex-1 flex-col justify-center gap-1">
+        <span className={cn(txt, "h-1.5")} />
+        <span className={cn(txt, "h-1.5 w-2/3")} />
+      </div>
+    </div>
+  );
+}
+
+// Fit is shown by rendering the actual image three ways — the only honest way
+// to explain the difference between cover, fit, and stretch.
+function FitArt({ kind, src }) {
+  const object =
+    kind === "fit" ? "object-contain" : kind === "stretch" ? "object-fill" : "object-cover";
+  return (
+    <div className="h-7 w-full overflow-hidden rounded-[3px] bg-surface-subtle">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className={cn("h-full w-full", object)} />
+      ) : null}
+    </div>
+  );
+}
+
+// The three item modes, as cards. A mode switch changes the whole form, so it
+// gets real estate at the top rather than a pill row buried mid-dialog.
+function ModePicker({ value, onChange }) {
+  return (
+    <div className="grid gap-1.5">
+      {SCHEDULE_CONTENT_TYPES.map((mode) => {
+        const active = value === mode.key;
+        const Icon = mode.icon;
+        return (
+          <button
+            key={mode.key}
+            type="button"
+            onClick={() => onChange(mode.key)}
+            aria-pressed={active}
+            className={cn(
+              "flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors",
+              active
+                ? "border-primary bg-primary/10"
+                : "border-border bg-surface-card hover:border-border-strong hover:bg-surface-active",
+            )}
+          >
+            <Icon
+              className={cn(
+                "h-4 w-4 shrink-0",
+                active ? "text-primary" : "text-text-tertiary",
+              )}
+            />
+            <span className="min-w-0">
+              <span
+                className={cn(
+                  "block text-xs font-medium leading-tight",
+                  active ? "text-foreground" : "text-muted-foreground",
+                )}
+              >
+                {mode.label}
+              </span>
+              <span className="block truncate text-[11px] leading-tight text-text-tertiary">
+                {mode.hint}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Author or edit a single schedule item. Two panes: the form on the left, and
+// on the right the item rendered through the real public-page renderer, so
+// every layout choice is seen rather than read.
+function ScheduleItemDialog({
+  open,
+  onOpenChange,
+  eventId,
+  initial,
+  previousTime,
+  onSave,
+}) {
   const [draft, setDraft] = useState(EMPTY_ITEM);
   const [busy, setBusy] = useState(false);
+  const [clipOpen, setClipOpen] = useState(false);
   const fileInput = useRef(null);
 
   // Re-seed the draft whenever the dialog opens (render-phase reset — React's
@@ -101,6 +244,7 @@ function ScheduleItemDialog({ open, onOpenChange, eventId, initial, onSave }) {
   }
 
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
+  const mode = draft.contentType || "text";
 
   const onFile = async (e) => {
     const file = e.target.files?.[0];
@@ -131,193 +275,438 @@ function ScheduleItemDialog({ open, onOpenChange, eventId, initial, onSave }) {
   };
 
   const submit = () => {
-    if (!draft.title.trim()) {
+    if (mode === "html" && !draft.description.trim()) {
+      toast.error("Add some HTML for the item first.");
+      return;
+    }
+    if (mode === "clip" && !isClipFilled(draft.clip)) {
+      toast.error("Clip something from a web page first.");
+      return;
+    }
+    if (mode === "text" && !draft.title.trim()) {
       toast.error("Give the item a title first.");
       return;
     }
+    const standalone = mode !== "text";
     onSave({
-      time: draft.time.trim(),
-      title: draft.title.trim(),
-      description: draft.description.trim(),
-      image: draft.image || "",
-      layout: draft.layout || "",
-      spacing: draft.spacing || "normal",
+      time: standalone ? "" : draft.time.trim(),
+      title: draft.title.trim() || (mode === "clip" ? "Clipped component" : "Custom item"),
+      description: mode === "clip" ? "" : draft.description.trim(),
+      image: standalone ? "" : draft.image || "",
+      contentType: mode,
       imagePosition: draft.imagePosition || "left",
       imageFit: draft.imageFit || "cover",
+      clip: mode === "clip" ? draft.clip : null,
     });
     onOpenChange(false);
   };
 
+  const clipHost = clipHostLabel(draft.clip);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto bg-background">
-        <DialogHeader>
-          <DialogTitle>
-            {initial ? "Edit schedule item" : "Add schedule item"}
-          </DialogTitle>
-          <DialogDescription>
-            A moment in your event&apos;s timeline. Give it a title, and
-            optionally a time, a description, and an image.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="flex max-h-[88vh] w-[95vw] max-w-4xl flex-col gap-0 overflow-hidden bg-background p-0">
+          <DialogHeader className="shrink-0 border-b border-border px-5 py-3.5">
+            <DialogTitle>
+              {initial?.id ? "Edit schedule item" : "Add schedule item"}
+            </DialogTitle>
+            <DialogDescription>
+              A moment in your event&apos;s timeline.
+            </DialogDescription>
+          </DialogHeader>
 
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={onFile}
-        />
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onFile}
+          />
 
-        <div className="grid gap-4">
-          <Field label="Time" hint="Optional" htmlFor="sched-time">
-            <Input
-              id="sched-time"
-              value={draft.time}
-              onChange={(e) => set("time")(e.target.value)}
-              placeholder="e.g. 6:30 PM"
-            />
-          </Field>
-          <Field label="Title" htmlFor="sched-title">
-            <Input
-              id="sched-title"
-              value={draft.title}
-              onChange={(e) => set("title")(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-              placeholder="e.g. Opening remarks"
-              autoFocus
-            />
-          </Field>
-          <Field label="Description" hint="Optional" htmlFor="sched-desc">
-            <Textarea
-              id="sched-desc"
-              rows={3}
-              value={draft.description}
-              onChange={(e) => set("description")(e.target.value)}
-              placeholder="What happens during this part of the event?"
-            />
-          </Field>
-          <Field label="Image" hint="Optional">
-            {draft.image ? (
-              <div className="group relative overflow-hidden rounded-xl border border-border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={draft.image}
-                  alt=""
-                  className="aspect-[16/9] w-full object-cover"
-                />
-                <div className="absolute inset-x-0 bottom-0 flex justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => fileInput.current?.click()}
-                    className="border-border bg-black/40 text-white hover:bg-black/60"
+          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            {/* Form */}
+            <div className="min-h-0 space-y-4 overflow-y-auto border-border p-5 md:border-r">
+              <ModePicker value={mode} onChange={set("contentType")} />
+
+              {mode === "html" ? (
+                <Field
+                  label="HTML"
+                  hint="Rendered verbatim on the public page. Scripts are not executed."
+                  htmlFor="sched-html"
+                >
+                  <Textarea
+                    id="sched-html"
+                    rows={14}
+                    className="font-mono text-xs"
+                    spellCheck={false}
+                    value={draft.description}
+                    onChange={(e) => set("description")(e.target.value)}
+                    placeholder={'<div class="rounded-xl border border-border p-4">…</div>'}
+                  />
+                </Field>
+              ) : null}
+
+              {mode === "clip" ? (
+                <div className="space-y-4">
+                  {isClipFilled(draft.clip) ? (
+                    <div className="space-y-2 rounded-lg border border-border bg-surface-card p-3">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+                        <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                          {clipHost || "Clipped component"}
+                        </span>
+                        {draft.clip?.source?.url ? (
+                          <a
+                            href={draft.clip.source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 text-text-tertiary transition-colors hover:text-foreground"
+                            aria-label="Open the original page"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        ) : null}
+                      </div>
+                      <p className="font-mono text-[11px] text-text-tertiary">
+                        {draft.clip?.source?.selector}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setClipOpen(true)}
+                          className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" /> Re-clip
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => set("clip")(null)}
+                          className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setClipOpen(true)}
+                      className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card py-10 text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
+                    >
+                      <Globe className="h-6 w-6" />
+                      <span className="text-sm">Clip a component from a URL</span>
+                      <span className="text-[11px] text-text-tertiary">
+                        Hover the page, pick the piece you want
+                      </span>
+                    </button>
+                  )}
+
+                  <Field
+                    label="Internal label"
+                    hint="Only shown in this list, to help you find it."
+                    htmlFor="sched-clip-title"
                   >
-                    {busy ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <UploadCloud className="h-4 w-4" />
-                    )}
-                    Replace
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={removeImage}
-                    className="border-border bg-black/40 text-white hover:bg-red-500/30"
-                  >
-                    <Trash2 className="h-4 w-4" /> Remove
-                  </Button>
+                    <Input
+                      id="sched-clip-title"
+                      value={draft.title}
+                      onChange={(e) => set("title")(e.target.value)}
+                      placeholder="e.g. Pricing table"
+                    />
+                  </Field>
+
+                  {/* Applied at render time, so these fix an existing clip
+                      without re-capturing it. */}
+                  {isClipFilled(draft.clip) ? (
+                    <>
+                      <ClipAppearance
+                        clip={draft.clip}
+                        onChange={(next) => set("clip")(next)}
+                      />
+                      {/* Collapsed by default — editing the markup is an
+                          occasional fix, not part of the normal flow, and it
+                          carries its own preview. */}
+                      <Accordion type="single" collapsible>
+                        <AccordionItem
+                          value="contents"
+                          className="rounded-lg border border-border px-3"
+                        >
+                          <AccordionTrigger className="py-2.5 text-xs font-medium hover:no-underline">
+                            Contents
+                          </AccordionTrigger>
+                          <AccordionContent className="pb-3">
+                            <p className="mb-2 text-[11px] text-text-tertiary">
+                              Strip the containers the component was sitting in,
+                              or remove parts you don&apos;t want.
+                            </p>
+                            <ClipPruner
+                              clip={draft.clip}
+                              onChange={(next) => set("clip")(next)}
+                            />
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    </>
+                  ) : null}
                 </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => fileInput.current?.click()}
-                className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground disabled:opacity-60"
-              >
-                {busy ? (
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                ) : (
-                  <UploadCloud className="h-6 w-6" />
-                )}
-                <span className="text-sm">
-                  {busy ? "Uploading…" : "Click to upload an image"}
-                </span>
-              </button>
-            )}
-          </Field>
-          <Field
-            label="Layout"
-            hint='"Flex" wraps the items into a responsive grid; "List" stacks them. Applied to every item.'
-          >
-            <Segmented
-              value={
-                draft.layout === "list" || draft.layout === "flex"
-                  ? draft.layout
-                  : "list"
-              }
-              onChange={(v) => set("layout")(v)}
-              options={SCHEDULE_LAYOUTS}
-            />
-          </Field>
-          <Field
-            label="Gap"
-            hint="Spacing between schedule items. Applies to every item."
-          >
-            <Segmented
-              value={draft.spacing || "normal"}
-              onChange={(v) => set("spacing")(v)}
-              options={SCHEDULE_GAPS}
-            />
-          </Field>
-          <Field
-            label="Image position"
-            hint='Where this item&apos;s image sits. "Background" pins it behind the text.'
-          >
-            <Segmented
-              value={draft.imagePosition || "left"}
-              onChange={(v) => set("imagePosition")(v)}
-              options={SCHEDULE_IMAGE_POSITIONS}
-            />
-          </Field>
-          <Field
-            label="Image fit"
-            hint="How the image fills its frame. Fit shows it whole, letterboxed; stretch distorts it to fill."
-          >
-            <Segmented
-              value={draft.imageFit || "cover"}
-              onChange={(v) => set("imageFit")(v)}
-              options={SCHEDULE_IMAGE_FITS}
-            />
-          </Field>
-        </div>
+              ) : null}
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={submit}
-          >
-            {initial ? "Save item" : "Add item"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              {mode === "text" ? (
+                <>
+                  <Field label="Time" hint="Optional" htmlFor="sched-time">
+                    <ScheduleTimeField
+                      id="sched-time"
+                      value={draft.time}
+                      onChange={set("time")}
+                      afterTime={previousTime}
+                    />
+                    <TimeLabelBadge value={draft.time} />
+                  </Field>
+                  <Field label="Title" htmlFor="sched-title">
+                    <Input
+                      id="sched-title"
+                      value={draft.title}
+                      onChange={(e) => set("title")(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          submit();
+                        }
+                      }}
+                      placeholder="e.g. Opening remarks"
+                      autoFocus
+                    />
+                  </Field>
+                  <Field label="Description" hint="Optional" htmlFor="sched-desc">
+                    <Textarea
+                      id="sched-desc"
+                      rows={3}
+                      value={draft.description}
+                      onChange={(e) => set("description")(e.target.value)}
+                      placeholder="What happens during this part of the event?"
+                    />
+                  </Field>
+
+                  <Field label="Image" hint="Optional">
+                    {draft.image ? (
+                      <div className="group relative overflow-hidden rounded-xl border border-border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={draft.image}
+                          alt=""
+                          className="aspect-[16/9] w-full object-cover"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 flex justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => fileInput.current?.click()}
+                            className="border-border bg-black/40 text-white hover:bg-black/60"
+                          >
+                            {busy ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <UploadCloud className="h-4 w-4" />
+                            )}
+                            Replace
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={removeImage}
+                            className="border-border bg-black/40 text-white hover:bg-red-500/30"
+                          >
+                            <Trash2 className="h-4 w-4" /> Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => fileInput.current?.click()}
+                        className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground disabled:opacity-60"
+                      >
+                        {busy ? (
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        ) : (
+                          <UploadCloud className="h-6 w-6" />
+                        )}
+                        <span className="text-sm">
+                          {busy ? "Uploading…" : "Click to upload an image"}
+                        </span>
+                      </button>
+                    )}
+                  </Field>
+
+                  {/* Position and fit only exist once there's an image to place. */}
+                  {draft.image ? (
+                    <>
+                      <ChoiceRow
+                        label="Image position"
+                        value={draft.imagePosition || "left"}
+                        onChange={set("imagePosition")}
+                        options={SCHEDULE_IMAGE_POSITIONS}
+                        render={(o) => <PositionArt kind={o.key} />}
+                      />
+                      <ChoiceRow
+                        label="Image fit"
+                        value={draft.imageFit || "cover"}
+                        onChange={set("imageFit")}
+                        options={SCHEDULE_IMAGE_FITS}
+                        render={(o) => <FitArt kind={o.key} src={draft.image} />}
+                      />
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+
+            {/* Live preview — the real public-page renderer, not a lookalike. */}
+            <div className="hidden min-h-0 flex-col overflow-hidden bg-surface-subtle md:flex">
+              <p className="shrink-0 px-5 pt-4 text-[11px] uppercase tracking-wide text-text-tertiary">
+                Live preview
+              </p>
+              <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                <div className="rounded-xl border border-border bg-surface-card p-4">
+                  <ScheduleSlot slot={draft} />
+                </div>
+                <p className="mt-3 text-[11px] text-text-tertiary">
+                  Exactly how this item renders in the Schedule section.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="shrink-0 border-t border-border px-5 py-3.5">
+            <Button
+              variant="outline"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={submit}
+            >
+              {initial?.id ? "Save item" : "Add item"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <WebClipDialog
+        open={clipOpen}
+        onOpenChange={setClipOpen}
+        onClip={(clip) => {
+          set("clip")(clip);
+          // Seed the internal label from the source so the list is readable
+          // without the organizer having to name it.
+          setDraft((d) =>
+            d.title.trim()
+              ? d
+              : { ...d, title: clipHostLabel(clip) || "Clipped component" },
+          );
+        }}
+      />
+    </>
+  );
+}
+
+// One row in the editor's list.
+function ScheduleRow({ item, index, count, onEdit, onRemove, onMove }) {
+  const clipped = item.contentType === "clip";
+  const html = item.contentType === "html";
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-3">
+      <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-text-tertiary" />
+      {item.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.image}
+          alt=""
+          className="h-12 w-16 shrink-0 rounded-md border border-border object-cover"
+        />
+      ) : (
+        <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md border border-border bg-surface-subtle text-text-tertiary">
+          {clipped ? (
+            <Globe className="h-4 w-4" />
+          ) : html ? (
+            <CodeIcon className="h-4 w-4" />
+          ) : (
+            <ImgIcon className="h-4 w-4" />
+          )}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          {item.time ? (
+            <span className="shrink-0 text-xs font-medium tabular-nums text-text-secondary">
+              {formatScheduleTime(item.time)}
+            </span>
+          ) : null}
+          <p className="truncate text-sm font-medium text-foreground">
+            {item.title}
+          </p>
+          {clipped || html ? (
+            <span className="shrink-0 rounded border border-border bg-surface-subtle px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
+              {clipped ? clipHostLabel(item.clip) || "Clip" : "HTML"}
+            </span>
+          ) : null}
+        </div>
+        {item.description ? (
+          <p className="mt-0.5 truncate text-xs text-text-secondary">
+            {item.description}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex items-center">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          disabled={index === 0}
+          onClick={() => onMove(-1)}
+          aria-label="Move up"
+          className="text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          disabled={index === count - 1}
+          onClick={() => onMove(1)}
+          aria-label="Move down"
+          className="text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onEdit}
+          aria-label="Edit item"
+          className="text-text-secondary hover:bg-surface-active hover:text-foreground"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onRemove}
+          aria-label="Delete item"
+          className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -326,35 +715,38 @@ export function ScheduleSection({ event, headerItem }) {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState(null); // { index, item } | null
 
-  // Layout and gap are section-level styles — the renderer reads them off the
-  // first item, so new items seed from there and edits sync across the list.
-  const sectionLayout = items[0]?.layout || "list";
-  const sectionSpacing = items[0]?.spacing || "normal";
+  const section = sectionSettings(items);
+
+  // Section styling is stored on every item because the renderer reads it off
+  // the first one — so a change here fans out across the list in one save.
+  const saveSection = (next) =>
+    saveItems(applySection(items, next), { successMsg: "Schedule style updated." });
 
   const addItem = (item) =>
-    saveItems([...items, { ...item, id: `sch_${Date.now()}` }], {
+    saveItems([...items, { ...item, ...section, id: `sch_${Date.now()}` }], {
       successMsg: "Schedule item added.",
     });
 
-  const updateItem = (index, item) =>
+  // Clip assets are cleaned up here rather than in the dialog, because only a
+  // save is a commitment — a re-clip the organizer then cancels must not have
+  // already deleted the images the still-saved clip is using. `keep` spares
+  // anything the replacement re-uses, which re-clipping the same element does
+  // for most of its images.
+  const updateItem = (index, item) => {
+    const previous = items[index];
     saveItems(
-      items.map((it, i) =>
-        i === index
-          ? { ...it, ...item }
-          : {
-              ...it,
-              layout: item.layout || it.layout,
-              spacing: item.spacing || it.spacing,
-            },
-      ),
+      items.map((it, i) => (i === index ? { ...it, ...item } : it)),
       { successMsg: "Schedule item updated." },
     );
+    if (previous?.clip) removeClipAssets(previous.clip, { keep: item.clip });
+  };
 
   const removeItem = (index) => {
     const target = items[index];
     saveItems(items.filter((_, i) => i !== index));
     const path = pathFromPublicUrl(target?.image);
     if (path) removeEventImage(path);
+    if (target?.clip) removeClipAssets(target.clip);
   };
 
   const move = (index, dir) => {
@@ -365,6 +757,9 @@ export function ScheduleSection({ event, headerItem }) {
     saveItems(copy);
   };
 
+  // The last timed item, so a new one's picker opens just after it.
+  const lastTime = [...items].reverse().find((it) => it.time)?.time || "";
+
   return (
     <div className="space-y-6">
       <EditorSectionHeader
@@ -374,122 +769,61 @@ export function ScheduleSection({ event, headerItem }) {
           "Build your event's running order. Items appear in this order in the Schedule section of your public page."
         }
         action={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> Add item
-          </Button>
+          <div className="flex items-center gap-2">
+            <ScheduleStyleButton
+              section={section}
+              onChange={saveSection}
+              disabled={!items.length}
+            />
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setAddOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> Add item
+            </Button>
+          </div>
         }
       />
 
       {items.length ? (
-          <div className="space-y-2">
-            {items.map((it, i) => (
-              <div
-                key={it.id || i}
-                className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-3"
-              >
-                <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-text-tertiary" />
-                {it.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={it.image}
-                    alt=""
-                    className="h-12 w-16 shrink-0 rounded-md border border-border object-cover"
-                  />
-                ) : (
-                  <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md border border-border bg-surface-subtle text-text-tertiary">
-                    <ImgIcon className="h-4 w-4" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    {it.time ? (
-                      <span className="shrink-0 text-xs font-medium tabular-nums text-text-secondary">
-                        {it.time}
-                      </span>
-                    ) : null}
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {it.title}
-                    </p>
-                  </div>
-                  {it.description ? (
-                    <p className="mt-0.5 truncate text-xs text-text-secondary">
-                      {it.description}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex items-center">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    disabled={i === 0}
-                    onClick={() => move(i, -1)}
-                    aria-label="Move up"
-                    className="text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    disabled={i === items.length - 1}
-                    onClick={() => move(i, 1)}
-                    aria-label="Move down"
-                    className="text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setEditing({ index: i, item: it })}
-                    aria-label="Edit item"
-                    className="text-text-secondary hover:bg-surface-active hover:text-foreground"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => removeItem(i)}
-                    aria-label="Delete item"
-                    className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setAddOpen(true)}
-            className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card py-10 text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
-          >
-            <Clock className="h-6 w-6" />
-            <p className="text-sm">Add your first schedule item</p>
-          </button>
-        )}
+        <div className="space-y-2">
+          {items.map((it, i) => (
+            <ScheduleRow
+              key={it.id || i}
+              item={it}
+              index={i}
+              count={items.length}
+              onEdit={() => setEditing({ index: i, item: it })}
+              onRemove={() => removeItem(i)}
+              onMove={(dir) => move(i, dir)}
+            />
+          ))}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card py-10 text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
+        >
+          <Clock className="h-6 w-6" />
+          <p className="text-sm">Add your first schedule item</p>
+        </button>
+      )}
 
       <ScheduleItemDialog
         open={addOpen}
         onOpenChange={setAddOpen}
         eventId={event.id}
-        initial={{
-          ...EMPTY_ITEM,
-          layout: sectionLayout,
-          spacing: sectionSpacing,
-        }}
+        initial={EMPTY_ITEM}
+        previousTime={lastTime}
         onSave={addItem}
       />
       <ScheduleItemDialog
         open={!!editing}
         onOpenChange={(o) => !o && setEditing(null)}
         eventId={event.id}
-        initial={editing?.item}
+        initial={editing ? { ...EMPTY_ITEM, ...editing.item } : null}
+        previousTime={editing ? items[editing.index - 1]?.time || "" : ""}
         onSave={(item) => {
           updateItem(editing.index, item);
           setEditing(null);

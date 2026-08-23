@@ -1,23 +1,33 @@
 "use client";
 
+import { useState } from "react";
+import { toast } from "sonner";
+import {
+  Check,
+  Globe,
+  ImageOff,
+  Loader2,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
+
 import { Field, SectionCard, SettingsList, SettingRow } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { useProject } from "@/context/project-context";
 import { useWallConfig } from "@/lib/events/use-wall-config";
+import { updateWall } from "@/lib/supabase/event_wall";
+import { uploadWallFont, uploadWallImage } from "@/lib/supabase/storage";
 import { Segmented, ColorField } from "../theme_controls";
 import { FooterEditor, DEFAULT_FOOTER } from "../page_footer";
-import {
-  WALL_COLUMNS,
-  CARD_STYLES,
-  FEATURED_STYLES,
-  HEADER_ALIGNS,
-  DEFAULT_LAYOUT,
-} from "./wall_layout";
+import { ImportBrandDialog } from "../brand_import";
+import { WALL_VIEWS, DEFAULT_LAYOUT } from "./wall_layout";
 import {
   resolveTheme,
   DEFAULT_THEME,
   THEME_PRESETS,
-  FONT_OPTIONS,
   FONT_SCALES,
   HEADING_WEIGHTS,
   RADIUS_OPTIONS,
@@ -29,13 +39,32 @@ import {
   ELEVATIONS,
   DENSITIES,
   BG_TYPES,
+  themeFontOptions,
 } from "@/lib/events/theme";
+
+// Which of the importer's categories this surface can honour. The wall has no
+// site-header bar of its own — its chrome is the organiser identity block — so
+// offering to import someone's nav would produce settings nothing renders.
+const WALL_IMPORT_CATEGORIES = [
+  "logo",
+  "colors",
+  "fonts",
+  "shape",
+  "layout",
+  "footer",
+  "content",
+];
 
 // The wall's brand theme — the same model individual event pages use
 // (lib/events/theme.js), stored under metadata.theme. Unlike per-event Page
 // Design there's no mode/blocks picker: the wall always renders the same
 // themed grid layout, so only the brand controls apply here.
-export function WallDesignSection({ wall }) {
+//
+// `onWallChange` lifts the wall's own columns (logo, tagline) back to the
+// screen after a save, so General — seeded from the same row — doesn't come
+// back holding the values this section just replaced.
+export function WallDesignSection({ wall, onWallChange }) {
+  const { projectId } = useProject();
   const [theme, setTheme, saveTheme, saving] = useWallConfig(
     wall,
     "theme",
@@ -51,6 +80,13 @@ export function WallDesignSection({ wall }) {
     "footer",
     DEFAULT_FOOTER,
   );
+  // The wall's identity columns, not its metadata bag — an import writes them
+  // too, so they're held here and committed alongside the theme.
+  const [logoUrl, setLogoUrl] = useState(wall?.logoUrl || "");
+  const [tagline, setTagline] = useState(wall?.tagline || "");
+  const [importOpen, setImportOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
   const resolved = resolveTheme({ theme });
   const patch = (next) => setTheme({ ...resolved, ...next });
   const setColors = (next) => patch({ colors: { ...resolved.colors, ...next } });
@@ -65,14 +101,196 @@ export function WallDesignSection({ wall }) {
     setLayoutKey({ cardMeta: { ...(layout.cardMeta || {}), [key]: v } });
   const setHeader = (next) =>
     setLayoutKey({ header: { ...(layout.header || {}), ...next } });
+
+  // An imported brand is a theme patch, merged over what's there so a partial
+  // import (colors only, say) leaves the rest alone. The footer rides alongside
+  // the theme, and the mark and tagline are columns on the wall itself — the
+  // theme's own logo/tagline fields belong to the event page's chrome, which
+  // the wall doesn't render.
+  const applyImport = (themePatch, nextFooter) => {
+    setTheme({ ...resolved, ...themePatch });
+    if (nextFooter) setFooter(nextFooter);
+    if (themePatch.logo?.url) setLogoUrl(themePatch.logo.url);
+    if (themePatch.tagline) setTagline(themePatch.tagline);
+  };
+
+  const pickLogo = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    // Compression off: canvas re-encoding destroys SVGs and flattens
+    // transparency, which is exactly what a logo needs to keep.
+    const uploaded = await uploadWallImage(projectId, file, { compress: false });
+    setUploading(false);
+    if (!uploaded?.url) {
+      toast.error("Couldn't upload that image.");
+      return;
+    }
+    setLogoUrl(uploaded.url);
+  };
+
   const onSave = async () => {
     await saveLayout(layout);
     await saveFooter(footer);
-    await saveTheme(theme, { successMsg: "Design saved." });
+    if ((await saveTheme(theme)) === false) return;
+    // The identity columns commit last so the row handed back up carries the
+    // metadata the three merges above just wrote — lifting an earlier read
+    // would hand the other sections a pre-import theme.
+    const row = await updateWall(projectId, { logoUrl, tagline });
+    if (!row) {
+      toast.error("Couldn't save the logo and tagline.");
+      return;
+    }
+    onWallChange?.(row);
+    toast.success("Design saved.");
   };
+
+  // An imported typeface isn't one of the built-ins, so the picker grows an
+  // entry for it — without this the font Segmented shows nothing selected.
+  const fontOptions = themeFontOptions(resolved);
+  const source = resolved.source || {};
+  // Every mark the last import pulled off the site — shown only when there's an
+  // actual choice to make between them.
+  const designs = resolved.importedLogos || [];
 
   return (
     <div className="space-y-6">
+      <SectionCard
+        title="Brand & logo"
+        description="Read an existing website and re-skin this page with its colors, type, and shape — or set the mark by hand."
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          >
+            <Sparkles className="h-4 w-4" />
+            {source.url ? "Re-import" : "Import from a site"}
+          </Button>
+        }
+      >
+        <div className="space-y-5">
+          {source.url ? (
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2.5 text-sm text-muted-foreground">
+              <Globe className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 truncate">
+                Imported from{" "}
+                <span className="text-foreground">
+                  {source.siteName || source.url}
+                </span>
+              </span>
+            </div>
+          ) : null}
+
+          <Field label="Logo" hint="Shown beside your page name.">
+            <div className="flex items-center gap-2">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-card p-1.5">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt="Wall logo"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : (
+                  <ImageOff className="h-4 w-4 text-text-tertiary" />
+                )}
+              </div>
+              <Input
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="Paste an image URL"
+                className="h-8 flex-1 font-mono text-xs"
+              />
+              <div className="flex shrink-0 gap-1.5">
+                <Button
+                  size="icon-xs"
+                  variant="outline"
+                  asChild
+                  aria-label={logoUrl ? "Replace logo" : "Upload logo"}
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                >
+                  <label className="cursor-pointer">
+                    {uploading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Upload className="h-3 w-3" />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => pickLogo(e.target.files?.[0])}
+                    />
+                  </label>
+                </Button>
+                {logoUrl ? (
+                  <Button
+                    size="icon-xs"
+                    variant="outline"
+                    aria-label="Remove logo"
+                    onClick={() => setLogoUrl("")}
+                    className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </Field>
+
+          <Field label="Tagline" hint="A short line under your page name.">
+            <Input
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+              placeholder="Discover what's happening."
+            />
+          </Field>
+
+          {designs.length > 1 ? (
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Imported designs
+              </p>
+              <p className="mb-2 text-xs text-text-tertiary">
+                Every mark the import found — pick the one to use.
+              </p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {designs.map((d, i) => {
+                  const active = d.url === logoUrl;
+                  return (
+                    <button
+                      key={`${d.url}-${i}`}
+                      type="button"
+                      onClick={() => setLogoUrl(d.url)}
+                      aria-label={d.kind ? `Use ${d.kind} mark` : `Use design ${i + 1}`}
+                      className={cn(
+                        "relative flex h-16 items-center justify-center rounded-xl border p-2.5 transition-colors",
+                        active
+                          ? "border-border-strong bg-surface-active"
+                          : "border-border bg-surface-card hover:bg-surface-active",
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={d.url}
+                        alt={d.kind ? `${d.kind} mark` : "Imported logo"}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                      {active ? (
+                        <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white">
+                          <Check className="h-3 w-3 text-[#161616]" />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </SectionCard>
+
       <SectionCard
         title="Brand presets"
         description="Start from a look, then fine-tune everything below."
@@ -145,14 +363,14 @@ export function WallDesignSection({ wall }) {
               <Segmented
                 value={resolved.font.heading}
                 onChange={(v) => setFont({ heading: v })}
-                options={FONT_OPTIONS}
+                options={fontOptions}
               />
             </Field>
             <Field label="Body font">
               <Segmented
                 value={resolved.font.body}
                 onChange={(v) => setFont({ body: v })}
-                options={FONT_OPTIONS}
+                options={fontOptions}
               />
             </Field>
           </div>
@@ -224,38 +442,29 @@ export function WallDesignSection({ wall }) {
       </SectionCard>
 
       <SectionCard
-        title="Grid & cards"
-        description="How your events are laid out and what each card shows."
+        title="Agenda"
+        description="Which view your events page opens in, and what each row shows. Visitors can switch views themselves."
       >
         <div className="space-y-5">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Columns">
-              <Segmented
-                value={layout.columns || "auto"}
-                onChange={(v) => setLayoutKey({ columns: v })}
-                options={WALL_COLUMNS}
-              />
-            </Field>
-            <Field label="Card style">
-              <Segmented
-                value={layout.cardStyle || "classic"}
-                onChange={(v) => setLayoutKey({ cardStyle: v })}
-                options={CARD_STYLES}
-              />
-            </Field>
-          </div>
+          <Field label="Default view" hint="Cards give each event its cover; List fits more on screen.">
+            <Segmented
+              value={layout.defaultView || "cards"}
+              onChange={(v) => setLayoutKey({ defaultView: v })}
+              options={WALL_VIEWS}
+            />
+          </Field>
           <SettingsList>
             <SettingRow
               title="Type badge"
-              description="Show the event type on each card."
+              description="Show the event type beside the time."
               checked={layout.cardMeta?.type !== false}
               onCheckedChange={(v) => setCardMeta("type", v)}
             />
             <SettingRow
-              title="Date"
-              description="Show the date and time."
-              checked={layout.cardMeta?.date !== false}
-              onCheckedChange={(v) => setCardMeta("date", v)}
+              title="Host"
+              description="Show who is running the event."
+              checked={layout.cardMeta?.host !== false}
+              onCheckedChange={(v) => setCardMeta("host", v)}
             />
             <SettingRow
               title="Venue"
@@ -266,7 +475,7 @@ export function WallDesignSection({ wall }) {
             <SettingRow
               title="Price"
               description="Show the lead ticket price, when set."
-              checked={!!layout.cardMeta?.price}
+              checked={layout.cardMeta?.price !== false}
               onCheckedChange={(v) => setCardMeta("price", v)}
             />
           </SettingsList>
@@ -278,25 +487,19 @@ export function WallDesignSection({ wall }) {
         description="The banner and background behind your events page header."
       >
         <div className="space-y-5">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Header alignment">
-              <Segmented
-                value={layout.header?.align || "center"}
-                onChange={(v) => setHeader({ align: v })}
-                options={HEADER_ALIGNS}
-              />
-            </Field>
-            <Field label="Page background">
-              <Segmented
-                value={resolved.background?.type || "surface"}
-                onChange={(v) =>
-                  patch({ background: { ...resolved.background, type: v } })
-                }
-                options={BG_TYPES}
-              />
-            </Field>
-          </div>
-          <Field label="Banner image URL" hint="Sits behind the header. Optional.">
+          <Field label="Page background">
+            <Segmented
+              value={resolved.background?.type || "surface"}
+              onChange={(v) =>
+                patch({ background: { ...resolved.background, type: v } })
+              }
+              options={BG_TYPES}
+            />
+          </Field>
+          <Field
+            label="Banner image URL"
+            hint="The wide image above your name. Falls back to your organiser profile banner."
+          >
             <Input
               value={layout.header?.bannerUrl || ""}
               onChange={(e) => setHeader({ bannerUrl: e.target.value })}
@@ -332,19 +535,6 @@ export function WallDesignSection({ wall }) {
       </SectionCard>
 
       <SectionCard
-        title="Featured events"
-        description="How pinned events (set in the Events section) are displayed."
-      >
-        <Field label="Featured style">
-          <Segmented
-            value={layout.featuredStyle || "badge"}
-            onChange={(v) => setLayoutKey({ featuredStyle: v })}
-            options={FEATURED_STYLES}
-          />
-        </Field>
-      </SectionCard>
-
-      <SectionCard
         title="Footer"
         description="Links, socials, and a closing line at the bottom of the wall."
       >
@@ -360,6 +550,19 @@ export function WallDesignSection({ wall }) {
           Save Changes
         </Button>
       </div>
+
+      <ImportBrandDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        uploader={{
+          image: (file, options) => uploadWallImage(projectId, file, options),
+          font: (file) => uploadWallFont(projectId, file),
+        }}
+        categories={WALL_IMPORT_CATEGORIES}
+        theme={resolved}
+        footer={footer}
+        onApply={applyImport}
+      />
     </div>
   );
 }
