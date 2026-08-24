@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Accessibility, Check, Sparkles, Ticket } from "lucide-react";
+import { Accessibility, Check, ChevronRight, Ticket } from "lucide-react";
 
 import {
   Button,
@@ -80,9 +80,12 @@ export function VenueThumb({ sections, field, aspect, highlightId, className }) 
 // Quality is a 0-1 score from the map's geometry (lib/seating/quality.js). Shown
 // as a word rather than a number: nobody buys "0.82".
 function qualityBadge(score) {
-  if (score >= 0.8) return { label: "Prime", tone: "text-emerald-400" };
-  if (score >= 0.6) return { label: "Great view", tone: "text-teal-400" };
-  if (score >= 0.4) return { label: "Good view", tone: "text-sky-400" };
+  if (score >= 0.8)
+    return { label: "Prime", tone: "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" };
+  if (score >= 0.6)
+    return { label: "Great view", tone: "border-teal-500/25 bg-teal-500/10 text-teal-300" };
+  if (score >= 0.4)
+    return { label: "Good view", tone: "border-sky-500/25 bg-sky-500/10 text-sky-300" };
   return null;
 }
 
@@ -95,16 +98,37 @@ function OfferRow({ offer, selected, onSelect, formatPrice, quantity }) {
         onClick={() => onSelect(offer)}
         aria-current={selected ? "true" : undefined}
         className={cn(
-          "flex w-full items-center gap-3 px-3 py-2 text-left transition-colors",
+          "relative flex w-full items-center gap-3 py-2 pl-4 pr-3 text-left transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
           selected ? "bg-surface-active" : "hover:bg-surface-hover",
         )}
       >
+        {/* The row you're standing in, marked down the edge rather than by a
+            fill that has to fight the hover state. */}
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute inset-y-0 left-0 w-0.5 transition-colors",
+            selected ? "bg-primary" : "bg-transparent",
+          )}
+        />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-foreground">
-            Row {offer.rowLabel}
+          <span className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-medium text-foreground">
+              Row {offer.rowLabel}
+            </span>
+            {badge ? (
+              <span
+                className={cn(
+                  "shrink-0 rounded-full border px-1.5 py-px text-[10px] font-medium leading-4",
+                  badge.tone,
+                )}
+              >
+                {badge.label}
+              </span>
+            ) : null}
           </span>
-          <span className="block truncate text-xs text-text-tertiary">
+          <span className="mt-0.5 block truncate text-xs text-text-tertiary">
             {/* "1 together" is not a thing — at a party of one the count is the
                 only fact worth stating. */}
             {!offer.fits
@@ -112,10 +136,9 @@ function OfferRow({ offer, selected, onSelect, formatPrice, quantity }) {
               : quantity > 1
                 ? `${quantity} together · ${offer.available} open`
                 : `${offer.available} open`}
-            {badge ? <span className={cn("ml-1.5", badge.tone)}>· {badge.label}</span> : null}
           </span>
         </span>
-        <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
+        <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
           {formatPrice(offer.price)}
         </span>
       </button>
@@ -128,29 +151,39 @@ function OfferRow({ offer, selected, onSelect, formatPrice, quantity }) {
 function BestValue({ offer, onSelect, formatPrice, accent }) {
   if (!offer) return null;
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(offer)}
-      className="flex w-full items-center gap-3 border-b border-border bg-primary/5 px-3 py-3 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-    >
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15"
-        style={accent ? { backgroundColor: `${accent}26` } : undefined}
+    <div className="border-b border-border p-2.5">
+      <button
+        type="button"
+        onClick={() => onSelect(offer)}
+        className="group relative flex w-full items-center gap-3 overflow-hidden rounded-lg border border-primary/25 bg-primary/[0.07] py-2.5 pl-3 pr-2.5 text-left transition-colors hover:bg-primary/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        style={accent ? { borderColor: `${accent}40` } : undefined}
       >
-        <Sparkles className="h-4 w-4 text-primary" style={accent ? { color: accent } : undefined} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[10px] font-medium uppercase tracking-wide text-primary" style={accent ? { color: accent } : undefined}>
-          Best available
+        {/* Marked the same way the selected row is, so the rail has one
+            vocabulary for "this one" rather than a badge language of its own. */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 w-0.5 bg-primary"
+          style={accent ? { backgroundColor: accent } : undefined}
+        />
+        <span className="min-w-0 flex-1">
+          <span
+            className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-primary"
+            style={accent ? { color: accent } : undefined}
+          >
+            Best available
+          </span>
+          <span className="mt-0.5 block truncate text-sm font-medium text-foreground">
+            Sec {offer.sectionName} · Row {offer.rowLabel}
+          </span>
         </span>
-        <span className="block truncate text-sm font-medium text-foreground">
-          Sec {offer.sectionName} · Row {offer.rowLabel}
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className="text-sm font-semibold tabular-nums text-foreground">
+            {formatPrice(offer.price)}
+          </span>
+          <ChevronRight className="h-4 w-4 text-text-tertiary transition-transform group-hover:translate-x-0.5" />
         </span>
-      </span>
-      <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-        {formatPrice(offer.price)}
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -190,12 +223,20 @@ export function SeatOffers({
     const bySection = new Map();
     for (const offer of offers) {
       const group = bySection.get(offer.sectionId);
-      if (group) group.offers.push(offer);
-      else
+      if (group) {
+        group.offers.push(offer);
+        // What the section costs, so the buyer can skip a whole block without
+        // opening it. Tracked as a spread: most sections sell at one price, and
+        // "from $45" on a section where every row is $45 is a small lie.
+        group.low = Math.min(group.low, offer.price);
+        group.high = Math.max(group.high, offer.price);
+      } else
         bySection.set(offer.sectionId, {
           id: offer.sectionId,
           name: offer.sectionName,
           ticketName: offer.ticketName,
+          low: offer.price,
+          high: offer.price,
           offers: [offer],
         });
     }
@@ -205,6 +246,11 @@ export function SeatOffers({
   return (
     <div className="flex h-full flex-col">
       <div className="space-y-2.5 border-b border-border p-3">
+        {/* The panel has never said what it is. Name it once, quietly. */}
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+          Rows on sale
+        </h2>
+
         {onQuantityChange ? (
           <Select value={String(quantity)} onValueChange={(v) => onQuantityChange(Number(v) || 1)}>
             <SelectTrigger aria-label="How many seats together">
@@ -263,7 +309,15 @@ export function SeatOffers({
               aria-label="Maximum price"
               className="flex-1"
             />
-            <span className="shrink-0 text-xs tabular-nums text-text-tertiary">
+            {/* A ceiling the buyer set is a live filter, not a caption — it
+                takes the accent so it reads as something they did. */}
+            <span
+              className={cn(
+                "shrink-0 text-xs font-medium tabular-nums",
+                maxPrice === null ? "text-text-tertiary" : "text-primary",
+              )}
+              style={maxPrice !== null && accent ? { color: accent } : undefined}
+            >
               {maxPrice === null ? `${formatPrice(priceRange.max)}+` : formatPrice(maxPrice)}
             </span>
           </div>
@@ -271,13 +325,18 @@ export function SeatOffers({
       </div>
 
       {offers.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-          <Ticket className="h-5 w-5 text-text-tertiary" />
-          <p className="text-sm text-text-secondary">
-            {accessibleOnly
-              ? "No accessible seats match this filter."
-              : "No seats match this filter."}
-          </p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface-active">
+            <Ticket className="h-5 w-5 text-text-tertiary" />
+          </span>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Nothing at this price</p>
+            <p className="text-xs text-text-tertiary">
+              {accessibleOnly
+                ? "No accessible rows match these filters. Widen the price or turn the filter off."
+                : "No rows match these filters. Try raising the price ceiling."}
+            </p>
+          </div>
           {(maxPrice !== null || accessibleOnly) && (
             <Button
               type="button"
@@ -305,11 +364,15 @@ export function SeatOffers({
           <div className="flex-1 overflow-y-auto">
             {groups.map((group) => (
               <section key={group.id}>
-                <h3 className="sticky top-0 z-10 flex items-baseline justify-between gap-2 border-b border-border bg-surface-subtle/95 px-3 py-1.5 backdrop-blur">
-                  <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
+                <h3 className="sticky top-0 z-10 flex items-baseline justify-between gap-2 border-y border-border bg-surface-subtle/95 px-3 py-1.5 backdrop-blur">
+                  <span className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
                     Sec {group.name}
                   </span>
                   <span className="shrink-0 text-[11px] tabular-nums text-text-tertiary">
+                    {group.low === group.high
+                      ? formatPrice(group.low)
+                      : `from ${formatPrice(group.low)}`}
+                    <span className="mx-1 text-border-strong">·</span>
                     {group.offers.length} row{group.offers.length === 1 ? "" : "s"}
                   </span>
                 </h3>
@@ -329,10 +392,12 @@ export function SeatOffers({
             ))}
           </div>
 
-          <p className="flex items-center gap-1.5 border-t border-border px-3 py-2 text-xs text-text-tertiary">
-            <Check className="h-3 w-3" />
-            {offers.length} row{offers.length === 1 ? "" : "s"} across {groups.length} section
-            {groups.length === 1 ? "" : "s"}
+          <p className="flex items-center gap-1.5 border-t border-border bg-surface-subtle px-3 py-2 text-[11px] text-text-tertiary">
+            <Check className="h-3 w-3 text-emerald-400" />
+            <span className="tabular-nums">
+              {offers.length} row{offers.length === 1 ? "" : "s"} across {groups.length} section
+              {groups.length === 1 ? "" : "s"}
+            </span>
           </p>
         </>
       )}

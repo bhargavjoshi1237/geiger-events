@@ -7,8 +7,18 @@ import { SeatPicker } from "../../seat_picker";
 // back, "best available", the hold countdown, confirm — already lives inside
 // the picker, so this step adds no chrome of its own to crowd the map.
 export function SeatsStep({ event, checkout, accent }) {
-  const { seating, seatMode, ticket, qty, setQty, setSeatSel, busy, setStep, confirmSeats } =
-    checkout;
+  const {
+    seating,
+    seatMode,
+    ticket,
+    qty,
+    setQty,
+    seatSel,
+    setSeatSel,
+    busy,
+    setStep,
+    confirmSeats,
+  } = checkout;
 
   return (
     <SeatPicker
@@ -21,6 +31,9 @@ export function SeatsStep({ event, checkout, accent }) {
       onConfirm={confirmSeats}
       confirmLabel={seatMode === "type-first" ? "Confirm seats" : "Reserve seats"}
       onBack={seatMode === "type-first" ? () => !busy && setStep("details") : undefined}
+      // Coming back to this step resumes the hold rather than starting a new
+      // one, so the buyer's own seats aren't waiting for them as "sold".
+      initialSelection={seatSel}
       onChange={(sel) => {
         setSeatSel(sel);
         if (seatMode === "map-first" && sel.seatIds.length) {

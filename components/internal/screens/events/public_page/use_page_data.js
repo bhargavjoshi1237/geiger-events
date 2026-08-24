@@ -151,7 +151,7 @@ export function usePageData({ event, live }) {
           window.history.replaceState({}, "", window.location.pathname);
         });
     } else if (canceled) {
-      toast.error("Checkout canceled — you haven't been charged.");
+      toast.error("Checkout Canceled - You haven't been charged.");
       window.history.replaceState({}, "", window.location.pathname);
     } else if (params.get("approved")) {
       const contact = {

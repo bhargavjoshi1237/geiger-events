@@ -7,7 +7,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { CalendarDays, MapPin } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
 import { formatDate } from "../../sample_data";
+import { venueLine } from "../hero";
 
 import { useCheckout } from "./use_checkout";
 import { SeatsStep } from "./seats_step";
@@ -39,11 +44,50 @@ export function TicketCheckout(props) {
           wide ? "max-w-6xl" : "max-w-lg"
         } ${fills ? "h-[88vh] max-h-[88vh]" : "max-h-[85vh]"}`}
       >
-        <DialogHeader className="shrink-0">
-          <DialogTitle>{headerLabel}</DialogTitle>
-          <DialogDescription>
-            {event.name} · {formatDate(event.date)}
-          </DialogDescription>
+        {/* The header carries the event's own identity — the poster it is sold
+            under, and the two facts a buyer checks before paying: when, and
+            where. All of it already on the page behind this dialog. */}
+        <DialogHeader className="shrink-0 gap-0">
+          <div className="flex items-center gap-3 pr-8">
+            {event.coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={event.coverUrl}
+                alt=""
+                aria-hidden="true"
+                className="h-11 w-11 shrink-0 rounded-lg border border-border object-cover"
+              />
+            ) : null}
+
+            <div className="min-w-0 flex-1">
+              {/* The event is context and the step is the job at hand, so the
+                  step takes the size and the event sits above it as a label. */}
+              <DialogDescription className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-text-tertiary">
+                {event.name}
+              </DialogDescription>
+              <DialogTitle className="truncate text-xl tracking-tight">{headerLabel}</DialogTitle>
+            </div>
+
+            {/* Only the map steps are wide enough to have room going spare —
+                on the narrow ones this would crowd the title. */}
+            <div
+              className={cn(
+                "shrink-0 items-center gap-4 text-xs text-text-secondary",
+                wide ? "hidden md:flex" : "hidden",
+              )}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5 text-text-tertiary" />
+                {formatDate(event.date)}
+              </span>
+              {event.venue ? (
+                <span className="inline-flex max-w-[16rem] items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+                  <span className="truncate">{venueLine(event)}</span>
+                </span>
+              ) : null}
+            </div>
+          </div>
         </DialogHeader>
 
         <div

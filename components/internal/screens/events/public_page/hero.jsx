@@ -137,7 +137,14 @@ export function HostsBlock({ event, hosts }) {
       {hosts.map((h, i) => (
         <div key={h.name} className="flex items-center gap-3">
           <Avatar className="h-10 w-10 border border-border">
-            {h.avatarUrl ? <AvatarImage src={h.avatarUrl} alt="" /> : null}
+            {/* A host avatar is as often a brand mark as a face, and AvatarImage
+                is only `aspect-square size-full` — an <img> with no object-fit
+                stretches, so a wide wordmark arrives visibly squashed. Contain
+                letterboxes it instead; the inset keeps the extremes off the
+                circular mask. Square photos are unaffected. */}
+            {h.avatarUrl ? (
+              <AvatarImage src={h.avatarUrl} alt="" className="object-contain p-1" />
+            ) : null}
             <AvatarFallback className="bg-surface-card text-sm text-muted-foreground">
               {initials(h.name)}
             </AvatarFallback>

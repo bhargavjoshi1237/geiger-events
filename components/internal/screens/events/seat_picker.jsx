@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Sparkles, Timer } from "lucide-react";
+import { ArrowLeft, Loader2, MousePointer2, Timer, X } from "lucide-react";
 
 import { Button } from "@geiger/ui";
 import { currency } from "@/components/internal/screens/tickets/constants";
@@ -39,7 +39,10 @@ import { SeatOffers } from "./seat_offers";
 // sale, because a map alone can't answer the question buyers actually arrive
 // with: "where are N seats together inside my budget?"
 
-function Countdown({ expiresAt, onExpire }) {
+// Seconds left on the hold, ticking. A hook rather than a component because the
+// stub renders the same number twice — once as a meter along its edge, once as
+// digits beside the price — and they must never disagree by a second.
+function useCountdown(expiresAt, onExpire) {
   const [left, setLeft] = useState(0);
 
   useEffect(() => {
@@ -54,16 +57,18 @@ function Countdown({ expiresAt, onExpire }) {
     return () => clearInterval(id);
   }, [expiresAt, onExpire]);
 
-  if (!expiresAt || left <= 0) return null;
-  const mins = String(Math.floor(left / 60)).padStart(2, "0");
-  const secs = String(left % 60).padStart(2, "0");
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs tabular-nums text-text-secondary">
-      <Timer className="h-3.5 w-3.5" />
-      Seats held for {mins}:{secs}
-    </span>
-  );
+  // Reported against the current hold rather than the last one, so a released
+  // selection can't leave a clock still reading 04:12.
+  return expiresAt ? left : 0;
 }
+
+const clockFace = (seconds) =>
+  `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+
+// The accent arrives as the page's `{ color, text }` from one caller and as a
+// bare hex from another. Take either and hand the rest of the file a string.
+const accentColor = (accent) =>
+  (typeof accent === "string" ? accent : accent?.color) || null;
 
 export function SeatPicker({
   event,
@@ -84,11 +89,15 @@ export function SeatPicker({
   // moves to the details step, and dropping the holds there would put the
   // seats back on sale mid-purchase.
   releaseOnUnmount = false,
+  // A hold this buyer already owns, handed back when they return to this step.
+  // Without it the picker mounts under a fresh token and the map shows their
+  // own seats as sold — the map has no way to tell whose hold it is looking at.
+  initialSelection = null,
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState([]);
-  const [expiresAt, setExpiresAt] = useState(null);
+  const [selected, setSelected] = useState(() => initialSelection?.seatIds ?? []);
+  const [expiresAt, setExpiresAt] = useState(() => initialSelection?.expiresAt ?? null);
   const [accessibleOnly, setAccessibleOnly] = useState(false);
   const [taken, setTaken] = useState(() => new Set());
   const [busy, setBusy] = useState(false);
@@ -108,7 +117,30 @@ export function SeatPicker({
   const mode = seating?.mode || "map-first";
   const sectionTiers = useMemo(() => seating?.sectionTiers || {}, [seating?.sectionTiers]);
   const holdMinutes = Number(seating?.holdMinutes) || 10;
-  const token = useMemo(() => seatToken(), []);
+  // Resuming means resuming the SAME token — a new one would be a stranger to
+  // the hold and couldn't extend or release it.
+  const [token] = useState(() => initialSelection?.token || seatToken());
+  const tint = accentColor(accent);
+
+  // Stable so the tick doesn't tear its own interval down on every render.
+  const onHoldExpire = useCallback(() => {
+    setSelected([]);
+    setSelectedOfferId(null);
+    setExpiresAt(null);
+    onChange?.({
+      seats: [],
+      seatIds: [],
+      ticketId: null,
+      price: 0,
+      token,
+      expiresAt: null,
+      sections: [],
+    });
+    setReloadToken((t) => t + 1);
+    toast.error("Your seats were released. Please pick again.");
+  }, [onChange, token]);
+
+  const secondsLeft = useCountdown(expiresAt, onHoldExpire);
 
   useEffect(() => {
     if (!event?.id) return undefined;
@@ -213,7 +245,9 @@ export function SeatPicker({
 
   // Report the selection up. In map-first the section decides the ticket, so a
   // selection carries its own ticket id and unit price.
-  const report = (ids) => {
+  // `expires` is passed explicitly rather than read off state: callers report
+  // in the same breath as they set it, and state wouldn't have caught up.
+  const report = (ids, expires = null) => {
     const seats = ids.map((id) => seatsById.get(id)).filter(Boolean);
     const sectionId = seats[0]?.sectionId;
     const resolvedTicketId = mode === "map-first" ? sectionTiers[sectionId] : ticketId;
@@ -223,6 +257,8 @@ export function SeatPicker({
       ticketId: resolvedTicketId ?? null,
       price: Number(ticketById.get(resolvedTicketId)?.price) || 0,
       token,
+      // Carried so the step can be re-entered on the hold it already owns.
+      expiresAt: expires,
       // Carried so the confirmation can name the section without refetching.
       sections: data?.sections ?? [],
     });
@@ -250,7 +286,7 @@ export function SeatPicker({
 
     setSelected(result.held);
     setExpiresAt(result.expiresAt);
-    report(result.held);
+    report(result.held, result.expiresAt);
   };
 
   const toggleSeat = (seat) => {
@@ -418,7 +454,7 @@ export function SeatPicker({
     <div className="flex h-full min-h-0 flex-col gap-2">
       {/* Every control that isn't the map or the rail, on ONE strip. */}
       <div className="flex shrink-0 items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {onBack ? (
             <Button
               type="button"
@@ -431,43 +467,24 @@ export function SeatPicker({
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
           ) : null}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={busy || !visibleOffers.length}
-            // "Best" means the best SEAT, not whatever happens to be at the top
-            // of the sort the buyer is currently browsing by.
-            onClick={() =>
-              chooseOffer(
-                sortOffers(visibleOffers, "best").find((o) => o.fits) || visibleOffers[0],
-              )
-            }
-            className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          >
-            <Sparkles className="h-4 w-4" /> Best available
-          </Button>
         </div>
-        <Countdown
-          expiresAt={expiresAt}
-          onExpire={() => {
-            setSelected([]);
-            setSelectedOfferId(null);
-            setExpiresAt(null);
-            report([]);
-            setReloadToken((t) => t + 1);
-            toast.error("Your seats were released. Please pick again.");
-          }}
-        />
+
+        {/* The map is a canvas with no affordances of its own — say how it
+            moves rather than leaving the buyer to discover it. */}
+        <span className="hidden items-center gap-1.5 text-[11px] text-text-tertiary sm:inline-flex">
+          <MousePointer2 className="h-3 w-3" />
+          Drag to pan · scroll to zoom
+        </span>
       </div>
 
       {/* The map bleeds to the edges of the dialog and the rail sits beside it.
           Nothing floats over the venue: whatever the buyer is aiming at stays
           visible while they read the list. */}
-      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border shadow-inner shadow-black/20 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <VenueChart
           ref={chartRef}
-          className="min-h-[17rem] bg-surface-subtle lg:min-h-0"
+          ambient
+          className="min-h-[17rem] lg:min-h-0"
           sections={data.sections}
           seats={data.seats}
           field={data.field}
@@ -498,7 +515,7 @@ export function SeatPicker({
             selectedOfferId={selectedOfferId}
             onSelectOffer={chooseOffer}
             formatPrice={currency}
-            accent={accent}
+            accent={tint}
           />
         </div>
       </div>
@@ -516,7 +533,10 @@ export function SeatPicker({
         onConfirm={onConfirm}
         confirmLabel={confirmLabel}
         busy={busy}
-        accent={accent}
+        accent={tint}
+        secondsLeft={secondsLeft}
+        holdSeconds={holdMinutes * 60}
+        coverUrl={event?.coverUrl}
       />
     </div>
   );
@@ -524,6 +544,10 @@ export function SeatPicker({
 
 // The price bands, and — once seats are held — what they are and what they cost.
 // One row that swaps its contents rather than two that fight for the space.
+//
+// Held, it is drawn as a TICKET STUB: torn edge, tear-off, and the hold clock
+// running down the top as a hairline. The buyer isn't choosing any more, they're
+// holding something with an expiry, and the shape says so before the words do.
 function SelectionBar({
   seats,
   sections,
@@ -535,68 +559,170 @@ function SelectionBar({
   confirmLabel,
   busy,
   accent,
+  secondsLeft,
+  holdSeconds,
+  coverUrl,
 }) {
   const first = seats[0];
   const section = first ? sections.find((s) => s.id === first.sectionId) : null;
-  const labels = seats.map((s) => s.seatLabel).join(", ");
+  const held = seats.length > 0;
+  // Under a minute the clock stops being background information.
+  const urgent = secondsLeft > 0 && secondsLeft <= 60;
+  const remaining = holdSeconds > 0 ? Math.min(1, secondsLeft / holdSeconds) : 0;
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-border bg-surface-subtle px-3 py-2">
+    <div
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-xl transition-colors",
+        held
+          ? "bg-surface-card shadow-lg shadow-black/20"
+          : "bg-surface-subtle",
+      )}
+    >
+      {/* The event's own poster, printed on the ticket. Held back to a wash
+          under a scrim: it has to survive whatever image the organiser
+          uploaded without ever competing with the price. */}
+      {held && coverUrl ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={coverUrl}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full scale-105 object-cover opacity-25 blur-[2px]"
+          />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-surface-card via-surface-card/92 to-surface-card/75"
+          />
+        </>
+      ) : null}
       {/* The canvas can't be read by a screen reader, so the selection is
           announced from here instead. */}
       <p aria-live="polite" className="sr-only">
-        {seats.length
+        {held
           ? `${seats.length} seat${seats.length === 1 ? "" : "s"} held in section ${
               section?.name ?? ""
             }, row ${first?.rowLabel ?? ""}, ${formatPrice(total)} total.`
           : "No seats selected."}
       </p>
 
-      {seats.length === 0 ? (
-        <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {(legend ?? []).map((band) => (
-            <li
-              key={band.key}
-              className="inline-flex items-center gap-1.5 text-xs text-text-secondary"
-            >
-              <span className={cn("h-2 w-2 rounded-full", band.dot)} />
-              <span className="tabular-nums">{formatPrice(band.price)}</span>
-              {band.label ? <span className="text-text-tertiary">{band.label}</span> : null}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="min-w-0 text-sm">
-          <span className="font-medium text-foreground">
-            Sec {section?.name || "—"} · Row {first?.rowLabel} ·{" "}
-            {seats.length > 1 ? "Seats" : "Seat"} {labels}
-          </span>
-          <button
-            type="button"
-            onClick={onClear}
-            className="ml-2 text-xs text-text-tertiary underline-offset-2 transition-colors hover:text-foreground hover:underline"
-          >
-            Clear
-          </button>
-        </div>
-      )}
-
-      {seats.length > 0 ? (
-        <div className="flex items-center gap-3">
-          <span className="text-base font-semibold tabular-nums text-foreground">
-            {formatPrice(total)}
-          </span>
-          <Button
-            type="button"
-            disabled={busy}
-            onClick={onConfirm}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            style={accent ? { backgroundColor: accent } : undefined}
-          >
-            {confirmLabel}
-          </Button>
+      {/* The hold, draining along the bottom edge of the stub. */}
+      {held && secondsLeft > 0 ? (
+        <div className="absolute inset-x-0 bottom-0 z-10 h-0.5">
+          <div
+            className={cn(
+              "h-full transition-[width] duration-1000 ease-linear",  
+              urgent ? "bg-amber-400" : "bg-primary",
+            )}
+            style={{
+              width: `${remaining * 100}%`,
+              backgroundColor: urgent ? undefined : accent || undefined,
+            }}
+          />
         </div>
       ) : null}
+
+      {!held ? (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2.5">
+          <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {(legend ?? []).map((band) => (
+              <li
+                key={band.key}
+                className="inline-flex items-center gap-1.5 text-xs text-text-secondary"
+              >
+                <span className={cn("h-2 w-2 rounded-full", band.dot)} />
+                <span className="tabular-nums">{formatPrice(band.price)}</span>
+                {band.label ? <span className="text-text-tertiary">{band.label}</span> : null}
+              </li>
+            ))}
+          </ul>
+          {/* An empty stub is an invitation, not a blank. */}
+          <p className="text-xs text-text-tertiary">
+            Tap a seat on the map, or pick a row from the list.
+          </p>
+        </div>
+      ) : (
+        <div className="relative flex flex-wrap items-stretch gap-y-4 px-4 py-3 sm:flex-nowrap">
+          {/* What they've got, then what it costs — left to right, in the order
+              the buyer asks the questions. */}
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-x-8 gap-y-3 pr-3 sm:w-auto sm:flex-1">
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+                <span className="truncate">Sec {section?.name || "—"}</span>
+                <span className="text-border-strong">/</span>
+                <span className="truncate">Row {first?.rowLabel}</span>
+              </p>
+              {/* Seat numbers as separate chips: they are what gets called out
+                  at the door, and a comma-joined run hides how many there are. */}
+              <ul className="mt-1.5 flex flex-wrap items-center gap-1">
+                {seats.map((seat) => (
+                  <li
+                    key={seat.id}
+                    className="rounded bg-surface-active px-1.5 py-0.5 text-xs font-medium tabular-nums text-foreground"
+                  >
+                    {seat.seatLabel}
+                  </li>
+                ))}
+                <li>
+                  <button
+                    type="button"
+                    onClick={onClear}
+                    className="ml-1 inline-flex items-center gap-0.5 text-[11px] text-text-tertiary transition-colors hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                    Clear
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div className="shrink-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+                Total
+              </p>
+              <p className="text-2xl font-semibold leading-tight tracking-tight tabular-nums text-foreground">
+                {formatPrice(total)}
+              </p>
+            </div>
+          </div>
+
+          {/* The tear-off. The negative margin cancels the row's padding so the
+              line spans the full height of the stub — the notches have to
+              straddle its edges to read as punched rather than printed. */}
+          <div
+            aria-hidden="true"
+            className="relative -my-3 hidden w-px shrink-0 border-l border-dashed border-border-strong sm:block"
+          >
+            <span className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-surface-subtle" />
+            <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-surface-subtle" />
+          </div>
+
+          {/* The clock the hold runs against, and the one thing to do about it. */}
+          <div className="flex w-full flex-col items-stretch justify-center gap-1.5 sm:w-auto sm:min-w-[11.5rem] sm:pl-5">
+            {secondsLeft > 0 ? (
+              <span
+                className={cn(
+                  "inline-flex items-center justify-center gap-1.5 text-xs tabular-nums",
+                  urgent ? "font-semibold text-amber-400" : "text-text-secondary",
+                )}
+              >
+                <Timer className="h-3.5 w-3.5" />
+                Held {clockFace(secondsLeft)}
+              </span>
+            ) : null}
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={onConfirm}
+              className="h-11 w-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+              style={accent ? { backgroundColor: accent } : undefined}
+            >
+              {confirmLabel}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

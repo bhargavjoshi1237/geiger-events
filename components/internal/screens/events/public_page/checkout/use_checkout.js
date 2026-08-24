@@ -545,7 +545,10 @@ export function useCheckout({
 
   const submitDetails = () => {
     if (!validateDetails()) return;
-    if (seatingOn && seatMode === "type-first" && !seatSel?.seatIds?.length) {
+    // Seats are a step of this flow, not a one-off errand. Skipping it once
+    // seats are held sent a buyer who went BACK to details straight to payment
+    // on their next Continue — the only way past seating is "Confirm seats".
+    if (seatingOn && seatMode === "type-first") {
       setStep("seats");
       return;
     }
