@@ -55,6 +55,7 @@ const IMAGE_SIDE_OPTIONS = [
 
 const TEXT_SIDE_OPTIONS = [
   { key: "bottom", label: "Bottom" },
+  { key: "top", label: "Top" },
   { key: "left", label: "Left" },
   { key: "right", label: "Right" },
 ];

@@ -348,7 +348,11 @@ function WhosGoingBlock({ event }) {
 function GuestPhoto({ guest, display, className }) {
     const frame = cn("overflow-hidden border border-border bg-surface-card", GUEST_SHAPE_CLASS[display.imageShape], className);
     if (guest.image) {
-        return (<img src={guest.image} alt="" className={cn(frame, "block", GUEST_FIT_CLASS[display.imageFit])}/>);
+        // "Fit inside" is the logo mode, and logos are drawn for light grounds —
+        // on a dark card a black wordmark is just an empty tile. Give contain a
+        // light chip with breathing room; cover (photography) is untouched.
+        const logoMode = display.imageFit === "contain";
+        return (<img src={guest.image} alt="" className={cn(frame, "block", GUEST_FIT_CLASS[display.imageFit], logoMode && "bg-white p-2")}/>);
     }
     return (<div className={cn(frame, "flex items-center justify-center")}>
       <span className={cn("font-medium text-muted-foreground", display.layout === "grid" ? "text-xl" : "text-sm")}>
@@ -898,14 +902,34 @@ function InfographicFooter({ props, accent }) {
     </div>);
 }
 function showcaseCard(it) {
-    const info = (<div className="space-y-1.5">
-      {it.title ? (<p className="truncate text-base font-semibold">{it.title}</p>) : null}
-      {it.text ? (<p className="line-clamp-3 text-sm leading-relaxed opacity-90">{it.text}</p>) : null}
-      {it.link || it.ctaLabel ? (<span className="inline-flex items-center gap-1 pt-0.5 text-sm font-medium underline-offset-2">
+    // "top" is the editorial treatment: oversized headline and a bold standfirst
+    // held at the head of the card, with the photograph running full-bleed
+    // underneath. Every other placement keeps the original compact card.
+    const top = it.textSide === "top";
+    const info = (<div className={cn(top ? "space-y-2" : "space-y-1.5")}>
+      {it.title ? (<p className={cn(top
+            ? "text-xl font-bold leading-tight tracking-tight sm:text-2xl"
+            : "truncate text-base font-semibold")}>{it.title}</p>) : null}
+      {it.text ? (<p className={cn(top
+            ? "text-sm font-semibold leading-snug"
+            : "line-clamp-3 text-sm leading-relaxed opacity-90")}>{it.text}</p>) : null}
+      {it.link || it.ctaLabel ? (<span className={cn("inline-flex items-center gap-1 text-sm font-medium underline-offset-2", top ? "pt-1" : "pt-0.5")}>
           {it.ctaLabel || "Learn more"} <ArrowRight className="h-4 w-4"/>
         </span>) : null}
     </div>);
-    return it.image ? (<div className="relative flex min-h-[14rem] overflow-hidden">
+    if (!it.image)
+        return <div className="p-4 text-foreground">{info}</div>;
+    if (top) {
+        return (<div className="relative flex min-h-[16rem] overflow-hidden sm:min-h-[21rem]">
+      <InfoImage src={it.image} className="absolute inset-0 h-full w-full bg-surface-subtle object-cover"/>
+
+      <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/45 to-transparent"/>
+      <div className="relative flex w-full flex-col justify-start p-5 text-white sm:p-6">
+        {info}
+      </div>
+    </div>);
+    }
+    return (<div className="relative flex min-h-[14rem] overflow-hidden">
       <InfoImage src={it.image} className="absolute inset-0 h-full w-full bg-surface-subtle object-cover"/>
       {it.textSide === "left" || it.textSide === "right" ? (<>
           <div className={cn("absolute inset-y-0 w-1/2", it.textSide === "left"
@@ -920,24 +944,44 @@ function showcaseCard(it) {
             {info}
           </div>
         </>)}
-    </div>) : (<div className="p-4 text-foreground">{info}</div>);
+    </div>);
 }
+// The expanded card: the photograph fills the whole panel and the copy sits in
+// a column over it, the way a campaign page opens a feature. The image is the
+// subject rather than a thumbnail stacked above the text, so it keeps the frame
+// the card promised when it was clicked.
 function ShowcaseLightbox({ item, accent, onClose }) {
+    const hasImage = !!item.image;
     return (<Dialog open onOpenChange={(o) => (o ? undefined : onClose())}>
-      <DialogContent className="max-w-3xl bg-background">
-        {item.image ? (<InfoImage src={item.image} className="aspect-video w-full rounded-xl bg-surface-subtle object-cover" iconSize="h-10 w-10"/>) : null}
-        <DialogHeader className="gap-2">
-          {item.title ? <DialogTitle className="text-xl">{item.title}</DialogTitle> : null}
-          {item.text ? (<DialogDescription className="text-sm leading-relaxed">
-              {item.text}
-            </DialogDescription>) : null}
-        </DialogHeader>
-        {item.details ? (<p className="text-sm leading-relaxed text-muted-foreground">
-            {item.details}
-          </p>) : null}
-        {item.link || item.ctaLabel ? (<div className="flex justify-start">
-            <InfoCta label={item.ctaLabel || "Learn more"} url={item.link || item.ctaUrl} accent={accent}/>
-          </div>) : null}
+      <DialogContent className={cn("max-w-5xl overflow-hidden p-0", hasImage ? "border-black/40 bg-black" : "bg-surface-subtle")}>
+        <div className={cn("relative", hasImage && "min-h-[24rem] sm:min-h-[30rem]")}>
+          {hasImage ? (<>
+            <InfoImage src={item.image} className="absolute inset-0 h-full w-full object-cover" iconSize="h-10 w-10"/>
+            {/* Vertical on small screens (copy sits under the subject), lateral
+                from `sm` where there is room for a side column. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/30 sm:bg-gradient-to-r sm:from-black sm:via-black/85 sm:to-transparent"/>
+          </>) : null}
+
+          <div className={cn("relative flex flex-col justify-center gap-4 p-6 sm:p-10", hasImage ? "text-white sm:w-[55%] lg:w-[48%]" : "text-foreground")}>
+            <DialogHeader className="gap-3">
+              <DialogTitle className={cn("text-2xl font-bold leading-tight tracking-tight sm:text-3xl", hasImage && "text-white")}>
+                {item.title || "Details"}
+              </DialogTitle>
+              {item.text ? (<DialogDescription className={cn("text-sm font-semibold leading-snug", hasImage ? "text-white/90" : "text-foreground")}>
+                  {item.text}
+                </DialogDescription>) : null}
+            </DialogHeader>
+
+            {item.details ? (<p className={cn("whitespace-pre-line text-sm leading-relaxed", hasImage ? "text-white/75" : "text-muted-foreground")}>
+                {item.details}
+              </p>) : null}
+
+            {item.link || item.ctaLabel ? (<a href={item.link || item.ctaUrl || "#"} className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-80" style={{ color: accent.color }}>
+                {item.ctaLabel || "Learn more"}
+                <ChevronRight className="h-4 w-4"/>
+              </a>) : null}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>);
 }

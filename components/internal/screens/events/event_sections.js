@@ -55,6 +55,7 @@ import {
   IdCard,
   MousePointerClick,
   Gem,
+  MessageSquareWarning,
 } from "lucide-react";
 
 import {
@@ -215,7 +216,7 @@ export const NAV_GROUPS = [
       {
         key: "disclaimer",
         label: "Disclaimer",
-        icon: FileText,
+        icon: MessageSquareWarning,
         desc: "Clear fine print you can type out and place anywhere on the page or inside checkout — above the footer, under the pay button, and more.",
         ownHeader: true,
       },
