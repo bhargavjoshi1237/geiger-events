@@ -13,11 +13,6 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listRecordsByModules } from "@/lib/supabase/ticketing";
 import { currency } from "../tickets/constants";
 
-// Event-editor section: enable membership plans for this event. Plans are
-// reusable records (ticketing_records, module "membership"); a plan with
-// config.applyToAllEvents already applies everywhere and is shown read-only.
-// Per-event plans are toggled on/off, stored under metadata.attached.membership.
-
 function priceLabel(config) {
   const price = Number(config.price) || 0;
   if (price === 0) return "Free";
@@ -116,7 +111,7 @@ export function EventMembershipsSection({ event, headerItem }) {
                     key={p.id}
                     className={cn(
                       "flex items-start gap-3 rounded-xl border border-border bg-surface-card p-4 transition-opacity",
-                      on ? "" : "opacity-70",
+                      on ? "" : "opacity-60",
                     )}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">

@@ -5,16 +5,11 @@ import { Platform } from "react-native";
 import { api } from "@/lib/api";
 import { colors } from "@/theme/tokens";
 
-// Expo Go removed Android remote push in SDK 53 and the module throws while
-// being evaluated there, so it can't be imported statically. Require it
-// lazily, once, only outside Expo Go; elsewhere these helpers become no-ops.
 type NotificationsModule = typeof import("expo-notifications");
 let cached: NotificationsModule | null | undefined;
 
 function notificationsModule(): NotificationsModule | null {
   if (cached === undefined) {
-    // Lazy require on purpose: a static import would evaluate the module and
-    // crash Expo Go before any guard could run.
     cached =
       Constants.appOwnership === "expo"
         ? null
@@ -24,8 +19,6 @@ function notificationsModule(): NotificationsModule | null {
   return cached;
 }
 
-// Foreground notifications still show a banner and play a sound. Call once at
-// module scope of the root layout.
 export function configureNotificationHandler() {
   const Notifications = notificationsModule();
   if (!Notifications) return;
@@ -39,8 +32,6 @@ export function configureNotificationHandler() {
   });
 }
 
-// Subscribe to notification taps. Returns an unsubscribe function; in Expo Go
-// (where listeners are unavailable) it returns a no-op.
 export function addNotificationResponseHandler(
   onOpen: (data: Record<string, unknown>) => void,
 ): () => void {
@@ -52,8 +43,6 @@ export function addNotificationResponseHandler(
   return () => sub.remove();
 }
 
-// Register this device for push. Returns the Expo push token, or null when the
-// device can't (or won't) receive pushes. Never throws.
 export async function registerForPush(token: string): Promise<string | null> {
   try {
     const Notifications = notificationsModule();
@@ -110,7 +99,6 @@ export async function unregisterPush(
   });
 }
 
-// Map a notification's data payload to an in-app path; null for anything unknown.
 export function notificationRoute(
   data: Record<string, unknown>,
 ): string | null {

@@ -30,10 +30,12 @@ function Scanner({ eventId, code, role, exit, event }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [lastQuery, setLastQuery] = useState("");
+  const [admittingId, setAdmittingId] = useState(null);
   const [sessionId, setSessionId] = useState("");
   const [gate, setGate] = useState("");
   const [zone, setZone] = useState("");
-  const [feedback, setFeedback] = useState(null); // { kind, msg }
+  const [feedback, setFeedback] = useState(null);
   const [paused, setPaused] = useState(false);
   const fbTimer = useRef(null);
 
@@ -58,26 +60,31 @@ function Scanner({ eventId, code, role, exit, event }) {
   };
 
   const admit = async (row, method) => {
-    const res = await admitCheckin({
-      eventId,
-      code,
-      registrationId: row.registrationId,
-      name: row.name,
-      ticketCode: row.ticketCode,
-      gate: gate || null,
-      zone: zone || null,
-      sessionId: sessionId || null,
-      method,
-      staff: role?.name || null,
-    });
-    if (res?.ok) {
-      flash("success", `Admitted ${row.name || "attendee"}`);
-      setResults((prev) => prev.map((r) => (r.registrationId === row.registrationId ? { ...r, checkedIn: true } : r)));
-      refreshStats();
-    } else if (res?.already) {
-      flash("already", `${row.name || "Attendee"} is already checked in`);
-    } else {
-      flash("error", "Couldn't record the check-in");
+    setAdmittingId(row.registrationId);
+    try {
+      const res = await admitCheckin({
+        eventId,
+        code,
+        registrationId: row.registrationId,
+        name: row.name,
+        ticketCode: row.ticketCode,
+        gate: gate || null,
+        zone: zone || null,
+        sessionId: sessionId || null,
+        method,
+        staff: role?.name || null,
+      });
+      if (res?.ok) {
+        flash("success", `Admitted ${row.name || "attendee"}`);
+        setResults((prev) => prev.map((r) => (r.registrationId === row.registrationId ? { ...r, checkedIn: true } : r)));
+        refreshStats();
+      } else if (res?.already) {
+        flash("already", `${row.name || "Attendee"} is already checked in`);
+      } else {
+        flash("error", "Couldn't record the check-in");
+      }
+    } finally {
+      setAdmittingId(null);
     }
   };
 
@@ -85,12 +92,14 @@ function Scanner({ eventId, code, role, exit, event }) {
     const q = text.trim();
     if (!q) {
       setResults([]);
+      setLastQuery("");
       return null;
     }
     setSearching(true);
     const rows = await searchCheckin(eventId, code, q);
     setSearching(false);
     setResults(rows || []);
+    setLastQuery(q);
     return rows || [];
   };
 
@@ -111,6 +120,7 @@ function Scanner({ eventId, code, role, exit, event }) {
   };
 
   const fb = feedback ? FEEDBACK[feedback.kind] : null;
+  const showNoMatches = !searching && !!lastQuery && results.length === 0;
 
   return (
     <RouteShell
@@ -161,7 +171,11 @@ function Scanner({ eventId, code, role, exit, event }) {
         <QrScanner onDecode={onScan} paused={paused} />
 
         {fb ? (
-          <div className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium ${fb.cls}`}>
+          <div
+            role="status"
+            aria-live="polite"
+            className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium ${fb.cls}`}
+          >
             <fb.icon className="h-5 w-5 shrink-0" />
             {feedback.msg}
           </div>
@@ -188,6 +202,12 @@ function Scanner({ eventId, code, role, exit, event }) {
           </Button>
         </form>
 
+        {showNoMatches ? (
+          <div className="rounded-xl border border-dashed border-border bg-surface-subtle px-4 py-6 text-center text-sm text-text-secondary">
+            No matches for &ldquo;{lastQuery}&rdquo;
+          </div>
+        ) : null}
+
         {results.length ? (
           <div className="space-y-2">
             {results.map((r) => (
@@ -203,8 +223,17 @@ function Scanner({ eventId, code, role, exit, event }) {
                     <CheckCircle2 className="h-4 w-4" /> In
                   </span>
                 ) : (
-                  <Button className="h-10 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => admit(r, "manual")}>
-                    <UserCheck className="h-4 w-4" /> Admit
+                  <Button
+                    className="h-10 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                    disabled={admittingId === r.registrationId}
+                    onClick={() => admit(r, "manual")}
+                  >
+                    {admittingId === r.registrationId ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserCheck className="h-4 w-4" />
+                    )}
+                    Admit
                   </Button>
                 )}
               </div>

@@ -21,7 +21,6 @@ export function DockedPlayer({ bottom }: { bottom: number }) {
   const { playing, clear } = useLivePlayer();
   const pathname = usePathname();
   const router = useRouter();
-  // Unused value forces a re-render each tick so elapsed() recomputes from Date.now().
   const [, setTick] = useState(0);
 
   useEffect(() => {

@@ -1,12 +1,5 @@
 "use client";
 
-// Hero components for the page builder.
-//
-// Each definition co-locates its palette metadata, its editable field schema and
-// its renderer, so a component is one thing you can read end to end. Default
-// props lean on binding tokens ({{event.name}}) rather than lorem copy — a
-// freshly dropped hero already says the right thing about the event.
-
 import React from "react";
 import { LayoutTemplate, Image as ImageIcon, AlignCenter, PanelTop } from "lucide-react";
 
@@ -52,8 +45,6 @@ const ALIGN_OPTIONS = [
   { key: "center", label: "Center" },
 ];
 
-// Shared button row. `accent` is the resolved brand accent, so a hero's buttons
-// always match the rest of the page's CTAs.
 function HeroButtons({ items, accent, className }) {
   const buttons = (Array.isArray(items) ? items : []).filter((b) => b?.label);
   if (!buttons.length) return null;
@@ -119,9 +110,6 @@ function HeroCopy({ props, accent, centered }) {
   );
 }
 
-// A placeholder rather than nothing: an empty image slot has to be visible and
-// clickable in the builder, and on a published page it means the organizer
-// still has a step left.
 function HeroImage({ url, alt }) {
   if (!url) {
     return (
@@ -248,8 +236,6 @@ export const HERO_COMPONENTS = [
               className="absolute inset-0 -z-10 h-full w-full object-cover"
             />
           ) : null}
-          {/* The scrim is what keeps the headline legible over an arbitrary
-              photo, so it sits between the image and the copy, not on either. */}
           <div
             aria-hidden
             className="absolute inset-0 -z-10 bg-black"

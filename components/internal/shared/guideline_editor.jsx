@@ -13,12 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EmptyState } from "./screen_kit";
 import { GUIDELINE_CATEGORY_OPTIONS } from "@/components/internal/screens/registrations/constants";
-
-// Controlled editor for a list of dietary & accessibility guideline items —
-// reused by the venue and event guideline sections. Each item is
-// { id, category: 'dietary' | 'accessibility', label, detail }. Fully
-// controlled: the parent owns persistence (mergeVenueMeta / useEventConfig).
 
 const newItem = () => ({
   id: crypto.randomUUID(),
@@ -51,14 +47,17 @@ export function GuidelineListEditor({ items = [], onChange }) {
             >
               <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-text-secondary">
+                  <label
+                    htmlFor={`${item.id}-category`}
+                    className="text-xs font-medium text-text-secondary"
+                  >
                     Category
-                  </span>
+                  </label>
                   <Select
                     value={item.category}
                     onValueChange={(v) => update(item.id, { category: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={`${item.id}-category`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -71,10 +70,14 @@ export function GuidelineListEditor({ items = [], onChange }) {
                   </Select>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-text-secondary">
+                  <label
+                    htmlFor={`${item.id}-label`}
+                    className="text-xs font-medium text-text-secondary"
+                  >
                     Guideline
-                  </span>
+                  </label>
                   <Input
+                    id={`${item.id}-label`}
                     value={item.label}
                     onChange={(e) => update(item.id, { label: e.target.value })}
                     placeholder="e.g. Step-free entrance on North St"
@@ -126,10 +129,12 @@ export function GuidelineListEditor({ items = [], onChange }) {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-surface-card py-10 text-text-secondary">
-          <Accessibility className="h-6 w-6" />
-          <p className="text-sm">No guidelines yet</p>
-        </div>
+        <EmptyState
+          icon={Accessibility}
+          title="No guidelines yet"
+          description="Add dietary and accessibility guidelines so every attendee knows what to expect."
+          className="rounded-xl border border-dashed border-border bg-surface-card py-10"
+        />
       )}
 
       <Button

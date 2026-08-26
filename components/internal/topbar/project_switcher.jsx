@@ -24,10 +24,6 @@ import {
 import { Field } from "@/components/internal/shared/screen_kit";
 import { useProject } from "@/context/project-context";
 
-// Active-project selector for the topbar. Lists the projects the signed-in user
-// can reach (org membership, enforced by RLS) and switches the whole workspace
-// to the one they pick via the ?project= URL param. Also creates a new project
-// (bootstrapping an org if needed).
 export function ProjectSwitcher() {
   const { project, projects, loading, setActiveProject, createProject } =
     useProject();
@@ -60,12 +56,13 @@ export function ProjectSwitcher() {
             variant="ghost"
             className="h-8 gap-1.5 px-2 text-sm font-medium text-foreground hover:bg-surface-hover"
           >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
             <span className="truncate max-w-[140px] md:max-w-[200px]">
-              {loading
-                ? "Loading…"
-                : project?.name || "Select project"}
+              {loading ? "Loading…" : project?.name || "Select project"}
             </span>
-            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+            {!loading ? (
+              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+            ) : null}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -76,8 +73,15 @@ export function ProjectSwitcher() {
             Projects
           </DropdownMenuLabel>
           {projects.length === 0 ? (
-            <div className="px-2 py-1.5 text-xs text-muted-foreground">
-              No projects yet.
+            <div className="px-2 py-1.5">
+              <p className="text-xs text-muted-foreground">No projects yet.</p>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-surface-active hover:text-foreground"
+              >
+                <Plus className="h-3.5 w-3.5" /> New project
+              </button>
             </div>
           ) : (
             projects.map((p) => (
@@ -129,7 +133,8 @@ export function ProjectSwitcher() {
           </div>
           <DialogFooter>
             <Button
-              variant="ghost"
+              variant="outline"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => setCreateOpen(false)}
               disabled={saving}
             >

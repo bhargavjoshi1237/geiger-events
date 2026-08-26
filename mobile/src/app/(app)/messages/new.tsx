@@ -16,7 +16,6 @@ import { useSession } from "@/state/session";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { Thread } from "@/types/portal";
 
-// Opens a new support thread, optionally prefilled from a ticket/order context.
 export default function NewMessageScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ orderId?: string; subject?: string; contextLabel?: string }>();

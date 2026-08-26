@@ -25,8 +25,6 @@ type ChannelRoomProps = {
 const POLL_MS = 5_000;
 const GROUP_MS = 5 * 60 * 1000;
 
-// Merges the polled history into the existing one by id, keeping message object
-// identity so the inverted list never flickers as new messages arrive.
 function mergeMessages(prev: ChatMessage[], fresh: ChatMessage[]): ChatMessage[] {
   const byId = new Map(fresh.map((m) => [m.id, m]));
   const seen = new Set<string>();
@@ -56,8 +54,6 @@ function upsertMessage(messages: ChatMessage[], m: ChatMessage): ChatMessage[] {
   return [...messages, m];
 }
 
-// The shared chat room for event channels and Q&A threads: an inverted message
-// list, reactions/polls/replies, and a polling composer.
 export function ChannelRoom({ channelId }: ChannelRoomProps) {
   const { token, member } = useSession();
   const { error: toastError } = useToast();
@@ -86,7 +82,6 @@ export function ChannelRoom({ channelId }: ChannelRoomProps) {
 
   usePoll(load, POLL_MS, true);
 
-  // The GET above already marks read; a final POST on blur keeps the cursor fresh.
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -144,7 +139,6 @@ export function ChannelRoom({ channelId }: ChannelRoomProps) {
       };
       const replyTo = replyTarget?.id ?? null;
       setReplyTarget(null);
-      // Optimistic append; swapped for the server's message (or removed) below.
       setChannel((prev) => (prev ? { ...prev, messages: [...prev.messages, temp] } : prev));
       const res = await api<{ message: ChatMessage }>(
         `/api/portal/chat/channels/${channelId}/messages`,

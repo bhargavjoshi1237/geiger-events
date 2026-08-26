@@ -26,30 +26,17 @@ import { AudienceField } from "@/components/internal/shared/audience/audience_fi
 import { AccessControlField } from "./access_control";
 import { conferenceApi } from "@/lib/supabase/conference";
 
-// Declarative field rendering shared by the Conference create dialog, the light
-// single-panel editors, and the rich sectioned editors. A field spec is:
-//   { key, label, type, scope, options?, placeholder?, hint?, full? }
-//   type:  text | email | number | datetime | textarea | select | ref | tabs |
-//          switch | list | image
-//   scope: "root" (record.name/status/coverUrl) | "config" (record.config[key])
-// An `image` field also carries { upload } — the area's uploader — and stores the
-// resulting public URL as its value.
-
-// Read a field's current value off a record/draft.
 export function readField(field, values) {
   if (field.scope === "config") return values.config?.[field.key];
   return values[field.key];
 }
 
-// Build the partial patch that sets a field to `val` (root vs config bag).
 export function fieldPatch(field, values, val) {
   if (field.scope === "config") {
     return { config: { ...(values.config || {}), [field.key]: val } };
   }
   return { [field.key]: val };
 }
-
-// --- Chips (string[] editor) -------------------------------------------------
 
 export function ChipsInput({ value, onChange, placeholder }) {
   const [draft, setDraft] = useState("");
@@ -113,16 +100,6 @@ export function ChipsInput({ value, onChange, placeholder }) {
   );
 }
 
-// --- Inline image field ------------------------------------------------------
-
-// A compact uploader for use inside a field grid — the create dialog and any
-// detail section can carry an image without its own media tab.
-//
-// Two modes. Against a saved record it uploads straight away and the value is
-// the public URL. In the create dialog (`values.deferUploads`) there is no row
-// yet and storage RLS only admits writes for an existing owned record, so it
-// holds the File as `{ file, preview }` and the create flow uploads it once the
-// row is inserted.
 function ImageField({ field, value, onValue, values }) {
   const [busy, setBusy] = useState(false);
   const inputRef = useRef(null);
@@ -154,7 +131,6 @@ function ImageField({ field, value, onValue, values }) {
     }
     const old = typeof value === "string" ? value : "";
     onValue(res.url);
-    // Replacing an image orphans the previous file — clean it up.
     const oldPath = pathFromPublicUrl(old);
     if (oldPath) removeEventImage(oldPath);
   };
@@ -183,7 +159,6 @@ function ImageField({ field, value, onValue, values }) {
               field.frameClassName,
             )}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt="" className={cn(aspect, "w-full object-cover")} />
           </div>
           <div className="flex flex-wrap gap-2">
@@ -232,10 +207,6 @@ function ImageField({ field, value, onValue, values }) {
   );
 }
 
-// --- Single field control ----------------------------------------------------
-
-// ISO instant -> the "YYYY-MM-DDTHH:mm" a datetime-local input expects, in the
-// viewer's timezone. Returns "" for anything unparseable (legacy display text).
 function toLocalInput(iso) {
   const ms = new Date(iso).getTime();
   if (!Number.isFinite(ms)) return "";
@@ -243,9 +214,6 @@ function toLocalInput(iso) {
   return d.toISOString().slice(0, 16);
 }
 
-// A typeahead over sibling records of one module — turns the free-text
-// session/speaker fields into real references. Stores the referenced id so a
-// renamed target stays linked.
 function RecordRefField({ field, value, onValue, projectId }) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -288,10 +256,6 @@ function RecordRefField({ field, value, onValue, projectId }) {
   );
 }
 
-// Renders one field's control. `value` is the current value; `onValue(val)` gets
-// the new raw value (the caller maps it to a patch via fieldPatch). `values` is
-// the whole record/draft — used by controls that need record context (e.g. the
-// audience builder needs the record's projectId).
 export function FieldControl({ field, value, onValue, values }) {
   switch (field.type) {
     case "audience":
@@ -339,7 +303,6 @@ export function FieldControl({ field, value, onValue, values }) {
         />
       );
     case "datetime":
-      // Stored as an ISO instant; the input speaks the viewer's local time.
       return (
         <Input
           type="datetime-local"
@@ -374,7 +337,6 @@ export function FieldControl({ field, value, onValue, values }) {
         </Select>
       );
     case "tabs":
-      // A segmented selector (shadcn/@geiger Tabs used as a control, no panels).
       return (
         <Tabs value={value ?? ""} onValueChange={onValue}>
           <TabsList className="w-full">
@@ -420,7 +382,6 @@ export function FieldControl({ field, value, onValue, values }) {
   }
 }
 
-// A field that spans the full width of the two-column grid (multi-line inputs).
 const FULL_TYPES = new Set([
   "textarea",
   "list",
@@ -430,8 +391,6 @@ const FULL_TYPES = new Set([
   "image",
 ]);
 
-// --- Section of fields (a titled card with a 2-col grid) ---------------------
-
 export function FieldSection({ title, description, action, fields, values, onPatch, bare = false }) {
   return (
     <SectionCard
@@ -439,7 +398,6 @@ export function FieldSection({ title, description, action, fields, values, onPat
       description={description}
       action={action}
       bare={bare}
-      // Untitled + bare: the caller owns the heading, so skip the header offset.
       bodyPadding={!bare || Boolean(title)}
     >
       <div className="grid gap-4 sm:grid-cols-2">
@@ -466,9 +424,6 @@ export function FieldSection({ title, description, action, fields, values, onPat
   );
 }
 
-// --- Cover image (headshot / logo) -------------------------------------------
-
-// Heading-less: the detail section this renders in supplies the heading.
 export function CoverImageCard({ record, commit, upload, aspect = "aspect-[16/9]", frameClassName }) {
   const cover = record.coverUrl || "";
   const [me, setMe] = useState(null);
@@ -488,8 +443,6 @@ export function CoverImageCard({ record, commit, upload, aspect = "aspect-[16/9]
     };
   }, []);
 
-  // Only the creator may upload (storage RLS). A record with no owner yet
-  // (local-only / just created) is treated as editable.
   const isOwner = !resolved || !record.createdBy || me === record.createdBy;
 
   const onFile = async (e) => {
@@ -533,7 +486,6 @@ export function CoverImageCard({ record, commit, upload, aspect = "aspect-[16/9]
               frameClassName,
             )}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={cover} alt="" className={cn(aspect, "w-full object-cover")} />
           </div>
           <div className="flex gap-2">

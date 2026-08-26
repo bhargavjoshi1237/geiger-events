@@ -31,9 +31,6 @@ const SORT_OPTIONS = [
 
 const DEFAULT_FILTERS = { status: "upcoming", sortBy: "date_asc" };
 
-// Which events appear on the wall (only events an organizer has marked
-// listable — see the Visibility section of the event editor), how they're
-// sorted, and an optional manually-ordered "featured" set pinned to the top.
 export function WallEventsSection({ wall }) {
   const { projectId } = useProject();
   const [filters, setFilters, saveFilters] = useWallConfig(

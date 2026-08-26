@@ -23,13 +23,6 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listRecords } from "@/lib/supabase/ticketing";
 import { DiscountStub } from "@/components/internal/screens/tickets/discount_stub";
 
-// Event-editor "Discounts" tab. Owns the per-event discount-code config:
-//   metadata.discountSettings = { enabled: true, appliesTo: "order" | "tickets" }
-// plus which coupon records are attached to this event
-//   metadata.attached.discount = [recordId, …]   (shared with the Ticketing tab)
-// The public checkout shows a code field only when enabled AND at least one
-// coupon is attached, and validates typed codes against these attached records.
-
 const DEFAULT_SETTINGS = { enabled: true, appliesTo: "order" };
 
 export function EventDiscountsSection({ event, headerItem }) {
@@ -44,8 +37,6 @@ export function EventDiscountsSection({ event, headerItem }) {
     let alive = true;
     listRecords(projectId, "discount").then((rows) => {
       if (!alive) return;
-      // Only code-based coupons are usable at checkout (group/earlybird/affiliate
-      // are separate mechanisms).
       setCoupons((rows ?? []).filter((r) => r.kind === "coupon"));
       setLoading(false);
     });
@@ -90,7 +81,6 @@ export function EventDiscountsSection({ event, headerItem }) {
         }
       />
 
-      {/* Master config. */}
       <div className="space-y-4 rounded-xl border border-border bg-surface-card p-4">
         <label className="flex items-start justify-between gap-4">
           <span>
@@ -131,7 +121,6 @@ export function EventDiscountsSection({ event, headerItem }) {
         ) : null}
       </div>
 
-      {/* Attach coupons to this event. */}
       {enabled ? (
         <div className="space-y-3">
           <p className="text-sm font-medium text-foreground">

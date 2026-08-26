@@ -47,8 +47,6 @@ export function Button({
   fullWidth = false,
 }: ButtonProps) {
   const pressed = loading || disabled;
-  // Mutations defined before useAnimatedStyle so the React Compiler keeps the
-  // shared values' mutable ranges open.
   const scaleRef = useSharedValue(1);
   const opacityRef = useSharedValue(1);
   const pressIn = () => {

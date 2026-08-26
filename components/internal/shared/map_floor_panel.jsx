@@ -17,13 +17,6 @@ import {
 import { Field, SectionCard } from "./screen_kit";
 import { FIELD_SHAPES } from "./map_field";
 
-// The floor's own settings, shared by the seat map editor and the hall map
-// editor: the canvas shape, the central feature (pitch, court, stage, none) and
-// the real floor plan image traced over underneath.
-//
-// It owns no persistence. `config` is the map's raw config jsonb and `onChange`
-// receives a shallow patch of it, so the caller decides how to save.
-
 const ASPECTS = [
   { value: "16/10", label: "Wide (16:10)" },
   { value: "16/9", label: "Widescreen (16:9)" },
@@ -37,7 +30,6 @@ export function MapFloorPanel({
   field,
   background,
   onChange,
-  // (file) => Promise<{ url, path } | null>
   onUpload,
   title = "Floor",
   description = "The canvas, its central feature, and the plan traced underneath.",
@@ -121,6 +113,7 @@ export function MapFloorPanel({
                     type="number"
                     min={0}
                     max={100}
+                    step={1}
                     inputMode="numeric"
                     value={field?.[key] ?? 0}
                     onChange={(e) => patchField({ [key]: Number(e.target.value) || 0 })}
@@ -187,10 +180,11 @@ export function MapFloorPanel({
                 type="range"
                 min={5}
                 max={100}
+                step={5}
                 value={Math.round((background.opacity ?? 0.6) * 100)}
                 onChange={(e) => patchBackground({ opacity: Number(e.target.value) / 100 })}
                 aria-label="Floor plan opacity"
-                className="w-full accent-primary"
+                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-active accent-primary"
               />
             </Field>
           ) : null}

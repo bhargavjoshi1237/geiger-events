@@ -21,6 +21,7 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -42,7 +43,6 @@ import {
   formatDuration,
 } from "./constants";
 
-// Small status glyph reused in the drawer's per-step log.
 const STEP_STATUS_ICON = {
   Success: CheckCircle2,
   Failed: XCircle,
@@ -70,7 +70,6 @@ function RunDetailSheet({ run, workflowName, onClose }) {
 
         {run ? (
           <div className="space-y-6 px-4 pb-8 pt-2">
-            {/* Summary chips */}
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill status={run.status} map={RUN_STATUS_MAP} />
               <Badge variant="neutral">{formatDuration(run.durationMs)}</Badge>
@@ -85,7 +84,6 @@ function RunDetailSheet({ run, workflowName, onClose }) {
               </div>
             ) : null}
 
-            {/* Timing */}
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-xs text-text-tertiary">Started</p>
@@ -97,7 +95,6 @@ function RunDetailSheet({ run, workflowName, onClose }) {
               </div>
             </div>
 
-            {/* Trigger context */}
             {contextEntries.length ? (
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
@@ -117,7 +114,6 @@ function RunDetailSheet({ run, workflowName, onClose }) {
               </div>
             ) : null}
 
-            {/* Per-step log */}
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                 Steps
@@ -134,11 +130,10 @@ function RunDetailSheet({ run, workflowName, onClose }) {
                         className="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3"
                       >
                         <Glyph
-                          className={`mt-0.5 h-4 w-4 shrink-0 ${
-                            meta?.dotClass
-                              ? meta.dotClass.replace("bg-", "text-")
-                              : "text-text-secondary"
-                          }`}
+                          className={cn(
+                            "mt-0.5 h-4 w-4 shrink-0",
+                            meta?.iconClass || "text-text-secondary",
+                          )}
                         />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-foreground">

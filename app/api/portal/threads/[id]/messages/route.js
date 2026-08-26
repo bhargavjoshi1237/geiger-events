@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getSessionMember } from "@/lib/portal/session";
 import { postMessage } from "@/lib/portal/support";
 
-// POST /api/portal/threads/<id>/messages { body } -> append a member message.
 export async function POST(request, { params }) {
   const member = await getSessionMember();
   if (!member) {

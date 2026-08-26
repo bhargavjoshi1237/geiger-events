@@ -1,12 +1,5 @@
 "use client";
 
-// The palette: everything you can add to a page.
-//
-// Two ways to add, because both are natural and people reach for different ones:
-// drag an item onto the canvas to place it exactly, or click it to append to
-// whatever is selected. Dragging is the same pointer engine the canvas uses, so
-// a palette item and an existing block behave identically once in flight.
-
 import { useMemo, useState } from "react";
 import { Search, Rows3 } from "lucide-react";
 
@@ -18,7 +11,6 @@ import {
   componentsInCategory,
 } from "./components";
 
-// A preset's spans drawn as proportional bars — faster to read than "8 / 4".
 function PresetGlyph({ spans }) {
   return (
     <span className="flex h-4 w-full items-stretch gap-0.5">
@@ -60,12 +52,6 @@ function PaletteTile({ label, icon: Icon, glyph, onPointerDown, onClick, disable
   );
 }
 
-/**
- * @param usedTypes   types already on the page, to grey out singletons
- * @param canUseCustomCode gates the raw-HTML / code components
- * @param onDragItem  (event, payload) => void
- * @param onAddItem   (payload) => void
- */
 export function PalettePanel({
   usedTypes,
   canUseCustomCode,
@@ -131,8 +117,6 @@ export function PalettePanel({
             </p>
             <div className="grid grid-cols-2 gap-2">
               {category.items.map((item) => {
-                // A smart event section describes one thing about the event, so
-                // a second copy would just repeat itself.
                 const disabled = item.singleton && usedTypes.has(item.type);
                 return (
                   <PaletteTile

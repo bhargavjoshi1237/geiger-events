@@ -10,8 +10,6 @@ import { formatDate } from "../../sample_data";
 import { getBlockMeta } from "../../page_block_library";
 import { venueLine } from "../hero";
 
-// Centered content container. Layouts that go full-bleed drop it for a band and
-// re-open it around the copy inside that band.
 export function Shell({ width, className, style, children }) {
   return (
     <div
@@ -23,8 +21,6 @@ export function Shell({ width, className, style, children }) {
   );
 }
 
-// Cheapest price across the visible tiers — what a buy bar or a hero CTA quotes
-// before the buyer has picked a tier.
 export function priceLabel(tickets) {
   const prices = (tickets || []).map((t) => Number(t.price) || 0);
   if (!prices.length) return "";
@@ -33,8 +29,6 @@ export function priceLabel(tickets) {
   return prices.length > 1 ? `From $${low}` : `$${low}`;
 }
 
-// Thumb-reach purchase bar pinned to the bottom of the viewport. Used by the
-// layouts whose hero doesn't carry a ticket panel of its own.
 export function StickyBuyBar({ ctx }) {
   const { event, cta } = ctx;
   const { tickets, soldOut, onCheckout, primaryBtnStyle, ctaHover } = cta;
@@ -67,8 +61,6 @@ export function StickyBuyBar({ ctx }) {
   );
 }
 
-// The event's facts as label/value rows — the poster and bento layouts set them
-// as a table instead of the inline icon row the classic hero uses.
 export function MetaRows({ ctx, className }) {
   const { event, cta } = ctx;
   const rows = [
@@ -98,7 +90,6 @@ export function MetaRows({ ctx, className }) {
   );
 }
 
-// Compact date/venue line reused by the layouts that don't render a full hero.
 export function EventMetaLine({ event, className }) {
   return (
     <div
@@ -119,10 +110,6 @@ export function EventMetaLine({ event, className }) {
   );
 }
 
-// Palette overrides for content laid over a cover photo. Same approach as
-// bandTokens in lib/events/theme.js — re-point the tokens instead of forcing
-// text-white onto every descendant, so the brand bar, chips, rules and meta
-// rows all come along without each knowing they're on a photo.
 export const OVER_COVER = {
   color: "#ffffff",
   "--foreground": "#ffffff",
@@ -135,13 +122,6 @@ export const OVER_COVER = {
   "--surface-active": "rgb(255 255 255 / 0.16)",
 };
 
-// A slot that disappears when the block inside it renders nothing. Event blocks
-// return null when the organizer hasn't filled them in — no description, no
-// highlights, no schedule — and any layout that gives a block a tile, a colored
-// band or a margin label would otherwise draw an empty one.
-// `bodyClassName`/`bodyStyle` land on the element that holds the block itself —
-// nothing may sit between it and the block, or it is never empty and the guard
-// never fires.
 export function BlockSlot({
   className,
   label,
@@ -163,9 +143,6 @@ export function BlockSlot({
   );
 }
 
-// Two-up flow that never leaves a half-empty row. Flex wrapping lets the last
-// item on a line grow into the space a missing partner would have taken, which
-// a fixed two-column grid can't do.
 export const PAIR_ROW = "flex flex-wrap items-start gap-8";
 export const PAIR_ITEM = "min-w-0 grow basis-[calc(50%-1rem)]";
 export const PAIR_WIDE = "min-w-0 basis-full";
@@ -178,16 +155,12 @@ export function blockAnchor(block) {
   return `sec-${block.id}`;
 }
 
-// Sections whose label reads as a page destination. Spacers, dividers and bare
-// text aren't worth a nav entry.
 const NAV_SKIP = new Set(["divider", "spacer", "text", "richtext", "image"]);
 
 export function navBlocks(blocks) {
   return blocks.filter((b) => !NAV_SKIP.has(b.type));
 }
 
-// Which anchored section is in view. Plain IntersectionObserver — the page is a
-// handful of sections, so there's nothing to virtualise or throttle.
 export function useScrollSpy(ids) {
   const [active, setActive] = useState(ids[0] || "");
 
@@ -209,12 +182,11 @@ export function useScrollSpy(ids) {
       if (el) io.observe(el);
     });
     return () => io.disconnect();
-  }, [ids.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ids.join("|")]);
 
   return active;
 }
 
-// Wraps a rendered block so anchor navigation can reach it.
 export function Anchored({ block, children, className }) {
   return (
     <section id={blockAnchor(block)} className={cn("scroll-mt-24", className)}>

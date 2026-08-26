@@ -18,18 +18,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-/**
- * Shared building blocks for internal feature screens. They reproduce the
- * visual language established in the Events Overview screen (dark surfaces,
- * #1a1a1a cards on #161616, #2a2a2a borders, muted #a3a3a3 / #737373 text) so
- * every screen in the workspace feels like one product.
- */
-
-// --- Page header -------------------------------------------------------------
-
-// Heading + description styling follows the Geiger suite convention (see
-// Geiger Flow): a plain title and description over a bottom divider, no icon
-// chip or badge. Extra props (e.g. icon/badge) are intentionally ignored.
 export function ScreenHeader({ title, description, actions, className }) {
   return (
     <div
@@ -55,12 +43,6 @@ export function ScreenHeader({ title, description, actions, className }) {
   );
 }
 
-// --- Editor section header ---------------------------------------------------
-
-// Header for an in-editor section that opts out of the event editor's default
-// title block (`ownHeader: true`). Title + description on the left, the
-// section's primary action(s) pinned to the far right of the title row — the
-// rhythm used by Ticket Types, Location & Time and Map & Directions.
 export function EditorSectionHeader({ title, description, action, className }) {
   return (
     <div
@@ -81,8 +63,6 @@ export function EditorSectionHeader({ title, description, action, className }) {
     </div>
   );
 }
-
-// --- KPI tiles ---------------------------------------------------------------
 
 export function StatGrid({ stats, columns = 4, className }) {
   const colClass =
@@ -137,12 +117,8 @@ export function StatTile({ label, value, delta, trend, hint, icon: Icon }) {
   );
 }
 
-// --- Rolling odometer number -------------------------------------------------
-
 const ROLL_DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-// A single odometer digit: a vertical 0–9 strip that slides to the target.
-// Starts at 0 and rolls up once `active` flips true (on mount).
 function RollingDigit({ digit, active, delay }) {
   return (
     <span className="relative inline-block h-[1em] w-[1ch] overflow-hidden align-baseline">
@@ -163,8 +139,6 @@ function RollingDigit({ digit, active, delay }) {
   );
 }
 
-// Renders a formatted value (e.g. "$24,860") with each digit animated as a
-// rolling odometer; prefixes/separators like "$" and "," stay static.
 export function RollingNumber({ value, className }) {
   const [active, setActive] = useState(false);
 
@@ -192,8 +166,6 @@ export function RollingNumber({ value, className }) {
   );
 }
 
-// --- Stats bar (unified KPI row) ---------------------------------------------
-
 const STATS_BAR_COLS = {
   2: "grid-cols-2",
   3: "grid-cols-2 md:grid-cols-3",
@@ -201,11 +173,12 @@ const STATS_BAR_COLS = {
 };
 
 export function StatsBar({ stats, columns = 4, className }) {
-  const cols = STATS_BAR_COLS[columns] || STATS_BAR_COLS[4];
+  const colCount = [2, 3, 4].includes(columns) ? columns : 4;
+  const cols = STATS_BAR_COLS[colCount];
 
   return (
     <Card
-      className={cn(  
+      className={cn(
         "gap-0 overflow-hidden rounded-xl border-border bg-surface-subtle py-0 text-foreground",
         className,
       )}
@@ -219,11 +192,12 @@ export function StatsBar({ stats, columns = 4, className }) {
               <div
                 key={stat.label}
                 className={cn(
-                  "p-4",
-                  i % 2 !== 0 && "border-l border-border",
-                  i >= 2 && "border-t border-border",
-                  "md:border-t-0 md:border-l md:border-border",
-                  i === 0 && "md:border-l-0",
+                  "p-4 border-border",
+                  i % 2 !== 0 && "border-l",
+                  i >= 2 && "border-t",
+                  "md:border-l-0 md:border-t-0",
+                  i % colCount !== 0 && "md:border-l",
+                  i >= colCount && "md:border-t",
                 )}
               >
                 <span className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">
@@ -260,8 +234,6 @@ export function StatsBar({ stats, columns = 4, className }) {
   );
 }
 
-// --- Section card ------------------------------------------------------------
-
 export function SectionCard({
   title,
   description,
@@ -272,7 +244,6 @@ export function SectionCard({
   bodyPadding = true,
   bare = false,
 }) {
-  // Box-less variant: title + description over a divider, no border/background.
   if (bare) {
     return (
       <section className={cn("text-foreground", className)}>
@@ -324,12 +295,6 @@ export function SectionCard({
   );
 }
 
-// --- Toolbar (search + filters + actions) ------------------------------------
-
-// Toolbar search — the suite's collapsible search: a bare icon that expands into
-// a field on click, so the toolbar row keeps its space until the user searches.
-// `expanded` pins it open for screens where the search box *is* the primary
-// input (a discovery form), where hiding it behind an icon would be wrong.
 export function SearchInput({
   value,
   onChange,
@@ -347,11 +312,7 @@ export function SearchInput({
       open={expanded ? true : undefined}
       autoFocus={!expanded}
       expandedWidth={expanded ? "100%" : "16rem"}
-      // Collapsed, it always hangs off the trailing edge of its row — including
-      // the stacked mobile toolbar, where there is no justify-between to do it.
       className={cn(expanded ? "w-full" : "ml-auto", className)}
-      // Suppress the browser's native search clear icon; the component ships
-      // its own.
       inputClassName="[&::-webkit-search-cancel-button]:appearance-none"
     />
   );
@@ -370,8 +331,6 @@ export function Toolbar({ children, className }) {
   );
 }
 
-// --- Status pill -------------------------------------------------------------
-
 export function StatusPill({ status, map, className }) {
   const meta = map?.[status];
   return (
@@ -388,8 +347,6 @@ export function StatusPill({ status, map, className }) {
     </Badge>
   );
 }
-
-// --- Empty state -------------------------------------------------------------
 
 export function EmptyState({
   icon: Icon,
@@ -421,18 +378,12 @@ export function EmptyState({
   );
 }
 
-// --- Data table --------------------------------------------------------------
-
 const ALIGN_CLASS = {
   left: "text-left",
   center: "text-center",
   right: "text-right",
 };
 
-/**
- * Generic table for list screens.
- * columns: [{ key, header, align, className, headClassName, render(row) }]
- */
 export function DataTable({
   columns,
   data,
@@ -491,18 +442,12 @@ export function DataTable({
   );
 }
 
-// --- Settings rows -----------------------------------------------------------
-
 export function SettingsList({ children, className }) {
   return (
     <div className={cn("divide-y divide-border", className)}>{children}</div>
   );
 }
 
-/**
- * A labelled settings row. Pass `control` for a custom control (select, button,
- * etc.) or `checked`/`onCheckedChange` to render a Switch automatically.
- */
 export function SettingRow({
   title,
   description,
@@ -543,18 +488,9 @@ export function SettingRow({
   );
 }
 
-// --- Form field helpers (for dialogs) ----------------------------------------
-
-// The outline variant sits on `bg-background`, which reads as empty next to a
-// `bg-surface-card` input — give the steppers their own resting surface and ma
-// stronger border so they're legible at rest, not only on hover.
 const STEPPER_BUTTON =
   "border-border-strong bg-surface-card text-foreground hover:bg-surface-active";
 
-// A numeric field can opt into −/+ stepper buttons pinned to the right of its
-// control: pass `stepper` with `value`/`onValueChange` (plus optional
-// step/min/max). The value is handed back as a string so it drops straight into
-// a controlled <Input type="number" />.
 export function Field({
   label,
   hint,
@@ -576,13 +512,12 @@ export function Field({
     let next = current + dir * (Number(step) || 1);
     if (min !== undefined) next = Math.max(Number(min), next);
     if (max !== undefined) next = Math.min(Number(max), next);
-    // Keep float noise (0.1 + 0.2) out of the value.
     next = Math.round(next * 1e6) / 1e6;
     onValueChange?.(String(next));
   };
 
   return (
-    <div className={cn("space-y-1.5 flex flex-col gap-0.5", className)}>
+    <div className={cn("flex flex-col gap-0.5", className)}>
       {label ? (
         <label
           htmlFor={htmlFor}
@@ -625,9 +560,6 @@ export function Field({
   );
 }
 
-// Inline-editable title that sizes to its text. A hidden mirror span sets the
-// track width (the `size` attribute measures in default-font characters, which
-// leaves a huge gap before any trailing badge at heading sizes).
 export function InlineTitleInput({
   value,
   onChange,

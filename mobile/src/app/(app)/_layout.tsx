@@ -17,7 +17,6 @@ export default function AppLayout() {
       <Tabs.Screen name="community" options={{ title: "Community" }} />
       <Tabs.Screen name="more" options={{ title: "More" }} />
 
-      {/* Route groups that live inside the shell without their own tab. */}
       <Tabs.Screen name="orders" options={{ href: null }} />
       <Tabs.Screen name="memberships" options={{ href: null }} />
       <Tabs.Screen name="messages" options={{ href: null }} />

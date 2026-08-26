@@ -6,6 +6,14 @@ import { CheckCircle2, Loader2, Minus, Plus, Ticket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
 import { getEvent } from "@/lib/supabase/events";
@@ -19,6 +27,8 @@ const METHODS = [
   { value: "card", label: "Card" },
   { value: "comp", label: "Comp" },
 ];
+
+const MAX_QTY = 10;
 
 const currency = (n) => `$${Number(n || 0).toLocaleString("en-US")}`;
 
@@ -37,6 +47,7 @@ function DoorPos({ eventId, code, role, exit, event }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmComp, setConfirmComp] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const [stats, setStats] = useState(null);
 
@@ -74,7 +85,6 @@ function DoorPos({ eventId, code, role, exit, event }) {
       setReceipt({ error: res?.soldOut ? "That ticket is sold out." : "Couldn't complete the sale." });
       return;
     }
-    // Auto-admit the walk-in buyer.
     await admitCheckin({
       eventId,
       code,
@@ -93,6 +103,11 @@ function DoorPos({ eventId, code, role, exit, event }) {
       method,
     });
     reset();
+  };
+
+  const requestSell = () => {
+    if (isComp) setConfirmComp(true);
+    else sell();
   };
 
   if (receipt) {
@@ -135,6 +150,7 @@ function DoorPos({ eventId, code, role, exit, event }) {
                 key={t.id || t.name}
                 type="button"
                 onClick={() => setTicketIdx(i)}
+                aria-pressed={i === ticketIdx}
                 className={cn(
                   "flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors",
                   i === ticketIdx ? "border-primary bg-primary/10" : "border-border bg-surface-card hover:border-border-strong",
@@ -152,11 +168,25 @@ function DoorPos({ eventId, code, role, exit, event }) {
         <SectionCard title="Quantity & payment">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="icon" className="border-border bg-transparent" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease">
+              <Button
+                variant="outline"
+                size="icon"
+                className="border-border bg-transparent"
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                disabled={qty <= 1}
+                aria-label="Decrease quantity"
+              >
                 <Minus className="h-4 w-4" />
               </Button>
               <span className="w-8 text-center text-lg font-semibold tabular-nums text-foreground">{qty}</span>
-              <Button variant="outline" size="icon" className="border-border bg-transparent" onClick={() => setQty((q) => q + 1)} aria-label="Increase">
+              <Button
+                variant="outline"
+                size="icon"
+                className="border-border bg-transparent"
+                onClick={() => setQty((q) => Math.min(MAX_QTY, q + 1))}
+                disabled={qty >= MAX_QTY}
+                aria-label="Increase quantity"
+              >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
@@ -166,6 +196,7 @@ function DoorPos({ eventId, code, role, exit, event }) {
                   key={m.value}
                   type="button"
                   onClick={() => setMethod(m.value)}
+                  aria-pressed={method === m.value}
                   className={cn(
                     "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                     method === m.value ? "bg-surface-hover text-foreground" : "text-text-secondary hover:text-foreground",
@@ -195,13 +226,46 @@ function DoorPos({ eventId, code, role, exit, event }) {
               <p className="text-xs text-text-secondary">{qty}× {ticket.name} ({method})</p>
               <p className="text-xl font-bold tabular-nums text-foreground">{currency(total)}</p>
             </div>
-            <Button className="h-12 shrink-0 bg-primary px-6 text-base text-primary-foreground hover:bg-primary/90" disabled={submitting} onClick={sell}>
+            <Button className="h-12 shrink-0 bg-primary px-6 text-base text-primary-foreground hover:bg-primary/90" disabled={submitting} onClick={requestSell}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               {submitting ? "Selling…" : "Sell & check in"}
             </Button>
           </div>
         </div>
       </div>
+
+      <Dialog open={confirmComp} onOpenChange={setConfirmComp}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Issue comp admission?</DialogTitle>
+            <DialogDescription>
+              This issues {qty}× {ticket.name} free of charge — no payment will be
+              taken. Continue?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={() => setConfirmComp(false)}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={submitting}
+              onClick={async () => {
+                await sell();
+                setConfirmComp(false);
+              }}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Issue free admission
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </RouteShell>
   );
 }

@@ -8,8 +8,6 @@ import { formatDate } from "../../sample_data";
 import { CoverImage, venueLine } from "../hero";
 import { Shell, OVER_COVER, priceLabel } from "./shared";
 
-// Sections that need the full row — anything with its own internal grid or a
-// timeline. The rest sit two-up.
 const WIDE = new Set([
   "schedule",
   "location",
@@ -51,9 +49,6 @@ function FactTile({ icon: Icon, label, value }) {
   );
 }
 
-// Bento grid — every part of the event becomes a tile in one asymmetric grid:
-// the cover, the facts, the ticket panel and each content section. Reads as a
-// dashboard of the event rather than a document about it.
 export function BentoLayout({ ctx }) {
   const {
     event,
@@ -133,8 +128,6 @@ export function BentoLayout({ ctx }) {
 
         {disclaimerSlot("hero", "sm:col-span-2 lg:col-span-6")}
 
-        {/* The hosts row draws its own rules, so it sits on the grid rather
-            than inside a tile that would double them. */}
         <div className="empty:hidden sm:col-span-2 lg:col-span-6">
           {parts.hostsBlock}
         </div>
@@ -142,8 +135,6 @@ export function BentoLayout({ ctx }) {
           <Tile className="sm:col-span-2 lg:col-span-6">{parts.gallery}</Tile>
         ) : null}
 
-        {/* `empty:hidden` keeps an unfilled section from drawing a bordered
-            tile with nothing in it. */}
         {blocks.map((b) => (
           <Tile
             key={b.id}

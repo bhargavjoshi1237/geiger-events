@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppWindow, Layers, Settings, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,8 +23,7 @@ export default function Pallet() {
   ];
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background">
-      <div className="min-h-screen bg-background text-foreground p-6 sm:p-10 font-sans selection:bg-surface-strong">
+    <div className="flex min-h-screen w-full flex-col bg-background p-6 text-foreground sm:p-10 font-sans selection:bg-surface-strong">
         <div className="max-w-6xl mx-auto space-y-16">
           <div className="space-y-4 border-b border-border pb-8 pt-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-card border border-border mb-4">
@@ -38,7 +38,7 @@ export default function Pallet() {
           <section className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-xl font-medium text-white flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></svg>
+                <Layers className="h-5 w-5 text-text-secondary" />
                 Surfaces & Borders
               </h2>
               <p className="text-muted-foreground text-sm">Progressive shades from base app background to highest elevation</p>
@@ -46,7 +46,7 @@ export default function Pallet() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {surfaceColors.map((color) => (
                 <div key={color.hex} className="group relative rounded-xl overflow-hidden border border-border transition-all duration-300 hover:border-border-strong hover:-translate-y-1 bg-surface-subtle">
-                  <div 
+                  <div
                     className="h-28 w-full flex items-end p-3 transition-colors duration-200 border-b border-border/50"
                     style={{ backgroundColor: color.hex }}
                   >
@@ -55,7 +55,7 @@ export default function Pallet() {
                     <div className="flex items-center justify-between font-mono text-sm mb-1">
                       <span className="text-white font-medium">{color.hex}</span>
                     </div>
-                    <h3 className="text-sm font-medium text-[#e5e5e5] mb-1">{color.name}</h3>
+                    <h3 className="text-sm font-medium text-foreground mb-1">{color.name}</h3>
                     <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{color.desc}</p>
                   </div>
                 </div>
@@ -65,7 +65,7 @@ export default function Pallet() {
           <section className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-xl font-medium text-white flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg>
+                <Type className="h-5 w-5 text-text-secondary" />
                 Typography
               </h2>
               <p className="text-muted-foreground text-sm">Text colors tailored for legibility on dark backgrounds</p>
@@ -73,7 +73,7 @@ export default function Pallet() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {textColors.map((color) => (
                 <div key={color.hex} className="flex items-center gap-4 p-5 rounded-xl border border-border bg-surface-card hover:border-border-strong transition-colors duration-200">
-                  <div 
+                  <div
                     className="w-12 h-12 rounded-full border border-border shrink-0 flex items-center justify-center text-lg font-bold"
                     style={{ backgroundColor: color.hex, color: '#161616' }}
                   >
@@ -94,22 +94,22 @@ export default function Pallet() {
           <section className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-xl font-medium text-white flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                <AppWindow className="h-5 w-5 text-text-secondary" />
                 UI Example Application
               </h2>
               <p className="text-muted-foreground text-sm">How these colors come together to build coherent interfaces</p>
             </div>
-            
+
             <div className="relative rounded-2xl border border-border bg-background overflow-hidden">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-32 bg-white/5 blur-[100px] pointer-events-none"></div>
-              
+
               <div className="p-8 sm:p-16 flex items-center justify-center relative z-10 w-full">
-                  
+
                 <div className="w-full max-w-lg bg-surface-card border border-border rounded-xl overflow-hidden shadow-2xl flex flex-col">
                   <div className="px-5 py-4 border-b border-border bg-surface-card flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-md bg-surface-hover border border-border flex items-center justify-center text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <Settings className="w-4 h-4" />
                       </div>
                       <div>
                         <h3 className="text-white font-medium text-sm">Application Settings</h3>
@@ -119,20 +119,20 @@ export default function Pallet() {
                   </div>
                   <div className="p-5 space-y-5 bg-surface-subtle grow">
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-[#e5e5e5]">Framework Name</Label>
-                      <Input 
+                      <Label className="text-sm font-medium text-foreground">Framework Name</Label>
+                      <Input
                         defaultValue="geiger-events"
                         className="bg-background border-border text-white placeholder:text-text-secondary focus-visible:ring-0 focus-visible:border-border-strong"
                       />
                     </div>
-                    
+
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-[#e5e5e5]">Environment Setup</Label>
+                      <Label className="text-sm font-medium text-foreground">Environment Setup</Label>
                       <div className="rounded-lg border border-border bg-surface-card overflow-hidden">
                         <div className="flex items-center justify-between p-3 border-b border-border hover:bg-surface-active transition-colors cursor-pointer">
                           <div className="flex items-center gap-3">
                             <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            <span className="text-sm text-[#e5e5e5]">Production</span>
+                            <span className="text-sm text-foreground">Production</span>
                           </div>
                           <span className="text-xs text-text-secondary font-mono">v2.4.1</span>
                         </div>
@@ -161,7 +161,6 @@ export default function Pallet() {
           </section>
 
         </div>
-      </div>
     </div>
   );
 }

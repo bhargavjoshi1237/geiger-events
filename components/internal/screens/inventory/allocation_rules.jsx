@@ -4,11 +4,10 @@ import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
-import { Field } from "@/components/internal/shared/screen_kit";
+import { Field, SettingsList, SettingRow } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -28,14 +27,6 @@ import { PERIOD_MODE_MAP, PERIOD_MODE_OPTIONS } from "@/lib/inventory/entitlemen
 import { itemLabel, qty } from "./constants";
 import { ItemThumb } from "./item_image";
 
-// Two pieces of allocation configuration that are too involved to sit inline in
-// the allocate dialog: the collection rule (how often someone may collect) and
-// publishing the item as a paid add-on.
-
-// --- Collection rule ---------------------------------------------------------
-
-// `value` is { periodMode, periodConfig }. Windows are named time ranges; a
-// collection is unique per window and only possible while one is open.
 export function PeriodEditor({ value, onChange }) {
   const mode = value?.periodMode || "none";
   const config = value?.periodConfig || {};
@@ -157,8 +148,6 @@ export function PeriodEditor({ value, onChange }) {
   );
 }
 
-// --- Session picker ----------------------------------------------------------
-
 export function SessionPicker({ sessions, selected, onToggle }) {
   if (!sessions.length) {
     return (
@@ -185,10 +174,6 @@ export function SessionPicker({ sessions, selected, onToggle }) {
   );
 }
 
-// --- Sell as an add-on -------------------------------------------------------
-
-// Publishes the allocation's item into the event's checkout add-ons. Selling
-// reserves stock; the negative movement is written only at hand-out.
 export function SellAddonDialog({
   open,
   onOpenChange,
@@ -307,15 +292,14 @@ export function SellAddonDialog({
             </p>
           ) : null}
 
-          <div className="flex items-center justify-between rounded-lg border border-border bg-surface-card px-3 py-2.5">
-            <div>
-              <p className="text-sm font-medium text-foreground">Allow buying several</p>
-              <p className="text-xs text-text-secondary">
-                Buyers get a quantity stepper instead of a simple toggle.
-              </p>
-            </div>
-            <Switch checked={allowMultiple} onCheckedChange={setAllowMultiple} />
-          </div>
+          <SettingsList>
+            <SettingRow
+              title="Allow buying several"
+              description="Buyers get a quantity stepper instead of a simple toggle."
+              checked={allowMultiple}
+              onCheckedChange={setAllowMultiple}
+            />
+          </SettingsList>
 
           {allowMultiple ? (
             <Field label="Max per order" hint="Leave blank for no limit.">
@@ -348,7 +332,11 @@ export function SellAddonDialog({
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button className="bg-primary" onClick={submit} disabled={pending}>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={submit}
+              disabled={pending}
+            >
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {published ? "Save" : "Publish"}
             </Button>

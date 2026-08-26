@@ -48,7 +48,6 @@ import {
   formatDateTime,
 } from "./constants";
 
-// Avatar-ish monogram from the buyer's name/email.
 function monogram(name, email) {
   const src = (name || "").trim() || (email || "").trim();
   return (src ? src[0] : "?").toUpperCase();
@@ -122,7 +121,6 @@ function ThreadDetail({ threadId, onBack, onChanged }) {
     if (!body.trim() || busy) return;
     const text = body.trim();
     setBusy(true);
-    // Optimistic append.
     const optimistic = {
       id: crypto.randomUUID(),
       sender: "organiser",
@@ -168,7 +166,7 @@ function ThreadDetail({ threadId, onBack, onChanged }) {
   if (loading) {
     return (
       <MainScreenWrapper>
-        <div className="flex items-center justify-center gap-2 py-24 text-sm text-text-secondary">
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       </MainScreenWrapper>
@@ -277,6 +275,7 @@ function ThreadDetail({ threadId, onBack, onChanged }) {
           />
           <Button
             type="submit"
+            aria-label="Send reply"
             disabled={busy || !body.trim()}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
@@ -288,9 +287,6 @@ function ThreadDetail({ threadId, onBack, onChanged }) {
   );
 }
 
-// Compose a targeted broadcast to buyers — pick an audience (ticket / offering /
-// add-on / tag / segment / individual) and a message; each recipient gets it as a
-// thread in their members portal.
 function BroadcastDialog({ open, onOpenChange, projectId, onSent }) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -397,8 +393,6 @@ export function OrganiserInboxScreen() {
   const [status, setStatus] = useState("all");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
 
-  // Background refresh for event handlers (no loading flip — the list is already
-  // shown). Only sets state in the async continuation.
   const refresh = () =>
     listThreads(projectId).then((rows) => {
       setThreads(rows ?? []);
@@ -472,7 +466,7 @@ export function OrganiserInboxScreen() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-24 text-sm text-text-secondary">
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : !threads.length ? (

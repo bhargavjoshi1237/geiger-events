@@ -3,17 +3,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/events";
 
-// Client half of last-touch attribution.
-//
-// A visit to /e/<id>?ref=<slug> validates the token, logs a click and stores it
-// in a per-event cookie. When an order lands, the stored token is handed to
-// events.attribute_affiliate_order.
-//
-// The cookie is a HINT, never an authority: every gate that decides whether
-// commission is owed (program window, eligibility rules, self-referral, caps,
-// budget) is re-checked server-side in that RPC, because anyone can forge a
-// cookie. This module's only job is remembering which link the buyer arrived on.
-
 const COOKIE_PREFIX = "geiger_aff_";
 const DEFAULT_WINDOW_DAYS = 30;
 
@@ -41,9 +30,6 @@ export function clearRef(eventId) {
   document.cookie = `${cookieName(eventId)}=; path=/; max-age=0; SameSite=Lax`;
 }
 
-// Validate a ref token against the event's program. Returns the enrolment id on
-// success, null otherwise (including "this event has no program", which is the
-// normal case for most events and must stay silent).
 export async function resolveRef(eventId, { ref, code } = {}) {
   if (!eventId || (!ref && !code) || !isSupabaseConfigured()) return null;
   try {
@@ -76,8 +62,6 @@ async function logClick(enrolmentId) {
     const sb = createClient();
     await sb.rpc("log_affiliate_click", {
       p_enrolment_id: enrolmentId,
-      // The browser can't see its own IP; the RPC hashes whatever it is given
-      // and null is a legitimate value. User-agent is enough to dedupe reloads.
       p_ip: null,
       p_ua: typeof navigator === "undefined" ? null : navigator.userAgent,
       p_landing_url: typeof window === "undefined" ? "" : window.location.href,
@@ -88,9 +72,6 @@ async function logClick(enrolmentId) {
   }
 }
 
-// Capture ?ref on a public event page: validate, log the click, remember it, and
-// strip the parameter so a refresh doesn't double-count and the URL stays clean.
-// Silently does nothing when the event has no affiliate program.
 export async function captureRefFromUrl(eventId) {
   if (typeof window === "undefined" || !eventId) return false;
   const params = new URLSearchParams(window.location.search);
@@ -113,8 +94,6 @@ export async function captureRefFromUrl(eventId) {
   return true;
 }
 
-// Attribute a completed order. Safe to call more than once per order — the RPC
-// is idempotent on order_id. Returns true only when a commission now exists.
 export async function attributeOrderFromStorage(eventId, orderId, { code } = {}) {
   if (!eventId || !orderId || !isSupabaseConfigured()) return false;
   const ref = readRef(eventId);

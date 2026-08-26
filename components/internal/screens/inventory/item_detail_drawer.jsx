@@ -67,10 +67,6 @@ import {
   stockStatus,
 } from "./constants";
 
-// --- Record-movement dialog --------------------------------------------------
-
-// The one way stock changes. `kind` fixes the sign — only "adjust" lets the user
-// choose a direction, so you can't accidentally receive a write-off.
 function MovementDialog({ open, onOpenChange, item, initialKind, onConfirm, pending }) {
   const [kind, setKind] = useState(initialKind || "receive");
   const [amount, setAmount] = useState("");
@@ -174,7 +170,11 @@ function MovementDialog({ open, onOpenChange, item, initialKind, onConfirm, pend
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-primary" onClick={submit} disabled={pending}>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={submit}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Record movement
           </Button>
@@ -183,8 +183,6 @@ function MovementDialog({ open, onOpenChange, item, initialKind, onConfirm, pend
     </Dialog>
   );
 }
-
-// --- Drawer body -------------------------------------------------------------
 
 function StatLine({ label, value, tone }) {
   return (
@@ -206,8 +204,6 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
   const [allocations, setAllocations] = useState([]);
   const [eventNames, setEventNames] = useState({});
   const [loading, setLoading] = useState(true);
-  // Holds the kind the dialog opens on, so "Receive" and "Issue" aren't the
-  // same button; null means closed.
   const [movementKind, setMovementKind] = useState(null);
   const [pending, setPending] = useState(false);
 
@@ -258,8 +254,6 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
     else toast.error("Couldn't save the item.");
   };
 
-  // The photo is persisted on its own, not with the Save button, so uploading
-  // feels immediate and can't be lost by closing the drawer.
   const handleImage = async (url) => {
     onPatch(item.id, { imageUrl: url });
     setForm((f) => ({ ...f, imageUrl: url }));
@@ -292,8 +286,6 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
     toast.success("Stock updated.");
   };
 
-  // One source of truth for the rollup — a group's figures come from its
-  // variants, and worstStatus ranks out-of-stock above low-stock.
   const { onHand, stockValue: value, worstStatus } = useMemo(
     () => rollupItem(item, variants),
     [item, variants],
@@ -303,8 +295,6 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
     <>
       <SheetHeader className="border-b border-border px-5 py-4">
         <SheetTitle className="text-base">{itemLabel(item)}</SheetTitle>
-        {/* Stock status rides on the meta line, right-aligned, rather than
-            spending a whole stat tile on a single pill. */}
         <div className="flex items-center justify-between gap-3">
           <SheetDescription className="truncate">
             {[item.sku || null, item.category].filter(Boolean).join(" · ")}
@@ -320,8 +310,6 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
         <StatLine label="Stock value" value={currency(value)} />
       </div>
 
-      {/* Suite tabs (@geiger/ui), same usage as Venue Sourcing / Housing &
-          Travel — gap-0 so each panel's own pt-4 sets the spacing. */}
       <Tabs defaultValue="overview" className="gap-0 px-5 pb-6">
         <TabsList className="w-full">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -330,7 +318,6 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
           <TabsTrigger value="variants">Variants</TabsTrigger>
         </TabsList>
 
-        {/* Overview — editable fields, saved as one patch. */}
         <TabsContent value="overview" className="space-y-4 pt-4">
           <Field label="Name">
             <Input
@@ -412,7 +399,11 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
             />
           </Field>
 
-          <Button className="bg-primary w-full gap-2" onClick={save} disabled={saving}>
+          <Button
+            className="bg-primary w-full gap-2 text-primary-foreground hover:bg-primary/90"
+            onClick={save}
+            disabled={saving}
+          >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -422,7 +413,6 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
           </Button>
         </TabsContent>
 
-        {/* Stock — the item's ledger, newest first. */}
         <TabsContent value="stock" className="space-y-3 pt-4">
           {isGroup ? (
             <p className="rounded-lg border border-border bg-surface-card px-3 py-2 text-xs text-text-secondary">
@@ -488,7 +478,6 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
           )}
         </TabsContent>
 
-        {/* Events — where this item is committed. */}
         <TabsContent value="allocations" className="space-y-3 pt-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
@@ -520,7 +509,6 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
           )}
         </TabsContent>
 
-        {/* Variants — the leaf rows that actually hold stock. */}
         <TabsContent value="variants" className="space-y-3 pt-4">
           {item.parentId ? (
             <p className="rounded-lg border border-border bg-surface-card px-3 py-2 text-xs text-text-secondary">

@@ -6,8 +6,6 @@ import type { Member } from "@/types/portal";
 
 const TOKEN_KEY = "geiger.portal.session";
 
-// Opaque session token storage. All failures are swallowed — auth must never
-// crash the app over a keychain hiccup.
 export async function getStoredToken(): Promise<string | null> {
   try {
     return await SecureStore.getItemAsync(TOKEN_KEY);
@@ -46,7 +44,6 @@ export function login(
   return api("/api/portal/login", { method: "POST", body: { email, password } });
 }
 
-// Always resolves ok — the server never reveals whether an account exists.
 export function requestSetup(email: string): Promise<boolean> {
   return api("/api/portal/request-setup", {
     method: "POST",

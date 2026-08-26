@@ -11,7 +11,6 @@ import {
 
 const SESSION_DAYS = 30;
 
-// { token, password } -> sets password, creates a session, sets cookie.
 export async function POST(request) {
   const { token, password } = await request.json().catch(() => ({}));
   if (!token || !password || String(password).length < 8) {

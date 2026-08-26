@@ -1,5 +1,3 @@
-// Single source of colour — a byte-for-byte port of the web app's dark theme
-// (../app/globals.css, the `.dark` block) so both surfaces match exactly.
 export const colors = {
   background: "#161616",
   foreground: "#e7e7e7",
@@ -20,12 +18,11 @@ export const colors = {
   surfaceStrong: "#333333",
   textSecondary: "#737373",
   textTertiary: "#525252",
-  success: "#34d399", // emerald-400
-  danger: "#f87171", // red-400
-  info: "#38bdf8", // sky-400
-  warning: "#fbbf24", // amber-400
+  success: "#34d399",
+  danger: "#f87171",
+  info: "#38bdf8",
+  warning: "#fbbf24",
   overlay: "rgba(0,0,0,0.6)",
-  // Scrim behind chips floating over artwork — the canvas colour at 72%.
   chipScrim: "rgba(22,22,22,0.72)",
   avatarGradientStart: "#3a3a3a",
   avatarGradientEnd: "#1e1e1e",
@@ -40,7 +37,6 @@ export const spacing = {
   xxl: 32,
 } as const;
 
-// The web `--radius` is 0.625rem = 10px, so `md` is the default card radius.
 export const radius = {
   sm: 6,
   md: 10,
@@ -69,7 +65,6 @@ type TypeToken = {
 };
 
 export const type = {
-  // Large sizes pull tracking in; small caps-style labels push it out.
   display: { fontSize: 30, lineHeight: 36, fontWeight: "700", letterSpacing: -0.6 },
   title: { fontSize: 21, lineHeight: 27, fontWeight: "600", letterSpacing: -0.3 },
   heading: { fontSize: 17, lineHeight: 22, fontWeight: "600", letterSpacing: -0.2 },

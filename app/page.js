@@ -122,8 +122,6 @@ const utilityCards = [
   },
 ];
 
-// Alternating text/playground spotlights that tell the end-to-end story. Each
-// carries a live, focused 1:1 preview of the real app surface it describes.
 const spotlights = [
   {
     background: showcaseBackgroundImages[2],
@@ -148,9 +146,6 @@ const spotlights = [
   },
 ];
 
-// Surface showcase — the four places an event actually happens. Each carries a
-// hands-on miniature in the device chrome of that surface, so the frame says
-// "browser / door tablet / phone / staff workstation" before the copy does.
 const surfaces = [
   {
     title: "Event page",
@@ -187,8 +182,6 @@ const surfaces = [
   },
 ];
 
-// Registrations showcase — the apply-to-attend path, for the events where a
-// ticket isn't the thing standing between someone and the door.
 const registrationFeatures = [
   {
     title: "Registration forms",
@@ -213,8 +206,6 @@ const registrationFeatures = [
   },
 ];
 
-// Sourcing showcase — the decision that comes before the ticket: where the
-// event happens, how it's booked, and how everyone gets there.
 const sourcingFeatures = [
   {
     title: "Venue sourcing",
@@ -246,8 +237,6 @@ const sourcingFeatures = [
   },
 ];
 
-// Program showcase — the conference story after ticketing: the agenda that
-// carries the content, the papers that feed it, and the credits it earns.
 const programFeatures = [
   {
     title: "Agenda builder",
@@ -272,8 +261,6 @@ const programFeatures = [
   },
 ];
 
-// Community showcase — the engagement that keeps an event alive between
-// sessions: questions, polls, and the meetings that would otherwise wait.
 const communityFeatures = [
   {
     title: "Q&A upvoting",
@@ -298,8 +285,6 @@ const communityFeatures = [
   },
 ];
 
-// Broadcast showcase — the online delivery that makes an event hybrid without
-// a second vendor: live rooms, replays, and captions under one roof.
 const broadcastFeatures = [
   {
     title: "Livestream rooms",
@@ -324,8 +309,6 @@ const broadcastFeatures = [
   },
 ];
 
-// Orders showcase — the operations that answer "what happens after money
-// moves": the cockpit, the refund path, and the disputes.
 const ordersFeatures = [
   {
     title: "Order cockpit",
@@ -350,8 +333,6 @@ const ordersFeatures = [
   },
 ];
 
-// Distribution & growth showcase — the single cards that get the word out and
-// get found: campaigns with advertising folded in, and the wall buyers follow.
 const growthFeatures = [
   {
     title: "Campaigns & advertising",
@@ -369,10 +350,6 @@ const growthFeatures = [
   },
 ];
 
-// Feature-detail card: the same copy block as ShowcaseCard, but the preview sits
-// on a bare shelf with no device chrome — these are a detail of one feature, not
-// a whole surface, and the flatter treatment keeps them from competing with the
-// framed miniatures above.
 function FeatureCard({ title, description, cta, href, backgroundImage, children }) {
   return (
     <article
@@ -398,8 +375,6 @@ function FeatureCard({ title, description, cta, href, backgroundImage, children 
   );
 }
 
-// Depth showcase — the capabilities large-format organizers shop for, which
-// smaller events never need to touch.
 const scaleFeatures = [
   {
     title: "Assigned Seating",
@@ -439,10 +414,6 @@ const scaleFeatures = [
   },
 ];
 
-// Card chrome shared by both showcases: copy on top, then the miniature on a
-// lighter shelf inside its device frame. The shelf and the frame are what make
-// the preview read as a screenshot of a surface rather than a second live panel,
-// and the accent CTA keeps the action the only saturated thing in the copy.
 function ShowcaseCard({
   title,
   description,
@@ -471,8 +442,6 @@ function ShowcaseCard({
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
-      {/* The shelf stays translucent so the photo reads through it as texture,
-          while the device frame on top is opaque and keeps the preview legible. */}
       <div
         className={`relative z-10 mt-auto flex flex-col overflow-hidden border-t border-white/[0.06] bg-white/[0.05] px-5 pt-5 backdrop-blur-sm ${wellClassName}`}
       >
@@ -484,12 +453,11 @@ function ShowcaseCard({
   );
 }
 
-// Category-led capability grids (concept from the reference, in our style).
 const capabilityGroups = [
   {
     kicker: "Real-time visibility",
     heading: "Understand How Your Event Is Performing In Real Time",
-    cta: { label: "Book a demo", href: "#" },
+    cta: { label: "Book a demo", href: "mailto:help@geiger.studio" },
     cards: [
       {
         icon: LineChart,
@@ -523,7 +491,7 @@ const capabilityGroups = [
   {
     kicker: "Built for scale",
     heading: "Infrastructure That Makes Scale Feel Simple",
-    cta: { label: "Talk to our team", href: "#" },
+    cta: { label: "Talk to our team", href: "mailto:feedback@geiger.studio" },
     cards: [
       {
         icon: CalendarDays,
@@ -598,7 +566,7 @@ export default function EventsLandingPage() {
             <h1 className="mb-4 text-2xl font-semibold text-white sm:text-3xl">
               Sell Out Your Next Event.
             </h1>
-            <p className="mb-6 w-2xl text-sm text-muted-foreground sm:text-base">
+            <p className="mb-6 max-w-2xl text-sm text-muted-foreground sm:text-base">
               Geiger Events gives creators and small teams a beautiful event
               page, fast ticketing, and reliable check-in — the power of an
               enterprise platform, without the price. Launch in minutes and
@@ -618,9 +586,6 @@ export default function EventsLandingPage() {
           <EventsPlaygroundShowcase backgroundImage={showcaseBg} />
         </section>
 
-        {/* Surface showcase — one platform, every place the event happens. It
-            opens the feature story because the device-framed miniatures are the
-            fastest way to answer "what is this?". */}
         <section className="mx-auto w-full max-w-[88rem] px-4 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             Everywhere your event happens
@@ -649,8 +614,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Capability tiles — a quick summary of the surfaces above, before the
-            feature detail starts. */}
         <section className="mx-auto mt-16 grid w-full max-w-6xl gap-4 px-4 sm:mt-24 sm:px-6 md:grid-cols-3">
           {utilityCards.map(({ title, description, icon: Icon }) => (
             <article
@@ -664,7 +627,6 @@ export default function EventsLandingPage() {
           ))}
         </section>
 
-        {/* Registrations — the apply-to-attend path beside the buy-a-ticket one. */}
         <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             Not every event just sells a ticket
@@ -693,8 +655,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Orders — what happens after money moves. Sits beside Registrations so
-            the whole money story reads in one pass. */}
         <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             What happens after money moves
@@ -722,9 +682,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Alternating spotlights — the suite's landing showcase frame. Placed
-            mid-page so the identical feature grids never run more than three
-            deep without a change of treatment. */}
         <div className="mx-auto my-10 w-full max-w-7xl space-y-8 px-4 sm:my-20 sm:space-y-20 sm:px-6">
           {spotlights.map(
             ({ title, body, background, ctaLabel, playground: Playground }, index) => (
@@ -743,7 +700,6 @@ export default function EventsLandingPage() {
           )}
         </div>
 
-        {/* Program — what a conference buyer diligences after ticketing. */}
         <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             Run the content, not just the door
@@ -771,7 +727,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Community — the engagement that outlives any single session. */}
         <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             The event doesn&apos;t stop between sessions
@@ -799,7 +754,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Broadcast & on-demand — the online half of a hybrid event. */}
         <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             Hybrid without a second vendor
@@ -827,7 +781,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Depth showcase — what large-format organizers actually shop for. */}
         <section className="mx-auto mt-16 w-full max-w-[88rem] px-4 sm:mt-24 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             Runs the whole floor
@@ -845,7 +798,6 @@ export default function EventsLandingPage() {
                 href={dashboardHref}
                 frame={frame}
                 chrome={chrome}
-                // Offset so the depth grid doesn't repeat the surface grid's photos.
                 backgroundImage={
                   showcaseBackgroundImages[
                     (index + surfaces.length) % showcaseBackgroundImages.length
@@ -886,8 +838,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Distribution & growth — campaigns, ads, and a wall buyers follow.
-            The two-up grid closes the feature story on a different rhythm. */}
         <section className="mx-auto mt-16 w-full max-w-6xl px-4 sm:mt-24 sm:px-6">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
             Get the word out, get found
@@ -915,7 +865,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Category-led capability grids. */}
         {capabilityGroups.map(({ kicker, heading, cta, cards }) => (
           <section
             key={heading}
@@ -989,8 +938,6 @@ export default function EventsLandingPage() {
           </div>
         </section>
 
-        {/* Closing CTA, set in a scattered field of event posters — the breadth
-            of what the platform runs, shown rather than listed. */}
         <div className="relative z-20 mt-16 sm:mt-24">
           <PosterFieldCta dashboardHref={dashboardHref} />
         </div>

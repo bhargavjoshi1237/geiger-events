@@ -15,11 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { EMPTY_DONATION } from "@/lib/events/donation";
 
-// Per-event checkout-donation editor. Config lives in the event metadata bag
-// (metadata.donation), gated by the event's ticketRules.donation flag. See
-// lib/events/donation.js for the shape + helpers.
-
-// Parse "5, 10, 25" into [5, 10, 25]; keep only positive numbers.
 const parseAmounts = (str) =>
   String(str)
     .split(",")
@@ -27,12 +22,16 @@ const parseAmounts = (str) =>
     .filter((n) => Number.isFinite(n) && n > 0);
 
 export function EventDonationSection({ event, headerItem }) {
-  const [cfg, , save] = useEventConfig(event, "donation", EMPTY_DONATION);
+  const [cfg, setCfg, save] = useEventConfig(event, "donation", EMPTY_DONATION);
 
-  // Persist a single-field change into the donation bag.
-  const set = (k) => (v) => save({ ...cfg, [k]: v }, { successMsg: "Donations updated." });
+  const commit = (key, value) =>
+    save({ ...cfg, [key]: value }, { successMsg: "Donations updated." });
+
+  const draft = (key) => (value) => setCfg({ ...cfg, [key]: value });
 
   const amounts = Array.isArray(cfg.suggestedAmounts) ? cfg.suggestedAmounts : [];
+  const [amountsDraft, setAmountsDraft] = React.useState(null);
+  const amountsValue = amountsDraft ?? amounts.join(", ");
 
   return (
     <div className="space-y-6">
@@ -54,13 +53,13 @@ export function EventDonationSection({ event, headerItem }) {
             title="Allow custom amount"
             description="Let buyers enter their own donation amount."
             checked={!!cfg.allowCustom}
-            onCheckedChange={set("allowCustom")}
+            onCheckedChange={(v) => commit("allowCustom", v)}
           />
           <SettingRow
             title="Require a donation"
             description="Buyers must give before they can complete checkout."
             checked={!!cfg.required}
-            onCheckedChange={set("required")}
+            onCheckedChange={(v) => commit("required", v)}
           />
         </SettingsList>
       </SectionCard>
@@ -74,7 +73,8 @@ export function EventDonationSection({ event, headerItem }) {
             <Input
               id="donation-cause"
               value={cfg.cause || ""}
-              onChange={(e) => set("cause")(e.target.value)}
+              onChange={(e) => draft("cause")(e.target.value)}
+              onBlur={() => commit("cause", cfg.cause)}
               placeholder="e.g. Community scholarship fund"
             />
           </Field>
@@ -86,8 +86,12 @@ export function EventDonationSection({ event, headerItem }) {
             >
               <Input
                 id="donation-amounts"
-                value={amounts.join(", ")}
-                onChange={(e) => set("suggestedAmounts")(parseAmounts(e.target.value))}
+                value={amountsValue}
+                onChange={(e) => setAmountsDraft(e.target.value)}
+                onBlur={() => {
+                  commit("suggestedAmounts", parseAmounts(amountsValue));
+                  setAmountsDraft(null);
+                }}
                 placeholder="5, 10, 25"
                 className="tabular-nums"
               />
@@ -101,7 +105,8 @@ export function EventDonationSection({ event, headerItem }) {
                   min={0}
                   inputMode="decimal"
                   value={cfg.minAmount ?? 1}
-                  onChange={(e) => set("minAmount")(Number(e.target.value) || 0)}
+                  onChange={(e) => draft("minAmount")(Number(e.target.value) || 0)}
+                  onBlur={() => commit("minAmount", cfg.minAmount)}
                   className="tabular-nums"
                   placeholder="1"
                 />
@@ -113,7 +118,8 @@ export function EventDonationSection({ event, headerItem }) {
               id="donation-prompt"
               rows={2}
               value={cfg.prompt || ""}
-              onChange={(e) => set("prompt")(e.target.value)}
+              onChange={(e) => draft("prompt")(e.target.value)}
+              onBlur={() => commit("prompt", cfg.prompt)}
               placeholder="Tell buyers how their donation helps."
             />
           </Field>

@@ -1,7 +1,5 @@
 import Constants from "expo-constants";
 
-// The only module that calls fetch against the portal API. Base URL comes from
-// the runtime env var, then app.json's extra.apiBaseUrl, then production.
 export const API_BASE = (
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   Constants.expoConfig?.extra?.apiBaseUrl ||
@@ -19,8 +17,6 @@ type ApiInit = {
   signal?: AbortSignal;
 };
 
-// Registered by the session provider so a 401 anywhere drops the session. The
-// indirection keeps api.ts free of any dependency on state/.
 let unauthorizedHandler: (() => void) | null = null;
 
 export function setUnauthorizedHandler(fn: (() => void) | null) {

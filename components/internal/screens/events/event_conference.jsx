@@ -15,12 +15,6 @@ import { conferenceApi } from "@/lib/supabase/conference";
 import { SPEAKER_STATUS_MAP } from "../conference/constants";
 import { initials } from "./sample_data";
 
-// Event-editor sections that attach reusable Conference records (speakers /
-// sponsors) to this event. Selection lives under its own metadata key
-// (metadata.speakerIds / metadata.sponsorIds) — an array of conference_records
-// ids — so the shallow-merge save never clobbers another section. The public
-// event page can read these ids to render its speaker/sponsor line-up.
-
 function AttachRecordsSection({
   event,
   headerItem,
@@ -32,7 +26,6 @@ function AttachRecordsSection({
   tabTitle,
   fallbackTitle,
   fallbackDesc,
-  // Headshots read as circles, logos as rounded squares.
   shape = "circle",
 }) {
   const { projectId } = useProject();
@@ -117,7 +110,7 @@ function AttachRecordsSection({
                   key={r.id}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border border-border bg-surface-card p-3 transition-opacity",
-                    on ? "" : "opacity-70",
+                    on ? "" : "opacity-60",
                   )}
                 >
                   {r.coverUrl ? (
@@ -155,7 +148,6 @@ function AttachRecordsSection({
                       <p className="truncate text-xs text-text-secondary">{subtitle(r)}</p>
                     ) : null}
                   </div>
-                  {/* Sponsors track no status, so they pass no map. */}
                   {statusMap ? (
                     <StatusPill status={r.status} map={statusMap} />
                   ) : null}

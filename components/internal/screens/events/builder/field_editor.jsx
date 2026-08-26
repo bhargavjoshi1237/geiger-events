@@ -1,15 +1,5 @@
 "use client";
 
-// The declarative field editor.
-//
-// Every component in the registry describes its editable properties as a
-// `fields` array; this turns that array into controls. It is the single place
-// that knows what a field `type` means, so adding a control type — a colour, a
-// slider, a code box — makes it available to every component at once.
-//
-// Fields marked `bindable` get an "Insert dynamic value" button that writes a
-// binding token at the caret.
-
 import React, { useCallback, useRef, useState } from "react";
 import { AlertTriangle, ArrowDown, ArrowUp, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 
@@ -34,11 +24,6 @@ function moveItem(arr, index, dir) {
   return copy;
 }
 
-/**
- * A text control that can take an inserted token at the caret. Keeps its own
- * ref so the picker knows where "here" is; falls back to appending when the
- * field was never focused.
- */
 function useTokenInsert(value, onChange) {
   const ref = useRef(null);
 
@@ -54,8 +39,6 @@ function useTokenInsert(value, onChange) {
       const end = el.selectionEnd ?? start;
       const next = text.slice(0, start) + token + text.slice(end);
       onChange(next);
-      // Put the caret after what we just inserted, so a second pick doesn't
-      // land back at the start.
       requestAnimationFrame(() => {
         el.focus();
         const at = start + token.length;
@@ -68,7 +51,6 @@ function useTokenInsert(value, onChange) {
   return { ref, insert };
 }
 
-// The label row: field name on the left, dynamic-value picker on the right.
 function FieldLabel({ field, bindable, onInsert, tokenized }) {
   return (
     <div className="flex items-center justify-between gap-2">
@@ -193,7 +175,6 @@ function SwitchControl({ field, value, onChange }) {
   );
 }
 
-/** Repeater for list-shaped props: accordion rows, buttons, speakers, logos. */
 function ItemsControl({ field, value, onChange }) {
   const rows = Array.isArray(value) ? value : [];
 
@@ -286,8 +267,6 @@ function ItemsControl({ field, value, onChange }) {
   );
 }
 
-/** Render a "clone assets from a source page" control. Value is `{ url, enabled, assets }`:
- *  a pasted Raw HTML block's source URL plus the CSS/JS URLs extracted from it. */
 function CloneAssetsControl({ field, value, onChange }) {
   const clone = value && typeof value === "object" ? value : {};
   const url = clone.url || "";
@@ -306,8 +285,6 @@ function CloneAssetsControl({ field, value, onChange }) {
     setBusy(true);
     setError("");
     try {
-      // basePath ("/events" in production) is not applied to fetch() — a bare
-      // "/api/…" would leave this app and hit the suite shell.
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/clone-assets?url=${encodeURIComponent(url.trim())}`,
       );
@@ -415,7 +392,6 @@ function CloneAssetsControl({ field, value, onChange }) {
   );
 }
 
-/** Render one field of a component's schema. */
 export function BuilderField({ field, value, onChange }) {
   switch (field.type) {
     case "clone-assets":
@@ -448,10 +424,6 @@ export function BuilderField({ field, value, onChange }) {
   }
 }
 
-/**
- * Render a whole schema. `showWhen` gates a field on another field's value, so
- * an image column hides its text control and vice versa.
- */
 export function FieldList({ fields, values, onChange }) {
   const visible = (f) =>
     !f.showWhen ||

@@ -16,6 +16,14 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -56,6 +64,7 @@ export function RefundsCenterScreen() {
   const [eventId, setEventId] = useState("all");
   const [ticket, setTicket] = useState("all");
   const [openId, setOpenId] = useState(null);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -219,7 +228,7 @@ export function RefundsCenterScreen() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
+              className="w-44 border-border bg-surface-subtle"
             >
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
@@ -227,7 +236,7 @@ export function RefundsCenterScreen() {
               >
                 <RotateCcw className="h-4 w-4" /> View order
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-strong" />
+              <DropdownMenuSeparator className="bg-border" />
               {NEXT_STATUS.filter((s) => s !== r.status).map((s) => (
                 <DropdownMenuItem
                   key={s}
@@ -237,10 +246,10 @@ export function RefundsCenterScreen() {
                   Mark {s.toLowerCase()}
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuSeparator className="bg-surface-strong" />
+              <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => remove(r)}
+                onClick={() => setRemoveTarget(r)}
               >
                 <Trash2 className="h-4 w-4 text-red-300" /> Remove
               </DropdownMenuItem>
@@ -320,10 +329,41 @@ export function RefundsCenterScreen() {
         eventName={openOrder ? eventNames[openOrder.eventId] : ""}
         onOpenChange={(o) => !o && setOpenId(null)}
         onRefunded={() => {
-          // Re-pull refunds so a drawer-issued refund lands in the queue.
           listOrderRefunds(projectId).then((rf) => setRefunds(rf ?? []));
         }}
       />
+
+      <Dialog
+        open={!!removeTarget}
+        onOpenChange={(o) => !o && setRemoveTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove refund</DialogTitle>
+            <DialogDescription>
+              Remove the {currency(removeTarget?.amount || 0)} refund against{" "}
+              <span className="font-medium text-foreground">
+                {orderRef(removeTarget?.orderId)}
+              </span>
+              ? This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemoveTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                remove(removeTarget);
+                setRemoveTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

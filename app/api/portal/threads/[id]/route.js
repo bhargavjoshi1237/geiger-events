@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getSessionMember } from "@/lib/portal/session";
 import { getMemberThread } from "@/lib/portal/support";
 
-// GET /api/portal/threads/<id> -> the thread + its messages (marks it read).
 export async function GET(_request, { params }) {
   const member = await getSessionMember();
   if (!member) {

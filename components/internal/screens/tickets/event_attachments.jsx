@@ -27,8 +27,6 @@ import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listRecordsByModules } from "@/lib/supabase/ticketing";
 
-// The modules whose global records can be attached to an event. `tab` is the
-// sidebar destination that manages that module (for the "create one" link).
 const ATTACH_MODULES = [
   { module: "discount", label: "Discounts & Codes", icon: Percent, tab: "Discounts & Codes" },
   { module: "tier", label: "Ticket Tiers", icon: Layers, tab: "Ticket Tiers" },
@@ -44,10 +42,6 @@ const ATTACH_MODULES = [
 
 const MODULE_KEYS = ATTACH_MODULES.map((m) => m.module);
 
-// Event-editor section: attach reusable Tickets records (coupons, methods,
-// policies…) to this event. Attachments are stored as a per-module id map under
-// the event's metadata bag (metadata.attached), so one record applies to many
-// events without duplication.
 export function TicketAttachmentsSection({ event, headerItem }) {
   const { projectId } = useProject();
   const { setTab } = useWorkspaceUrl();
@@ -127,7 +121,7 @@ export function TicketAttachmentsSection({ event, headerItem }) {
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                           on
-                            ? "border-white bg-white text-[#161616]"
+                            ? "border-primary bg-primary/15 text-foreground"
                             : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                           !r.active && !on ? "opacity-60" : "",
                         )}

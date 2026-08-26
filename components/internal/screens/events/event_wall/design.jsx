@@ -42,9 +42,6 @@ import {
   themeFontOptions,
 } from "@/lib/events/theme";
 
-// Which of the importer's categories this surface can honour. The wall has no
-// site-header bar of its own — its chrome is the organiser identity block — so
-// offering to import someone's nav would produce settings nothing renders.
 const WALL_IMPORT_CATEGORIES = [
   "logo",
   "colors",
@@ -55,14 +52,6 @@ const WALL_IMPORT_CATEGORIES = [
   "content",
 ];
 
-// The wall's brand theme — the same model individual event pages use
-// (lib/events/theme.js), stored under metadata.theme. Unlike per-event Page
-// Design there's no mode/blocks picker: the wall always renders the same
-// themed grid layout, so only the brand controls apply here.
-//
-// `onWallChange` lifts the wall's own columns (logo, tagline) back to the
-// screen after a save, so General — seeded from the same row — doesn't come
-// back holding the values this section just replaced.
 export function WallDesignSection({ wall, onWallChange }) {
   const { projectId } = useProject();
   const [theme, setTheme, saveTheme, saving] = useWallConfig(
@@ -80,8 +69,6 @@ export function WallDesignSection({ wall, onWallChange }) {
     "footer",
     DEFAULT_FOOTER,
   );
-  // The wall's identity columns, not its metadata bag — an import writes them
-  // too, so they're held here and committed alongside the theme.
   const [logoUrl, setLogoUrl] = useState(wall?.logoUrl || "");
   const [tagline, setTagline] = useState(wall?.tagline || "");
   const [importOpen, setImportOpen] = useState(false);
@@ -95,18 +82,12 @@ export function WallDesignSection({ wall, onWallChange }) {
     patch({ base, colors: { ...resolved.colors, ...BASE_PALETTES[base] } });
   const applyPreset = (preset) => setTheme(preset.theme);
 
-  // Layout config is a flat bag; helpers mirror the theme setters.
   const setLayoutKey = (next) => setLayout({ ...layout, ...next });
   const setCardMeta = (key, v) =>
     setLayoutKey({ cardMeta: { ...(layout.cardMeta || {}), [key]: v } });
   const setHeader = (next) =>
     setLayoutKey({ header: { ...(layout.header || {}), ...next } });
 
-  // An imported brand is a theme patch, merged over what's there so a partial
-  // import (colors only, say) leaves the rest alone. The footer rides alongside
-  // the theme, and the mark and tagline are columns on the wall itself — the
-  // theme's own logo/tagline fields belong to the event page's chrome, which
-  // the wall doesn't render.
   const applyImport = (themePatch, nextFooter) => {
     setTheme({ ...resolved, ...themePatch });
     if (nextFooter) setFooter(nextFooter);
@@ -117,8 +98,6 @@ export function WallDesignSection({ wall, onWallChange }) {
   const pickLogo = async (file) => {
     if (!file) return;
     setUploading(true);
-    // Compression off: canvas re-encoding destroys SVGs and flattens
-    // transparency, which is exactly what a logo needs to keep.
     const uploaded = await uploadWallImage(projectId, file, { compress: false });
     setUploading(false);
     if (!uploaded?.url) {
@@ -132,9 +111,6 @@ export function WallDesignSection({ wall, onWallChange }) {
     await saveLayout(layout);
     await saveFooter(footer);
     if ((await saveTheme(theme)) === false) return;
-    // The identity columns commit last so the row handed back up carries the
-    // metadata the three merges above just wrote — lifting an earlier read
-    // would hand the other sections a pre-import theme.
     const row = await updateWall(projectId, { logoUrl, tagline });
     if (!row) {
       toast.error("Couldn't save the logo and tagline.");
@@ -144,12 +120,8 @@ export function WallDesignSection({ wall, onWallChange }) {
     toast.success("Design saved.");
   };
 
-  // An imported typeface isn't one of the built-ins, so the picker grows an
-  // entry for it — without this the font Segmented shows nothing selected.
   const fontOptions = themeFontOptions(resolved);
   const source = resolved.source || {};
-  // Every mark the last import pulled off the site — shown only when there's an
-  // actual choice to make between them.
   const designs = resolved.importedLogos || [];
 
   return (
@@ -271,7 +243,6 @@ export function WallDesignSection({ wall, onWallChange }) {
                           : "border-border bg-surface-card hover:bg-surface-active",
                       )}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={d.url}
                         alt={d.kind ? `${d.kind} mark` : "Imported logo"}

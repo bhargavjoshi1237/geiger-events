@@ -10,22 +10,7 @@ import { AddonsProvider } from "@/context/addons-context";
 import { NavVisibilityProvider } from "@/context/nav-visibility-context";
 import { RbacProvider } from "@/context/rbac-context";
 
-// The workspace shell: the chrome, and the four providers behind it.
-//
-// This is a LAYOUT rather than part of the page on purpose. The active tab is a
-// path segment (/project/<id>/<tab>, the [[...rest]] catch-all), and Next keys
-// every segment's subtree by its cache key — so changing tabs unmounts and
-// remounts everything under the page. With the providers there, each navigation
-// reset them to their initial state and re-ran their fetches: the sidebar
-// flashed the un-curated nav and the database was queried on every tab change.
-//
-// A layout sits above the segment that changes, so it survives the navigation.
-// The shell now mounts once per project: one load of the addon rows, the grants
-// and the hidden list per page visit, and the sidebar's expanded groups and
-// scroll offset stay put while the user moves around.
-
 function WorkspaceShell({ children }) {
-  // The active tab lives in the URL (path) so a refresh keeps the user in place.
   const { tab, setTab } = useWorkspaceUrl();
 
   return (
@@ -50,8 +35,6 @@ function WorkspaceShell({ children }) {
 }
 
 export default function ProjectWorkspaceLayout({ children }) {
-  // useSearchParams / useParams (via useWorkspaceUrl, used by every provider
-  // here and by the page below) need a Suspense boundary above them.
   return (
     <Suspense
       fallback={
@@ -59,13 +42,11 @@ export default function ProjectWorkspaceLayout({ children }) {
       }
     >
       <ProjectProvider>
-        {/* Addon enablement is per project, so it loads inside ProjectProvider. */}
+        
         <AddonsProvider>
-          {/* Grants are per (project, user) and gate the nav the addons have
-              already been merged into, so RBAC sits between the two. */}
+          
           <RbacProvider>
-            {/* Sidebar curation sits under all three: hiding an entry narrows
-                what the grant already allows, and can never widen it. */}
+            
             <NavVisibilityProvider>
               <WorkspaceShell>{children}</WorkspaceShell>
             </NavVisibilityProvider>

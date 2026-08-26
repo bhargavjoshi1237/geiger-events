@@ -9,10 +9,6 @@ import { cn } from "@/lib/utils";
 import { CoverImage } from "../hero";
 import { EventMetaLine, OVER_COVER, priceLabel } from "./shared";
 
-// Split stage — the page divides down the middle. The left half is a pinned
-// panel that never moves (cover, title, date, one button); the right half
-// scrolls the whole page past it. The layout conference and studio sites use
-// when the identity matters as much as the content.
 export function SplitLayout({ ctx }) {
   const {
     event,

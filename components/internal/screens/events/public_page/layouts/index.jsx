@@ -19,9 +19,6 @@ import { SplitLayout } from "./split";
 import { StackLayout } from "./stack";
 import { ZigzagLayout } from "./zigzag";
 
-// Keyed by PAGE_LAYOUTS in lib/events/theme.js. Every layout takes the same
-// rendered slots and only decides where they sit and how they scale — nothing
-// below this line knows about themes, tickets or blocks.
 const LAYOUTS = {
   classic: ClassicLayout,
   anchored: AnchoredLayout,

@@ -3,11 +3,6 @@ import { getSessionMember } from "@/lib/portal/session";
 import { getMemberPlayable } from "@/lib/portal/live";
 import { touchPresence } from "@/lib/live/presence";
 
-// POST -> { ok }. One presence heartbeat for a room or library item, every 30s
-// from whichever player is open.
-// Fails open on the metric: a rejected write returns ok:false rather than an
-// error status, so a stats problem can never interrupt someone's viewing. Access
-// still fails closed — a member may only heartbeat a room they are entitled to.
 export async function POST(request) {
   const member = await getSessionMember();
   if (!member) {

@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 
 import {
-  DataTable,
   EditorSectionHeader,
   Field,
   SectionCard,
@@ -22,7 +21,6 @@ import {
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -32,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EVENTS } from "./sample_data";
 import { listVenues } from "@/lib/supabase/venues";
 import { venueFullAddress } from "@/components/internal/screens/venues/constants";
 import { useEventConfig } from "@/lib/events/use-event-config";
@@ -56,8 +53,6 @@ function eventAddress(event) {
   );
 }
 
-// The nearby-place buckets stored on the shared `map` config. Kept in one place
-// so the picker (which clears them on a pin move) and the detector stay in sync.
 const EMPTY_NEARBY = {
   nearbyParking: [],
   nearbyTransit: [],
@@ -69,14 +64,13 @@ const EMPTY_NEARBY = {
 };
 
 const TIMEZONES = [
-  { value: "Europe/London", label: "London (GMT+1)" },
-  { value: "America/New_York", label: "New York (GMT-4)" },
-  { value: "America/Los_Angeles", label: "Los Angeles (GMT-7)" },
-  { value: "Europe/Berlin", label: "Berlin (GMT+2)" },
-  { value: "Asia/Singapore", label: "Singapore (GMT+8)" },
+  { value: "Europe/London", label: "London" },
+  { value: "America/New_York", label: "New York" },
+  { value: "America/Los_Angeles", label: "Los Angeles" },
+  { value: "Europe/Berlin", label: "Berlin" },
+  { value: "Asia/Singapore", label: "Singapore" },
 ];
 
-// --- Location & Time ---------------------------------------------------------
 
 export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
   const patch = onPatch || (() => {});
@@ -84,9 +78,6 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
   const isRemote = event?.city === "Remote";
   const [locMode, setLocMode] = useState("search");
 
-  // Managed venues for this project — picking one fills in the venue snapshot
-  // (name, address, city, timezone) and links it so the public page can show
-  // the full venue detail. Empty when there's no DB / none created.
   const [venues, setVenues] = useState([]);
   useEffect(() => {
     let alive = true;
@@ -96,8 +87,6 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
     };
   }, [event?.projectId]);
 
-  // Venue/address/timezone and the event's date/start time are columns (live via
-  // patch); the finer schedule fields live in the metadata bag.
   const [loc, setLoc, saveLoc, saving] = useEventConfig(event, "location", {
     room: "",
     doorsOpen: event?.time || "18:00",
@@ -105,8 +94,6 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
   });
   const setLocField = (key) => (value) => setLoc({ ...loc, [key]: value });
 
-  // Coordinates live on the shared `map` config (so the Map & Directions tab and
-  // the public page read the same pin). The picker writes here.
   const [mapCfg, setMapCfg, saveMapCfg, savingMap] = useEventConfig(event, "map", {
     transport: "",
     parking: "",
@@ -116,10 +103,6 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
 
   const linkedVenue = venues.find((v) => v.id === event?.venueId) || null;
 
-  // Attaching a venue prefills *everything* location — the snapshot columns plus
-  // the map pin, arrival notes, and any nearby places the venue detected — so
-  // one pick seeds both this section and Map & Directions. It overwrites what's
-  // there (the organizer chose the venue); every field stays editable after.
   const pickVenue = (id) => {
     const v = venues.find((x) => x.id === id);
     if (!v) return;
@@ -128,7 +111,6 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
       v.longitude != null &&
       v.latitude !== "" &&
       v.longitude !== "";
-    // Columns — commit persists them immediately so the link + snapshot stick.
     commit({
       venueId: v.id,
       venue: v.name,
@@ -136,7 +118,6 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
       city: v.city || "",
       timezone: v.timezone || "Europe/London",
     });
-    // Map config — coords, notes, and detected nearby places in one write.
     const nv = v.nearby || {};
     const nextMap = {
       ...mapCfg,
@@ -158,12 +139,8 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
     });
   };
 
-  // Detach keeps the prefilled snapshot (address / pin / notes / nearby) and
-  // just clears the link, so nothing the organizer set is wiped.
   const detachVenue = () => commit({ venueId: null });
 
-  // Address is an event column (live via patch); coords go to the map config.
-  // Moving the pin invalidates any previously detected nearby places.
   const handleLocation = ({ address, coords }) => {
     if (address !== undefined) patch({ address });
     if (coords !== undefined) {
@@ -189,26 +166,22 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
 
   return (
     <div className="space-y-6">
-      {/* Own header — title on the left, location-mode tabs pinned to the far
-          right (this section opts out of the editor's default header). */}
-      <div className="flex flex-col gap-4 pb-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold capitalize text-white">
-            {headerItem?.label || "Location & Time"}
-          </h2>
-          <p className="mt-0.5 text-sm text-text-secondary">
-            {headerItem?.desc ||
-              "Search an address, drop a pin on the map, or enter coordinates."}
-          </p>
-        </div>
-        {!isRemote ? (
-          <LocationModeTabs
-            mode={locMode}
-            onModeChange={setLocMode}
-            className="shrink-0"
-          />
-        ) : null}
-      </div>
+      <EditorSectionHeader
+        title={headerItem?.label || "Location & Time"}
+        description={
+          headerItem?.desc ||
+          "Search an address, drop a pin on the map, or enter coordinates."
+        }
+        action={
+          !isRemote ? (
+            <LocationModeTabs
+              mode={locMode}
+              onModeChange={setLocMode}
+              className="shrink-0"
+            />
+          ) : null
+        }
+      />
 
       {isRemote ? (
         <div className="rounded-xl border border-dashed border-border bg-surface-subtle px-4 py-8 text-center text-sm text-text-secondary">
@@ -232,9 +205,9 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
             linkedVenue ? (
               <Button
                 size="sm"
-                variant="ghost"
+                variant="outline"
                 onClick={detachVenue}
-                className="shrink-0 gap-1.5 text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                className="shrink-0 gap-1.5 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               >
                 <Unlink className="h-3.5 w-3.5" /> Detach
               </Button>
@@ -292,11 +265,6 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
           </Field>
         </div>
 
-        
-
-        {/* Date and start time are the event's own columns — editing them here
-            updates the header, the list, and the public page. Doors/end sit in
-            the metadata bag. */}
         <div className="mt-6 mb-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Date">
             <EventDatePicker
@@ -311,18 +279,34 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
             />
           </Field>
           <Field label="Doors open">
-            <Input
-              type="time"
+            <EventTimeSelect
               value={loc.doorsOpen || ""}
-              onChange={(e) => setLocField("doorsOpen")(e.target.value)}
+              onChange={(time) => setLocField("doorsOpen")(time)}
             />
           </Field>
           <Field label="Ends" hint="Optional — set for multi-day events.">
-            <Input
-              type="datetime-local"
-              value={loc.ends || ""}
-              onChange={(e) => setLocField("ends")(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <EventDatePicker
+                value={(loc.ends || "").split("T")[0] || ""}
+                onChange={(date) =>
+                  setLocField("ends")(
+                    [date, (loc.ends || "").split("T")[1] || ""]
+                      .filter(Boolean)
+                      .join("T"),
+                  )
+                }
+              />
+              <EventTimeSelect
+                value={(loc.ends || "").split("T")[1] || ""}
+                onChange={(time) =>
+                  setLocField("ends")(
+                    [(loc.ends || "").split("T")[0] || "", time]
+                      .filter(Boolean)
+                      .join("T"),
+                  )
+                }
+              />
+            </div>
           </Field>
         </div>
         <div className="mt-4 flex justify-end">
@@ -338,13 +322,10 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
           </Button>
         </div>
       </SectionCard>
-
-
     </div>
   );
 }
 
-// --- Map & Directions --------------------------------------------------------
 
 function directionProviders(address, coords) {
   const q = encodeURIComponent(address || "");
@@ -387,9 +368,6 @@ export function MapDirectionsSection({ event, headerItem }) {
   const anyNearby = hasNearby(map, GETTING_THERE_GROUPS, AROUND_VENUE_GROUPS);
   const mapPlaces = useMemo(() => flattenPlaces(map), [map]);
 
-  // Lightweight geocode of the address so the map can centre on the venue's
-  // area before the (heavier) Auto-detect is run. Centre-only — it never
-  // persists or drops a pin; that stays the job of Auto-detect.
   const [autoCenter, setAutoCenter] = useState(null);
   const geocodedFor = useRef("");
   useEffect(() => {
@@ -443,36 +421,30 @@ export function MapDirectionsSection({ event, headerItem }) {
 
   return (
     <div className="space-y-6">
-      {/* Own header — title on the left, the detect action pinned to the far
-          right (this section opts out of the editor's default header). */}
-      <div className="flex flex-col gap-4 pb-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold capitalize text-white">
-            {headerItem?.label || "Map & Directions"}
-          </h2>
-          <p className="mt-0.5 text-sm text-text-secondary">
-            {headerItem?.desc ||
-              "Help attendees arrive — a pinned map, getting-there notes, and directions."}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={detecting}
-          onClick={detect}
-          className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-        >
-          {detecting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <LucideCircleParking className="h-4 w-4" />
-          )}
-          {detecting ? "Detecting…" : coords ? "Nearby Amenities" : "Nearby Amenities"}
-        </Button>
-      </div>
+      <EditorSectionHeader
+        title={headerItem?.label || "Map & Directions"}
+        description={
+          headerItem?.desc ||
+          "Help attendees arrive — a pinned map, getting-there notes, and directions."
+        }
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={detecting}
+            onClick={detect}
+            className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          >
+            {detecting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LucideCircleParking className="h-4 w-4" />
+            )}
+            {detecting ? "Detecting…" : "Nearby Amenities"}
+          </Button>
+        }
+      />
 
-      {/* Map popped out of any card — full-bleed, with the address and the
-          "open in" provider buttons sitting directly beneath it. */}
       <div>
         <EventMap
           coords={coords}
@@ -483,7 +455,7 @@ export function MapDirectionsSection({ event, headerItem }) {
           className="aspect-[21/9] w-full"
         />
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <p className="w-[50%] text-sm text-text-secondary">
+          <p className="min-w-0 max-w-xl flex-1 text-sm text-text-secondary">
             {address || "Set a venue address to place it on the map."}
           </p>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -561,7 +533,6 @@ export function MapDirectionsSection({ event, headerItem }) {
   );
 }
 
-// --- Time-zone Support -------------------------------------------------------
 
 export function TimezoneSupportSection({ event, headerItem }) {
   const [tz, , saveTz] = useEventConfig(event, "timezoneSettings", {
@@ -571,31 +542,6 @@ export function TimezoneSupportSection({ event, headerItem }) {
     showLabel: true,
   });
   const setTzField = (key) => (value) => saveTz({ ...tz, [key]: value });
-
-  const columns = [
-    {
-      key: "name",
-      header: "Event",
-      render: (e) => (
-        <span className="font-medium text-foreground">{e.name}</span>
-      ),
-    },
-    {
-      key: "city",
-      header: "Location",
-      render: (e) => <span className="text-sm text-muted-foreground">{e.city}</span>,
-    },
-    {
-      key: "tz",
-      header: "Timezone",
-      render: (e) => (
-        <Badge variant="neutral">
-          <Globe className="h-3 w-3" />
-          {e.city === "Remote" ? "Attendee local" : "Europe/London"}
-        </Badge>
-      ),
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -646,19 +592,6 @@ export function TimezoneSupportSection({ event, headerItem }) {
           onCheckedChange={setTzField("showLabel")}
         />
       </SettingsList>
-
-      <SectionCard
-        title="Per-event timezones"
-        description="How each event currently handles time."
-        bodyPadding={false}
-      >
-        <DataTable
-          columns={columns}
-          data={EVENTS.slice(0, 5)}
-          getRowKey={(e) => e.id}
-          className="rounded-none border-0"
-        />
-      </SectionCard>
     </div>
   );
 }

@@ -21,10 +21,6 @@ import {
   normalizeCtas,
 } from "@/lib/events/ctas";
 
-// Buttons on the event's tickets card. The built-in one is shown here as a
-// fixed, undeletable first row so the stack reads the way it will on the page —
-// only its label is editable.
-
 export function EventCtasSection({ event, headerItem }) {
   const [cfg, setCfg, saveCfg, saving] = useEventConfig(event, "ctas", EMPTY_CTAS);
   const data = normalizeCtas(cfg);

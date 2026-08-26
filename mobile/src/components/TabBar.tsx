@@ -27,7 +27,6 @@ const TAB_META: Record<
   more: { label: "More", icon: "grid" },
 };
 
-// The badge-dot tabs, keyed by route name.
 const BADGE_ROUTES: Record<string, (counts: ReturnType<typeof usePortalData>["counts"]) => number> = {
   community: (c) => c.messages || 0,
   more: (c) => c.notifications || 0,

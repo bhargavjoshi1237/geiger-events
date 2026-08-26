@@ -79,8 +79,6 @@ import {
   qty,
 } from "./constants";
 
-// --- Supplier dialog ---------------------------------------------------------
-
 function SupplierDialog({ open, onOpenChange, onCreate, pending }) {
   const [draft, setDraft] = useState(EMPTY_SUPPLIER_DRAFT);
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
@@ -173,7 +171,11 @@ function SupplierDialog({ open, onOpenChange, onCreate, pending }) {
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-primary" onClick={submit} disabled={pending}>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={submit}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Add supplier
           </Button>
@@ -183,10 +185,6 @@ function SupplierDialog({ open, onOpenChange, onCreate, pending }) {
   );
 }
 
-// --- Purchase order builder --------------------------------------------------
-
-// `items` are the selectable leaves; `allItems` is the full catalog, so a
-// variant's thumbnail can fall back to its parent's photo.
 function PurchaseOrderDialog({
   open,
   onOpenChange,
@@ -214,7 +212,6 @@ function PurchaseOrderDialog({
   const removeLine = (index) =>
     setLines((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
 
-  // Default the unit cost from the item so most lines need only a quantity.
   const pickItem = (index, itemId) => {
     const item = items.find((i) => i.id === itemId);
     setLines((prev) =>
@@ -360,6 +357,7 @@ function PurchaseOrderDialog({
                     min="0"
                     value={line.qty}
                     placeholder="Qty"
+                    aria-label={`Quantity for line ${index + 1}`}
                     onChange={(e) => setLine(index, "qty", e.target.value)}
                     className="w-24 bg-surface-card"
                   />
@@ -368,6 +366,7 @@ function PurchaseOrderDialog({
                     min="0"
                     value={line.unitCost}
                     placeholder="Cost"
+                    aria-label={`Unit cost for line ${index + 1}`}
                     onChange={(e) => setLine(index, "unitCost", e.target.value)}
                     className="w-28 bg-surface-card"
                   />
@@ -409,7 +408,11 @@ function PurchaseOrderDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-primary" onClick={submit} disabled={pending}>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={submit}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Create purchase order
           </Button>
@@ -419,7 +422,6 @@ function PurchaseOrderDialog({
   );
 }
 
-// Receive outstanding quantities, line by line. Defaults to receiving in full.
 function ReceiveDialog({ open, onOpenChange, po, items, onConfirm, pending }) {
   const lines = useMemo(() => (Array.isArray(po?.lines) ? po.lines : []), [po]);
   const [amounts, setAmounts] = useState(() =>
@@ -491,7 +493,11 @@ function ReceiveDialog({ open, onOpenChange, po, items, onConfirm, pending }) {
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-primary" onClick={submit} disabled={pending}>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={submit}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Receive into stock
           </Button>
@@ -500,8 +506,6 @@ function ReceiveDialog({ open, onOpenChange, po, items, onConfirm, pending }) {
     </Dialog>
   );
 }
-
-// --- Screen ------------------------------------------------------------------
 
 export function SuppliersPurchaseOrdersScreen() {
   const { projectId } = useProject();
@@ -516,6 +520,7 @@ export function SuppliersPurchaseOrdersScreen() {
   const [poOpen, setPoOpen] = useState(false);
   const [receiving, setReceiving] = useState(null);
   const [pending, setPending] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -620,14 +625,16 @@ export function SuppliersPurchaseOrdersScreen() {
     toast.success("Supplier added.");
   };
 
-  const handleDeleteSupplier = async (supplier) => {
+  const handleDeleteSupplier = (supplier) => {
+    setConfirmTarget(null);
     setSuppliers((prev) => prev.filter((s) => s.id !== supplier.id));
     toast.success("Supplier removed.");
-    const ok = await softDeleteSupplier(supplier.id);
-    if (!ok) {
-      setSuppliers((prev) => [supplier, ...prev]);
-      toast.error("Couldn't remove the supplier.");
-    }
+    softDeleteSupplier(supplier.id).then((ok) => {
+      if (!ok) {
+        setSuppliers((prev) => [supplier, ...prev]);
+        toast.error("Couldn't remove the supplier.");
+      }
+    });
   };
 
   const handleCreatePo = async (draft) => {
@@ -674,17 +681,28 @@ export function SuppliersPurchaseOrdersScreen() {
     }
   };
 
-  const handleDeletePo = async (po) => {
+  const handleDeletePo = (po) => {
+    setConfirmTarget(null);
     setOrders((prev) => prev.filter((p) => p.id !== po.id));
     toast.success("Purchase order removed.");
-    const ok = await softDeletePurchaseOrder(po.id);
-    if (!ok) {
-      setOrders((prev) => [po, ...prev]);
-      toast.error("Couldn't remove the purchase order.");
+    softDeletePurchaseOrder(po.id).then((ok) => {
+      if (!ok) {
+        setOrders((prev) => [po, ...prev]);
+        toast.error("Couldn't remove the purchase order.");
+      }
+    });
+  };
+
+  const confirmAction = () => {
+    if (!confirmTarget) return;
+    if (confirmTarget.kind === "delete-supplier") handleDeleteSupplier(confirmTarget.po);
+    else if (confirmTarget.kind === "delete-po") handleDeletePo(confirmTarget.po);
+    else if (confirmTarget.kind === "cancel-po") {
+      setConfirmTarget(null);
+      handleStatus(confirmTarget.po, "Cancelled");
     }
   };
 
-  // Receiving writes the movements first, so a failure leaves stock untouched.
   const handleReceive = async (received) => {
     setPending(true);
     const saved = await receivePurchaseOrder(receiving, received);
@@ -694,7 +712,6 @@ export function SuppliersPurchaseOrdersScreen() {
       return;
     }
     setOrders((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
-    // Sum per item — the same item can legitimately appear on more than one line.
     const receivedByItem = new Map();
     const tally = (lines, sign) => {
       for (const l of lines || []) {
@@ -720,7 +737,6 @@ export function SuppliersPurchaseOrdersScreen() {
     {
       key: "po",
       header: "Purchase order",
-      // Takes the table's spare width so the rest hug their values.
       className: "w-full",
       headClassName: "w-full whitespace-nowrap",
       render: (po) => (
@@ -737,8 +753,6 @@ export function SuppliersPurchaseOrdersScreen() {
       header: "Lines",
       className: "whitespace-nowrap",
       headClassName: "whitespace-nowrap",
-      // A stack of product photos makes an order recognisable at a glance;
-      // anything past the first three collapses into a "+N".
       render: (po) => {
         const lines = po.lines || [];
         const shown = lines.slice(0, 3);
@@ -840,7 +854,9 @@ export function SuppliersPurchaseOrdersScreen() {
               {po.status !== "Cancelled" && po.status !== "Received" ? (
                 <DropdownMenuItem
                   className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                  onClick={() => handleStatus(po, "Cancelled")}
+                  onClick={() =>
+                    setConfirmTarget({ kind: "cancel-po", po })
+                  }
                 >
                   Cancel order
                 </DropdownMenuItem>
@@ -848,7 +864,7 @@ export function SuppliersPurchaseOrdersScreen() {
               <DropdownMenuSeparator className="bg-surface-strong" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => handleDeletePo(po)}
+                onClick={() => setConfirmTarget({ kind: "delete-po", po })}
               >
                 <Trash2 className="h-4 w-4 text-red-300" /> Remove
               </DropdownMenuItem>
@@ -863,7 +879,6 @@ export function SuppliersPurchaseOrdersScreen() {
     {
       key: "supplier",
       header: "Supplier",
-      // Takes the table's spare width so the rest hug their values.
       className: "w-full",
       headClassName: "w-full",
       render: (s) => (
@@ -926,7 +941,7 @@ export function SuppliersPurchaseOrdersScreen() {
             >
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => handleDeleteSupplier(s)}
+                onClick={() => setConfirmTarget({ kind: "delete-supplier", po: s })}
               >
                 <Trash2 className="h-4 w-4 text-red-300" /> Remove
               </DropdownMenuItem>
@@ -945,14 +960,17 @@ export function SuppliersPurchaseOrdersScreen() {
         actions={
           tab === "orders" ? (
             <Button
-              className="bg-primary gap-2"
+              className="bg-primary gap-2 text-primary-foreground hover:bg-primary/90"
               onClick={() => setPoOpen(true)}
               disabled={!stocked.length}
             >
               <Plus className="h-4 w-4" /> New purchase order
             </Button>
           ) : (
-            <Button className="bg-primary gap-2" onClick={() => setSupplierOpen(true)}>
+            <Button
+              className="bg-primary gap-2 text-primary-foreground hover:bg-primary/90"
+              onClick={() => setSupplierOpen(true)}
+            >
               <Plus className="h-4 w-4" /> New supplier
             </Button>
           )
@@ -1089,6 +1107,64 @@ export function SuppliersPurchaseOrdersScreen() {
         pending={pending}
         onConfirm={handleReceive}
       />
+
+      <Dialog
+        open={!!confirmTarget}
+        onOpenChange={(o) => !o && setConfirmTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmTarget?.kind === "cancel-po"
+                ? "Cancel purchase order"
+                : confirmTarget?.kind === "delete-supplier"
+                  ? "Remove supplier"
+                  : "Remove purchase order"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmTarget?.kind === "cancel-po" ? (
+                <>
+                  Cancel{" "}
+                  <span className="font-medium text-foreground">
+                    {poRef(confirmTarget?.po)}
+                  </span>
+                  ? Outstanding quantities stay unreceived. This can&apos;t be undone.
+                </>
+              ) : confirmTarget?.kind === "delete-supplier" ? (
+                <>
+                  Remove{" "}
+                  <span className="font-medium text-foreground">
+                    {confirmTarget?.po?.name}
+                  </span>
+                  ? Existing purchase orders keep their record of it. This can&apos;t be
+                  undone.
+                </>
+              ) : (
+                <>
+                  Remove{" "}
+                  <span className="font-medium text-foreground">
+                    {poRef(confirmTarget?.po)}
+                  </span>
+                  ? Already-received stock stays in the catalog. This can&apos;t be
+                  undone.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={confirmAction}
+            >
+              <Trash2 className="h-4 w-4" />
+              {confirmTarget?.kind === "cancel-po" ? "Cancel order" : "Remove"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

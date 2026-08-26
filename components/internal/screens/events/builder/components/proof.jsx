@@ -1,12 +1,5 @@
 "use client";
 
-// Social-proof and media components.
-//
-// Where the page already holds real data — the guest list, the event gallery —
-// these default to reading it rather than asking the organizer to retype it,
-// with an authored-items escape hatch for the cases the event record can't
-// cover (last year's speakers, a partner's logo).
-
 import React, { useEffect, useState } from "react";
 import {
   Users,
@@ -51,8 +44,6 @@ function Heading({ children }) {
   if (!children) return null;
   return <h2 className="text-xl font-semibold text-foreground">{children}</h2>;
 }
-
-// --- Speaker / guest grid ----------------------------------------------------
 
 function Speakers({ props, event }) {
   const source =
@@ -105,8 +96,6 @@ function Speakers({ props, event }) {
   );
 }
 
-// --- Logo wall ---------------------------------------------------------------
-
 function LogoWall({ props }) {
   const logos = (Array.isArray(props.items) ? props.items : []).filter((l) => l?.url);
   if (!logos.length) {
@@ -126,8 +115,6 @@ function LogoWall({ props }) {
         )}
       >
         {logos.map((logo, i) => {
-          // Greyscale-until-hover is the convention for a partner wall; it keeps
-          // a row of mismatched brand colours from fighting the page.
           const image = (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -151,8 +138,6 @@ function LogoWall({ props }) {
     </section>
   );
 }
-
-// --- Testimonials ------------------------------------------------------------
 
 function Testimonials({ props }) {
   const items = (Array.isArray(props.items) ? props.items : []).filter((t) => t?.quote);
@@ -199,8 +184,6 @@ function Testimonials({ props }) {
   );
 }
 
-// --- Gallery -----------------------------------------------------------------
-
 function Lightbox({ images, index, onClose, onStep }) {
   useEffect(() => {
     const onKey = (e) => {
@@ -208,8 +191,6 @@ function Lightbox({ images, index, onClose, onStep }) {
       if (e.key === "ArrowRight") onStep(1);
       if (e.key === "ArrowLeft") onStep(-1);
     };
-    // Bound to the image's own document so it works inside the builder's canvas
-    // iframe as well as on the published page.
     const doc = typeof document !== "undefined" ? document : null;
     doc?.addEventListener("keydown", onKey);
     return () => doc?.removeEventListener("keydown", onKey);
@@ -222,7 +203,6 @@ function Lightbox({ images, index, onClose, onStep }) {
       aria-modal="true"
       onClick={onClose}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={images[index]}
         alt=""
@@ -299,7 +279,6 @@ function Gallery({ props, event }) {
             className="group overflow-hidden rounded-xl border border-border"
             aria-label={`Open image ${i + 1}`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
               alt=""
@@ -314,8 +293,6 @@ function Gallery({ props, event }) {
     </section>
   );
 }
-
-// --- Stats row ---------------------------------------------------------------
 
 function Stats({ props, accent }) {
   const items = (Array.isArray(props.items) ? props.items : []).filter(
@@ -345,8 +322,6 @@ function Stats({ props, accent }) {
     </div>
   );
 }
-
-// --- Tabs --------------------------------------------------------------------
 
 function Tabs({ props, accent }) {
   const items = (Array.isArray(props.items) ? props.items : []).filter((t) => t?.label);
@@ -388,8 +363,6 @@ function Tabs({ props, accent }) {
     </div>
   );
 }
-
-// --- Definitions -------------------------------------------------------------
 
 const PERSON_FIELDS = [
   { key: "name", label: "Name", type: "text" },

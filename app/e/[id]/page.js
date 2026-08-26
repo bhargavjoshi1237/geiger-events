@@ -22,15 +22,10 @@ import {
 } from "@/lib/events/theme";
 import { cn } from "@/lib/utils";
 
-// Standalone published event page, reachable at /e/<uuid>. This is the real,
-// shareable page an attendee lands on — distinct from the in-editor preview
-// overlay. Opening it in a new tab keeps the editor's state intact, so there's
-// no "Back drops me on the home page" behaviour.
 export default function PublishedEventPage() {
   const params = useParams();
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
 
-  // Render bundled sample data instantly, then refine from the live table.
   const [event, setEvent] = useState(() => findEventById(id));
   const [loading, setLoading] = useState(true);
 
@@ -46,10 +41,6 @@ export default function PublishedEventPage() {
     };
   }, [id]);
 
-  // Affiliate attribution: a visit on a tracked link (?ref=<slug>) validates the
-  // token, logs the click and remembers it for this event, then strips the
-  // param. Imported lazily so the affiliate code only loads on a link that
-  // actually carries a ref, and silent when the event has no program.
   useEffect(() => {
     if (!id || typeof window === "undefined") return;
     if (!new URLSearchParams(window.location.search).has("ref")) return;
@@ -73,21 +64,12 @@ export default function PublishedEventPage() {
     }
   };
 
-  // A themed page can carry the source site's favicon; standard mode never does.
   const design = event?.pageDesign;
   const themed = !!design && design.mode !== "standard";
   const brandFavicon = themed ? design.theme?.favicon || "" : "";
-  // The page wrapper sits above the themed body, so on an imported brand it has
-  // to take the same tokens — app-dark showing above a light brand page is the
-  // one seam an attendee notices. No page background here: the wrapper inherits
-  // the brand base color, not the hero gradient.
   const baseTheme = themed ? resolveTheme(design) : null;
 
-  // Visitor light/dark switch. The organizer's preferred mode (page design →
-  // Viewer theme) is the default; a visitor's own choice is remembered per
-  // event in localStorage; Follow system reads the OS setting. Toggling swaps
-  // the neutral palette while brand colors, fonts, and shapes stay put.
-  const viewerMode = design?.viewerMode || "auto"; // "light" | "dark" | "auto"
+  const viewerMode = design?.viewerMode || "auto";
   const baseIsLight = baseTheme ? baseTheme.base === "light" : false;
   const initialMode =
     viewerMode === "light" || viewerMode === "dark"
@@ -102,17 +84,13 @@ export default function PublishedEventPage() {
     let saved = null;
     try {
       saved = window.localStorage.getItem(key);
-    } catch {
-      // Storage blocked (private mode, strict policies) — just use the default.
-    }
+    } catch {}
     if (saved !== "light" && saved !== "dark") {
       const system = window.matchMedia("(prefers-color-scheme: light)").matches
         ? "light"
         : "dark";
       saved = viewerMode === "auto" ? system : null;
     }
-    // Deferred out of the effect body (avoids the synchronous setState-in-effect
-    // cascade the linter flags) — the first paint uses the organizer's default.
     if (saved === "light" || saved === "dark") {
       Promise.resolve().then(() => setMode(saved));
     }
@@ -123,13 +101,9 @@ export default function PublishedEventPage() {
     setMode(next);
     try {
       window.localStorage.setItem(`geiger-ev-mode:${id}`, next);
-    } catch {
-      // Non-fatal — the choice just won't survive a reload.
-    }
+    } catch {}
   };
   const brandTheme = baseTheme ? themeForMode(baseTheme, activeMode) : null;
-  // Tab title reads like a page on the source site rather than "Events - Geiger
-  // Studio"; theme-color is what tints the mobile browser's own chrome.
   const siteName = brandTheme?.source?.siteName || "";
   const pageTitle = event?.name
     ? siteName
@@ -139,21 +113,11 @@ export default function PublishedEventPage() {
   const themeColor = brandTheme
     ? brandTheme.themeColor || brandTheme.colors?.bg || ""
     : "";
-  // An imported page renders the source site's own header bar, which then owns
-  // the share action. Without one there's no bar on the page at all, so Share
-  // sits in the top gap instead.
   const hasBrandBar = !!(
     brandTheme && resolveHeader(brandTheme, !!resolveLogo(brandTheme, "bar"))
   );
-  // No platform chrome bar means nothing for a pinned brand header to clear, so
-  // --ev-chrome-h is left unset and its `, 0px` fallback applies.
   const chromeStyle = brandTheme ? themeChromeStyle(brandTheme) : undefined;
 
-  // The published page owns the whole tab. Paint the document itself with the
-  // active brand background so nothing behind the wrapper shows the app's own
-  // dark theme — an overscroll band above the page, or the strip that appears
-  // while a mobile URL bar collapses, flashes the wrong color the moment a
-  // visitor flips to light mode.
   useEffect(() => {
     const bg = brandTheme?.colors?.bg || "";
     if (!bg) return undefined;
@@ -195,8 +159,8 @@ export default function PublishedEventPage() {
           variant="outline"
           className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
         >
-          <Link href="/home">
-            <ArrowLeft className="h-4 w-4" /> Back to dashboard
+          <Link href="/">
+            <ArrowLeft className="h-4 w-4" /> Back to home
           </Link>
         </Button>
       </div>
@@ -211,21 +175,11 @@ export default function PublishedEventPage() {
         themed && "ev-themed",
       )}
     >
-      {/* Tab identity. React hoists title/meta/link into <head> from anywhere,
-          so a client page can still own these. Without them the tab carries the
-          app's own name and icon, which gives the game away first. */}
       {pageTitle ? <title>{pageTitle}</title> : null}
       {themeColor ? <meta name="theme-color" content={themeColor} /> : null}
       {brandFavicon ? (
         <link rel="icon" href={brandFavicon} precedence="default" />
       ) : null}
-      {/* Top strip. The platform's own branded chrome bar is gone — a published
-          page should open on the event (or on the source site's header), not on
-          ours. With a brand bar the strip has nothing left to hold (Share moved
-          into the bar), so it would be an empty painted band above the site's
-          own header; it's dropped entirely and the header sits flush at the top
-          the way it does on the source site. Without one it stays as a spacer
-          carrying Share. */}
       {hasBrandBar ? null : (
         <div className="relative z-10 flex h-14 items-center justify-end px-4 sm:px-6">
           <Button
@@ -247,8 +201,6 @@ export default function PublishedEventPage() {
         themeOverride={brandTheme}
       />
 
-      {/* Visitor light/dark switch — themed pages only. A standard page is the
-          platform's own look, which has no brand palette to flip between. */}
       {themed ? (
         <button
           type="button"

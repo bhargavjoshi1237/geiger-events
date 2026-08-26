@@ -23,9 +23,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Curated brand-theme fonts for the public event page (Themed mode). Loaded
-// here so their CSS variables are available app-wide; a page's theme maps its
-// heading/body choice onto these via --ev-font-* (see lib/events/theme.js).
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],

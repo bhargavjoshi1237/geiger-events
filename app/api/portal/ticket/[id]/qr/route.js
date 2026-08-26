@@ -2,9 +2,6 @@ import QRCode from "qrcode";
 import { getSessionMember } from "@/lib/portal/session";
 import { getMemberOrder } from "@/lib/portal/reads";
 
-// GET /api/portal/ticket/<orderId>/qr — a scannable QR (image/svg+xml) encoding
-// the order id, scoped to the signed-in member who owns that order. The door
-// scanner (jsQR) reads the order id out of it.
 export async function GET(_request, { params }) {
   const member = await getSessionMember();
   if (!member) return new Response("Not signed in.", { status: 401 });

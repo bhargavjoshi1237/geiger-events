@@ -130,7 +130,6 @@ export function SegmentsScreen() {
 
   const countMembers = (segment) =>
     contacts.filter((c) => isSegmentMember(segment, c, ctx)).length;
-
   const stats = useMemo(() => {
     const counts = segments.map((s) => countMembers(s));
     const largest = counts.length ? Math.max(...counts) : 0;
@@ -268,7 +267,6 @@ export function SegmentsScreen() {
         onSave={handleSave}
       />
 
-      {/* Members panel */}
       <Sheet open={!!membersOf} onOpenChange={(o) => !o && setMembersOf(null)}>
         <SheetContent className="w-full gap-0 p-0 sm:max-w-md">
           <SheetHeader className="border-b border-border">
@@ -404,29 +402,29 @@ function SegmentCard({ segment, count, onView, onEdit, onDelete }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            size="icon"
             variant="ghost"
-            className="h-8 w-8 shrink-0 text-text-secondary hover:text-foreground"
+            size="icon-sm"
+            className="shrink-0 text-text-secondary hover:text-foreground"
             aria-label="Segment actions"
           >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="border-border bg-surface-subtle text-foreground"
-        >
-          <DropdownMenuItem className="focus:bg-surface-hover" onClick={onView}>
-            <Users className="h-4 w-4" /> View members
-          </DropdownMenuItem>
-          <DropdownMenuItem className="focus:bg-surface-hover" onClick={onEdit}>
-            <Pencil className="h-4 w-4" /> Edit rules
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-border" />
-          <DropdownMenuItem
-            className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-            onClick={onDelete}
+          <DropdownMenuContent
+            align="end"
+            className="border-border bg-surface-subtle text-foreground"
           >
+            <DropdownMenuItem className="cursor-pointer gap-2 focus:bg-surface-hover" onClick={onView}>
+              <Users className="h-4 w-4" /> View members
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer gap-2 focus:bg-surface-hover" onClick={onEdit}>
+              <Pencil className="h-4 w-4" /> Edit rules
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-border" />
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-400"
+              onClick={onDelete}
+            >
             <Trash2 className="h-4 w-4" /> Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -439,7 +437,6 @@ function SegmentEditor({ open, onOpenChange, editing, events, onSave }) {
   const [draft, setDraft] = useState(null);
   const [seed, setSeed] = useState(null);
 
-  // Re-seed the local draft whenever a different segment is opened.
   const editingKey = editing ? editing.id || "new" : null;
   if (open && editingKey !== seed) {
     setSeed(editingKey);
@@ -644,10 +641,10 @@ function RuleRow({ rule, events, onChangeField, onChange, onRemove, removable })
       </div>
 
       <Button
-        size="icon"
         variant="ghost"
+        size="icon-sm"
         disabled={!removable}
-        className="h-8 w-8 shrink-0 text-text-tertiary hover:text-red-300"
+        className="shrink-0 text-text-tertiary hover:text-red-300"
         onClick={onRemove}
         aria-label="Remove rule"
       >

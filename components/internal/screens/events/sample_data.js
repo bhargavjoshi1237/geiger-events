@@ -1,7 +1,3 @@
-// Shared sample data for the Events area. Stands in for the backend until the
-// Supabase data model is wired up. Kept topic-specific so each screen reads like
-// real event-management content rather than lorem placeholders.
-
 export const EVENT_STATUS_MAP = {
   "On sale": { label: "On sale", variant: "success", dotClass: "bg-emerald-400" },
   "Sold out": { label: "Sold out", variant: "info", dotClass: "bg-sky-400" },
@@ -16,10 +12,6 @@ export const EVENT_TYPE_MAP = {
   Hybrid: { label: "Hybrid", variant: "purple" },
 };
 
-// Event-scoped access roles for the Co-hosts & Admins section, ranked by
-// authority. Independent of the project role catalog (events.roles). The style
-// is a warm-to-cool palette so tiers read at a glance; `icon` is a lucide name
-// the section maps to a component.
 export const EVENT_TEAM_ROLES = [
   {
     value: "Owner",
@@ -245,7 +237,6 @@ export const VENUES = [
 
 export function formatDate(iso) {
   const [y, m, d] = String(iso || "").split("-").map(Number);
-  // A date can be cleared in the editor — render nothing rather than "NaN".
   if (!y || !m || !d) return "";
   const months = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -267,10 +258,6 @@ export function initials(name) {
     .toUpperCase();
 }
 
-// --- Identity & lookup -------------------------------------------------------
-
-// Real RFC-4122 v4 id for a new row. Falls back to a compatible generator on
-// the rare runtime without crypto.randomUUID so creation never throws.
 export function newId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -282,11 +269,8 @@ export function newId() {
   });
 }
 
-// Back-compat alias — events mint ids through this name.
 export const newEventId = newId;
 
-// URL-safe slug derived from an event name (e.g. "Summer Product Launch" →
-// "summer-product-launch"). Used for the public link and SEO surfaces.
 export function slugify(value) {
   return String(value || "")
     .toLowerCase()
@@ -295,8 +279,6 @@ export function slugify(value) {
     .replace(/^-+|-+$/g, "");
 }
 
-// A stable public slug for an event — an explicit `slug` wins, otherwise it's
-// derived from the name.
 export function eventSlug(event) {
   return event?.slug || slugify(event?.name || "event");
 }
@@ -305,9 +287,6 @@ export function findEventById(id) {
   return EVENTS.find((e) => e.id === id) || null;
 }
 
-// --- Templates ---------------------------------------------------------------
-
-// Category → badge styling for template cards (mirrors EVENT_STATUS_MAP shape).
 export const TEMPLATE_CATEGORY_MAP = {
   Community: { label: "Community", variant: "neutral" },
   Music: { label: "Music", variant: "purple" },
@@ -317,14 +296,11 @@ export const TEMPLATE_CATEGORY_MAP = {
   Social: { label: "Social", variant: "neutral" },
 };
 
-// Filter options — "all" sentinel first, then one per category in the map.
 export const TEMPLATE_CATEGORY_OPTIONS = [
   { value: "all", label: "All categories" },
   ...Object.keys(TEMPLATE_CATEGORY_MAP).map((c) => ({ value: c, label: c })),
 ];
 
-// Icon options for the create/edit dialog — value is a Lucide name the screen
-// resolves to a component via TEMPLATE_ICONS.
 export const TEMPLATE_ICON_OPTIONS = [
   { value: "Users", label: "Community" },
   { value: "Music", label: "Music" },
@@ -335,8 +311,6 @@ export const TEMPLATE_ICON_OPTIONS = [
   { value: "Sparkles", label: "General" },
 ];
 
-// Each template carries a `blueprint`: the event defaults applied when you
-// "Use" it to spin up a new draft event. Ids match supabase/sqls/templates.sql.
 export const EVENT_TEMPLATES = [
   {
     id: "11111111-1111-4111-8111-000000000001",
@@ -394,9 +368,6 @@ export const EVENT_TEMPLATES = [
   },
 ];
 
-// --- Event Series ------------------------------------------------------------
-
-// Series reuse EVENT_STATUS_MAP for their StatusPill.
 export const SERIES_CADENCE_OPTIONS = [
   { value: "Weekly", label: "Weekly" },
   { value: "Monthly", label: "Monthly" },
@@ -422,8 +393,6 @@ export const SERIES_STATUS_FILTER_OPTIONS = [
   ...SERIES_STATUS_OPTIONS,
 ];
 
-// Sample series. Ids + membership match supabase/sqls/series.sql so the same
-// rows resolve once the DB is live.
 export const EVENT_SERIES = [
   {
     id: "22222222-2222-4222-8222-000000000001",
@@ -483,7 +452,6 @@ export const EVENT_SERIES = [
   },
 ];
 
-// Default shape for a brand-new series (before any settings are saved).
 export function emptySeriesSettings() {
   return { defaults: {}, recurrence: {}, eventOrder: [], followPage: false };
 }

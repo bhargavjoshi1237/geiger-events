@@ -1,17 +1,5 @@
 "use client";
 
-// The web-clip picker — the module's entry point.
-//
-// Any feature that wants to pull a component off a live website mounts this and
-// receives a finished clip object. It owns the whole flow (address → pick →
-// review) and knows nothing about who called it, which is what makes it
-// reusable across schedule items, page blocks, and conference records.
-//
-//   <WebClipDialog open={open} onOpenChange={setOpen} onClip={(clip) => …} />
-//
-// Nothing is uploaded: a clip references the origin site's images directly, so
-// capture is instant and costs no storage. See lib/clip/assets.js.
-
 import React, { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -62,8 +50,6 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
   const [busy, setBusy] = useState("");
   const [clip, setClip] = useState(null);
   const pickedRef = useRef(null);
-  // Once the caller has the clip, its assets are theirs — the schedule screen
-  // cleans them up on save instead.
   const handedOff = useRef(false);
 
   const reset = () => {
@@ -73,13 +59,8 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
     setLoadState(null);
     setBusy("");
     setClip(null);
-    // pickedRef is not cleared here — a render-phase reset must not touch refs.
-    // ElementPicker reports null on mount and whenever its src changes, which
-    // covers every path back to an empty selection.
   };
 
-  // Re-seed on open (render-phase reset, matching the rest of the app's
-  // dialogs).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -114,8 +95,6 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
     }
 
     setBusy("Extracting…");
-    // Yield a frame so the button's spinner paints before the synchronous
-    // stylesheet walk blocks the thread.
     await new Promise((r) => setTimeout(r, 0));
 
     let extracted;
@@ -139,18 +118,12 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
 
   const confirm = () => {
     if (!clip) return;
-    // `assets` and `oversize` are capture-time bookkeeping — they don't belong
-    // in the stored record.
     const { assets, oversize, unresolvedAssets, ...stored } = clip;
     handedOff.current = true;
     onClip?.(stored);
     onOpenChange(false);
   };
 
-  // A no-op for clips captured now, which upload nothing. It still runs because
-  // a re-clip can be replacing a clip made while rehosting was the default, and
-  // abandoning that one should not strand its files in the bucket. Only ever
-  // for a clip the caller never received — after that they own it.
   const discardUnused = () => {
     if (clip && !handedOff.current) removeClipAssets(clip);
   };
@@ -164,8 +137,6 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
   const removed = clip ? removedSummary(clip) : "";
 
   return (
-    // Esc and the overlay route through close() too, so an abandoned capture
-    // is cleaned up however the dialog is dismissed.
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
       <DialogContent
         className="flex h-[88vh] max-h-[88vh] w-[96vw] max-w-6xl flex-col gap-0 overflow-hidden bg-background p-0"

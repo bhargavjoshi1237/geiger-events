@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getSessionMember } from "@/lib/portal/session";
 import { getMemberRoom } from "@/lib/portal/live";
 
-// GET -> { room }. One room, only if this member is entitled to it.
 export async function GET(request, { params }) {
   const member = await getSessionMember();
   if (!member) {

@@ -1,35 +1,5 @@
 "use client";
 
-// Edit a captured clip.
-//
-// Three operations, and the difference between them is the whole point:
-//
-//   Remove   delete an element and everything inside it — the "Buy tickets"
-//            button, a filter bar, a stray badge.
-//   Unwrap   delete the box but keep what was in it. This is the one that
-//            fixes clip quality. A picked element almost never arrives as the
-//            component alone; it comes wrapped in the site's layout containers,
-//            which carry that page's padding, max-width and grid rules. Those
-//            wrappers are what put dead space around a clip and make it scale
-//            as though it were far wider than it looks.
-//   Keep only  the inverse: throw away everything except the clicked element.
-//            One click instead of unwrapping four ancestors and removing six
-//            siblings to get at the one card you actually wanted.
-//
-// "Trim wrappers" is the automated form of unwrap for the usual case, where the
-// thing you wanted sits several nested layout divs down. It stops at the first
-// element holding more than one child, because that is where the real component
-// begins — anything past that is a judgement call and stays manual.
-//
-// "Fit to content" is the one thing here that isn't markup surgery. The empty
-// margin around a clip is usually not an element at all — it's the clip's own
-// box. Its width comes from the bounding box of the picked element, which is as
-// wide as the source page's content row however narrow the design inside it is;
-// its height is whatever the markup settles to once it's laid out in our page
-// instead of the source page's ancestors, which is not always what it was. No
-// amount of deleting reaches either, which is why it reads as a box that won't
-// go away. Re-measuring what the clip actually paints is what removes it.
-
 import React, { useEffect, useRef, useState } from "react";
 import {
   Focus,
@@ -58,8 +28,6 @@ import {
 import { measureInk } from "@/lib/clip/fit";
 import { ClipContent } from "./clip_content";
 
-// Below this there is nothing worth reclaiming, and re-fitting would just be a
-// pointless undo step.
 const MIN_RECLAIM = 24;
 
 const MODES = [
@@ -102,8 +70,6 @@ export function ClipPruner({ clip, onChange, className }) {
   const [ink, setInk] = useState(null);
   const hostRef = useRef(null);
 
-  // While editing, the rendered markup carries path marks. They never reach
-  // storage — every write goes through stripPaths.
   const marked = editing ? withPaths(data.html) : data.html;
   const trimmable = countTrimmableWrappers(data.html);
 
@@ -118,8 +84,6 @@ export function ClipPruner({ clip, onChange, className }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [editing]);
 
-  // Measure after layout, and again whenever the markup changes — pruning is
-  // usually what turns a clip's recorded width into an overstatement.
   useEffect(() => {
     let frame = 0;
     const measure = () => {
@@ -132,9 +96,6 @@ export function ClipPruner({ clip, onChange, className }) {
 
   const active = MODES.find((m) => m.key === mode) || MODES[0];
 
-  // Empty margin on each axis: how much of the box the design doesn't reach.
-  // Height counts against the current crop, so re-fitting settles at zero
-  // instead of offering the same trim forever.
   const wide = ink && data.width ? data.width - ink.width : 0;
   const tall = ink
     ? (data.height ? Math.min(ink.renderedHeight, data.height) : ink.renderedHeight) -
@@ -142,14 +103,11 @@ export function ClipPruner({ clip, onChange, className }) {
     : 0;
   const slack = Math.max(wide, tall);
 
-  // What to say when the space someone is trying to delete isn't an element.
   const frameHint =
     slack > MIN_RECLAIM
       ? "That empty space is the clip's own box, not an element — use Fit to content."
       : "The space around it is the clip's backdrop — clear it with Background → None.";
 
-  // History holds whole clips, not just markup — "Fit to content" changes the
-  // width, and an undo that silently skipped it would be a lie.
   const commit = (patch) => {
     setHistory((h) => [...h, data]);
     setHovered(null);
@@ -165,8 +123,6 @@ export function ClipPruner({ clip, onChange, className }) {
     e.preventDefault();
     e.stopPropagation();
     const path = pathFrom(e.target);
-    // A click that lands on no element is on the clip's own frame — its
-    // backdrop and its width, neither of which is markup.
     if (!path) {
       setNotice(frameHint);
       return;
@@ -176,10 +132,6 @@ export function ClipPruner({ clip, onChange, className }) {
       commit({ html: stripPaths(next) });
       return;
     }
-    // null means the operation would empty the clip, change nothing, or had
-    // nothing to promote. Leave the markup alone — but say why, because a click
-    // that does nothing at all reads as a broken editor, and the reason is
-    // usually that the empty space they're aiming at isn't an element.
     setNotice(`${active.blocked} ${frameHint}`);
   };
 
@@ -337,7 +289,6 @@ export function ClipPruner({ clip, onChange, className }) {
           if (!editing) return;
           const path = pathFrom(e.target);
           setHovered(path);
-          // Moving back onto something clickable answers the notice.
           if (path) setNotice("");
         }}
         onMouseLeave={() => setHovered(null)}
@@ -347,8 +298,6 @@ export function ClipPruner({ clip, onChange, className }) {
           editing && "cursor-crosshair ring-1 ring-primary/40",
         )}
       >
-        {/* Outlines are drawn with CSS rather than by mutating the clip, so the
-            markup being edited is exactly the markup that gets stored. */}
         {editing ? (
           <style>{`
             [data-ev-path]:hover {

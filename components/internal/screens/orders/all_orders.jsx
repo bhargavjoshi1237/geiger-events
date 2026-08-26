@@ -23,6 +23,14 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -52,6 +60,7 @@ export function AllOrdersScreen() {
   const [status, setStatus] = useState("all");
   const [eventId, setEventId] = useState("all");
   const [openId, setOpenId] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -114,7 +123,16 @@ export function AllOrdersScreen() {
     [openId, orders],
   );
 
-  // Reflect a drawer refund back onto the row (updates status + refunded total).
+  const applyCancel = (id) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === id
+          ? { ...o, cancelledAt: new Date().toISOString(), displayStatus: "Cancelled" }
+          : o,
+      ),
+    );
+  };
+
   const applyRefund = (id, { refundedTotal }) => {
     setOrders((prev) =>
       prev.map((o) =>
@@ -134,17 +152,6 @@ export function AllOrdersScreen() {
     );
   };
 
-  const applyCancel = (id) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === id
-          ? { ...o, cancelledAt: new Date().toISOString(), displayStatus: "Cancelled" }
-          : o,
-      ),
-    );
-  };
-
-  // Row-level cancel (from the actions menu) — optimistic + persist.
   const handleRowCancel = async (o) => {
     if (o.cancelledAt) return;
     applyCancel(o.id);
@@ -231,7 +238,7 @@ export function AllOrdersScreen() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
+              className="w-44 border-border bg-surface-subtle"
             >
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
@@ -245,11 +252,11 @@ export function AllOrdersScreen() {
               >
                 <RotateCcw className="h-4 w-4" /> Issue refund
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-strong" />
+              <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
                 disabled={!!o.cancelledAt}
-                onClick={() => handleRowCancel(o)}
+                onClick={() => setCancelTarget(o)}
               >
                 <Ban className="h-4 w-4 text-red-300" /> Cancel order
               </DropdownMenuItem>
@@ -325,6 +332,42 @@ export function AllOrdersScreen() {
         onRefunded={applyRefund}
         onCancelled={applyCancel}
       />
+
+      <Dialog
+        open={!!cancelTarget}
+        onOpenChange={(o) => !o && setCancelTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel order</DialogTitle>
+            <DialogDescription>
+              Cancel{" "}
+              <span className="font-medium text-foreground">
+                {orderRef(cancelTarget?.id)}
+              </span>{" "}
+              from{" "}
+              <span className="font-medium text-foreground">
+                {cancelTarget?.name || "this buyer"}
+              </span>
+              ? The buyer loses their tickets. This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCancelTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                handleRowCancel(cancelTarget);
+                setCancelTarget(null);
+              }}
+            >
+              <Ban className="h-4 w-4" /> Cancel order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

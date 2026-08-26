@@ -105,7 +105,6 @@ function ModeBadge({ mode }) {
   );
 }
 
-// A slim, full-width event-chat row. Clicking drills into the chat.
 function ChannelCard({ channel, onSelect }) {
   const archived = channel.status === "archived";
   return (
@@ -353,7 +352,7 @@ export function EventChatScreen() {
     stopLive();
     setActiveId(null);
     setMessages([]);
-    reloadList(); // refresh previews / counts after visiting a chat
+    reloadList();
   };
 
   const onSend = async (body) => {
@@ -414,7 +413,6 @@ export function EventChatScreen() {
     setStatus("active");
   };
 
-  // ---- Conversation view (full-width drill-in) -----------------------------
   if (activeId && active) {
     const archived = active.status === "archived";
     return (
@@ -466,7 +464,6 @@ export function EventChatScreen() {
     );
   }
 
-  // ---- List view -----------------------------------------------------------
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -475,7 +472,7 @@ export function EventChatScreen() {
       />
 
       {loadingList ? (
-        <div className="flex items-center justify-center gap-2 py-24 text-sm text-text-secondary">
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : !channels.length ? (
@@ -490,9 +487,9 @@ export function EventChatScreen() {
         <>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <FilterDropdown value={mode} options={MODE_FILTER} onValueChange={setMode} />
-              <FilterDropdown value={status} options={STATUS_FILTER} onValueChange={setStatus} />
-              <FilterDropdown value={sort} options={SORT_OPTIONS} onValueChange={setSort} />
+              <FilterDropdown value={mode} options={MODE_FILTER} onValueChange={setMode} height="h-9" />
+              <FilterDropdown value={status} options={STATUS_FILTER} onValueChange={setStatus} height="h-9" />
+              <FilterDropdown value={sort} options={SORT_OPTIONS} onValueChange={setSort} height="h-9" />
             </div>
             <SearchInput
               value={search}

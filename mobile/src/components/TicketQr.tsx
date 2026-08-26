@@ -9,8 +9,6 @@ type TicketQrProps = {
   orderCode: string;
 };
 
-// On-device QR for the door scanner. The value is the order id — the web route
-// encodes order.id and the scanner reads exactly that, so this works offline.
 export function TicketQr({ orderId, orderCode }: TicketQrProps) {
   const { width } = useWindowDimensions();
   const side = Math.min(280, width - 96);

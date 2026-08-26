@@ -14,10 +14,6 @@ import { getWallBySlug } from "@/lib/supabase/event_wall";
 import { listListableEvents } from "@/lib/supabase/events";
 import { getPublicProfile } from "@/lib/supabase/discovery";
 
-// Interactive body of the published Event Wall (/w/<slug>). The server page.js
-// wrapper owns SEO/OG metadata and passes the resolved slug in; this component
-// fetches the wall + its listable events client-side (the app's browser
-// Supabase client is window-bound, so the render stays on the client).
 export default function WallClient({ slug }) {
   const [wall, setWall] = useState(null);
   const [events, setEvents] = useState([]);
@@ -26,8 +22,6 @@ export default function WallClient({ slug }) {
 
   useEffect(() => {
     let alive = true;
-    // Public page (outside ProjectProvider): resolve the wall by slug first,
-    // then scope its listable events + organiser profile to that wall's project.
     getWallBySlug(slug).then(async (wallRow) => {
       if (!alive) return;
       setWall(wallRow);
@@ -72,8 +66,8 @@ export default function WallClient({ slug }) {
           variant="outline"
           className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
         >
-          <Link href="/home">
-            <ArrowLeft className="h-4 w-4" /> Back to dashboard
+          <Link href="/">
+            <ArrowLeft className="h-4 w-4" /> Back to home
           </Link>
         </Button>
       </div>

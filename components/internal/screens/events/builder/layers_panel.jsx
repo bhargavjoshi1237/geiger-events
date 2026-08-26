@@ -1,12 +1,5 @@
 "use client";
 
-// The layers outline.
-//
-// A canvas alone makes deep or overlapping structure hard to reach — an empty
-// column, a section behind a full-bleed hero. This lists the tree, mirrors
-// selection both ways, and offers the operations that are fiddly to hit on the
-// canvas: rename a section, hide a block, drag something a long way.
-
 import React from "react";
 import {
   ChevronRight,
@@ -87,8 +80,6 @@ function LayerRow({
         aria-label={hidden ? "Show" : "Hide"}
         className={cn(
           "shrink-0 rounded p-0.5 text-text-tertiary transition-opacity hover:text-foreground group-hover:opacity-100",
-          // A hidden node keeps its eye showing, otherwise the only clue it is
-          // off is the strikethrough.
           hidden ? "opacity-100" : "opacity-0",
         )}
       >
@@ -98,8 +89,6 @@ function LayerRow({
   );
 }
 
-// Recursive so a container component's children appear nested, exactly as they
-// sit in the document.
 function ComponentBranch({ nodes, depth, ...rest }) {
   return nodes.map((node) => (
     <React.Fragment key={node.id}>

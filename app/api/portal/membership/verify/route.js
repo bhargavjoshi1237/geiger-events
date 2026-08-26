@@ -3,9 +3,6 @@ import { getSessionMember } from "@/lib/portal/session";
 import { getPlanForPurchase, enrollMembership } from "@/lib/portal/memberships";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
 
-// POST { sessionId } -> confirms a membership Stripe Checkout on return and
-// enrolls the member. Idempotent (enrollMembership dedupes on the session id), so
-// a refreshed return page never enrolls twice.
 export async function POST(request) {
   const member = await getSessionMember();
   if (!member) {
@@ -28,7 +25,6 @@ export async function POST(request) {
   }
 
   const meta = session.metadata || {};
-  // Only enroll the member the session belongs to, and only for a membership.
   if (
     meta.kind !== "membership" ||
     String(meta.email || "").toLowerCase() !== String(member.email).toLowerCase()

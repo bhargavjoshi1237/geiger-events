@@ -1,24 +1,11 @@
 "use client";
 
-// The public page's gallery: the original grid strip, plus a scroll-snap
-// carousel with the settings organizers pick beside the images in Content &
-// media. Entries are images or YouTube links; a video shows its poster frame
-// with a play badge and plays embedded in the lightbox. Both layouts open a
-// full-size lightbox on click.
-//
-// No carousel library — @geiger/ui has none and this needs to run inside the
-// builder's preview iframe, so it's CSS scroll-snap driven by scrollTo(). The
-// browser owns the momentum, touch swipe and reduced-motion behaviour; this
-// component only decides which slide to land on.
-
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 
 import { galleryItem, fitClass } from "@/lib/events/gallery";
 import { cn } from "@/lib/utils";
 
-// Slides across, stepped down for narrow viewports so a 4-up carousel never
-// renders four stamp-sized photos on a phone.
 function columnsFor(width, slidesPerView) {
   if (width < 640) return 1;
   if (width < 1024) return Math.min(2, slidesPerView);
@@ -26,8 +13,6 @@ function columnsFor(width, slidesPerView) {
 }
 
 function useColumns(slidesPerView) {
-  // Starts at the configured value so the server render and the first client
-  // render agree; the effect corrects it before paint.
   const [cols, setCols] = useState(slidesPerView);
   useEffect(() => {
     const read = () => setCols(columnsFor(window.innerWidth, slidesPerView));
@@ -50,8 +35,6 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-// --- Lightbox ----------------------------------------------------------------
-
 function Lightbox({ items, index, onIndex, onClose }) {
   const count = items.length;
   const item = items[index];
@@ -62,7 +45,6 @@ function Lightbox({ items, index, onIndex, onClose }) {
       if (e.key === "ArrowLeft") onIndex((index - 1 + count) % count);
     };
     document.addEventListener("keydown", onKey);
-    // The page behind must not scroll while the overlay owns the viewport.
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -151,12 +133,6 @@ function Lightbox({ items, index, onIndex, onClose }) {
   );
 }
 
-// --- Tile --------------------------------------------------------------------
-
-// One entry in either layout. A YouTube video shows its poster frame under a
-// play badge; a direct video file has no fetchable poster, so its own first
-// frame stands in instead. Either way the real embed/playback only loads once
-// the lightbox opens, so a gallery of videos costs nothing until played.
 function MediaTile({ item, index, total, onOpen, className, style }) {
   const isVideo = item.kind === "video";
   const fitClasses = cn(
@@ -200,8 +176,6 @@ function MediaTile({ item, index, total, onOpen, className, style }) {
   );
 }
 
-// --- Carousel ----------------------------------------------------------------
-
 function Carousel({ items, settings, onOpen }) {
   const { slidesPerView, autoplay, autoplaySeconds, loop, arrows, dots } = settings;
   const cols = useColumns(slidesPerView);
@@ -210,8 +184,6 @@ function Carousel({ items, settings, onOpen }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
-  // Scroll positions, not images: with 3 across and 6 images there are 4 places
-  // to stop, so the track never scrolls into empty space at the end.
   const maxIndex = Math.max(0, items.length - cols);
 
   const scrollTo = useCallback(
@@ -238,8 +210,6 @@ function Carousel({ items, settings, onOpen }) {
     [index, maxIndex, loop, scrollTo],
   );
 
-  // A swipe or trackpad scroll moves the track without going through go(), so
-  // read the landed slide back out and keep the dots honest.
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return undefined;
@@ -267,13 +237,10 @@ function Carousel({ items, settings, onOpen }) {
     };
   }, [maxIndex]);
 
-  // A resize can leave the index past the new last stop.
   useEffect(() => {
     if (index > maxIndex) scrollTo(maxIndex);
   }, [index, maxIndex, scrollTo]);
 
-  // Autoplay. Off for anyone who asked their system for reduced motion, and
-  // paused while a visitor is hovering, focused inside, or on another tab.
   useEffect(() => {
     if (!autoplay || reducedMotion || paused || maxIndex === 0) return undefined;
     const id = setInterval(
@@ -304,11 +271,6 @@ function Carousel({ items, settings, onOpen }) {
     >
       <div
         ref={trackRef}
-        // `snap-x` + per-slide `snap-start` keeps a dragged track landing on a
-        // slide edge; the scrollbar is hidden because the dots and arrows are
-        // the affordance. No `scroll-smooth` class — scrollTo() passes the
-        // behaviour explicitly, and the CSS property would smooth the jumps we
-        // deliberately make instant for reduced-motion visitors.
         className="flex snap-x snap-mandatory gap-3 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item, i) => (
@@ -370,10 +332,6 @@ function Carousel({ items, settings, onOpen }) {
   );
 }
 
-// --- Entry point -------------------------------------------------------------
-
-// `items` are the raw gallery strings off the event — image URLs and YouTube
-// links, classified here so every layout below reads one shape.
 export function PhotoGallery({ items, settings }) {
   const [lightbox, setLightbox] = useState(null);
   const media = useMemo(

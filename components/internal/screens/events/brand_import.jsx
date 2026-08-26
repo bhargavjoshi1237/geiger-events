@@ -32,14 +32,6 @@ import { LOGO_HEIGHTS } from "@/lib/events/theme";
 import { uploadEventFont, uploadEventImage } from "@/lib/supabase/storage";
 import { Segmented } from "./theme_controls";
 
-// "Import" page-design mode — read a website, pull its brand, apply it to the
-// event page. Extraction runs server-side (/api/brand/extract); this file owns
-// the picking, the logo upload, and turning a selection into a theme patch.
-//
-// The dialog is surface-agnostic: the event editor passes `eventId` and gets
-// the event's media folder, while the Event Wall passes its own `uploader` and
-// narrows `categories` to what its page can actually render.
-
 const CATEGORIES = [
   { key: "logo", label: "Logo", hint: "Brand mark for the header and footer" },
   { key: "colors", label: "Colors", hint: "Brand, background, text, and borders" },
@@ -51,7 +43,6 @@ const CATEGORIES = [
   { key: "content", label: "Imagery & text", hint: "Hero image, tagline, and favicon" },
 ];
 
-// data: URL → File, so an extracted asset can go through the normal upload path.
 async function dataUrlToFile(dataUrl, mime, name = "logo") {
   const res = await fetch(dataUrl);
   const blob = await res.blob();
@@ -59,7 +50,6 @@ async function dataUrlToFile(dataUrl, mime, name = "logo") {
   return new File([blob], `${name}.${ext}`, { type: blob.type || mime });
 }
 
-// Filename-safe slug for a font family + weight, e.g. "Inter" 700 → inter-700.
 function faceSlug(face) {
   const family = String(face?.family || "font")
     .toLowerCase()
@@ -70,13 +60,6 @@ function faceSlug(face) {
   return weight ? `${family || "font"}-${weight}` : family || "font";
 }
 
-// Re-host the self-hosted @font-face files the extractor downloaded. A brand's
-// own CDN almost never sends the CORS header a cross-origin @font-face needs, so
-// hotlinking their font silently fails on the published page and the type falls
-// back to a stand-in — storing a copy is what actually makes the imported
-// typeface render. Returns the faces stripped back to what the theme persists
-// (the base64 payload must never reach the metadata bag) plus how many we
-// re-hosted, so the toast can say so.
 async function hostFontFaces(faces, uploadFont) {
   const list = Array.isArray(faces) ? faces : [];
   if (!list.length) return { faces: [], hosted: 0 };
@@ -117,8 +100,6 @@ function LogoTile({ logo, active, onSelect }) {
           : "border-border bg-surface-card hover:bg-surface-active",
       )}
     >
-      {/* Extracted logos are data URLs of unknown size — next/image can't help. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={logo.dataUrl}
         alt={`${logo.kind} candidate`}
@@ -155,13 +136,9 @@ export function ImportBrandDialog({
   footer,
   onApply,
 }) {
-  // What this surface can take. A wall has no site-header bar, so offering to
-  // import someone's nav would produce settings nothing renders.
   const offered = categories
     ? CATEGORIES.filter((c) => categories.includes(c.key))
     : CATEGORIES;
-  // Where assets land. Falls back to the event's own media folder, which is
-  // what every caller did before the wall grew its own.
   const uploadImage =
     uploader?.image ||
     ((file, options) => (eventId ? uploadEventImage(eventId, file, options) : null));
@@ -169,7 +146,7 @@ export function ImportBrandDialog({
     uploader?.font || ((file) => (eventId ? uploadEventFont(eventId, file) : null));
 
   const [url, setUrl] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | loading | done
+  const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
   const [logoIndex, setLogoIndex] = useState(0);
@@ -195,14 +172,9 @@ export function ImportBrandDialog({
     setStatus("loading");
     setError("");
     try {
-      // basePath ("/events" in production) is not applied to fetch() — a bare
-      // "/api/…" would leave this app and hit the suite shell, which answers
-      // 200 with HTML and makes every import look like a failure.
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/brand/extract?url=${encodeURIComponent(url.trim())}`,
       );
-      // A non-JSON body means the request never reached the route (a misrouted
-      // path, a gateway page) — say that rather than blaming the site.
       const json = await res.json().catch(() => null);
       if (!json) {
         setError(
@@ -220,7 +192,6 @@ export function ImportBrandDialog({
       }
       setData(json);
       setLogoIndex(0);
-      // Only offer what the site actually gave us.
       setApply(
         Object.fromEntries(offered.map((c) => [c.key, !!json.found[c.key]])),
       );
@@ -235,10 +206,6 @@ export function ImportBrandDialog({
     if (!data) return;
     setApplying(true);
 
-    // Upload every candidate the site offered, not just the picked one — the
-    // runner-ups stay selectable later from Brand & logo. The chosen mark is
-    // uploaded first and becomes the page logo; the list is what "imported
-    // designs" draws from.
     let logoUrl = "";
     let importedLogos = [];
     if (apply.logo && data.logos.length) {
@@ -253,11 +220,7 @@ export function ImportBrandDialog({
         picks.map(async (logo) => {
           try {
             const file = await dataUrlToFile(logo.dataUrl, logo.mime);
-            // Compression off: canvas re-encoding destroys SVGs and flattens
-            // transparency, which is exactly what a logo needs to keep.
             const uploaded = await uploadImage(file, { compress: false });
-            // Storage unconfigured or the write was refused — hotlink the source
-            // so the import still produces a visible logo.
             return { url: uploaded?.url || logo.url, kind: logo.kind };
           } catch {
             return { url: logo.url, kind: logo.kind };
@@ -268,9 +231,6 @@ export function ImportBrandDialog({
       logoUrl = importedLogos[0]?.url || "";
     }
 
-    // Self-hosted typefaces are stored under our own domain before the patch is
-    // built, so the theme persists our URL rather than the source site's — and
-    // never the base64 payload the extractor sent them down as.
     let source = data;
     let hostedFonts = 0;
     if (apply.fonts && data.fonts?.faces?.length) {
@@ -462,8 +422,6 @@ export function ImportBrandDialog({
                       {(() => {
                         const all = data.fonts.faces;
                         const got = all.filter((f) => f.dataUrl).length;
-                        // A face we couldn't download still hotlinks, which is
-                        // why the split matters enough to show.
                         return got
                           ? `Self-hosted font — ${got}/${all.length} weights copied`
                           : `Self-hosted font (${all.length} weights)`;
@@ -612,12 +570,7 @@ export function ImportBrandDialog({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Brand & logo controls (a SectionCard body in the Themed panel)
-// ---------------------------------------------------------------------------
-
 export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
-  // Which surface an upload is flowing into ("header" | "footer"), or null.
   const [uploading, setUploading] = useState(null);
   const logo = theme.logo || {};
   const footerLogo = theme.footerLogo || {};
@@ -646,8 +599,6 @@ export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
     }
   };
 
-  // Designs a previous import pulled off a site. With none stored yet, the
-  // current header mark stands in — it's still selectable for the footer.
   const designs = (theme.importedLogos || []).length
     ? theme.importedLogos
     : logo.url
@@ -841,7 +792,6 @@ export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-subtle p-1.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={d.url}
                         alt={d.kind ? `${d.kind} design` : "Imported logo"}

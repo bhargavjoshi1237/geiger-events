@@ -28,12 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Shared footer for the public event page and the Event Wall. Config is a small
-// bag stored alongside the theme (pageDesign.footer / metadata.footer):
-//   { showBranding, text, links: [{label,url}], socials: [{platform,url}] }
-// PageFooter renders it; FooterEditor edits it. Both editors reuse this so the
-// two surfaces stay identical.
-
 export const SOCIAL_PLATFORMS = [
   { key: "instagram", label: "Instagram", icon: Instagram },
   { key: "facebook", label: "Facebook", icon: Facebook },
@@ -56,7 +50,6 @@ function socialIcon(platform) {
     .icon;
 }
 
-// Normalize a possibly-partial saved footer to the full shape.
 export function resolveFooter(footer) {
   const f = footer && typeof footer === "object" ? footer : {};
   return {
@@ -67,20 +60,6 @@ export function resolveFooter(footer) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Public renderer
-// ---------------------------------------------------------------------------
-
-// `logo` is the resolved brand mark ({ url, height, link }) from the page theme,
-// or null. Only the imported/themed pages pass one.
-//
-// `surface` is a ready-made style bag (resolveFooterSurface) that paints the
-// footer as a full-bleed slab the way a source site's own footer usually is,
-// carrying the token overrides that keep its contents legible on that fill.
-// That only works if the caller renders this *outside* its content column,
-// which it signals by passing `contentWidth` — the footer then owns an inner
-// column of its own. Callers that stay inside their column (the Event Wall)
-// pass neither and render exactly as they always have.
 export function PageFooter({
   footer,
   accent,
@@ -95,8 +74,6 @@ export function PageFooter({
 
   if (!hasCustom && !f.showBranding && !logo?.url) return null;
 
-  // Set only when the caller renders us outside its column and needs us to
-  // rebuild one at the same width.
   const owns = !!contentWidth;
 
   return (
@@ -173,10 +150,6 @@ export function PageFooter({
     </footer>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Editor block (body of a SectionCard in each design editor)
-// ---------------------------------------------------------------------------
 
 function RowActions({ onRemove }) {
   return (

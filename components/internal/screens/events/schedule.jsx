@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   Plus,
   Trash2,
-  GripVertical,
   ArrowUp,
   ArrowDown,
   Pencil,
@@ -61,18 +60,6 @@ import {
   pathFromPublicUrl,
 } from "@/lib/supabase/storage";
 
-// Per-event schedule editor. Each item — { id, time, title, description,
-// contentType, image, imagePosition, imageFit, clip } — is stored in the event's
-// metadata bag (like tickets/questions) via useEventConfig, so the timeline
-// grows without a migration and rehydrates on reload. The public page renders
-// these in the Schedule block (page_blocks.jsx), and the dialog's preview pane
-// uses that same renderer rather than a lookalike.
-//
-// Layout, gap, frame and the section note are section-level and live on the
-// header (schedule_style.jsx), not in here — see lib/events/schedule_items.js.
-
-// What an item is. "html" and "clip" both replace the whole item: time, title,
-// and image are skipped and the content stands alone.
 export const SCHEDULE_CONTENT_TYPES = [
   {
     key: "text",
@@ -119,8 +106,6 @@ const EMPTY_ITEM = {
   clip: null,
 };
 
-// Miniature diagrams of where an image sits relative to the text. Four words in
-// a pill row said nothing; four shapes say it without a label.
 function PositionArt({ kind }) {
   const img = "rounded-[2px] bg-current";
   const txt = "rounded-[2px] bg-current/35";
@@ -157,8 +142,6 @@ function PositionArt({ kind }) {
   );
 }
 
-// Fit is shown by rendering the actual image three ways — the only honest way
-// to explain the difference between cover, fit, and stretch.
 function FitArt({ kind, src }) {
   const object =
     kind === "fit" ? "object-contain" : kind === "stretch" ? "object-fill" : "object-cover";
@@ -172,8 +155,6 @@ function FitArt({ kind, src }) {
   );
 }
 
-// The three item modes, as cards. A mode switch changes the whole form, so it
-// gets real estate at the top rather than a pill row buried mid-dialog.
 function ModePicker({ value, onChange }) {
   return (
     <div className="grid gap-1.5">
@@ -219,9 +200,6 @@ function ModePicker({ value, onChange }) {
   );
 }
 
-// Author or edit a single schedule item. Two panes: the form on the left, and
-// on the right the item rendered through the real public-page renderer, so
-// every layout choice is seen rather than read.
 function ScheduleItemDialog({
   open,
   onOpenChange,
@@ -235,8 +213,6 @@ function ScheduleItemDialog({
   const [clipOpen, setClipOpen] = useState(false);
   const fileInput = useRef(null);
 
-  // Re-seed the draft whenever the dialog opens (render-phase reset — React's
-  // recommended alternative to a setState-in-effect).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -261,7 +237,6 @@ function ScheduleItemDialog({
       toast.error("Upload failed — only the event's creator can add images.");
       return;
     }
-    // Drop the previous image when replacing one.
     const old = draft.image;
     set("image")(res.url);
     const oldPath = pathFromPublicUrl(old);
@@ -325,7 +300,6 @@ function ScheduleItemDialog({
           />
 
           <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            {/* Form */}
             <div className="min-h-0 space-y-4 overflow-y-auto border-border p-5 md:border-r">
               <ModePicker value={mode} onChange={set("contentType")} />
 
@@ -394,7 +368,7 @@ function ScheduleItemDialog({
                     <button
                       type="button"
                       onClick={() => setClipOpen(true)}
-                      className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card py-10 text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
+                      className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card py-10 text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
                     >
                       <Globe className="h-6 w-6" />
                       <span className="text-sm">Clip a component from a URL</span>
@@ -413,21 +387,22 @@ function ScheduleItemDialog({
                       id="sched-clip-title"
                       value={draft.title}
                       onChange={(e) => set("title")(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          submit();
+                        }
+                      }}
                       placeholder="e.g. Pricing table"
                     />
                   </Field>
 
-                  {/* Applied at render time, so these fix an existing clip
-                      without re-capturing it. */}
                   {isClipFilled(draft.clip) ? (
                     <>
                       <ClipAppearance
                         clip={draft.clip}
                         onChange={(next) => set("clip")(next)}
                       />
-                      {/* Collapsed by default — editing the markup is an
-                          occasional fix, not part of the normal flow, and it
-                          carries its own preview. */}
                       <Accordion type="single" collapsible>
                         <AccordionItem
                           value="contents"
@@ -492,7 +467,6 @@ function ScheduleItemDialog({
                   <Field label="Image" hint="Optional">
                     {draft.image ? (
                       <div className="group relative overflow-hidden rounded-xl border border-border">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={draft.image}
                           alt=""
@@ -518,7 +492,7 @@ function ScheduleItemDialog({
                             variant="outline"
                             disabled={busy}
                             onClick={removeImage}
-                            className="border-border bg-black/40 text-white hover:bg-red-500/30"
+                            className="border-border bg-black/40 text-white hover:bg-red-500/10 hover:text-red-300"
                           >
                             <Trash2 className="h-4 w-4" /> Remove
                           </Button>
@@ -529,7 +503,7 @@ function ScheduleItemDialog({
                         type="button"
                         disabled={busy}
                         onClick={() => fileInput.current?.click()}
-                        className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground disabled:opacity-60"
+                        className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card text-text-secondary transition-colors hover:border-border-strong hover:text-foreground disabled:opacity-60"
                       >
                         {busy ? (
                           <Loader2 className="h-6 w-6 animate-spin" />
@@ -543,7 +517,6 @@ function ScheduleItemDialog({
                     )}
                   </Field>
 
-                  {/* Position and fit only exist once there's an image to place. */}
                   {draft.image ? (
                     <>
                       <ChoiceRow
@@ -566,9 +539,8 @@ function ScheduleItemDialog({
               ) : null}
             </div>
 
-            {/* Live preview — the real public-page renderer, not a lookalike. */}
             <div className="hidden min-h-0 flex-col overflow-hidden bg-surface-subtle md:flex">
-              <p className="shrink-0 px-5 pt-4 text-[11px] uppercase tracking-wide text-text-tertiary">
+              <p className="shrink-0 px-5 pt-4 text-[11px] uppercase tracking-wider text-text-tertiary">
                 Live preview
               </p>
               <div className="min-h-0 flex-1 overflow-y-auto p-5">
@@ -593,6 +565,7 @@ function ScheduleItemDialog({
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={submit}
+              disabled={busy}
             >
               {initial?.id ? "Save item" : "Add item"}
             </Button>
@@ -605,8 +578,7 @@ function ScheduleItemDialog({
         onOpenChange={setClipOpen}
         onClip={(clip) => {
           set("clip")(clip);
-          // Seed the internal label from the source so the list is readable
-          // without the organizer having to name it.
+          
           setDraft((d) =>
             d.title.trim()
               ? d
@@ -618,14 +590,12 @@ function ScheduleItemDialog({
   );
 }
 
-// One row in the editor's list.
 function ScheduleRow({ item, index, count, onEdit, onRemove, onMove }) {
   const clipped = item.contentType === "clip";
   const html = item.contentType === "html";
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-3">
-      <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-text-tertiary" />
       {item.image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -713,25 +683,17 @@ function ScheduleRow({ item, index, count, onEdit, onRemove, onMove }) {
 export function ScheduleSection({ event, headerItem }) {
   const [items, , saveItems] = useEventConfig(event, "schedule", []);
   const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // { index, item } | null
+  const [editing, setEditing] = useState(null); 
 
   const section = sectionSettings(items);
-
-  // Section styling is stored on every item because the renderer reads it off
-  // the first one — so a change here fans out across the list in one save.
+  
   const saveSection = (next) =>
     saveItems(applySection(items, next), { successMsg: "Schedule style updated." });
-
   const addItem = (item) =>
     saveItems([...items, { ...item, ...section, id: `sch_${Date.now()}` }], {
       successMsg: "Schedule item added.",
     });
-
-  // Clip assets are cleaned up here rather than in the dialog, because only a
-  // save is a commitment — a re-clip the organizer then cancels must not have
-  // already deleted the images the still-saved clip is using. `keep` spares
-  // anything the replacement re-uses, which re-clipping the same element does
-  // for most of its images.
+  
   const updateItem = (index, item) => {
     const previous = items[index];
     saveItems(
@@ -756,8 +718,7 @@ export function ScheduleSection({ event, headerItem }) {
     [copy[index], copy[ni]] = [copy[ni], copy[index]];
     saveItems(copy);
   };
-
-  // The last timed item, so a new one's picker opens just after it.
+  
   const lastTime = [...items].reverse().find((it) => it.time)?.time || "";
 
   return (
@@ -803,7 +764,7 @@ export function ScheduleSection({ event, headerItem }) {
         <button
           type="button"
           onClick={() => setAddOpen(true)}
-          className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card py-10 text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
+          className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card py-10 text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
         >
           <Clock className="h-6 w-6" />
           <p className="text-sm">Add your first schedule item</p>

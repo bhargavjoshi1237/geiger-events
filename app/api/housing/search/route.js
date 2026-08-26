@@ -3,11 +3,6 @@ import { NextResponse } from "next/server";
 import { geocode, configuredProviders } from "@/lib/housing/providers";
 import { dedupeResults } from "@/lib/housing/normalize";
 
-// GET /api/housing/search?q=&near=lat,lng&radius=&type=
-// Resolves a search centre (explicit `near`, else geocodes `q`), queries the
-// configured providers (OpenStreetMap) for accommodation or travel gateways,
-// and returns one deduped, nearest-first result set. A provider that errors is
-// skipped, not fatal.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") || "").trim();

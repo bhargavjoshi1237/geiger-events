@@ -2,13 +2,6 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSessionMember } from "@/lib/portal/session";
 
-// Mints a short-lived Supabase-signed JWT for the signed-in portal member so the
-// browser can open an RLS-scoped Realtime subscription (members use custom cookie
-// auth, not Supabase Auth). The token carries a `member_id` claim that the chat
-// RLS policies match (events.chat_channel_member). It is read-only in practice:
-// members never write through the browser client — all writes go through the
-// service-role portal routes.
-
 const base64url = (buf) =>
   Buffer.from(buf).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
@@ -24,7 +17,6 @@ function signJwt(payload, secret) {
 export async function POST() {
   const secret = process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
-    // Not configured → the client degrades to a manual-refresh fetch.
     return NextResponse.json({ error: "Realtime not configured." }, { status: 501 });
   }
   const member = await getSessionMember();
@@ -39,7 +31,6 @@ export async function POST() {
       sub: member.id,
       member_id: member.id,
       iat: now,
-      exp: now + 55 * 60, // ~55 min; the client re-fetches before expiry
     },
     secret,
   );

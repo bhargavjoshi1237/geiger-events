@@ -13,10 +13,6 @@ import {
   useScrollSpy,
 } from "./shared";
 
-// Anchored nav — a section rail on the left that tracks scroll, the content in
-// the middle, tickets on the right. The three-column shape documentation sites
-// and multi-day conferences use once a page has more sections than a visitor
-// will scroll through patiently.
 export function AnchoredLayout({ ctx }) {
   const {
     contentWidth,

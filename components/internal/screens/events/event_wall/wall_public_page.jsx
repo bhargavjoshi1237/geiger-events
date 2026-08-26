@@ -40,13 +40,6 @@ import {
 import { WallEventList } from "./wall_event_list";
 import { WallSidebar } from "./wall_calendar";
 
-// The published Event Wall (/w/<slug>): an organiser's identity above a
-// date-grouped agenda, with a calendar, an upcoming/past switch, and a map of
-// where the events are alongside it.
-//
-// Status, type, day, search, and view are viewer state — the wall's saved
-// `filters` and `layout` only seed them, so browsing never writes anything back.
-
 const SOCIAL_ICONS = [
   [/instagram\./i, Instagram],
   [/(twitter\.|x\.com)/i, Twitter],
@@ -57,8 +50,6 @@ const SOCIAL_ICONS = [
   [/twitch\./i, Twitch],
 ];
 
-// Match a link to its brand icon by host, falling back to a globe. Matching on
-// the URL rather than the label means an unlabelled link still gets its icon.
 function socialIcon(link) {
   const haystack = `${link.url || ""} ${link.label || ""}`;
   for (const [pattern, Icon] of SOCIAL_ICONS) {
@@ -67,11 +58,6 @@ function socialIcon(link) {
   return Globe;
 }
 
-// A single half-minute clock shared by every readout on the page. It's an
-// external store rather than state-in-an-effect so the snapshot stays stable
-// between ticks, and so the server snapshot can be `null`: the server has no
-// idea what timezone the reader is in, and rendering a guess mismatches on
-// hydration for every visitor outside UTC.
 let clockNow = null;
 const clockListeners = new Set();
 let clockTimer = null;
@@ -104,7 +90,6 @@ function useLocalNow() {
   return stamp ? new Date(stamp) : null;
 }
 
-// Compact "4:56 PM GMT+5:30" for the route's top bar.
 export function WallClock({ className }) {
   const now = useLocalNow();
   return (
@@ -114,7 +99,6 @@ export function WallClock({ className }) {
   );
 }
 
-// "Times in GMT+5:30 — 4:56 PM", under the organiser's name.
 function LocalTimeLine() {
   const now = useLocalNow();
 
@@ -160,7 +144,6 @@ function SocialLinks({ profile }) {
   );
 }
 
-// Cards / list switch, matching the pair of icon buttons in the section header.
 function ViewToggle({ view, onView }) {
   return (
     <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface-subtle p-0.5">
@@ -188,8 +171,6 @@ function ViewToggle({ view, onView }) {
   );
 }
 
-// Collapsed to an icon until used, so the header stays quiet on a wall with
-// three events and still scales to one with sixty.
 function SearchControl({ query, onQuery }) {
   const [open, setOpen] = useState(false);
 
@@ -265,7 +246,6 @@ function TypeChips({ chips, type, onType, accent }) {
   );
 }
 
-// Organiser identity: banner, overlapping avatar, name, local time, and socials.
 function WallHero({ wall, profile, banner, accent }) {
   const name = profile?.displayName || wall?.name || "Our Events";
   const avatar = wall?.logoUrl || profile?.avatarUrl || "";
@@ -298,9 +278,6 @@ function WallHero({ wall, profile, banner, accent }) {
       </div>
 
       <div className="mt-5 space-y-2">
-        {/* <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          {name}
-        </h1> */}
         <LocalTimeLine />
         {managedBy ? (
           <p className="text-sm text-text-secondary">Events managed by {managedBy}</p>
@@ -327,18 +304,12 @@ function WallHero({ wall, profile, banner, accent }) {
   );
 }
 
-// Chrome-less body shared by the public route (app/w/[slug]/page.js).
 export function WallPublicPageContent({ wall, events, profile }) {
   const theme = resolveTheme({ theme: wall?.theme });
   const accent = themeAccent(theme);
   const wrapperStyle = themeStyle(theme);
   const contentWidth = resolveWidth(theme);
-  // A video background can't be painted via CSS background-image, so it renders
-  // as a fixed layer under the content (raised with `relative z-10` below).
   const bgVideo = pageBackgroundVideo(theme);
-  // A brand import can bring the source site's own typeface — either linked from
-  // Google Fonts or re-hosted from its @font-face rules. Without these the page
-  // asks for a family the browser has never heard of and falls back silently.
   const webfonts = themeWebfonts(theme);
   const fontFaceCss = themeFontFaceCss(theme);
   const layout = resolveLayout(wall?.layout);
@@ -359,8 +330,6 @@ export function WallPublicPageContent({ wall, events, profile }) {
     [scoped, type, day, query],
   );
 
-  // A day picked in one status doesn't exist in the other, and a type chip can
-  // vanish with it — drop both rather than show an empty list with no cause.
   const changeStatus = (next) => {
     setStatus(next);
     setDay("");
@@ -417,8 +386,6 @@ export function WallPublicPageContent({ wall, events, profile }) {
           <WallHero wall={wall} profile={profile} banner={banner} accent={accent} />
         </div>
 
-        {/* The agenda sits on its own band so the identity above it reads as a
-            header rather than as the first item in the list. */}
         <div className="border-t border-border bg-surface-subtle/25">
           <div
             className="mx-auto px-4 py-10 sm:px-6 lg:px-8"

@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { LayoutTemplate } from "lucide-react";
+import { toast } from "sonner";
+import { Copy, LayoutTemplate } from "lucide-react";
 
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
 import { Input } from "@/components/ui/input";
@@ -27,8 +28,6 @@ import {
   defaultTemplateConfig,
 } from "./constants";
 
-// Campaign assets data adapter (module = 'template'). Module-level constant so
-// RecordsScreen's mount effect has a stable reference.
 const TEMPLATE_DATA = {
   list: listAssets,
   create: createAsset,
@@ -39,6 +38,15 @@ const TEMPLATE_DATA = {
 const KINDS = [
   { value: "template", label: "Template", defaultConfig: defaultTemplateConfig },
 ];
+
+function copyTag(tag) {
+  try {
+    navigator.clipboard?.writeText(tag);
+    toast.success(`Copied ${tag}`);
+  } catch {
+    toast.error("Couldn't copy to clipboard.");
+  }
+}
 
 function summarize(r) {
   const c = r.config || {};
@@ -63,6 +71,7 @@ function TemplateEditForm({ config, setConfig }) {
                 value={config.subject || ""}
                 onChange={(e) => set({ subject: e.target.value })}
                 placeholder="e.g. You're invited to {{event_name}}"
+                className="bg-surface-card"
               />
             </Field>
             <Field label="Category">
@@ -70,7 +79,7 @@ function TemplateEditForm({ config, setConfig }) {
                 value={config.category || "general"}
                 onValueChange={(v) => set({ category: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-surface-card">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -88,6 +97,7 @@ function TemplateEditForm({ config, setConfig }) {
               value={config.previewText || ""}
               onChange={(e) => set({ previewText: e.target.value })}
               placeholder="Optional preheader"
+              className="bg-surface-card"
             />
           </Field>
           <Field label="Body">
@@ -96,6 +106,7 @@ function TemplateEditForm({ config, setConfig }) {
               value={config.body || ""}
               onChange={(e) => set({ body: e.target.value })}
               placeholder="Write your reusable email content…"
+              className="bg-surface-card"
             />
           </Field>
         </div>
@@ -105,15 +116,20 @@ function TemplateEditForm({ config, setConfig }) {
         title="Merge tags"
         description="Drop these into the subject or body — they're replaced per recipient at send time."
       >
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           {MERGE_TAGS.map((m) => (
-            <span
+            <button
               key={m.tag}
-              className="rounded-md border border-border bg-surface-card px-2 py-1 text-xs text-text-secondary"
-              title={m.label}
+              type="button"
+              onClick={() => copyTag(m.tag)}
+              className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-card px-3 py-2 text-left transition-colors hover:bg-surface-hover"
             >
-              <code>{m.tag}</code>
-            </span>
+              <div className="min-w-0">
+                <code className="text-sm text-foreground">{m.tag}</code>
+                <p className="text-xs text-text-secondary">{m.label}</p>
+              </div>
+              <Copy className="h-4 w-4 shrink-0 text-text-tertiary transition-colors group-hover:text-muted-foreground" />
+            </button>
           ))}
         </div>
       </SectionCard>

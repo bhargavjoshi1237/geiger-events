@@ -1,16 +1,4 @@
-// Addon manifest contract.
-//
-// A manifest is METADATA ONLY — it declares what an addon contributes (nav,
-// screens, permissions, a settings panel, default config) and never imports a
-// screen component directly. Screens travel as `() => import(...)` thunks so a
-// project that has the addon turned off pays nothing for its code.
-//
-// defineAddon() normalises and validates one manifest at module load, then
-// freezes it. A malformed manifest throws here rather than half-rendering later.
 
-// Accent colours are semantic token KEYS, never hex — see crafting.md. Each maps
-// to tailwind utilities used at /10 background + /20 border, matching how status
-// badges are rendered across the app.
 export const ADDON_ACCENTS = {
   violet: { text: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20" },
   blue: { text: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
@@ -33,9 +21,6 @@ function fail(id, message) {
   throw new Error(`[addons] ${id ? `"${id}": ` : ""}${message}`);
 }
 
-// Normalise one screen declaration. `key` is stable and slug-safe; `title` is
-// the display label that also routes (matching how core screens work). The
-// derived `id` (<addonId>.<key>) is what survives a title rename.
 function normalizeScreen(addonId, screen, index) {
   if (!screen || typeof screen !== "object") {
     fail(addonId, `screens[${index}] must be an object`);
@@ -85,9 +70,6 @@ export function defineAddon(input) {
   );
   if (duplicateKey) fail(id, `duplicate screen key "${duplicateKey.key}"`);
 
-  // Nav is optional: an addon can contribute screens reachable only from another
-  // addon's UI. When present, a multi-screen addon defaults to a collapsible
-  // section listing its screens.
   let nav = null;
   if (input.nav) {
     const { title, icon, insertAfter, subItems } = input.nav;

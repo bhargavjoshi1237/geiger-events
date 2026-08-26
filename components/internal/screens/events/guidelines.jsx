@@ -13,11 +13,6 @@ import { Button } from "@/components/ui/button";
 import { GuidelineListEditor } from "@/components/internal/shared/guideline_editor";
 import { useEventConfig } from "@/lib/events/use-event-config";
 
-// Event-level dietary & accessibility surface: guidelines shown on the public
-// page (merged with the venue's) and the per-event opt-in for post-purchase
-// requests. Guidelines persist as `guidelines` (array) and the request flag as
-// `dietaryRequests.enabled` — two independent metadata keys so neither clobbers
-// the other.
 export function GuidelinesSection({ event, headerItem }) {
   const [items, setItems, saveItems, saving] = useEventConfig(
     event,

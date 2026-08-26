@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AudioLines, FileText, Loader2, Plus, Video, X } from "lucide-react";
+import { AudioLines, FileText, Loader2, Plus, Trash2, Video, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -41,22 +41,13 @@ import {
   resolveJobOptions,
 } from "./caption_settings";
 
-// Captions & Transcription — run Whisper transcription over the recordings in the
-// library. The create dialog picks a recording + model and starts a conversion
-// job; the list shows each job, pending ones spinning until the (simulated)
-// transcription completes, and every job can be cleared individually. The
-// provider/model catalogue comes from the shared Transcription settings.
-
 const JOB_MODULE = "caption";
 const RECORDING_MODULE = "recording";
-// How long the simulated transcription runs before a job flips to Ready.
 const PROCESS_MS = 4500;
 
 const languageLabel = (code) =>
   LANGUAGES.find((l) => l.value === code)?.label || "Auto-detect";
 
-// A believable word count derived from the recording's duration ("42:15") so the
-// finished job reads like a real transcript rather than a random number.
 function estimateWords(duration) {
   const parts = String(duration || "").split(":").map(Number);
   const minutes = parts.length === 2 && !parts.some(Number.isNaN)
@@ -70,14 +61,11 @@ const STATUS_FILTER_OPTIONS = [
   ...Object.keys(CAPTION_STATUS_MAP).map((k) => ({ value: k, label: k })),
 ];
 
-// --- Create dialog -----------------------------------------------------------
-
 function NewJobDialog({ open, onOpenChange, recordings, jobOptions, onStart }) {
   const [recordingId, setRecordingId] = useState("");
   const [model, setModel] = useState(jobOptions.defaultModel);
   const [language, setLanguage] = useState(jobOptions.defaultLanguage);
 
-  // Re-seed defaults from settings whenever the dialog opens.
   const reset = () => {
     setRecordingId("");
     setModel(jobOptions.defaultModel);
@@ -116,7 +104,13 @@ function NewJobDialog({ open, onOpenChange, recordings, jobOptions, onStart }) {
           </div>
         </DialogHeader>
 
-        <div className="grid gap-4 p-5">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+        >
+          <div className="grid gap-4 p-5">
           <Field label="Recording" hint="Captions are generated from a recording in your library.">
             {hasRecordings ? (
               <Select value={recordingId} onValueChange={setRecordingId}>
@@ -169,32 +163,30 @@ function NewJobDialog({ open, onOpenChange, recordings, jobOptions, onStart }) {
               </Select>
             </Field>
           </div>
-        </div>
+          </div>
 
-        <DialogFooter className="border-t border-border bg-surface-subtle/40 px-5 py-4">
-          <Button
-            type="button"
-            variant="ghost"
-            className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => close(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={!hasRecordings}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={submit}
-          >
-            <AudioLines className="h-4 w-4" /> Start conversion
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="border-t border-border bg-surface-subtle/40 px-5 py-4">
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={() => close(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!hasRecordings}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <AudioLines className="h-4 w-4" /> Start conversion
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
 }
-
-// --- Screen ------------------------------------------------------------------
 
 export function CaptionsTranscriptionScreen() {
   const { projectId } = useProject();
@@ -205,10 +197,10 @@ export function CaptionsTranscriptionScreen() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [clearTarget, setClearTarget] = useState(null);
   const userIdRef = useRef(null);
   const timersRef = useRef({});
 
-  // Persist a status/output change for a job and reflect it locally.
   const patchJob = (id, patch) => {
     setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, ...patch, config: { ...j.config, ...(patch.config || {}) } } : j)));
     conferenceApi.update(id, patch).then((ok) => {
@@ -216,8 +208,6 @@ export function CaptionsTranscriptionScreen() {
     });
   };
 
-  // Simulated transcription: after PROCESS_MS a pending job completes with a
-  // transcript. Kept in a ref so clearing a job can cancel its timer.
   const runJob = (job) => {
     if (timersRef.current[job.id]) return;
     timersRef.current[job.id] = setTimeout(() => {
@@ -248,7 +238,6 @@ export function CaptionsTranscriptionScreen() {
       setRecordings(recRows ?? []);
       setJobOptions(resolveJobOptions(settingsRows?.[0]?.config));
       setLoading(false);
-      // Resume any jobs left mid-conversion so their loading state resolves.
       loaded.filter((j) => j.status === "Processing").forEach(runJob);
     });
     return () => {
@@ -409,7 +398,7 @@ export function CaptionsTranscriptionScreen() {
             size="icon-sm"
             aria-label="Clear job"
             className="text-muted-foreground hover:bg-red-500/10 hover:text-red-300"
-            onClick={() => handleClear(j)}
+            onClick={() => setClearTarget(j)}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -507,6 +496,38 @@ export function CaptionsTranscriptionScreen() {
         jobOptions={jobOptions}
         onStart={handleStart}
       />
+
+      <Dialog
+        open={!!clearTarget}
+        onOpenChange={(o) => !o && setClearTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clear caption job</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to clear{" "}
+              <span className="font-medium text-foreground">
+                {clearTarget?.name}
+              </span>
+              ? This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setClearTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                handleClear(clearTarget);
+                setClearTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Clear job
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

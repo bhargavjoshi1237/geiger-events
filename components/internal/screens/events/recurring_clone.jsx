@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { CalendarClock, Check } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { CalendarClock, Check, Loader2 } from "lucide-react";
 
 import {
   DataTable,
@@ -22,8 +22,6 @@ import {
 import { EVENT_STATUS_MAP, formatDate } from "./sample_data";
 import { useEventConfig } from "@/lib/events/use-event-config";
 
-// --- Recurring Events --------------------------------------------------------
-
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const FREQ_LABEL = {
@@ -31,6 +29,54 @@ const FREQ_LABEL = {
   weekly: "week",
   monthly: "month",
 };
+
+const toISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+
+function nextOccurrences({ freq, interval, days, count }) {
+  const total = Math.min(Number(count) || 0, 6);
+  if (total <= 0) return [];
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  if (freq === "daily") {
+    const out = [];
+    for (let i = 1; i <= total; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i * (Number(interval) || 1));
+      out.push(toISO(d));
+    }
+    return out;
+  }
+
+  if (freq === "monthly") {
+    const out = [];
+    for (let i = 1; i <= total; i++) {
+      const d = new Date(start);
+      d.setMonth(start.getMonth() + i * (Number(interval) || 1));
+      out.push(toISO(d));
+    }
+    return out;
+  }
+
+  const monday = new Date(start);
+  monday.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const wantDays = (
+    days.length ? days.map((d) => DAYS.indexOf(d)) : [(start.getDay() + 6) % 7]
+  ).sort((a, b) => a - b);
+  const out = [];
+  for (let w = 0; out.length < total && w < 104; w++) {
+    for (const di of wantDays) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + w * 7 * (Number(interval) || 1) + di);
+      if (d > start) out.push(toISO(d));
+      if (out.length >= total) break;
+    }
+  }
+  return out;
+}
 
 export function RecurringEventsSection({ event }) {
   const [rule, setRule, saveRule, saving] = useEventConfig(event, "recurring", {
@@ -40,6 +86,7 @@ export function RecurringEventsSection({ event }) {
     ends: "after",
     count: 8,
   });
+  const [previewSeed, setPreviewSeed] = useState(0);
   const { freq, interval, days, ends, count } = rule;
   const setField = (key) => (value) => setRule({ ...rule, [key]: value });
   const setFreq = setField("freq");
@@ -57,12 +104,25 @@ export function RecurringEventsSection({ event }) {
     freq === "weekly" && days.length ? ` on ${days.join(", ")}` : ""
   }${ends === "after" ? `, ${count} times` : ends === "on" ? ", until a set date" : ", with no end"}`;
 
-  // Build a few illustrative upcoming occurrences.
-  const occurrences = Array.from({ length: Math.min(count, 6) }, (_, i) => ({
-    id: i,
-    date: `2026-07-${String(7 + i * 7).padStart(2, "0")}`,
-    status: i === 0 ? "On sale" : "Scheduled",
-  }));
+  const occurrences = useMemo(
+    () =>
+      nextOccurrences({
+        freq,
+        interval,
+        days,
+        count,
+      }).map((date, i) => ({
+        id: i,
+        date,
+        status: i === 0 ? "On sale" : "Scheduled",
+      })),
+    [freq, interval, days, count, previewSeed],
+  );
+
+  const save = () => {
+    saveRule(rule, { successMsg: "Recurrence rule saved." });
+    setPreviewSeed((n) => n + 1);
+  };
 
   const occColumns = [
     {
@@ -125,7 +185,7 @@ export function RecurringEventsSection({ event }) {
                         className={cn(
                           "h-9 w-12 rounded-md border text-sm font-medium transition-colors",
                           active
-                            ? "border-white bg-white text-[#161616]"
+                            ? "border-primary bg-primary/15 text-foreground"
                             : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                         )}
                       >
@@ -144,41 +204,42 @@ export function RecurringEventsSection({ event }) {
                   { value: "on", label: "On a specific date" },
                   { value: "after", label: "After a number of occurrences" },
                 ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setEnds(opt.value)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
-                      ends === opt.value
-                        ? "border-border-strong bg-surface-card text-foreground"
-                        : "border-border bg-transparent text-muted-foreground hover:bg-surface-card",
-                    )}
-                  >
-                    <span
+                  <div key={opt.value} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEnds(opt.value)}
                       className={cn(
-                        "flex h-4 w-4 items-center justify-center rounded-full border",
+                        "flex flex-1 items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                         ends === opt.value
-                          ? "border-white bg-white"
-                          : "border-[#444]",
+                          ? "border-border-strong bg-surface-card text-foreground"
+                          : "border-border bg-transparent text-muted-foreground hover:bg-surface-card",
                       )}
                     >
-                      {ends === opt.value ? (
-                        <Check className="h-3 w-3 text-[#161616]" />
-                      ) : null}
-                    </span>
-                    {opt.label}
+                      <span
+                        className={cn(
+                          "flex h-4 w-4 items-center justify-center rounded-full border",
+                          ends === opt.value
+                            ? "border-primary bg-primary/15"
+                            : "border-border",
+                        )}
+                      >
+                        {ends === opt.value ? (
+                          <Check className="h-3 w-3 text-foreground" />
+                        ) : null}
+                      </span>
+                      {opt.label}
+                    </button>
                     {opt.value === "after" && ends === "after" ? (
                       <Input
                         type="number"
                         min={1}
+                        aria-label="Number of occurrences"
                         value={count}
-                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => setCount(Number(e.target.value) || 1)}
-                        className="ml-auto !h-8 w-20"
+                        className="!h-10 w-20 shrink-0"
                       />
                     ) : null}
-                  </button>
+                  </div>
                 ))}
               </div>
             </Field>
@@ -194,11 +255,10 @@ export function RecurringEventsSection({ event }) {
             <Button
               className="mt-4 w-full bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={saving}
-              onClick={() =>
-                saveRule(rule, { successMsg: "Recurrence rule saved." })
-              }
+              onClick={save}
             >
-              Generate occurrences
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {saving ? "Saving…" : "Save rule"}
             </Button>
           </SectionCard>
 

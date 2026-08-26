@@ -22,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import {
@@ -33,10 +41,6 @@ import {
   optionSummary,
 } from "@/lib/memberships/entitlements";
 import { formatDate, MEMBER_STATUS_MAP } from "../tickets/constants";
-
-// The per-member editor: content left, section nav right, matching the event
-// editor and the plan editor. Profile and Membership are editable; Access is a
-// read-only projection of the member's plan entitlements onto their join date.
 
 const STATUSES = ["Active", "Expired", "Cancelled"];
 
@@ -125,7 +129,6 @@ function MembershipSection({ draft, set, plans }) {
   );
 }
 
-// What this member's plan actually unlocks, resolved against their join date.
 function AccessSection({ draft, plans }) {
   const plan = plans.find((p) => p.id === draft.membershipId) || null;
   if (!plan) {
@@ -206,7 +209,7 @@ export function MemberDetail({ member, plans, onBack, onSave, onDelete }) {
   const { section, setSection } = useWorkspaceUrl();
   const [draft, setDraft] = useState(member);
   const [saving, setSaving] = useState(false);
-  // Re-seed when a different member is opened (render-phase reset).
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [seedId, setSeedId] = useState(member?.id);
   if (member && member.id !== seedId) {
     setSeedId(member.id);
@@ -217,7 +220,15 @@ export function MemberDetail({ member, plans, onBack, onSave, onDelete }) {
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
 
+  const dirty =
+    (draft.name || "") !== (member.name || "") ||
+    (draft.email || "") !== (member.email || "") ||
+    draft.status !== member.status ||
+    (draft.membershipId || "") !== (member.membershipId || "") ||
+    (draft.expiresAt || null) !== (member.expiresAt || null);
+
   const save = async () => {
+    if (!dirty) return;
     if (!draft.name.trim() && !draft.email.trim()) {
       toast.error("Add a name or email.");
       return;
@@ -256,17 +267,17 @@ export function MemberDetail({ member, plans, onBack, onSave, onDelete }) {
           <Button
             variant="outline"
             className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
-            onClick={() => onDelete(member)}
+            onClick={() => setRemoveOpen(true)}
           >
             <Trash2 className="h-4 w-4" /> Remove
           </Button>
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={saving}
+            disabled={saving || !dirty}
             onClick={save}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {saving ? "Saving…" : "Save Changes"}
+            {saving ? "Saving…" : "Save changes"}
           </Button>
         </div>
       </div>
@@ -310,6 +321,35 @@ export function MemberDetail({ member, plans, onBack, onSave, onDelete }) {
           </nav>
         </aside>
       </div>
+
+      <Dialog open={removeOpen} onOpenChange={setRemoveOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove member</DialogTitle>
+            <DialogDescription>
+              Remove{" "}
+              <span className="font-medium text-foreground">
+                {member.name || member.email || "this member"}
+              </span>{" "}
+              from your members list? This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemoveOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                setRemoveOpen(false);
+                onDelete(member);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

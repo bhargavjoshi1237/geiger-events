@@ -16,19 +16,11 @@ function readSession(eventId) {
     const role = sessionStorage.getItem(roleKey(eventId));
     if (code) return { code, role: role ? JSON.parse(role) : null };
   } catch {
-    // ignore storage failures
   }
   return null;
 }
 
-// Gates a staff route behind a per-event access code. On success it stores the
-// validated code + role in sessionStorage and renders children(code, role). A
-// `?code=` query param auto-attempts unlock so a shared link opens straight in.
-// `require` (e.g. "canSell") fails validation unless the role grants it.
-// `codeType` ("staff" | "kiosk") scopes which code space this route accepts —
-// staff and kiosk codes are separate, so a leaked kiosk code can't open /door.
 export function AccessGate({ eventId, title, subtitle, require: requiredPerm, codeType, children }) {
-  const [unlocked, setUnlocked] = useState(null); // { code, role }
   const [code, setCode] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
@@ -56,20 +48,17 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, co
       sessionStorage.setItem(codeKey(eventId), value);
       sessionStorage.setItem(roleKey(eventId), JSON.stringify(role));
     } catch {
-      // ignore storage failures
     }
     setUnlocked({ code: value, role });
     return true;
   };
 
-  // Boot: reuse a stored session, else try the URL ?code=.
   useEffect(() => {
     if (!eventId) return;
     let alive = true;
     const boot = async () => {
       const stored = readSession(eventId);
       if (stored?.code) {
-        // Re-validate silently so a revoked code doesn't linger.
         const role = await validateCheckinCode(eventId, stored.code, codeType);
         if (!alive) return;
         if (role && (!requiredPerm || role.permissions?.[requiredPerm])) {
@@ -100,7 +89,6 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, co
       sessionStorage.removeItem(codeKey(eventId));
       sessionStorage.removeItem(roleKey(eventId));
     } catch {
-      // ignore
     }
     setUnlocked(null);
     setCode("");

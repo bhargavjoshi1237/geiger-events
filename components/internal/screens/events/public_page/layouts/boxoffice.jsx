@@ -56,10 +56,6 @@ function TierCard({ ticket, index, ctx }) {
   );
 }
 
-// Box office — the tiers are laid out side by side to be compared at a glance,
-// the way a venue's ticket window or a pricing page presents them, rather than
-// stacked in a rail. The full panel stays underneath so access codes and the
-// seating plan still have a home.
 export function BoxOfficeLayout({ ctx }) {
   const {
     event,

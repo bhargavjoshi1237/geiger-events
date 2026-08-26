@@ -25,12 +25,23 @@ import { QrScanner } from "@/components/checkin_routes/qr_scanner";
 
 const currency = (n) => `$${Number(n || 0).toLocaleString("en-US")}`;
 
-// Shared full-screen confirmation, auto-returns to idle.
+const AMBER_ALERT =
+  "rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200";
+
+const DONE_MS = 4000;
+
 function Done({ title, message, onDone }) {
+  const [drain, setDrain] = useState(false);
+
   useEffect(() => {
-    const t = setTimeout(onDone, 4000);
-    return () => clearTimeout(t);
+    const raf = requestAnimationFrame(() => setDrain(true));
+    const t = setTimeout(onDone, DONE_MS);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
   }, [onDone]);
+
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-5 bg-background px-6 text-center text-foreground">
       <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15 text-emerald-300">
@@ -43,6 +54,17 @@ function Done({ title, message, onDone }) {
       <Button className="h-12 bg-primary px-8 text-base text-primary-foreground hover:bg-primary/90" onClick={onDone}>
         Done
       </Button>
+      <div
+        aria-hidden="true"
+        className="h-1 w-48 overflow-hidden rounded-full bg-surface-active"
+      >
+        <div
+          className={cn(
+            "h-full bg-primary transition-[width] ease-linear",
+            drain ? `w-0 duration-[4000ms]` : "w-full duration-0",
+          )}
+        />
+      </div>
     </div>
   );
 }
@@ -93,7 +115,7 @@ function CheckinAction({ eventId, code, role, onDone, onBack }) {
       <BackBtn onBack={onBack} />
       <h2 className="text-xl font-semibold text-foreground">Check yourself in</h2>
       <QrScanner onDecode={onScan} paused={paused} />
-      {msg ? <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">{msg}</p> : null}
+      {msg ? <p className={AMBER_ALERT}>{msg}</p> : null}
       <form onSubmit={(e) => { e.preventDefault(); run(); }} className="flex gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
@@ -145,7 +167,7 @@ function RegisterAction({ eventId, code, role, onDone, onBack }) {
       <h2 className="text-xl font-semibold text-foreground">Register on the spot</h2>
       <Field label="Full name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="h-11" autoFocus /></Field>
       <Field label="Email" hint="For your ticket & updates (optional)."><Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@email.com" className="h-11" /></Field>
-      {err ? <p className="text-sm text-red-400">{err}</p> : null}
+      {err ? <p className={AMBER_ALERT}>{err}</p> : null}
       <Button className="h-12 w-full bg-primary text-base text-primary-foreground hover:bg-primary/90" disabled={busy} onClick={submit}>
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {busy ? "Registering…" : "Register & check in"}
@@ -187,7 +209,7 @@ function BuyAction({ eventId, code, role, event, onDone, onBack }) {
       <h2 className="text-xl font-semibold text-foreground">Buy a ticket</h2>
       <div className="grid gap-2">
         {tickets.map((t, i) => (
-          <button key={t.id || t.name} type="button" onClick={() => setIdx(i)}
+          <button key={t.id || t.name} type="button" onClick={() => setIdx(i)} aria-pressed={i === idx}
             className={cn("flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors", i === idx ? "border-primary bg-primary/10" : "border-border bg-surface-card")}>
             <span className="text-sm font-medium text-foreground">{t.name}</span>
             <span className="text-sm tabular-nums text-text-secondary">{t.price ? currency(t.price) : "Free"}</span>
@@ -196,7 +218,7 @@ function BuyAction({ eventId, code, role, event, onDone, onBack }) {
       </div>
       <Field label="Full name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="h-11" /></Field>
       <Field label="Email"><Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@email.com" className="h-11" /></Field>
-      {err ? <p className="text-sm text-red-400">{err}</p> : null}
+      {err ? <p className={AMBER_ALERT}>{err}</p> : null}
       <Button className="h-12 w-full bg-primary text-base text-primary-foreground hover:bg-primary/90" disabled={busy} onClick={submit}>
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {busy ? "Processing…" : ticket.price ? `Buy · ${currency(ticket.price)}` : "Get ticket"}
@@ -214,7 +236,7 @@ function BackBtn({ onBack }) {
 }
 
 function Kiosk({ eventId, code, role, exit, event }) {
-  const [view, setView] = useState("idle"); // idle | menu | checkin | register | buy | done
+  const [view, setView] = useState("idle");
   const [done, setDone] = useState(null);
 
   const finish = (title, message) => {

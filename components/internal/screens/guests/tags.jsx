@@ -131,7 +131,6 @@ export function TagsScreen() {
     return list;
   }, [tags, search, sort]);
 
-  // Contacts carrying the tag currently open in the side sheet.
   const tagContacts = useMemo(() => {
     if (!openTag) return [];
     const name = openTag.name.toLowerCase();
@@ -227,7 +226,6 @@ export function TagsScreen() {
       });
       if (res === null) ok = false;
     } else {
-      // No catalog row yet — create one so color/description persist.
       const res = await createTag({
         id: crypto.randomUUID(),
         projectId,
@@ -276,6 +274,11 @@ export function TagsScreen() {
     if (!ok) toast.error("Couldn't delete on the server.");
   };
 
+  const handleCreateSubmit = (e) => {
+    e.preventDefault();
+    handleCreate();
+  };
+
   const columns = [
     {
       key: "tag",
@@ -319,9 +322,9 @@ export function TagsScreen() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                size="icon"
                 variant="ghost"
-                className="h-8 w-8 text-text-secondary hover:text-foreground"
+                size="icon-sm"
+                className="text-text-secondary hover:text-foreground"
                 aria-label="Tag actions"
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -448,9 +451,9 @@ export function TagsScreen() {
         />
       )}
 
-      {/* Create */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleCreateSubmit}>
           <DialogHeader>
             <DialogTitle>New tag</DialogTitle>
             <DialogDescription>
@@ -459,22 +462,23 @@ export function TagsScreen() {
           </DialogHeader>
           <TagFields draft={draft} onChange={set} />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setCreateOpen(false)}>
+            <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
             <Button
+              type="submit"
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleCreate}
             >
               Create tag
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* Edit */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="sm:max-w-md">
+          <form onSubmit={(e) => { e.preventDefault(); handleEditSave(); }}>
           <DialogHeader>
             <DialogTitle>Edit tag</DialogTitle>
             <DialogDescription>
@@ -490,22 +494,23 @@ export function TagsScreen() {
             />
           ) : null}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditing(null)}>
+            <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
               Cancel
             </Button>
             <Button
+              type="submit"
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleEditSave}
             >
               Save tag
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* Merge */}
       <Dialog open={!!merging} onOpenChange={(o) => !o && setMerging(null)}>
         <DialogContent className="sm:max-w-md">
+          <form onSubmit={(e) => { e.preventDefault(); handleMerge(); }}>
           <DialogHeader>
             <DialogTitle>Merge tag</DialogTitle>
             <DialogDescription>
@@ -533,20 +538,20 @@ export function TagsScreen() {
             </Select>
           </Field>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setMerging(null)}>
+            <Button type="button" variant="ghost" onClick={() => setMerging(null)}>
               Cancel
             </Button>
             <Button
+              type="submit"
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleMerge}
             >
               <Merge className="h-4 w-4" /> Merge
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete */}
       <Dialog
         open={!!deleteTarget}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
@@ -580,7 +585,6 @@ export function TagsScreen() {
         </DialogContent>
       </Dialog>
 
-      {/* Tag detail sheet — opens from a row click. */}
       <Sheet open={!!openTag} onOpenChange={(o) => !o && setOpenTag(null)}>
         <SheetContent className="w-full gap-0 p-0 sm:max-w-md">
           {openTag ? (

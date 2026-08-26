@@ -472,10 +472,30 @@ export const WORKFLOW_TEMPLATES = [
 ];
 
 export const RUN_STATUS_MAP = {
-  Success: { label: "Success", variant: "success", dotClass: "bg-emerald-400" },
-  Failed: { label: "Failed", variant: "danger", dotClass: "bg-red-400" },
-  Running: { label: "Running", variant: "info", dotClass: "bg-sky-400" },
-  Skipped: { label: "Skipped", variant: "neutral", dotClass: "bg-[#737373]" },
+  Success: {
+    label: "Success",
+    variant: "success",
+    dotClass: "bg-emerald-400",
+    iconClass: "text-emerald-400",
+  },
+  Failed: {
+    label: "Failed",
+    variant: "danger",
+    dotClass: "bg-red-400",
+    iconClass: "text-red-400",
+  },
+  Running: {
+    label: "Running",
+    variant: "info",
+    dotClass: "bg-sky-400",
+    iconClass: "text-sky-400",
+  },
+  Skipped: {
+    label: "Skipped",
+    variant: "neutral",
+    dotClass: "bg-[#737373]",
+    iconClass: "text-[#737373]",
+  },
 };
 
 export const RUN_STATUS_FILTER_OPTIONS = [

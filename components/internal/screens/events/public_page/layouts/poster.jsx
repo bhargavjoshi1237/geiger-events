@@ -3,10 +3,6 @@
 import { CoverImage } from "../hero";
 import { Shell, MetaRows, BlockSlot } from "./shared";
 
-// Poster — the type is the hero. An oversized title runs edge to edge, the
-// facts are set as a data table instead of an icon row, and every section is
-// labelled in the margin like a printed programme. Needs no cover image at all,
-// which is what makes it the fallback for events that have no artwork yet.
 export function PosterLayout({ ctx }) {
   const {
     event,
@@ -52,9 +48,6 @@ export function PosterLayout({ ctx }) {
           <div className="mb-10">{parts.hostsBlock}</div>
           {disclaimerSlot("hero", "mb-10")}
 
-          {/* Sections are numbered in the margin like a printed programme.
-              Their own headings already name them — repeating the name here
-              would just set it twice. */}
           <div className="divide-y divide-border border-t border-border">
             {blocks.map((b, i) => (
               <BlockSlot

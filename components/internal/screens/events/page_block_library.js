@@ -1,11 +1,3 @@
-// The page-design catalog: block types, their editable field schemas, the
-// option lists those fields offer, and the factories that build a default page.
-//
-// This is data, not UI. It lives apart from page_design.jsx so both the legacy
-// section editor and the page builder can read it without importing each other
-// — page_design.jsx renders the builder, and the builder needs this catalog.
-// page_design.jsx re-exports everything here, so existing imports still resolve.
-
 import {
   Image as ImageIcon,
   FileText,
@@ -58,8 +50,6 @@ export const FONTS = [
   { key: "mono", label: "Mono", className: "font-mono" },
 ];
 
-// --- Block field option catalogs ---------------------------------------------
-
 export const COLUMN_RATIO_OPTIONS = [
   { key: "1:1", label: "Even" },
   { key: "1:2", label: "Narrow / wide" },
@@ -87,14 +77,6 @@ export const SPACER_SIZE_OPTIONS = [
   { key: "lg", label: "Large" },
 ];
 
-// Gallery display settings moved to lib/events/gallery.js — they're edited
-// beside the images in Content & media, not here, and they live in the event's
-// own metadata bag rather than in the page design.
-
-// --- Per-block layout --------------------------------------------------------
-// Applied by BlockShell in page_blocks.jsx. Every default is the "no wrapper"
-// value, so a block without layout renders exactly as it always has.
-
 export const BLOCK_WIDTH_OPTIONS = [
   { key: "full", label: "Full" },
   { key: "wide", label: "Wide" },
@@ -119,9 +101,6 @@ export const DEFAULT_BLOCK_LAYOUT = {
   background: "none",
 };
 
-// Every block type the page understands. `singleton` blocks (the smart event
-// sections) can appear only once; content blocks can be added repeatedly and
-// carry editable `fields`.
 export const BLOCK_LIBRARY = [
   { type: "about", label: "About", icon: FileText, category: "event", singleton: true },
   { type: "expect", label: "What to expect", icon: Sparkles, category: "event", singleton: true },
@@ -191,7 +170,6 @@ export const BLOCK_LIBRARY = [
     label: "Accordion",
     icon: ListCollapse,
     category: "content",
-    // Starts with no rows — a seeded example would publish verbatim.
     defaultProps: { title: "Pricing & policies", items: [] },
     fields: [
       { key: "title", label: "Section title", type: "text", bindable: true, hint: "Leave empty for no heading." },
@@ -289,10 +267,6 @@ export const DEFAULT_BLOCK_TYPES = [
   "faq",
 ];
 
-// Sidebar-only singletons. These are rendered by event_public_page.jsx (they
-// depend on checkout state), so they carry no renderer here — just identity for
-// the show/hide/reorder list. Content blocks from BLOCK_LIBRARY can be added
-// alongside them.
 export const SIDEBAR_BLOCK_LIBRARY = [
   { type: "register", label: "Date & registration", icon: Ticket, category: "event", singleton: true, locked: true },
   { type: "goodtoknow", label: "Good To Know", icon: Info, category: "event", singleton: true },
@@ -307,7 +281,6 @@ export const DEFAULT_SIDEBAR_TYPES = [
   "guidelines",
 ];
 
-// Content blocks that make sense in a 380px column — the rest are main-column only.
 export const SIDEBAR_CONTENT_TYPES = [
   "heading",
   "text",
@@ -327,7 +300,6 @@ export function getBlockMeta(type) {
   );
 }
 
-/** The blocks addable to one surface: the main column, or the sidebar. */
 export function addableBlocks(surface, existingTypes) {
   const library =
     surface === "sidebar"
@@ -355,8 +327,6 @@ export function createBlock(type) {
   };
 }
 
-/** The sidebar's out-of-the-box block list — also the fallback for pages saved
- *  before the sidebar became block-driven. */
 export function defaultSidebarBlocks() {
   return DEFAULT_SIDEBAR_TYPES.map(createBlock);
 }

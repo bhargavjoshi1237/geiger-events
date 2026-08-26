@@ -14,8 +14,6 @@ import { PhotoGallery } from "../page_gallery";
 export function CoverImage({ event }) {
   if (!event.coverUrl) return null;
   if (coverKind(event.coverUrl) === "video") {
-    // A video cover plays muted on its own — the hero has no player chrome for
-    // it, and browsers require mute + playsInline for autoplay anyway.
     return (
       <video
         src={event.coverUrl}
@@ -137,11 +135,6 @@ export function HostsBlock({ event, hosts }) {
       {hosts.map((h, i) => (
         <div key={h.name} className="flex items-center gap-3">
           <Avatar className="h-10 w-10 border border-border">
-            {/* A host avatar is as often a brand mark as a face, and AvatarImage
-                is only `aspect-square size-full` — an <img> with no object-fit
-                stretches, so a wide wordmark arrives visibly squashed. Contain
-                letterboxes it instead; the inset keeps the extremes off the
-                circular mask. Square photos are unaffected. */}
             {h.avatarUrl ? (
               <AvatarImage src={h.avatarUrl} alt="" className="object-contain p-1" />
             ) : null}

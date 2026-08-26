@@ -37,7 +37,6 @@ export default function HomeScreen() {
   const { member } = useSession();
   const { data, plans, counts, refreshing, refreshAll } = usePortalData();
 
-  // Earliest upcoming ticket drives the hero and the "coming up" copy.
   const nextTicket = useMemo(() => {
     const upcoming = (data?.tickets || [])
       .filter((t) => t.eventDate && isUpcoming(t.eventDate))
@@ -196,7 +195,6 @@ function NextEventHero({ ticket, onOpen }: { ticket: Ticket; onOpen: () => void 
           pointerEvents="none"
           style={StyleSheet.absoluteFill}
         />
-        {/* Kicker chip floats top-left so it reads even over busy artwork. */}
         <View style={styles.heroChip} pointerEvents="none">
           <Text style={styles.heroChipText}>Next up</Text>
         </View>
@@ -255,7 +253,6 @@ function HeroIconButton({
   );
 }
 
-// One stat cell of the 2×2 strip; value may be an animated number or a string.
 function StatCell({ label, value }: { label: string; value: number | string }) {
   return (
     <View style={styles.statCell}>
@@ -266,7 +263,6 @@ function StatCell({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-// Counts up to the target on mount with a 420ms withTiming counter.
 function AnimatedValue({ target }: { target: number }) {
   const reduced = useReducedMotion();
   const [shown, setShown] = useState(reduced ? target : 0);
@@ -397,7 +393,6 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.6,
   },
-  // A single quiet card replaces four bordered tiles; hairline rules divide it.
   statsRow: {
     flexDirection: "row",
     alignItems: "stretch",
@@ -473,7 +468,6 @@ const styles = StyleSheet.create({
   },
   ordersCard: {
     padding: 0,
-    // Rows are full-bleed, so inset their content from the card's left/right edges.
     paddingHorizontal: spacing.md,
   },
   orderTrailing: {

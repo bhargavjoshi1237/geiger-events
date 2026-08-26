@@ -18,10 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 import { submitPackageEnquiry } from "@/lib/supabase/package_enquiries";
 
-// The "talk to us first" route. Packages set to "Collect enquiries" have no
-// other way to convert, so a failed submit has to say so rather than clearing
-// the form and looking like it worked.
-
 const EMPTY = {
   firstName: "",
   lastName: "",
@@ -57,7 +53,6 @@ export function PackagesLeadForm({
       toast.error("Please accept the terms before submitting.");
       return;
     }
-    // In the editor's preview nothing should reach the database.
     if (!live) {
       toast.success("Looks right — this is a preview, so nothing was sent.");
       return;

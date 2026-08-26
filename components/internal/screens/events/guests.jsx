@@ -52,14 +52,6 @@ import {
 import { Segmented } from "./theme_controls";
 import { initials } from "./sample_data";
 
-// Featured-guest editor. Each guest — { id, name, role, company, bio, image } —
-// is stored in the event's metadata bag (like schedule/tickets) via
-// useEventConfig, so the list grows without a migration and rehydrates on
-// reload. How they're laid out on the public page is a second bag beside it
-// (`guestsDisplay`, see lib/events/guests.js). The public page renders both in
-// the Guests block (page_blocks.jsx). Photos live in the shared event-media
-// bucket through uploadEventImage.
-
 const EMPTY_GUEST = { name: "", role: "", company: "", bio: "", image: "" };
 
 function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
@@ -67,7 +59,6 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
   const [busy, setBusy] = useState(false);
   const fileInput = useRef(null);
 
-  // Re-seed the draft whenever the dialog opens (render-phase reset).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -137,11 +128,10 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
         />
 
         <div className="grid gap-4">
-          <Field>
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-4">
               {draft.image ? (
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-border">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={draft.image}
                     alt=""
@@ -185,7 +175,7 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
                 </div>
               </div>
             </div>
-          </Field>
+          </div>
           <Field label="Name" htmlFor="guest-name">
             <Input
               id="guest-name"
@@ -244,9 +234,6 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
   );
 }
 
-// How the Guests block lays out on the public page. Every control writes
-// straight through (the section-config convention elsewhere in the editor), so
-// there's no Save button to miss — closing the dialog keeps what you picked.
 function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
   const isGrid = display.layout === "grid";
   return (
@@ -350,7 +337,8 @@ export function GuestsSection({ event, headerItem }) {
   );
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // { index, guest } | null
+  const [editing, setEditing] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const display = resolveGuestDisplay(rawDisplay);
   const setDisplay = (key) => (value) => saveDisplay({ ...display, [key]: value });
@@ -480,7 +468,7 @@ export function GuestsSection({ event, headerItem }) {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => removeGuest(i)}
+                  onClick={() => setDeleteTarget(i)}
                   aria-label="Delete guest"
                   className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                 >
@@ -523,6 +511,38 @@ export function GuestsSection({ event, headerItem }) {
           setEditing(null);
         }}
       />
+
+      <Dialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete guest</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget != null ? guests[deleteTarget]?.name : ""}
+              </span>
+              ? Their photo is removed too. This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                removeGuest(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

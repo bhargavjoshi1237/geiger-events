@@ -59,11 +59,6 @@ import {
 import { ItemThumb } from "./item_image";
 import { formatDateTime, itemLabel, qty } from "./constants";
 
-// The organiser's view of the hand-out ledger: what has physically left the
-// shelf, to whom, by which staff code. Every row here was written by an
-// issue_redeem() call — from the /issue desk or from the manual dialog below,
-// which goes through exactly the same RPC so the rules can't diverge.
-
 const REDEMPTION_STATUS_MAP = {
   issued: { label: "Issued", variant: "success", dotClass: "bg-emerald-400" },
   returned: { label: "Undone", variant: "neutral", dotClass: "bg-zinc-400" },
@@ -82,8 +77,6 @@ const METHOD_LABELS = {
   manual: "Manual",
   walkup: "Walk-up",
 };
-
-// --- Manual issue ------------------------------------------------------------
 
 function ManualIssueDialog({ open, onOpenChange, events, allocations, onIssued }) {
   const [eventId, setEventId] = useState("");
@@ -104,7 +97,6 @@ function ManualIssueDialog({ open, onOpenChange, events, allocations, onIssued }
   const allocation = eventAllocations.find((a) => a.id === allocationId) || null;
   const variants = allocation?.variants || [];
 
-  // Changing the event invalidates everything chosen under it.
   const pickEvent = (id) => {
     setEventId(id);
     setAllocationId("");
@@ -141,8 +133,6 @@ function ManualIssueDialog({ open, onOpenChange, events, allocations, onIssued }
       subjectKind: subject ? subject.subjectKind : "walkup",
       subjectId: subject ? subject.subjectId : null,
       qty: Number(count) || 1,
-      // An organiser issuing by hand is always an explicit act, so it may pass
-      // an already-collected or out-of-window guard — and is logged as such.
       override: true,
       reason: reason.trim(),
       staff: "Organiser",
@@ -317,8 +307,6 @@ function ManualIssueDialog({ open, onOpenChange, events, allocations, onIssued }
   );
 }
 
-// --- Screen ------------------------------------------------------------------
-
 export function IssuingDeskScreen() {
   const { projectId } = useProject();
   const [redemptions, setRedemptions] = useState([]);
@@ -330,6 +318,7 @@ export function IssuingDeskScreen() {
   const [status, setStatus] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
   const [manualOpen, setManualOpen] = useState(false);
+  const [undoTarget, setUndoTarget] = useState(null);
 
   const load = React.useCallback(() => {
     let alive = true;
@@ -356,7 +345,6 @@ export function IssuingDeskScreen() {
   const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const eventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
 
-  // Allocations enriched for the manual dialog: item label + pickable variants.
   const allocationOptions = useMemo(() => {
     const childrenOf = new Map();
     for (const i of items) {
@@ -407,19 +395,21 @@ export function IssuingDeskScreen() {
     ];
   }, [redemptions]);
 
-  const handleUndo = async (row) => {
+  const handleUndo = (row) => {
+    setUndoTarget(null);
     setRedemptions((prev) =>
       prev.map((r) => (r.id === row.id ? { ...r, status: "returned" } : r)),
     );
-    const res = await undoRedemptionAsOrganiser(row.eventId, row.id);
-    if (!res?.ok) {
-      setRedemptions((prev) =>
-        prev.map((r) => (r.id === row.id ? { ...r, status: "issued" } : r)),
-      );
-      toast.error("Couldn't undo that hand-out.");
-      return;
-    }
-    toast.success("Hand-out undone — stock returned.");
+    undoRedemptionAsOrganiser(row.eventId, row.id).then((res) => {
+      if (!res?.ok) {
+        setRedemptions((prev) =>
+          prev.map((r) => (r.id === row.id ? { ...r, status: "issued" } : r)),
+        );
+        toast.error("Couldn't undo that hand-out.");
+        return;
+      }
+      toast.success("Hand-out undone — stock returned.");
+    });
   };
 
   const columns = [
@@ -508,7 +498,7 @@ export function IssuingDeskScreen() {
               <DropdownMenuItem
                 disabled={r.status !== "issued"}
                 className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => handleUndo(r)}
+                onClick={() => setUndoTarget(r)}
               >
                 <Undo2 className="h-4 w-4" /> Undo hand-out
               </DropdownMenuItem>
@@ -603,7 +593,6 @@ export function IssuingDeskScreen() {
         <DataTable columns={columns} data={rows} getRowKey={(r) => r.id} />
       )}
 
-      {/* Mounted only while open so each run starts from a clean draft. */}
       {manualOpen ? (
         <ManualIssueDialog
           open
@@ -613,6 +602,32 @@ export function IssuingDeskScreen() {
           onIssued={load}
         />
       ) : null}
+
+      <Dialog open={!!undoTarget} onOpenChange={(o) => !o && setUndoTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Undo hand-out</DialogTitle>
+            <DialogDescription>
+              Undo the hand-out of{" "}
+              <span className="font-medium text-foreground">{qty(undoTarget?.qty)}</span>{" "}
+              × {itemsById.get(undoTarget?.itemId) ? itemLabel(itemsById.get(undoTarget.itemId)) : "Deleted item"}
+              {undoTarget?.attendeeName ? ` to ${undoTarget.attendeeName}` : ""}? A
+              return movement puts the stock back on the shelf.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setUndoTarget(null)}>
+              Keep it
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => handleUndo(undoTarget)}
+            >
+              <Undo2 className="h-4 w-4" /> Undo hand-out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

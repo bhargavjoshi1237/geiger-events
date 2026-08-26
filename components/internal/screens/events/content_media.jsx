@@ -9,12 +9,8 @@ import {
   UploadCloud,
   Plus,
   Trash2,
-  GripVertical,
-  Bold,
-  Italic,
-  List,
-  Link2,
-  Heading,
+  ArrowUp,
+  ArrowDown,
   Image as ImgIcon,
   Star,
   Loader2,
@@ -85,16 +81,10 @@ import {
 } from "@/lib/events/gallery";
 import { Segmented } from "./theme_controls";
 
-// Add an image by URL, a YouTube link, or a direct video file link. Uploads
-// stay the primary path; this covers media that already lives somewhere else
-// (a CDN, a channel). Auto-detect only recognizes YouTube and a handful of
-// video file extensions, so a plain CDN link with none of those needs a
-// manual Image/Video pick.
 function AddByLinkDialog({ open, onOpenChange, onAdd }) {
   const [url, setUrl] = useState("");
   const [type, setType] = useState("auto");
 
-  // Re-seed whenever the dialog opens (render-phase reset).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -187,8 +177,6 @@ function AddByLinkDialog({ open, onOpenChange, onAdd }) {
   );
 }
 
-// How the gallery lays out on the public page. Every control writes straight
-// through — the section-config convention used elsewhere in the editor.
 function GalleryLayoutDialog({ open, onOpenChange, gallery, onChange }) {
   const isCarousel = gallery.layout === "carousel";
   return (
@@ -287,9 +275,6 @@ function GalleryLayoutDialog({ open, onOpenChange, gallery, onChange }) {
   );
 }
 
-// Per-item display settings: how an image tile is cropped, or how a video
-// plays once its lightbox opens. Writes straight through via `onChange`, the
-// same section-config convention as the rest of the editor.
 function GalleryItemSettingsDialog({ open, onOpenChange, item, onChange }) {
   if (!item) return null;
   const isVideo = item.kind === "video";
@@ -384,15 +369,13 @@ export function CoverMediaSection({ event, onCommit }) {
   const [meResolved, setMeResolved] = useState(false);
   const [coverBusy, setCoverBusy] = useState(false);
   const [galleryBusy, setGalleryBusy] = useState(false);
-  const [compress, setCompress] = useState(true); // Pro placeholder — locked on
+  const [compress, setCompress] = useState(true);
   const [linkOpen, setLinkOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [itemSettingsUrl, setItemSettingsUrl] = useState(null);
   const coverInput = useRef(null);
   const galleryInput = useRef(null);
 
-  // Gallery display settings live in the event's metadata bag beside the
-  // images, not in the page design — they're edited here, where the media is.
   const [rawDisplay, , saveDisplay] = useEventConfig(
     event,
     "galleryDisplay",
@@ -485,8 +468,6 @@ export function CoverMediaSection({ event, onCommit }) {
       toast.error("That link is already in the gallery.");
       return;
     }
-    // Auto-detected entries stay plain strings (the common case); a manual
-    // override needs the object shape to remember the choice.
     const entry = type === "auto" ? url : { url, type };
     commit({ gallery: [...gallery, entry] });
     toast.success(
@@ -500,6 +481,15 @@ export function CoverMediaSection({ event, onCommit }) {
     if (path) removeEventImage(path);
   };
 
+  const [removeTarget, setRemoveTarget] = useState(null);
+
+  const handleRemove = () => {
+    if (!removeTarget) return;
+    if (removeTarget.kind === "cover") removeCover();
+    else removeGalleryImage(removeTarget.url);
+    setRemoveTarget(null);
+  };
+
   const setAsCover = (url) => {
     commit({ coverUrl: url });
     toast.success("Cover updated.");
@@ -509,7 +499,6 @@ export function CoverMediaSection({ event, onCommit }) {
     commit({ gallery: patchGalleryItem(gallery, url, patch) });
   };
 
-  // Read-only view: not the creator (or a seeded event with no owner).
   if (meResolved && !isOwner) {
     return (
       <div className="space-y-6">
@@ -643,8 +632,8 @@ export function CoverMediaSection({ event, onCommit }) {
                 size="sm"
                 variant="outline"
                 disabled={coverBusy}
-                onClick={removeCover}
-                className="border-border bg-black/40 text-white hover:bg-red-500/30"
+                onClick={() => setRemoveTarget({ kind: "cover" })}
+                className="border-border bg-black/40 text-white hover:bg-red-500/10 hover:text-red-300"
               >
                 <Trash2 className="h-4 w-4" /> Remove
               </Button>
@@ -760,7 +749,8 @@ export function CoverMediaSection({ event, onCommit }) {
                     type="button"
                     onClick={() => setAsCover(url)}
                     title="Set as cover"
-                    className="absolute left-2 top-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                    aria-label="Set as cover"
+                    className="absolute left-2 top-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
                   >
                     <Star className="h-3.5 w-3.5" />
                   </button>
@@ -774,15 +764,17 @@ export function CoverMediaSection({ event, onCommit }) {
                   type="button"
                   onClick={() => setItemSettingsUrl(url)}
                   title={item.kind === "video" ? "Video settings" : "Image settings"}
-                  className="absolute bottom-2 right-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                  aria-label={item.kind === "video" ? "Video settings" : "Image settings"}
+                  className="absolute bottom-2 right-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
                 >
                   <Settings2 className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => removeGalleryImage(url)}
+                  onClick={() => setRemoveTarget({ kind: "gallery", url })}
                   title="Remove"
-                  className="absolute right-2 top-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                  aria-label="Remove from gallery"
+                  className="absolute right-2 top-2 rounded-md bg-black/60 p-1 text-muted-foreground opacity-0 transition-opacity hover:text-red-400 focus-visible:opacity-100 group-hover:opacity-100"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -822,22 +814,36 @@ export function CoverMediaSection({ event, onCommit }) {
         }
         onChange={(patch) => patchItemSettings(itemSettingsUrl, patch)}
       />
+      <Dialog
+        open={!!removeTarget}
+        onOpenChange={(o) => !o && setRemoveTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove media</DialogTitle>
+            <DialogDescription>
+              {removeTarget?.kind === "cover"
+                ? "The cover will no longer be shown on your event page. This can't be undone."
+                : "This item will be removed from the gallery. This can't be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemoveTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={handleRemove}
+            >
+              <Trash2 className="h-4 w-4" /> Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// --- Rich Descriptions -------------------------------------------------------
-
-const TOOLBAR = [
-  { icon: Heading, label: "Heading" },
-  { icon: Bold, label: "Bold" },
-  { icon: Italic, label: "Italic" },
-  { icon: List, label: "List" },
-  { icon: Link2, label: "Link" },
-  { icon: ImgIcon, label: "Image" },
-];
-
-// Reusable description sections, inserted at the cursor from the editor toolbar.
 const SNIPPETS = [
   { label: "What to expect", body: "## What to expect\n\n- \n- \n- \n" },
   {
@@ -855,8 +861,6 @@ const SNIPPETS = [
 ];
 
 export function RichDescriptionsSection({ event }) {
-  // Starts empty, not pre-filled with sample copy — an unsaved default would
-  // otherwise get published verbatim as the event's description.
   const [text, setText, saveText, saving] = useEventConfig(
     event,
     "description",
@@ -865,7 +869,6 @@ export function RichDescriptionsSection({ event }) {
   const [blocksOpen, setBlocksOpen] = useState(false);
   const editor = useRef(null);
 
-  // Splice a block in at the caret, keeping a blank line either side.
   const insertSnippet = (snippet) => {
     const el = editor.current;
     const at = el ? el.selectionStart : text.length;
@@ -887,20 +890,6 @@ export function RichDescriptionsSection({ event }) {
     <div className="space-y-6">
       <SectionCard title="Description" bodyPadding={false}>
         <div className="flex items-center gap-1 border-b border-border px-3 py-2">
-          {TOOLBAR.map((t) => {
-            const Icon = t.icon;
-            return (
-              <Button
-                key={t.label}
-                variant="ghost"
-                size="icon-sm"
-                title={t.label}
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <Icon className="h-4 w-4" />
-              </Button>
-            );
-          })}
           <Button
             variant="ghost"
             size="sm"
@@ -967,8 +956,6 @@ export function RichDescriptionsSection({ event }) {
   );
 }
 
-// --- Custom Questions --------------------------------------------------------
-
 const QUESTION_TYPES = [
   { value: "short", label: "Short text" },
   { value: "long", label: "Paragraph" },
@@ -1014,6 +1001,14 @@ export function CustomQuestionsSection({ event, headerItem }) {
       questions.map((x) => (x.id === id ? { ...x, required: !x.required } : x)),
     );
 
+  const moveQuestion = (index, dir) => {
+    const ni = index + dir;
+    if (ni < 0 || ni >= questions.length) return;
+    const copy = [...questions];
+    [copy[index], copy[ni]] = [copy[ni], copy[index]];
+    saveQuestions(copy);
+  };
+
   return (
     <div className="space-y-6">
       <EditorSectionHeader
@@ -1032,18 +1027,37 @@ export function CustomQuestionsSection({ event, headerItem }) {
         }
       />
       <div className="space-y-2">
-        {questions.map((q) => (
+        {questions.map((q, i) => (
           <div
             key={q.id}
             className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-3"
           >
-            <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-text-tertiary" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-foreground">
                 {q.label}
               </p>
               <p className="text-xs text-text-secondary">{typeLabel(q.type)}</p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={i === 0}
+              onClick={() => moveQuestion(i, -1)}
+              aria-label="Move up"
+              className="text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={i === questions.length - 1}
+              onClick={() => moveQuestion(i, 1)}
+              aria-label="Move down"
+              className="text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               Required
               <Switch
@@ -1078,6 +1092,12 @@ export function CustomQuestionsSection({ event, headerItem }) {
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, label: e.target.value }))
                 }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addQuestion();
+                  }
+                }}
                 placeholder="e.g. Dietary requirements"
               />
             </Field>

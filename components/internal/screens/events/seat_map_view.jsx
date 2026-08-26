@@ -11,25 +11,6 @@ import { cn } from "@/lib/utils";
 
 import { VenueThumb } from "./seat_offers";
 
-// Presentational seat map, shared by the buyer's picker and the organiser's box
-// office. ONE canvas always draws the whole venue; picking a section glides the
-// viewport into that block instead of swapping screens, so the neighbouring
-// sections stay visible for orientation while the chosen section's chairs fade
-// in in place. "Whole venue" glides back out. Only one section's seats exist as
-// DOM nodes at a time (~50-200 no matter how big the venue) — that is the whole
-// performance strategy, and zooming doesn't change it.
-//
-// Chairs are drawn from sectionSeatGrid(), not from their stored coordinates
-// directly: the stored grid is squashed by whatever shape the section box came
-// out of the ring geometry, and it is the chair PITCH, not the box, that has to
-// be square for the block to read as a seating chart.
-//
-// It owns no data and no persistence: callers supply the sections, the seats, a
-// state per seat, the colours, and the click handlers.
-
-// Chairs are told apart by FILL alone. A border would have to be counter-scaled
-// against a zoom of 15, i.e. asked to paint at 0.07px, which browsers round
-// away or snap to a whole device pixel — either way the grid stops being even.
 export const SEAT_STATE_STYLE = {
   available: "bg-border-strong hover:bg-primary/70",
   selected: "bg-primary",
@@ -37,27 +18,16 @@ export const SEAT_STATE_STYLE = {
   held: "bg-amber-400/60 cursor-not-allowed",
   blocked: "bg-violet-400/60",
   accessible: "bg-sky-400/70 hover:bg-sky-300",
-  // Open, but hidden by a filter the buyer switched on. Distinct from `sold`
-  // so the map — and the screen reader label — don't claim it's gone.
   filtered: "bg-surface-active/50 cursor-not-allowed",
 };
 
-// Share of its cell a chair fills. Chairs sit as close as 0.94 of the pitch
-// apart on a curved block, so anything much above this closes the gutter up and
-// the grid reads as one slab you can't aim at.
 const SEAT_FILL = 0.58;
 
-// Counter-scale for anything carrying GLYPHS. Dividing a font-size by a zoom of
-// 15 asks the browser to lay 0.6px type out and then blows the result up, which
-// it renders as a white smear — so the type keeps a real size and the element
-// around it is scaled down instead.
 function counterScale(scale, extra = "") {
   if (scale <= 1.001) return extra ? { transform: extra } : undefined;
   return { transform: `${extra} scale(${1 / scale})`.trim() };
 }
 
-// The price bands. Rendered only when the caller supplies a legend — the box
-// office colours by availability instead and passes none.
 function PriceLegend({ legend, format, className }) {
   if (!legend?.length) return null;
   return (
@@ -79,9 +49,6 @@ export function SeatMapView({
   field,
   background,
   aspect = "16/10",
-  // Fill the parent's height instead of taking the shape of `aspect`. The
-  // checkout dialog hands the map a flex row to fill; the box office card
-  // doesn't. The geometry keeps `aspect` either way — MapCanvas letterboxes it.
   fill = false,
   activeSectionId,
   onSectionChange,
@@ -90,17 +57,12 @@ export function SeatMapView({
   sectionMeta,
   disabledSectionIds,
   seatLabel,
-  // buildPriceTiers() output. Absent -> every section renders in the neutral
-  // surface colour, which is what the box office wants.
   colorBySectionId,
   legend,
   formatPrice,
   className,
 }) {
   const canvasRef = useRef(null);
-  // Live zoom level. The layer transform magnifies everything inside it, so
-  // borders and glyphs are divided by the scale to hold a constant ON-SCREEN
-  // size while the venue geometry around them grows.
   const [scale, setScale] = useState(1);
 
   const ar = aspectRatio(aspect);
@@ -115,15 +77,11 @@ export function SeatMapView({
     [seats, active],
   );
 
-  // The drilled-in block's chairs on a square pitch, plus the footprint they
-  // actually occupy — which is what the highlight hugs and the viewport frames.
   const grid = useMemo(
     () => (active ? sectionSeatGrid(activeSeats, active, aspect) : null),
     [active, activeSeats, aspect],
   );
 
-  // Glide the viewport into the chosen block — padding keeps the neighbours in
-  // frame — and back out to the whole venue on the way home.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -142,10 +100,6 @@ export function SeatMapView({
   }, [active, grid]);
 
   const zoomed = Boolean(active);
-  // A chair, in percent on each axis. Sizing in percent rather than in
-  // counter-scaled pixels is what keeps the grid true: a pixel box divided by a
-  // zoom of 12 lands sub-pixel, and every chair then rounds to a different
-  // device pixel, which is exactly what turned the block into a scatter.
   const seatSize = grid?.pitch ? grid.pitch * SEAT_FILL : 0;
 
   return (
@@ -165,8 +119,6 @@ export function SeatMapView({
               </div>
             ) : null}
 
-            {/* The way back out, over the map rather than above it — a control
-                row of its own costs height the map wants. */}
             {active ? (
               <button
                 type="button"
@@ -188,8 +140,6 @@ export function SeatMapView({
               </div>
             ) : null}
 
-            {/* Where this section sits in the venue. Zoomed into one block, a
-                buyer loses all sense of place without it. */}
             {active && sections.length ? (
               <div className="pointer-events-none absolute right-2 top-2 w-24 rounded-md border border-border bg-background/85 p-1.5 backdrop-blur">
                 <VenueThumb
@@ -228,22 +178,11 @@ export function SeatMapView({
             height: `${section.height}%`,
             transform: section.rotation ? `rotate(${section.rotation}deg)` : undefined,
           };
-          // Zoomed in, the layer transform blows every stroke up with the
-          // geometry — counter-scale the strokes back to a constant size. Glyphs
-          // are handled separately, by scaling the element rather than the type.
           const chrome = zoomed
             ? { borderWidth: `${1 / scale}px`, borderRadius: `${6 / scale}px` }
             : undefined;
 
           if (isActive) {
-            // The drilled-in block: highlighted and inert — its chairs sit on
-            // top of it and take the clicks. Drawn around the chairs' own
-            // footprint AND turned the way they are, so the highlight is the
-            // same tilted rectangle the buyer can see inside it.
-            //
-            // No price-band fill and no ring here: inside the block it is the
-            // CHAIRS that have to read, and a `ring` is a box-shadow the layer
-            // transform scales into a 45px halo at this zoom.
             const hug = grid?.frame;
             const rotated = hug?.rotation
               ? `rotate(${hug.rotation}deg)`
@@ -275,7 +214,6 @@ export function SeatMapView({
                   borderWidth: `${2 / scale}px`,
                 }}
               >
-                {/* Named only while the chairs aren't there to name themselves. */}
                 {activeSeats.length === 0 ? (
                   <span
                     className="truncate px-1 text-[11px] font-semibold leading-tight text-foreground"
@@ -306,8 +244,6 @@ export function SeatMapView({
                     ? "border-amber-400/30 bg-amber-400/10"
                     : "border-sky-400/30 bg-sky-400/10",
                 (disabled || soldOut) && "cursor-not-allowed opacity-40 hover:brightness-100",
-                // Zoomed into a neighbour, the rest of the bowl is context —
-                // keep it legible but stop it competing with the chairs.
                 zoomed && "opacity-45",
               )}
               style={{ ...geometry, ...chrome }}
@@ -366,8 +302,6 @@ export function SeatMapView({
                   style={{
                     left: `${seat.gx}%`,
                     top: `${seat.gy}%`,
-                    // Percent on both axes, divided by the aspect on x, is a
-                    // true square that magnifies with the venue around it.
                     width: `${seatSize / ar}%`,
                     height: `${seatSize}%`,
                     borderRadius: "26%",

@@ -42,6 +42,7 @@ export function SidebarOption({
         onClick={subItems ? onToggle : () => onClick?.()}
         isActive={isActive}
         tooltip={title}
+        aria-expanded={subItems ? Boolean(isExpanded) : undefined}
         className={cn(
           "transition-all text-sm h-9 group-data-[collapsible=icon]:justify-center",
           isActive && !subItems
@@ -106,7 +107,7 @@ export function SidebarOption({
                     )}
                   />
                 )}
-                <p className="">{sub.title}</p>
+                <p>{sub.title}</p>
               </Button>
             </li>
           ))}

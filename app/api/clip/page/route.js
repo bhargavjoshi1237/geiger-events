@@ -4,20 +4,9 @@ import { MAX_PAGE_BYTES, fetchUpstream, readCapped } from "@/lib/clip/fetch";
 import { rewriteDocument } from "@/lib/clip/rewrite";
 import { normalizeUrl } from "@/lib/net/url_safety";
 
-// Node runtime: the rewriter works on decoded text buffers.
 export const runtime = "nodejs";
-// A slow origin plus a large document comfortably outruns the default budget.
 export const maxDuration = 30;
 
-// GET /api/clip/page?url=example.com
-//
-// Serves a remote page from our own origin so the clip picker can iframe it and
-// read its DOM. The response is deliberately same-origin and deliberately
-// script-free: the picker frame is sandboxed without allow-scripts, and the
-// rewriter strips <script> and on* handlers before it ever reaches the browser.
-//
-// This is an authenticated-user-only surface. It is not a general web proxy —
-// it refuses non-HTML responses, caps the body, and blocks private hosts.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const target = normalizeUrl(searchParams.get("url"));
@@ -80,8 +69,6 @@ export async function GET(request) {
     );
   }
 
-  // Resolve relative paths against the URL we actually landed on, not the one
-  // we asked for — a redirect would otherwise break every asset on the page.
   const finalUrl = res.url || target.toString();
   const html = rewriteDocument(new TextDecoder("utf-8").decode(buf), finalUrl);
 
@@ -89,7 +76,6 @@ export async function GET(request) {
     status: 200,
     headers: {
       "content-type": "text/html; charset=utf-8",
-      // Our own frame must be able to embed this; nobody else's should.
       "content-security-policy":
         "frame-ancestors 'self'; script-src 'none'; object-src 'none'; form-action 'none'",
       "x-ev-clip-source": finalUrl,

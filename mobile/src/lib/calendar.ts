@@ -4,10 +4,6 @@ import * as Sharing from "expo-sharing";
 
 import type { Order } from "@/types/portal";
 
-// Ports lib/portal/calendar.js's buildEventICS and directionsUrl, with the web's
-// browser download replaced by the OS share sheet.
-
-// Parse a free-text event_time ("18:00", "6:00 PM", "6pm") into { h, m } or null.
 function parseTime(raw: string | undefined): { h: number; m: number } | null {
   if (!raw) return null;
   const s = String(raw).trim();
@@ -26,21 +22,16 @@ function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-// Full location string for maps / calendar location fields.
 export function locationText(order: Order): string {
   return [order.venue, order.address, order.city].filter(Boolean).join(", ");
 }
 
-// Google Maps directions/search link, or "" when there's no location on file.
 export function directionsUrl(order: Order): string {
   const q = locationText(order);
   if (!q) return "";
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
 
-// Build an RFC-5545 VEVENT for the order's event. Uses a timed VEVENT (2h block)
-// when event_time parses, otherwise an all-day event. Floating local time — no
-// TZID, which every calendar client accepts.
 export function buildEventICS(order: Order): string {
   if (!order.eventDate) return "";
   const d = new Date(`${order.eventDate}T00:00:00`);
@@ -92,8 +83,6 @@ export function buildEventICS(order: Order): string {
   return lines.join("\r\n");
 }
 
-// Write the ICS to the cache and open the OS share sheet. Returns false when
-// there's nothing to share or sharing is unavailable.
 export async function shareEventICS(order: Order): Promise<boolean> {
   const ics = buildEventICS(order);
   if (!ics) return false;

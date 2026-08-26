@@ -29,7 +29,6 @@ const FEATURES = [
   { icon: "calendar" as const, label: "Add events to your calendar" },
 ];
 
-// Feature bullets share one icon tile so the list reads as a set.
 function FeatureRow({ icon, label }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string }) {
   return (
     <View style={styles.feature}>
@@ -81,7 +80,6 @@ export default function SignInScreen() {
       style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {/* Ghosted brand mark anchors the otherwise empty canvas. */}
       <View pointerEvents="none" style={styles.watermark}>
         <BrandMark size={340} color={colors.muted} />
       </View>

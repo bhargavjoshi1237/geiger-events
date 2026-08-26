@@ -9,15 +9,6 @@ import {
 
 import { defineAddon } from "../manifest_schema";
 
-// Affiliates — an affiliate program for ticket sales.
-//
-// Identity is project-wide (one person, one portal login, one lifetime earnings
-// view); each EVENT runs its own fully independent program, optionally created
-// from a saved template. See docs/superpowers/specs/2026-07-29-affiliates-addon-design.md.
-//
-// Screen titles are deliberately qualified where the core registry already owns
-// the plain word ("Affiliate Payouts", not "Payouts") — a clash throws at module
-// load rather than silently shadowing a core screen.
 export default defineAddon({
   id: "affiliates",
   name: "Affiliates",

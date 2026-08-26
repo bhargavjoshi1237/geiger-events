@@ -27,7 +27,6 @@ export default function LiveRoomScreen() {
   const [loaded, setLoaded] = useState(false);
   const scrollY = useSharedValue(0);
 
-  // Refetch on mount so a deep link resolves, then poll to keep the count fresh.
   const load = useCallback(async () => {
     if (!token) return;
     const res = await api<{ room: LiveRoom }>(`/api/portal/live/${id}`, { token });

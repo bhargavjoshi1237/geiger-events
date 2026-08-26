@@ -8,7 +8,6 @@ type DetailRowProps = {
   value: string;
 };
 
-// A label/value pair, ListRow-style, for receipt and ticket details.
 export function DetailRow({ label, value }: DetailRowProps) {
   return (
     <View style={styles.row}>

@@ -7,50 +7,18 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarHeader,
   SidebarMenu,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { PanelLeft } from "lucide-react";
 import { SidebarOption } from "../sidebar_option";
+import { MobileSidebarHeader } from "./mobile_sidebar_header";
 import { projectNav, settingsNav } from "./sidebar_data";
 import { Button } from "@/components/ui/button";
 
-function MobileSidebarHeader() {
-  const { isMobile } = useSidebar();
-
-  if (!isMobile) {
-    return null;
-  }
-
-  return (
-    <SidebarHeader className="p-0 border-b border-sidebar-border">
-      <div className="flex items-center justify-between px-4 h-14">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded flex items-center justify-center shrink-0">
-            <img
-              src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo1.svg`}
-              alt=""
-              className="w-5 h-5"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-                e.currentTarget.parentElement.innerHTML =
-                  '<div class="w-2 h-2 bg-foreground rounded-full"></div>';
-              }}
-            />
-          </div>
-          <span className="text-foreground font-semibold text-sm truncate max-w-full">
-            Events
-          </span>
-        </div>
-      </div>
-    </SidebarHeader>
-  );
-}
-
 export function ProjectSidebar({ activeTab = "Overview", onTabChange = () => {} }) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, state } = useSidebar();
   const [expandedItems, setExpandedItems] = useState({});
 
   const toggleExpand = (title) => {
@@ -111,6 +79,7 @@ export function ProjectSidebar({ activeTab = "Overview", onTabChange = () => {} 
       <SidebarFooter className="p-2 border-t border-sidebar-border mt-auto z-10 bg-sidebar">
         <Button
           type="button"
+          aria-label={state === "collapsed" ? "Expand sidebar" : "Collapse sidebar"}
           onClick={toggleSidebar}
           className="flex items-center gap-3 p-2 w-full rounded-lg hover:bg-sidebar-accent transition-all text-sidebar-foreground hover:text-foreground group-data-[collapsible=icon]:justify-center"
         >

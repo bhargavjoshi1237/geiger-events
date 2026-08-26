@@ -55,6 +55,7 @@ import {
   currency,
   formatDate,
 } from "./sample_data";
+import { EventDatePicker } from "./date_time_fields";
 
 const FORMAT_OPTIONS = [
   { value: "In-person", label: "In-person" },
@@ -70,7 +71,13 @@ const TABS = [
   { key: "publishing", label: "Publishing", icon: Send },
 ];
 
-// Next N occurrence dates from an anchor by cadence — powers the cadence preview.
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+};
+
 function upcomingDates(anchor, cadence, count = 5) {
   if (!anchor) return [];
   const start = new Date(`${anchor}T00:00:00`);
@@ -80,7 +87,7 @@ function upcomingDates(anchor, cadence, count = 5) {
     const d = new Date(start);
     if (cadence === "Weekly") d.setDate(start.getDate() + i * 7);
     else if (cadence === "Quarterly") d.setMonth(start.getMonth() + i * 3);
-    else d.setMonth(start.getMonth() + i); // Monthly / Custom default
+    else d.setMonth(start.getMonth() + i);
     out.push(d.toISOString().slice(0, 10));
   }
   return out;
@@ -100,7 +107,6 @@ export function SeriesDetailScreen({
   const [active, setActive] = useState("overview");
   const [addOpen, setAddOpen] = useState(false);
 
-  // Member events, ordered by the saved eventOrder then by date.
   const members = useMemo(() => {
     const inSeries = events.filter((e) => e.seriesId === series.id);
     const order = series.settings?.eventOrder || [];
@@ -115,7 +121,6 @@ export function SeriesDetailScreen({
     });
   }, [events, series]);
 
-  // Standalone events (no series) that can be pulled into this one.
   const available = useMemo(
     () => events.filter((e) => !e.seriesId),
     [events],
@@ -131,7 +136,6 @@ export function SeriesDetailScreen({
 
   return (
     <MainScreenWrapper>
-      {/* Editor header */}
       <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <button
@@ -155,7 +159,6 @@ export function SeriesDetailScreen({
         </div>
       </div>
 
-      {/* Content (left) + tab nav (right) */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_220px]">
         <div className="order-2 min-w-0 lg:order-1">
           {active === "overview" && (
@@ -214,14 +217,14 @@ export function SeriesDetailScreen({
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                     isActive
-                      ? "bg-surface-card font-medium text-white"
+                      ? "bg-surface-card font-medium text-foreground"
                       : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
                   )}
                 >
                   <Icon
                     className={cn(
                       "h-4 w-4 shrink-0",
-                      isActive ? "text-white" : "text-text-secondary",
+                      isActive ? "text-foreground" : "text-text-secondary",
                     )}
                   />
                   <span className="truncate">{tab.label}</span>
@@ -242,8 +245,6 @@ export function SeriesDetailScreen({
   );
 }
 
-// --- Overview ----------------------------------------------------------------
-
 function OverviewTab({ series, members, onPatchSeries }) {
   const [name, setName] = useState(series.name);
   const [description, setDescription] = useState(series.description);
@@ -256,7 +257,7 @@ function OverviewTab({ series, members, onPatchSeries }) {
       .map((e) => e.date)
       .filter(Boolean)
       .sort()
-      .find((d) => d >= "2026-06-27");
+      .find((d) => d >= todayISO());
     return [
       { label: "Events", value: String(members.length) },
       { label: "Capacity", value: capacity.toLocaleString("en-US") },
@@ -298,8 +299,6 @@ function OverviewTab({ series, members, onPatchSeries }) {
     </div>
   );
 }
-
-// --- Events ------------------------------------------------------------------
 
 function EventsTab({
   series,
@@ -502,8 +501,6 @@ function AddEventsDialog({ open, onOpenChange, available, onAttach }) {
   );
 }
 
-// --- Shared Defaults ---------------------------------------------------------
-
 function DefaultsTab({ series, members, onMergeSettings, onPatchEvent }) {
   const d = series.settings?.defaults || {};
   const [draft, setDraft] = useState({
@@ -621,8 +618,6 @@ function DefaultsTab({ series, members, onMergeSettings, onPatchEvent }) {
   );
 }
 
-// --- Cadence -----------------------------------------------------------------
-
 function CadenceTab({ series, onPatchSeries, onMergeSettings }) {
   const r = series.settings?.recurrence || {};
   const [cadence, setCadence] = useState(series.cadence);
@@ -664,10 +659,9 @@ function CadenceTab({ series, onPatchSeries, onMergeSettings }) {
               </Select>
             </Field>
             <Field label="Anchor date">
-              <Input
-                type="date"
+              <EventDatePicker
                 value={anchor}
-                onChange={(e) => setAnchor(e.target.value)}
+                onChange={setAnchor}
               />
             </Field>
             <Field label="Occurrences">
@@ -719,8 +713,6 @@ function CadenceTab({ series, onPatchSeries, onMergeSettings }) {
     </div>
   );
 }
-
-// --- Publishing --------------------------------------------------------------
 
 function PublishingTab({ series, onPatchSeries, onMergeSettings }) {
   return (

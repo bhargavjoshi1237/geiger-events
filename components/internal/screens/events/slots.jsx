@@ -38,11 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { TIME_BANDS, bandLabel, bandFromTime, EMPTY_SLOT } from "@/lib/events/slots";
-
-// Bookable time-slot editor. Slots live in the event metadata bag (metadata.
-// slots) with a master metadata.slotBooking config; the public checkout renders
-// a slot picker and the buy_ticket RPC enforces each slot's capacity via a
-// metadata.slotsSold counter. See lib/events/slots.js for the shape + helpers.
+import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
 
 const DEFAULT_BOOKING = { enabled: false, required: true, mode: "single", label: "Choose your time" };
 
@@ -61,7 +57,6 @@ function fmtRange(slot) {
 
 function SlotDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
   const [draft, setDraft] = useState(EMPTY_SLOT);
-  // Tracks whether the organiser hand-picked a band so we stop auto-syncing it.
   const [bandTouched, setBandTouched] = useState(false);
 
   const [prevOpen, setPrevOpen] = useState(open);
@@ -75,13 +70,23 @@ function SlotDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
 
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
 
-  // Auto-suggest the band from the start time until the organiser overrides it.
   const setStart = (value) =>
     setDraft((d) => ({
       ...d,
       start: value,
       band: bandTouched ? d.band : bandFromTime(value),
     }));
+
+  const splitDateTime = (v) => {
+    if (!v) return ["", ""];
+    const [date, time = ""] = String(v).split("T");
+    return [date || "", time];
+  };
+  const joinDateTime = (date, time) =>
+    [date, time].filter(Boolean).join("T");
+
+  const [startDate, startTime] = splitDateTime(draft.start);
+  const [endDate, endTime] = splitDateTime(draft.end);
 
   const isAllTickets = draft.allowedTickets === "all";
   const toggleTicket = (id) =>
@@ -159,20 +164,29 @@ function SlotDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Starts" htmlFor="slot-start">
-              <Input
-                id="slot-start"
-                type="datetime-local"
-                value={draft.start}
-                onChange={(e) => setStart(e.target.value)}
-              />
+              <div className="space-y-2">
+                <EventDatePicker
+                  value={startDate}
+                  onChange={(date) => setStart(joinDateTime(date, startTime))}
+                />
+                <EventTimeSelect
+                  value={startTime}
+                  onChange={(time) => setStart(joinDateTime(startDate, time))}
+                />
+              </div>
             </Field>
             <Field label="Ends" hint="Optional" htmlFor="slot-end">
-              <Input
-                id="slot-end"
-                type="datetime-local"
-                value={draft.end}
-                onChange={(e) => set("end")(e.target.value)}
-              />
+              <div className="space-y-2">
+                <EventDatePicker
+                  value={endDate}
+                  onChange={(date) => set("end")(joinDateTime(date, endTime))}
+                />
+                <EventTimeSelect
+                  value={endTime}
+                  onChange={(time) => set("end")(joinDateTime(endDate, time))}
+                  placeholder="No end time"
+                />
+              </div>
             </Field>
           </div>
 
@@ -271,7 +285,7 @@ function SlotDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
                 className={cn(
                   "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                   isAllTickets
-                    ? "border-white bg-white text-[#161616]"
+                    ? "border-primary bg-primary/15 text-foreground"
                     : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                 )}
               >
@@ -290,7 +304,7 @@ function SlotDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
                     className={cn(
                       "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                       active
-                        ? "border-white bg-white text-[#161616]"
+                        ? "border-primary bg-primary/15 text-foreground"
                         : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                     )}
                   >
@@ -337,12 +351,12 @@ export function SlotsSection({ event, headerItem }) {
   const [slots, , saveSlots] = useEventConfig(event, "slots", []);
   const [booking, , saveBooking] = useEventConfig(event, "slotBooking", DEFAULT_BOOKING);
   const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // { index, slot } | null
+  const [editing, setEditing] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const cfg = { ...DEFAULT_BOOKING, ...(booking || {}) };
   const slotsSold = event.slotsSold || {};
 
-  // Ticket tiers (id + name) so the "bookable with" chips key on the stable id.
   const ticketTypes = (Array.isArray(event.tickets) ? event.tickets : [])
     .filter((t) => t && t.id)
     .map((t) => ({ id: String(t.id), name: t.name || "Untitled" }));
@@ -387,7 +401,6 @@ export function SlotsSection({ event, headerItem }) {
         }
       />
 
-      {/* Master booking config. */}
       <div className="space-y-4 rounded-xl border border-border bg-surface-card p-4">
         <label className="flex items-start justify-between gap-4">
           <span>
@@ -520,7 +533,7 @@ export function SlotsSection({ event, headerItem }) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => removeSlot(i)}
+                      onClick={() => setDeleteTarget(i)}
                       aria-label="Delete slot"
                       className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                     >
@@ -559,6 +572,38 @@ export function SlotsSection({ event, headerItem }) {
           setEditing(null);
         }}
       />
+
+      <Dialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete slot</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget != null ? slots[deleteTarget]?.label : ""}
+              </span>
+              ? This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                removeSlot(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getSessionMember } from "@/lib/portal/session";
 import { toggleMemberReaction } from "@/lib/portal/chat";
 
-// POST { messageId, emoji } -> toggle this member's reaction on a message.
 export async function POST(request, { params }) {
   const member = await getSessionMember();
   if (!member) {

@@ -154,13 +154,13 @@ function AddMemberDialog({ open, onOpenChange, plans, onCreate }) {
 
 export function MembersScreen() {
   const { projectId } = useProject();
-  // The open member lives in the URL (?record=<id>) so a refresh stays on it.
   const { recordId, openRecord, closeRecord } = useWorkspaceUrl();
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -249,7 +249,6 @@ export function MembersScreen() {
     toast.success("Saved.");
   };
 
-  // The detail editor takes over the screen when a member is open.
   const openMember = members.find((m) => m.id === recordId) || null;
   if (openMember) {
     return (
@@ -301,7 +300,12 @@ export function MembersScreen() {
               role="button"
               tabIndex={0}
               onClick={() => openRecord(m.id)}
-              onKeyDown={(e) => e.key === "Enter" && openRecord(m.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openRecord(m.id);
+                }
+              }}
               className="-mx-4 flex cursor-pointer items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-surface-hover"
             >
               <div className="min-w-0 flex-1">
@@ -330,7 +334,7 @@ export function MembersScreen() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="w-44 border-border bg-surface-card shadow-xl"
+                    className="w-44 border-border bg-surface-subtle"
                   >
                     <DropdownMenuItem
                       className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
@@ -338,7 +342,7 @@ export function MembersScreen() {
                     >
                       <Pencil className="h-4 w-4" /> Edit
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-surface-strong" />
+                    <DropdownMenuSeparator className="bg-border" />
                     {STATUSES.filter((s) => s !== m.status).map((s) => (
                       <DropdownMenuItem
                         key={s}
@@ -348,10 +352,10 @@ export function MembersScreen() {
                         Mark {s.toLowerCase()}
                       </DropdownMenuItem>
                     ))}
-                    <DropdownMenuSeparator className="bg-surface-strong" />
+                    <DropdownMenuSeparator className="bg-border" />
                     <DropdownMenuItem
                       className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                      onClick={() => remove(m)}
+                      onClick={() => setRemoveTarget(m)}
                     >
                       <Trash2 className="h-4 w-4 text-red-300" /> Remove
                     </DropdownMenuItem>
@@ -389,6 +393,38 @@ export function MembersScreen() {
         plans={plans}
         onCreate={handleCreate}
       />
+
+      <Dialog
+        open={!!removeTarget}
+        onOpenChange={(o) => !o && setRemoveTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove member</DialogTitle>
+            <DialogDescription>
+              Remove{" "}
+              <span className="font-medium text-foreground">
+                {removeTarget?.name || removeTarget?.email || "this member"}
+              </span>{" "}
+              from your members list? This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemoveTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                remove(removeTarget);
+                setRemoveTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { CheckCircle2, ShieldCheck, XCircle } from "lucide-react";
+import { Switch } from "@geiger/ui";
 
 import {
   Field,
@@ -13,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CampaignSettingsScreen } from "./campaigns_kit";
 
-// Authentication status pill for a boolean check (DKIM/SPF/domain).
 function AuthPill({ ok }) {
   return (
     <Badge variant={ok ? "success" : "neutral"}>
@@ -42,6 +42,7 @@ export function DeliverabilityScreen() {
                   value={slice.fromName}
                   onChange={(e) => set({ fromName: e.target.value })}
                   placeholder="e.g. Acme Events"
+                  className="bg-surface-card"
                 />
               </Field>
               <Field label="From email">
@@ -50,6 +51,7 @@ export function DeliverabilityScreen() {
                   value={slice.fromEmail}
                   onChange={(e) => set({ fromEmail: e.target.value })}
                   placeholder="hello@yourdomain.com"
+                  className="bg-surface-card"
                 />
               </Field>
               <Field label="Reply-to">
@@ -58,6 +60,7 @@ export function DeliverabilityScreen() {
                   value={slice.replyTo}
                   onChange={(e) => set({ replyTo: e.target.value })}
                   placeholder="replies@yourdomain.com"
+                  className="bg-surface-card"
                 />
               </Field>
               <Field label="SMS sender ID" hint="Shown as the sender on text messages.">
@@ -65,7 +68,7 @@ export function DeliverabilityScreen() {
                   value={slice.smsSenderId}
                   onChange={(e) => set({ smsSenderId: e.target.value })}
                   placeholder="e.g. ACME"
-                  className="uppercase"
+                  className="bg-surface-card uppercase"
                 />
               </Field>
             </div>
@@ -80,7 +83,7 @@ export function DeliverabilityScreen() {
                 value={slice.sendingDomain}
                 onChange={(e) => set({ sendingDomain: e.target.value })}
                 placeholder="mail.yourdomain.com"
-                className="max-w-sm"
+                className="max-w-sm bg-surface-card"
               />
             </Field>
             <div className="mt-4 border-t border-border pt-4">
@@ -89,7 +92,15 @@ export function DeliverabilityScreen() {
                   icon={ShieldCheck}
                   title="Domain verified"
                   description="Confirm ownership of your sending domain."
-                  control={<AuthPill ok={slice.domainVerified} />}
+                  control={
+                    <div className="flex items-center gap-2">
+                      <AuthPill ok={slice.domainVerified} />
+                      <Switch
+                        checked={!!slice.domainVerified}
+                        onCheckedChange={(v) => set({ domainVerified: v })}
+                      />
+                    </div>
+                  }
                 />
                 <SettingRow
                   title="DKIM signing"
@@ -102,12 +113,6 @@ export function DeliverabilityScreen() {
                   description="Authorise this platform to send for your domain."
                   checked={!!slice.spf}
                   onCheckedChange={(v) => set({ spf: v })}
-                />
-                <SettingRow
-                  title="Mark domain verified"
-                  description="Manually flag the domain as verified once DNS is set."
-                  checked={!!slice.domainVerified}
-                  onCheckedChange={(v) => set({ domainVerified: v })}
                 />
               </SettingsList>
             </div>
@@ -126,6 +131,7 @@ export function DeliverabilityScreen() {
                   value={slice.footerAddress}
                   onChange={(e) => set({ footerAddress: e.target.value })}
                   placeholder="123 Main St, City, Country"
+                  className="bg-surface-card"
                 />
               </Field>
               <Field label="Unsubscribe link text">
@@ -133,7 +139,7 @@ export function DeliverabilityScreen() {
                   value={slice.unsubscribeText}
                   onChange={(e) => set({ unsubscribeText: e.target.value })}
                   placeholder="Unsubscribe from these emails"
-                  className="max-w-sm"
+                  className="max-w-sm bg-surface-card"
                 />
               </Field>
               <Field
@@ -145,7 +151,7 @@ export function DeliverabilityScreen() {
                   min={0}
                   value={slice.dailyCap}
                   onChange={(e) => set({ dailyCap: Number(e.target.value) || 0 })}
-                  className="max-w-[8rem] tabular-nums"
+                  className="max-w-[8rem] bg-surface-card tabular-nums"
                 />
               </Field>
             </div>

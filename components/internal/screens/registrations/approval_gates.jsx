@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { listEvents } from "@/lib/supabase/events";
 import {
   listRegistrations,
@@ -42,13 +43,9 @@ import { useProject } from "@/context/project-context";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { formatDate, formatDateTime, initials } from "./constants";
 
-// How many rows we paint before asking the user to "show more" — keeps the page
-// light no matter how many thousands are pending.
 const PAGE_EVENTS = 60;
 const PAGE_CARDS = 40;
 
-// Sort options for the master list of events with pending requests — mirrors the
-// filter/sort toolbar the other list screens use.
 const SORT_OPTIONS = [
   { value: "pending-desc", label: "Most pending" },
   { value: "pending-asc", label: "Fewest pending" },
@@ -56,7 +53,14 @@ const SORT_OPTIONS = [
   { value: "name-asc", label: "Name (A–Z)" },
 ];
 
-// A single pending request — everything an approver needs to decide.
+function PendingPill({ count }) {
+  return (
+    <Badge variant="neutral" className="shrink-0 gap-1.5 tabular-nums">
+      {count} pending
+    </Badge>
+  );
+}
+
 function RequestCard({ reg, onApprove, onDecline }) {
   const answers =
     reg.answers && typeof reg.answers === "object" ? reg.answers : {};
@@ -131,7 +135,6 @@ export function ApprovalGatesScreen() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
 
-  // Master list ↔ per-event inbox. Only one event's requests render at a time.
   const [openEventId, setOpenEventId] = useState(null);
   const [listSearch, setListSearch] = useState("");
   const [listSort, setListSort] = useState("pending-desc");
@@ -139,7 +142,8 @@ export function ApprovalGatesScreen() {
   const [detailSearch, setDetailSearch] = useState("");
   const [detailLimit, setDetailLimit] = useState(PAGE_CARDS);
 
-  const [declineTarget, setDeclineTarget] = useState(null); // reg | { group }
+  const [declineTarget, setDeclineTarget] = useState(null);
+  const [approveTarget, setApproveTarget] = useState(null);
   const [reason, setReason] = useState("");
   const { projectId } = useProject();
 
@@ -155,7 +159,7 @@ export function ApprovalGatesScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [projectId]);
 
   const eventNames = useMemo(() => {
     const m = {};
@@ -163,7 +167,6 @@ export function ApprovalGatesScreen() {
     return m;
   }, [events]);
 
-  // One pass: per-event pending counts + the open event's full list.
   const groups = useMemo(() => {
     const by = {};
     for (const r of regs) {
@@ -182,7 +185,6 @@ export function ApprovalGatesScreen() {
       .sort((a, b) => b.list.length - a.list.length);
   }, [regs, eventNames]);
 
-  // --- Persistence (optimistic) ---
   const persist = (id, approve) => {
     approveRegistration(id, approve, userId).then((res) => {
       if (res === null) return;
@@ -196,8 +198,6 @@ export function ApprovalGatesScreen() {
     });
   };
 
-  // Email an approved guest a "continue & pay" link back to the event page.
-  // Fire-and-forget — a failed send never blocks or reverses the approval.
   const notifyApproved = (reg) => {
     if (typeof window === "undefined" || !reg?.email) return;
     const event = eventNames[reg.eventId];
@@ -253,11 +253,13 @@ export function ApprovalGatesScreen() {
     setReason("");
   };
 
+  const confirmApproveAll = () => {
+    if (approveTarget?.group) decideMany(approveTarget.group, true);
+    setApproveTarget(null);
+  };
+
   const openGroup = groups.find((g) => g.eventId === openEventId) || null;
 
-  // ----------------------------------------------------------------------- //
-  // Per-event inbox
-  // ----------------------------------------------------------------------- //
   if (openGroup) {
     const matches = openGroup.list.filter((r) =>
       detailSearch
@@ -289,9 +291,7 @@ export function ApprovalGatesScreen() {
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                 {openGroup.name}
               </h1>
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
-                {openGroup.list.length} pending
-              </span>
+              <PendingPill count={openGroup.list.length} />
             </div>
             {openGroup.date ? (
               <p className="mt-0.5 text-sm text-muted-foreground">
@@ -309,7 +309,7 @@ export function ApprovalGatesScreen() {
             </Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => decideMany(openGroup.list, true)}
+              onClick={() => setApproveTarget({ group: openGroup.list })}
             >
               <CheckCheck className="h-4 w-4" /> Approve all
             </Button>
@@ -383,13 +383,16 @@ export function ApprovalGatesScreen() {
           }}
           onConfirm={confirmDecline}
         />
+
+        <ApproveAllDialog
+          target={approveTarget}
+          onCancel={() => setApproveTarget(null)}
+          onConfirm={confirmApproveAll}
+        />
       </MainScreenWrapper>
     );
   }
 
-  // ----------------------------------------------------------------------- //
-  // Master list of events with pending requests
-  // ----------------------------------------------------------------------- //
   const listMatches = groups.filter((g) =>
     listSearch ? g.name.toLowerCase().includes(listSearch.toLowerCase()) : true,
   );
@@ -459,15 +462,13 @@ export function ApprovalGatesScreen() {
                       </p>
                     ) : null}
                   </div>
-                  <span className="shrink-0 rounded-full bg-zinc-500/10 px-2.5 py-0.5 text-xs font-medium text-white-400 tabular-nums">
-                    {g.list.length} Pending
-                  </span>
+                  <PendingPill count={g.list.length} />
                   <Button
                     size="sm"
                     className="hidden shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 sm:inline-flex"
                     onClick={(e) => {
                       e.stopPropagation();
-                      decideMany(g.list, true);
+                      setApproveTarget({ group: g.list });
                     }}
                   >
                     <CheckCheck className="h-4 w-4" /> Approve all
@@ -514,7 +515,41 @@ export function ApprovalGatesScreen() {
         }}
         onConfirm={confirmDecline}
       />
+
+      <ApproveAllDialog
+        target={approveTarget}
+        onCancel={() => setApproveTarget(null)}
+        onConfirm={confirmApproveAll}
+      />
     </MainScreenWrapper>
+  );
+}
+
+function ApproveAllDialog({ target, onCancel, onConfirm }) {
+  return (
+    <Dialog open={!!target} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="sm:max-w-md bg-background">
+        <DialogHeader>
+          <DialogTitle>Approve {target?.group?.length ?? 0} registrations</DialogTitle>
+          <DialogDescription>
+            Every pending registration for this event will be approved and each
+            attendee will be emailed a continue &amp; pay link. This can&apos;t be
+            undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            className="bg-emerald-500/90 text-white hover:bg-emerald-500"
+            onClick={onConfirm}
+          >
+            <CheckCheck className="h-4 w-4" /> Approve all
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

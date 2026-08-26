@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   LayoutList,
+  Loader2,
   Network,
   Pause,
   Play,
@@ -14,7 +15,11 @@ import {
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { Field, StatusPill } from "@/components/internal/shared/screen_kit";
+import {
+  EditorSectionHeader,
+  Field,
+  StatusPill,
+} from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,17 +76,16 @@ const SETTINGS_NAV = [
   },
 ];
 
-// Header view toggle (List ⇆ Canvas).
 function ViewToggle({ view, onChange }) {
   const item = (value, Icon, label) => (
     <button
       type="button"
       onClick={() => onChange(value)}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors",
+        "inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-sm font-medium transition-colors",
         view === value
-          ? "bg-surface-hover text-foreground"
-          : "text-muted-foreground hover:text-foreground",
+          ? "border-primary bg-primary/15 text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground",
       )}
     >
       <Icon className="h-4 w-4" /> {label}
@@ -103,15 +107,13 @@ export function WorkflowBuilderScreen({
   onDelete,
 }) {
   const [form, setForm] = useState(workflow);
-  // The builder always opens on the canvas; viewMode only records the last view.
   const [view, setView] = useState("canvas");
   const [activeTab, setActiveTab] = useState("builder");
   const [activeSetting, setActiveSetting] = useState("general");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Re-seed when a different workflow opens (render-phase reset).
-  const [seedId, setSeedId] = useState(workflow?.id);
-  if (workflow && workflow.id !== seedId) {
+  const [seedId, setSeedId] = useState(workflow?.id);  if (workflow && workflow.id !== seedId) {
     setSeedId(workflow.id);
     setForm(workflow);
     setView("canvas");
@@ -123,7 +125,6 @@ export function WorkflowBuilderScreen({
 
   const patch = (partial) => setForm((f) => ({ ...f, ...partial }));
 
-  // Steps[0] is the trigger; keep the workflow.trigger column in sync with it.
   const handleStepsChange = (steps) => {
     patch({ steps, trigger: steps[0]?.type || form.trigger });
   };
@@ -145,7 +146,10 @@ export function WorkflowBuilderScreen({
       trigger: form.steps?.[0]?.type || form.trigger,
     };
     setForm(next);
-    onUpdate?.(next);
+    setSaving(true);
+    Promise.resolve(onUpdate?.(next))
+      .catch(() => {})
+      .finally(() => setSaving(false));
     toast.success("Workflow saved.");
   };
 
@@ -161,7 +165,6 @@ export function WorkflowBuilderScreen({
 
   return (
     <MainScreenWrapper>
-      {/* Editor header */}
       <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <button
@@ -203,8 +206,10 @@ export function WorkflowBuilderScreen({
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={save}
+            disabled={saving}
           >
-            Save
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {saving ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
@@ -235,16 +240,14 @@ export function WorkflowBuilderScreen({
 
         <TabsContent value="settings" className="mt-6">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_220px]">
-            {/* Active section content */}
             <div className="order-2 min-w-0 lg:order-1">
-              <div className="mb-5">
-                <h2 className="text-lg font-semibold capitalize text-white">
-                  {SETTINGS_NAV.flatMap((g) => g.items).find((i) => i.key === activeSetting)?.label}
-                </h2>
-                <p className="mt-0.5 text-sm text-text-secondary">
-                  {SETTINGS_NAV.flatMap((g) => g.items).find((i) => i.key === activeSetting)?.desc}
-                </p>
-              </div>
+              <EditorSectionHeader
+                className="mb-5"
+                title={SETTINGS_NAV.flatMap((g) => g.items).find((i) => i.key === activeSetting)?.label}
+                description={
+                  SETTINGS_NAV.flatMap((g) => g.items).find((i) => i.key === activeSetting)?.desc
+                }
+              />
 
               {activeSetting === "general" && (
                 <div className="grid gap-4">
@@ -340,7 +343,6 @@ export function WorkflowBuilderScreen({
               )}
             </div>
 
-            {/* Right-hand nav */}
             <aside className="order-1 lg:order-2">
               <nav className="space-y-5 lg:sticky lg:top-0 lg:h-[calc(100dvh-7.5rem)] lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {SETTINGS_NAV.map((group, gi) => (

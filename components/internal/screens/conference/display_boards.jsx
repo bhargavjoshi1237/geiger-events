@@ -56,23 +56,12 @@ import {
 } from "@/lib/display/constants";
 import { BoardBuilder } from "./display/board_builder";
 
-// Display Boards — the billboard/signage surface. A board is an events
-// .conference_records row (module "board") whose config carries the slide queue
-// the organiser crafts on the canvas, and which renders at /display/<id> on a
-// screen that is never signed in.
-//
-// Two levels: this list of boards across the project, then the builder. The open
-// board lives in the URL (?record=<id>) so a refresh or a shared link stays on
-// it, like every other record area.
-
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All boards" },
   { value: "published", label: "Published" },
   { value: "draft", label: "Draft" },
 ];
 
-// A new board opens with a title card and a Now & Next — the two slides every
-// lobby screen needs — so it plays something the moment it's created.
 const starterSlides = () => [
   {
     id: `slide_${crypto.randomUUID()}`,
@@ -186,6 +175,7 @@ function CreateBoardDialog({ open, onOpenChange, events, onCreate }) {
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={submit}
+            disabled={!name.trim() || !eventId}
           >
             <Plus className="h-4 w-4" /> Create board
           </Button>
@@ -277,7 +267,6 @@ export function DisplayBoardsScreen() {
     [boards],
   );
 
-  // --- Mutations (optimistic + persisted) ---
   const handleCreate = ({ name, eventId, theme }) => {
     const record = {
       id: crypto.randomUUID(),
@@ -309,8 +298,6 @@ export function DisplayBoardsScreen() {
     });
   };
 
-  // The builder owns the config and hands back the whole bag, because `toRow`
-  // replaces `config` wholesale rather than merging it.
   const handlePersist = (boardId) => (config) => {
     setBoards((prev) =>
       prev.map((b) => (b.id === boardId ? { ...b, config } : b)),
@@ -339,7 +326,6 @@ export function DisplayBoardsScreen() {
       ...board,
       id: crypto.randomUUID(),
       name: `${board.name} copy`,
-      // A duplicate starts unpublished so it can't quietly take over a screen.
       config: { ...board.config, published: false },
       createdBy: userId,
       projectId,

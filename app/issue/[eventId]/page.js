@@ -7,9 +7,6 @@ import { getEvent } from "@/lib/supabase/events";
 import { AccessGate } from "@/components/checkin_routes/access_gate";
 import { IssueDesk } from "@/components/checkin_routes/issue_desk";
 
-// The item-issuing route. Staff unlock it with an 'issue' access code — its own
-// code space, so a scanning or kiosk code can't open it (and vice versa). Codes
-// are managed under Inventory → Issuing Staff.
 export default function IssuePage() {
   const params = useParams();
   const eventId = Array.isArray(params?.eventId) ? params.eventId[0] : params?.eventId;

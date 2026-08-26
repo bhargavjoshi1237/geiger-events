@@ -38,21 +38,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 
-// Offerings editor. Each offering — add-ons or choices a buyer picks at
-// checkout — is stored in the event's metadata bag (like tickets/schedule) via
-// useEventConfig. The public checkout (event_public_page.jsx) reads enabled
-// offerings, filters them by the selected ticket, and folds priced options into
-// the order total; the buyer's choices persist on the order's metadata.
-//
-//   offering = {
-//     id, name, description,
-//     selectionType: "single" | "multiple",   // radio vs checkboxes
-//     required: bool,                          // single only — must pick one
-//     enabled: bool,
-//     appliesTo: "all" | string[],             // ticket names it's offered with
-//     options: [{ id, label, price }],         // price 0 = free choice
-//   }
-
 const EMPTY_OFFERING = {
   name: "",
   description: "",
@@ -86,7 +71,6 @@ function appliesSummary(appliesTo) {
 function OfferingDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
   const [draft, setDraft] = useState(EMPTY_OFFERING);
 
-  // Re-seed the draft whenever the dialog opens (render-phase reset).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -114,7 +98,6 @@ function OfferingDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
       options: d.options.filter((o) => o.id !== id),
     }));
 
-  // appliesTo is either "all" or an array of ticket names.
   const isAll = draft.appliesTo === "all";
   const toggleAll = () => set("appliesTo")("all");
   const toggleTicket = (name) => {
@@ -227,7 +210,7 @@ function OfferingDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
                 className={cn(
                   "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                   isAll
-                    ? "border-white bg-white text-[#161616]"
+                    ? "border-primary bg-primary/15 text-foreground"
                     : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                 )}
               >
@@ -246,7 +229,7 @@ function OfferingDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
                     className={cn(
                       "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                       active
-                        ? "border-white bg-white text-[#161616]"
+                        ? "border-primary bg-primary/15 text-foreground"
                         : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                     )}
                   >
@@ -326,9 +309,9 @@ function OfferingDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
 export function OfferingsSection({ event, headerItem }) {
   const [offerings, , saveOfferings] = useEventConfig(event, "offerings", []);
   const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // { index, offering } | null
+  const [editing, setEditing] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
-  // Ticket names come from the event's configured tiers (Ticket Types tab).
   const ticketTypes = (Array.isArray(event.tickets) ? event.tickets : [])
     .map((t) => t.name)
     .filter(Boolean);
@@ -409,8 +392,6 @@ export function OfferingsSection({ event, headerItem }) {
                       {appliesSummary(o.appliesTo)}
                     </p>
                   </div>
-                  {/* Right rail: badges pinned to the edge, switch centred in the
-                      remaining height beneath them. */}
                   <div className="flex shrink-0 flex-col items-end gap-2 self-stretch">
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <Badge variant="neutral">
@@ -430,8 +411,6 @@ export function OfferingsSection({ event, headerItem }) {
                   </div>
                 </div>
 
-                {/* Option chips share the footer row with the row-action icons so
-                    the actions sit against content instead of an empty strip. */}
                 <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
                   <div className="flex min-w-0 flex-wrap gap-2">
                     {(o.options || []).map((opt) => (
@@ -486,7 +465,7 @@ export function OfferingsSection({ event, headerItem }) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => removeOffering(i)}
+                      onClick={() => setDeleteTarget(i)}
                       aria-label="Delete offering"
                       className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                     >
@@ -525,6 +504,38 @@ export function OfferingsSection({ event, headerItem }) {
           setEditing(null);
         }}
       />
+
+      <Dialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete offering</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget != null ? offerings[deleteTarget]?.name : ""}
+              </span>
+              ? This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                removeOffering(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

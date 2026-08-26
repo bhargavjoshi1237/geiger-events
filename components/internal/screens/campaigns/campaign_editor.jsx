@@ -43,7 +43,6 @@ import {
   formatDateTime,
 } from "./constants";
 
-// Character budget hint for text channels.
 const SMS_SEGMENT = 160;
 
 export function CampaignEditor({
@@ -96,8 +95,6 @@ export function CampaignEditor({
     if (nextStatus) patch.status = nextStatus;
     if (nextStatus === "sent") {
       patch.sentAt = new Date().toISOString();
-      // Honest metrics: everyone we could reach is a recipient/delivered. We do
-      // not fabricate opens/clicks.
       patch.metrics = { ...defaultMetrics(), ...campaign.metrics, recipients, delivered: recipients };
     }
     return patch;
@@ -159,7 +156,6 @@ export function CampaignEditor({
         </div>
       );
     }
-    // sent | paused
     return (
       <Button
         variant="outline"
@@ -228,7 +224,6 @@ export function CampaignEditor({
       </div>
 
       <div className="mt-6 space-y-6">
-        {/* Audience */}
         <SectionCard
           title="Audience"
           description="Who this campaign goes to. Recipient count recomputes live from your contacts."
@@ -253,7 +248,6 @@ export function CampaignEditor({
                 </SelectContent>
               </Select>
             </Field>
-            {/* Mirrors the Select's box so both controls line up on one row. */}
             <Field label="Estimated recipients">
               <div className="flex h-10 w-full items-center gap-2.5 rounded-md border border-border bg-surface-card px-3 text-sm">
                 <Users className="h-4 w-4 shrink-0 text-text-tertiary" />
@@ -268,7 +262,6 @@ export function CampaignEditor({
           </div>
         </SectionCard>
 
-        {/* Content */}
         <SectionCard
           title="Content"
           description="What your audience receives. Use merge tags like {{first_name}} to personalize."
@@ -347,7 +340,6 @@ export function CampaignEditor({
           </div>
         </SectionCard>
 
-        {/* Schedule */}
         <SectionCard title="Schedule" description="Send immediately or queue it for later.">
           <Field label="Timing">
             <div className="flex flex-wrap gap-2">
@@ -363,7 +355,7 @@ export function CampaignEditor({
                   className={cn(
                     "rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors disabled:opacity-50",
                     scheduleMode === opt.value
-                      ? "border-border-strong bg-surface-active text-foreground"
+                      ? "border-primary bg-primary/15 text-foreground"
                       : "border-border bg-surface-card text-text-secondary hover:bg-surface-hover",
                   )}
                 >
@@ -386,7 +378,6 @@ export function CampaignEditor({
           ) : null}
         </SectionCard>
 
-        {/* A/B testing — email & text channels only */}
         {isEmail || isText ? (
           <SectionCard
             title="A/B testing"

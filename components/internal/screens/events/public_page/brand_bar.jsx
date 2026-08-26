@@ -6,9 +6,6 @@ import { Menu, Share2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BrandBar({ headerCfg, barLogo, primaryBtnStyle, ctaHover, onShare }) {
-  // Nav links collapse behind a toggle below `md`. Left to wrap, five links plus
-  // a CTA and Share stack into a four-line block that pushes the hero off the
-  // phone screen entirely.
   const [menuOpen, setMenuOpen] = useState(false);
 
   if (!headerCfg) return null;
@@ -27,8 +24,6 @@ export function BrandBar({ headerCfg, barLogo, primaryBtnStyle, ctaHover, onShar
     />
   ) : null;
 
-  // Desktop keeps whatever the align setting produced. On mobile the nav is
-  // gone, so the action cluster takes the free space instead.
   const actionsClass = centered ? "" : hasLinks ? "ml-auto md:ml-0" : "ml-auto";
 
   const navLink = (l, stacked) => (
@@ -129,8 +124,6 @@ export function BrandBar({ headerCfg, barLogo, primaryBtnStyle, ctaHover, onShar
         ) : null}
       </div>
 
-      {/* Stays in flow rather than floating, so the sticky bar's own painted
-          band grows with it instead of the panel escaping the clip-path. */}
       {hasLinks && menuOpen ? (
         <nav className="basis-full border-t border-border pt-2 md:hidden">
           {headerCfg.links.map((l) => navLink(l, true))}

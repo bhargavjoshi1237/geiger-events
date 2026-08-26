@@ -1,17 +1,5 @@
 "use client";
 
-// The schedule item's time field.
-//
-// A typeable combobox rather than a Select, because a running order needs any
-// minute (6:45 breakouts are normal) while still being one click for the common
-// case. Typing is parsed generously — "645p", "6:45pm", "1845" all land on
-// 18:45 — and the quarter-hour list opens scrolled to just after the previous
-// item's time.
-//
-// Deliberately tolerant: something that isn't a time ("TBA", "After lunch") is
-// kept as a label rather than refused. Organizers write running orders that way,
-// and existing events already contain those values.
-
 import React, { useMemo, useState } from "react";
 import { Clock, Tag, X } from "lucide-react";
 
@@ -31,14 +19,12 @@ import {
 
 export function ScheduleTimeField({ value, onChange, afterTime, id }) {
   const [open, setOpen] = useState(false);
-  const [typed, setTyped] = useState(null); // null = not editing
+  const [typed, setTyped] = useState(null);
 
   const display = typed !== null ? typed : formatScheduleTime(value);
   const parsed = typed !== null ? parseTimeInput(typed) : null;
   const isLabel = !!value && !isClockTime(value);
 
-  // Filter the quarter-hour list by what's been typed, matching on both the
-  // stored and displayed forms so "6:4" and "18:4" both narrow.
   const options = useMemo(() => {
     const all = timeOptions(afterTime);
     const query = (typed || "").trim().toLowerCase();
@@ -57,8 +43,6 @@ export function ScheduleTimeField({ value, onChange, afterTime, id }) {
     setOpen(false);
   };
 
-  // Leaving the field keeps whatever was typed: a parsed time if it is one, the
-  // raw text as a label if it isn't.
   const commitTyped = () => {
     if (typed === null) return;
     const text = typed.trim();
@@ -87,7 +71,6 @@ export function ScheduleTimeField({ value, onChange, afterTime, id }) {
               setOpen(true);
             }}
             onBlur={() => {
-              // Let a click on an option land before the blur closes the list.
               setTimeout(commitTyped, 120);
             }}
             onKeyDown={(e) => {
@@ -115,12 +98,15 @@ export function ScheduleTimeField({ value, onChange, afterTime, id }) {
 
       <PopoverContent
         align="start"
+        role="listbox"
         className="w-[var(--radix-popover-trigger-width)] max-h-64 overflow-y-auto p-1"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {parsed ? (
           <button
             type="button"
+            role="option"
+            aria-selected={parsed === value}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => commit(parsed)}
             className="flex w-full items-center justify-between rounded-md bg-primary/15 px-2 py-1.5 text-left text-sm text-foreground"
@@ -136,6 +122,8 @@ export function ScheduleTimeField({ value, onChange, afterTime, id }) {
             <button
               key={t}
               type="button"
+              role="option"
+              aria-selected={t === value}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => commit(t)}
               className={cn(
@@ -147,11 +135,11 @@ export function ScheduleTimeField({ value, onChange, afterTime, id }) {
             </button>
           ))}
 
-        {/* An unparseable entry is offered explicitly rather than silently
-            accepted, so it's clear it won't behave as a time. */}
         {typed && typed.trim() && !parsed ? (
           <button
             type="button"
+            role="option"
+            aria-selected={typed.trim() === value}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => commit(typed.trim())}
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-active"
@@ -169,7 +157,6 @@ export function ScheduleTimeField({ value, onChange, afterTime, id }) {
   );
 }
 
-/** Small marker for a time that's a label rather than a clock value. */
 export function TimeLabelBadge({ value }) {
   if (!value || isClockTime(value)) return null;
   return (

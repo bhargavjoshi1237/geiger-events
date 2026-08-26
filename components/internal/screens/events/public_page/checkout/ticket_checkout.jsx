@@ -28,13 +28,7 @@ export function TicketCheckout(props) {
   const { step, headerLabel, disclaimerSlot } = checkout;
   const accentStyle = { backgroundColor: accent.color, color: accent.text };
 
-  // Seat and booth picking are map-plus-rail layouts and need the room; every
-  // other step is a single column of fields and stays narrow. The map steps
-  // also take a DEFINITE height rather than a cap, so the map and the rail can
-  // grow into the dialog instead of sitting above a band of dead space.
   const wide = step === "seats" || step === "booths";
-  // Only the seat map fills its container end to end; the booth picker still
-  // scrolls, so it keeps the capped height.
   const fills = step === "seats";
 
   return (
@@ -44,9 +38,6 @@ export function TicketCheckout(props) {
           wide ? "max-w-6xl" : "max-w-lg"
         } ${fills ? "h-[88vh] max-h-[88vh]" : "max-h-[85vh]"}`}
       >
-        {/* The header carries the event's own identity — the poster it is sold
-            under, and the two facts a buyer checks before paying: when, and
-            where. All of it already on the page behind this dialog. */}
         <DialogHeader className="shrink-0 gap-0">
           <div className="flex items-center gap-3 pr-8">
             {event.coverUrl ? (
@@ -60,16 +51,12 @@ export function TicketCheckout(props) {
             ) : null}
 
             <div className="min-w-0 flex-1">
-              {/* The event is context and the step is the job at hand, so the
-                  step takes the size and the event sits above it as a label. */}
               <DialogDescription className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-text-tertiary">
                 {event.name}
               </DialogDescription>
               <DialogTitle className="truncate text-xl tracking-tight">{headerLabel}</DialogTitle>
             </div>
 
-            {/* Only the map steps are wide enough to have room going spare —
-                on the narrow ones this would crowd the title. */}
             <div
               className={cn(
                 "shrink-0 items-center gap-4 text-xs text-text-secondary",
@@ -95,8 +82,6 @@ export function TicketCheckout(props) {
             fills ? "min-h-0 overflow-hidden" : "overflow-y-auto"
           }`}
         >
-          {/* Sits above whichever step is showing, so it reads as terms for the
-              whole purchase rather than for one field. */}
           {disclaimerSlot("checkout-top", "mb-4")}
 
           {step === "seats" ? (

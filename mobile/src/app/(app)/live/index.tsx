@@ -23,7 +23,6 @@ import type { LiveRoom } from "@/types/portal";
 const stagger = (i: number) => Math.min(i, 11) * 40;
 const POLL_MS = 30_000;
 
-// Kept out of the component body so the compiler's purity rule is satisfied.
 function isFuture(dateStr: string | null): boolean {
   return !!dateStr && new Date(dateStr).getTime() > Date.now();
 }
@@ -34,7 +33,6 @@ export default function LiveScreen() {
   const [rooms, setRooms] = useState<LiveRoom[] | null>(null);
   const scrollY = useSharedValue(0);
 
-  // Rooms go stale within a minute, so this screen polls its own data.
   const load = useCallback(async () => {
     if (!token) return;
     const res = await api<{ rooms: LiveRoom[] }>("/api/portal/live", { token });

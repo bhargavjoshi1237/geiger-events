@@ -1,7 +1,5 @@
 import * as Haptics from "expo-haptics";
 
-// Thin wrappers so screens never import expo-haptics directly. Fire-and-forget:
-// haptics are unavailable on some devices and on web, so every call is guarded.
 export function tapFeedback() {
   Haptics.selectionAsync().catch(() => {});
 }

@@ -27,7 +27,6 @@ export default function NotificationsScreen() {
   const { notifications, loading, refreshing, refreshAll, markNotificationsRead } = usePortalData();
   const scrollY = useSharedValue(0);
 
-  // Mark the feed read the moment the member opens it, once.
   useFocusEffect(
     useCallback(() => {
       if (notifications.unread > 0) void markNotificationsRead();

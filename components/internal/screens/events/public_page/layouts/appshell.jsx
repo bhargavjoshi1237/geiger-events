@@ -17,10 +17,6 @@ import {
   useScrollSpy,
 } from "./shared";
 
-// App shell — a fixed brand rail down the left carrying the logo, the section
-// nav and the buy button, with the content filling everything to the right of
-// it. Borrowed from product UI: the important controls never leave the screen,
-// which suits a page someone will scroll for a while.
 export function AppShellLayout({ ctx }) {
   const {
     event,

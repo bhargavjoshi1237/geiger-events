@@ -13,7 +13,6 @@ type SegmentedProps = {
   onChange: (value: string) => void;
 };
 
-// iOS-style segmented control. The active pill slides between segments.
 export function Segmented({ options, value, onChange }: SegmentedProps) {
   const [trackWidth, setTrackWidth] = useState(0);
   const active = Math.max(

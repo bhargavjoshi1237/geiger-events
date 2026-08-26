@@ -5,9 +5,6 @@ import { cn } from "@/lib/utils";
 import { BannerHero } from "../hero";
 import { Shell } from "./shared";
 
-// Classic — the layout the event page has always had. Cover and detail run down
-// a wide main column with the ticket panel in a sticky rail beside it. The only
-// layout that honours the separate Hero style and Ticket sidebar settings.
 export function ClassicLayout({ ctx }) {
   const {
     event,

@@ -6,9 +6,6 @@ import { cn } from "@/lib/utils";
 import { CoverImage } from "../hero";
 import { Shell, BlockSlot, EventMetaLine, StickyBuyBar } from "./shared";
 
-// Photos to pair with the sections, cover first. Sections beyond the supply
-// simply run without one, which is what keeps the rhythm from breaking on an
-// event that only uploaded a cover.
 function featureImages(event) {
   return (Array.isArray(event.gallery) ? event.gallery : [])
     .map(galleryItem)
@@ -16,10 +13,6 @@ function featureImages(event) {
     .filter(Boolean);
 }
 
-// Zigzag — sections alternate image-left and image-right down the page, the
-// feature-row rhythm every product marketing site settles on. Each section is
-// paired with one of the event's photos, so a gallery does real work here
-// instead of sitting in a strip.
 export function ZigzagLayout({ ctx }) {
   const {
     event,
@@ -92,7 +85,6 @@ export function ZigzagLayout({ ctx }) {
                         i % 2 === 1 && "lg:order-last",
                       )}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={src}
                         alt=""

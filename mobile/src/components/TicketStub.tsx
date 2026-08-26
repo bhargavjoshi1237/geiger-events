@@ -26,7 +26,6 @@ type TicketStubProps = {
   onPress?: () => void;
 };
 
-// The signature ticket card — a body, a perforated tear line, and a price stub.
 export function TicketStub({
   image,
   icon = "credit-card",
@@ -37,8 +36,6 @@ export function TicketStub({
   stubLabel = "price",
   onPress,
 }: TicketStubProps) {
-  // Mutations defined before useAnimatedStyle so the React Compiler keeps the
-  // shared value's mutable range open.
   const scaleRef = useSharedValue(1);
   const pressIn = () => {
     scaleRef.value = withSpring(0.985, spring);
@@ -88,7 +85,6 @@ export function TicketStub({
         ) : null}
       </View>
 
-      {/* Perforation: dashed borders are unreliable on Android, so draw dashes. */}
       <View style={styles.perforation}>
         <View style={styles.dashColumn}>
           {Array.from({ length: 9 }).map((_, i) => (
@@ -223,8 +219,6 @@ const styles = StyleSheet.create({
   notchBottom: {
     bottom: -6,
   },
-  // The stub is visually a separate tear-off piece: darker plate behind the
-  // perforation, big count, tracked label.
   stub: {
     width: 88,
     alignItems: "center",

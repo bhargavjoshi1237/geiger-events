@@ -52,10 +52,6 @@ import {
   signedQty,
 } from "./constants";
 
-// Record a movement against any stocked item. Only leaf items are selectable —
-// a parent with variants holds no stock of its own.
-// `items` are the selectable leaves; `allItems` is the full catalog, needed so a
-// variant's thumbnail can fall back to its parent's photo.
 function RecordMovementDialog({
   open,
   onOpenChange,
@@ -188,7 +184,11 @@ function RecordMovementDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-primary" onClick={submit} disabled={pending}>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={submit}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Record movement
           </Button>
@@ -306,7 +306,6 @@ export function StockMovementsScreen() {
     {
       key: "item",
       header: "Item",
-      // Takes the table's spare width so the rest hug their values.
       className: "w-full",
       headClassName: "w-full",
       render: (m) => {
@@ -375,7 +374,7 @@ export function StockMovementsScreen() {
         description="Every change to stock, newest first. The ledger is append-only — on-hand is derived from it, so it can never drift."
         actions={
           <Button
-            className="bg-primary gap-2"
+            className="bg-primary gap-2 text-primary-foreground hover:bg-primary/90"
             onClick={() => setCreating(true)}
             disabled={!stocked.length}
           >

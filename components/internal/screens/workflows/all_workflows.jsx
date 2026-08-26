@@ -117,7 +117,13 @@ function CreateWorkflowDialog({ open, onOpenChange, onCreate, events }) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+          className="grid gap-4"
+        >
           <Field label="Workflow name" htmlFor="wf-name">
             <Input
               id="wf-name"
@@ -171,7 +177,7 @@ function CreateWorkflowDialog({ open, onOpenChange, onCreate, events }) {
               </Field>
             ) : null}
           </div>
-        </div>
+        </form>
 
         <DialogFooter>
           <Button

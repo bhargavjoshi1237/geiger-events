@@ -4,13 +4,6 @@ import React from "react";
 
 import { cn } from "@/lib/utils";
 
-// The thing a bowl is built around: the pitch, court, rink, ring, runway or
-// stage in the middle of the map. Purely decorative — it is never selectable and
-// never sells anything, it just makes a ring of coloured blocks read as a venue.
-//
-// Geometry is percent-of-canvas, the same space sections and booths use, and
-// lives in seat_maps.config.field / hall_maps.config.field.
-
 export const FIELD_SHAPES = [
   { value: "stage", label: "Stage", hint: "A raised end stage — concerts and theatre." },
   { value: "pitch", label: "Pitch", hint: "Football, rugby, cricket." },
@@ -22,8 +15,6 @@ export const FIELD_SHAPES = [
   { value: "none", label: "None", hint: "No central feature." },
 ];
 
-// Shape -> surface tint. Tailwind colour utilities at low opacity, matching how
-// the rest of the app tints non-semantic surfaces.
 const SHAPE_STYLE = {
   stage: "border-border-strong bg-surface-strong",
   pitch: "border-emerald-400/30 bg-emerald-400/10",
@@ -36,8 +27,6 @@ const SHAPE_STYLE = {
 
 const MARKING = "pointer-events-none absolute border-current opacity-30";
 
-// Sport markings, drawn from the shape rather than stored, so a map never has
-// to carry pitch furniture in its config.
 function Markings({ shape, stroke }) {
   if (shape === "pitch" || shape === "court" || shape === "rink") {
     return (
@@ -61,11 +50,6 @@ function Markings({ shape, stroke }) {
   return null;
 }
 
-// `scale` is the canvas's live zoom. Every stroke and corner here is drawn in
-// the layer's own space, so without counter-scaling a 1px edge and an 8px
-// corner come out as a 15px band and a 120px curve the moment a buyer drills
-// into a section — which is what turned the pitch into a giant grey slab
-// behind the chairs.
 export function MapField({ field, className, scale = 1 }) {
   if (!field || field.shape === "none") return null;
 

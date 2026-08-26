@@ -23,11 +23,6 @@ import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { EMPTY_ACCESS_CODE } from "@/lib/events/access_codes";
 
-// Access-code (hidden) ticket editor. Codes live in the event metadata bag
-// (metadata.accessCodes) — each entry maps a code to the event ticket ids it
-// unlocks; those tickets stay hidden on the public page until a buyer enters a
-// matching code. See lib/events/access_codes.js for the shape + helpers.
-
 function AccessCodeDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
   const [draft, setDraft] = useState(EMPTY_ACCESS_CODE);
 
@@ -107,7 +102,7 @@ function AccessCodeDialog({ open, onOpenChange, ticketTypes, initial, onSave }) 
                       className={cn(
                         "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                         active
-                          ? "border-white bg-white text-[#161616]"
+                          ? "border-primary bg-primary/15 text-foreground"
                           : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                       )}
                     >
@@ -147,11 +142,11 @@ function AccessCodeDialog({ open, onOpenChange, ticketTypes, initial, onSave }) 
 export function EventAccessCodesSection({ event, headerItem }) {
   const [codes, , save] = useEventConfig(event, "accessCodes", []);
   const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // { index, entry } | null
+  const [editing, setEditing] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const list = Array.isArray(codes) ? codes : [];
 
-  // Ticket tiers (id + name) so the "unlocks" chips key on the stable id.
   const ticketTypes = (Array.isArray(event.tickets) ? event.tickets : [])
     .filter((t) => t && t.id)
     .map((t) => ({ id: String(t.id), name: t.name || "Untitled" }));
@@ -228,7 +223,7 @@ export function EventAccessCodesSection({ event, headerItem }) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => removeCode(i)}
+                      onClick={() => setDeleteTarget(i)}
                       aria-label="Delete access code"
                       className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                     >
@@ -285,6 +280,39 @@ export function EventAccessCodesSection({ event, headerItem }) {
           setEditing(null);
         }}
       />
+
+      <Dialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete access code</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-mono font-medium text-foreground">
+                {deleteTarget != null ? list[deleteTarget]?.code : ""}
+              </span>
+              ? Buyers will no longer be able to unlock its tickets. This action
+              can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                removeCode(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

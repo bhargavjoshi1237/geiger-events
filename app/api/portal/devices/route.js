@@ -3,7 +3,6 @@ import { adminClient } from "@/lib/supabase/admin";
 import { getSessionMember } from "@/lib/portal/session";
 import { registerDevice, unregisterDevice } from "@/lib/portal/push";
 
-// POST { pushToken, platform, appVersion } -> registers the device for pushes.
 export async function POST(request) {
   const member = await getSessionMember();
   if (!member) {
@@ -24,8 +23,6 @@ export async function POST(request) {
   return NextResponse.json({ ok: true });
 }
 
-// DELETE { pushToken } -> stops the device receiving the member's pushes. The app
-// calls this on sign-out so a shared handset doesn't keep the previous owner's.
 export async function DELETE(request) {
   const member = await getSessionMember();
   if (!member) {

@@ -28,28 +28,12 @@ import { withSides } from "@/lib/passes/layout";
 import { resolveTemplate } from "@/lib/passes/render";
 import { withDefaults } from "../checkin/constants";
 
-// Badge printing, per event. Pass designs are project-wide (Check-in → Badge
-// Printing owns the editor); this section decides whether *this* event prints
-// them and which design it prints on, and shows the result hanging from its
-// lanyard.
-//
-// The config lives in the event's metadata bag under `badge`, independent of the
-// other check-in keys so a save here never clobbers them:
-//   badge → { enabled, templateId }
-
-// The screen that owns the designer — the exact sidebar title, so the workspace
-// URL resolves it.
 const DESIGNER_TAB = "Badge Printing";
 
-// No pinned design means "whatever the project's default is", which is also what
-// the printer resolves for an attendee with no matching tier or role.
 const PROJECT_DEFAULT = "default";
 
 const DEFAULT_BADGE = { enabled: false, templateId: "" };
 
-// The project's saved pass designs plus the QR appearance they render with.
-// Skipped entirely while `active` is false, so an event that doesn't print
-// badges costs nothing on every screen that drops the showcase in.
 function useProjectPassDesigns(active) {
   const { projectId } = useProject();
   const [state, setState] = useState({
@@ -64,8 +48,6 @@ function useProjectPassDesigns(active) {
     getCheckinSettings(projectId).then((settings) => {
       if (!alive) return;
       const config = settings?.config || {};
-      // Designs saved before the free-layout editor carry only field toggles;
-      // withSides converts them to the positioned form the renderer draws.
       const templates = (withDefaults(config, "badge").templates || []).map(withSides);
       setState({
         templates,
@@ -81,8 +63,6 @@ function useProjectPassDesigns(active) {
   return state;
 }
 
-// What this event's passes look like. `override` lets the editing section preview
-// an unsaved choice; everywhere else reads the event's saved config.
 export function useEventPass(event, override) {
   const badge = override || event?.badge || DEFAULT_BADGE;
   const enabled = Boolean(badge.enabled);
@@ -90,8 +70,6 @@ export function useEventPass(event, override) {
 
   const template = useMemo(() => {
     if (!templates.length) return null;
-    // An unset design means "whatever an unmatched attendee would print on",
-    // which is exactly what the printer resolves.
     return (
       templates.find((t) => t.id === badge.templateId) ||
       resolveTemplate(templates, "", "")
@@ -101,8 +79,6 @@ export function useEventPass(event, override) {
   return { enabled, template, templates, qrSettings, loading: enabled && loading };
 }
 
-// The hanging pass, framed as a page section. Takes an already-resolved design,
-// so a caller that has one in hand doesn't pay for a second settings read.
 export function PassShowcasePanel({
   event,
   template,
@@ -123,8 +99,6 @@ export function PassShowcasePanel({
       action={action}
       className={className}
     >
-      {/* No frame: the pass hangs on the page itself, the way it reads against
-          the dark canvas rather than boxed into another card. */}
       <LanyardBadge
         template={template}
         event={event}
@@ -136,9 +110,6 @@ export function PassShowcasePanel({
   );
 }
 
-// The same panel, resolving the event's design itself. Renders nothing unless
-// this event prints badges and a design exists, so a caller can drop it in
-// unconditionally.
 export function EventPassShowcase({ event, badge, ...panel }) {
   const { enabled, template, qrSettings, loading } = useEventPass(event, badge);
   if (loading || !enabled) return null;
@@ -157,8 +128,6 @@ export function EventBadgeSection({ event, headerItem }) {
   const [cfg, , save] = useEventConfig(event, "badge", DEFAULT_BADGE);
   const { template, templates, qrSettings, loading } = useEventPass(event, cfg);
 
-  // Opening the designer with this event still in the URL lands on its passes
-  // rather than whichever event the screen would otherwise default to.
   const openDesigner = () => openEventInTab(event.id, DESIGNER_TAB);
 
   const setEnabled = (enabled) =>

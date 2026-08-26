@@ -49,19 +49,15 @@ import {
 import { EventRegistrationsDetail } from "./event_registrations";
 import { downloadCsv } from "./csv";
 
-// Render caps so the hub stays light with hundreds of events / thousands of
-// people — refine with search or "show more" to go past them.
 const PAGE_EVENTS = 60;
 const PAGE_PEOPLE = 100;
 
-// Two-letter avatar seed for a person row.
 function initials(name) {
   const parts = (name || "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
   return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
 }
 
-// One event's registration funnel as a clickable card — the hub's main unit.
 function EventCard({ event, counts, onOpen }) {
   const cap = event.capacity || 0;
   const full = cap > 0 && counts.seats >= cap;
@@ -116,7 +112,7 @@ export function RegistrationsScreen() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState("events"); // events | people
+  const [view, setView] = useState("events");
   const [eventLimit, setEventLimit] = useState(PAGE_EVENTS);
   const [peopleLimit, setPeopleLimit] = useState(PAGE_PEOPLE);
   const [openEventId, setOpenEventId] = useState(null);
@@ -138,7 +134,7 @@ export function RegistrationsScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [projectId]);
 
   const eventNames = useMemo(() => {
     const m = {};
@@ -152,7 +148,6 @@ export function RegistrationsScreen() {
     return m;
   }, [regs]);
 
-  // Event cards: every event that has registrations, most-actionable first.
   const eventCards = useMemo(() => {
     return events
       .map((event) => ({
@@ -172,7 +167,6 @@ export function RegistrationsScreen() {
       });
   }, [events, regsByEvent, search]);
 
-  // --- Mutations (optimistic + persisted) — shared by both views & detail. ---
   const handleCreate = (draft) => {
     const reg = {
       id: crypto.randomUUID(),
@@ -256,7 +250,6 @@ export function RegistrationsScreen() {
     toast.success(`Exported ${regs.length} Registrations.`);
   };
 
-  // --- Per-event detail takes over the screen when an event is open. ---
   const openEvent = events.find((e) => e.id === openEventId) || null;
   if (openEvent) {
     return (
@@ -273,7 +266,6 @@ export function RegistrationsScreen() {
     );
   }
 
-  // People-view: a flat, searchable cross-event list for lookups & export.
   const peopleFiltered = regs.filter((r) =>
     search
       ? `${r.name} ${r.email} ${eventNames[r.eventId] || ""}`
@@ -283,14 +275,13 @@ export function RegistrationsScreen() {
   );
   const peopleSelected = regs.find((r) => r.id === peopleOpenId) || null;
 
-  // People view renders through the shared DataTable, matching All Events.
   const peopleColumns = [
     {
       key: "person",
       header: "Person",
       render: (r) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-card text-xs font-semibold text-text-secondary">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-card text-xs font-semibold text-foreground">
             {initials(r.name)}
           </div>
           <div className="min-w-0">
@@ -373,7 +364,6 @@ export function RegistrationsScreen() {
       />
 
       <Toolbar>
-        {/* Events / People view switch. */}
         <div className="flex h-10 w-fit shrink-0 items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
           {[
             { key: "events", label: "By event", icon: Inbox },
@@ -396,7 +386,6 @@ export function RegistrationsScreen() {
           ))}
         </div>
 
-        {/* Search on the right. */}
         <SearchInput
           value={search}
           onChange={(v) => {
@@ -449,12 +438,22 @@ export function RegistrationsScreen() {
                   : "Registrations from your event pages land here, grouped by event. You can also add one by hand."
               }
               action={
-                <Button
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <UserPlus className="h-4 w-4" /> Add registrant
-                </Button>
+                regs.length ? (
+                  <Button
+                    variant="outline"
+                    className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    onClick={() => setSearch("")}
+                  >
+                    Clear filters
+                  </Button>
+                ) : (
+                  <Button
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    <UserPlus className="h-4 w-4" /> Add registrant
+                  </Button>
+                )
               }
             />
           </div>

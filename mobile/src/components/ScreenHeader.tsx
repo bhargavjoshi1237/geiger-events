@@ -20,10 +20,8 @@ type ScreenHeaderProps = {
   scrollY?: SharedValue<number>;
 };
 
-// Page header for pushed routes: back chevron, collapsing title, hairline divider.
 export function ScreenHeader({ title, subtitle, right, onBack, scrollY }: ScreenHeaderProps) {
   const reduced = useReducedMotion();
-  // Title shrinks once the attached scroll view passes 24px; skipped under reduced motion.
   const titleStyle = useAnimatedStyle(() => {
     if (reduced || !scrollY) {
       return { fontSize: type.title.fontSize, lineHeight: type.title.lineHeight };

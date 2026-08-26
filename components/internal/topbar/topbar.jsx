@@ -13,10 +13,6 @@ import { useVisibleNav } from "@/lib/hooks/use-visible-nav";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-// Suite topbar from @geiger/ui, wired with this product's name + data-bound slots.
-// The search field is the shared command palette over the *same* nav the sidebar
-// renders (useVisibleNav: enabled addons merged in, role-gated) — picking a result
-// switches the workspace tab, exactly as clicking that sidebar entry would.
 export function Topbar() {
   const { setTab } = useWorkspaceUrl();
   const visibleNav = useVisibleNav();

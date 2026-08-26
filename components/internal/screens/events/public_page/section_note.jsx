@@ -8,12 +8,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-// Organizer-written notes surfaced as a small "i" beside a page section's
-// heading. Notes persist as `event.sectionNotes` — [{ id, target, text,
-// enabled }] — where `target` is a key from SECTION_NOTE_TARGETS (a content
-// block type or a sidebar card). Sections without a matching note render
-// nothing extra.
-
 export const SECTION_NOTE_TARGETS = {
   about: "About this event",
   expect: "What to expect",

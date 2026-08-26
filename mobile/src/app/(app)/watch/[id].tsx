@@ -24,7 +24,6 @@ export default function WatchDetailScreen() {
   const { watch, loading, refreshing, refreshAll } = usePortalData();
   const scrollY = useSharedValue(0);
 
-  // A deep link can land here before the library has loaded.
   if (loading.watch) {
     return (
       <Screen scroll onScroll={(y) => (scrollY.value = y)}>
@@ -58,7 +57,6 @@ export default function WatchDetailScreen() {
   );
 }
 
-// Mounted only once the item exists so the player gets a real source.
 function PlayerView({ item }: { item: WatchItem }) {
   const player = useVideoPlayer(item.videoUrl, (p) => {
     p.loop = false;

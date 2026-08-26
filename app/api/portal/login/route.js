@@ -10,7 +10,6 @@ import {
 
 const SESSION_DAYS = 30;
 
-// { email, password } -> verifies, creates a session, sets cookie.
 export async function POST(request) {
   const { email, password } = await request.json().catch(() => ({}));
   const clean = String(email || "").trim().toLowerCase();

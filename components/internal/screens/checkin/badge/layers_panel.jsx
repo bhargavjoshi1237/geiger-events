@@ -32,8 +32,6 @@ const KIND_ICON = { text: Type, qr: QrCode, image: ImageIcon, box: Square };
 
 const GROUPS = ["Event", "Attendee", "Ticket", "Pass", "Other"];
 
-// The left rail: everything on the face being designed, front-most first. Select
-// to edit, toggle to hide it from print, reorder to change what overlaps what.
 export function LayersPanel({ template, side = "front", selectedId, onSelect, onChange }) {
   const elements = sideLayout(template, side).elements || [];
   const set = (next) => onChange({ elements: next });
@@ -45,7 +43,6 @@ export function LayersPanel({ template, side = "front", selectedId, onSelect, on
     if (selectedId === id) onSelect(null);
   };
 
-  // Later in the array paints later, so "up" in the list is one step to the back.
   const move = (id, delta) => {
     const index = elements.findIndex((el) => el.id === id);
     const target = index + delta;
@@ -80,7 +77,6 @@ export function LayersPanel({ template, side = "front", selectedId, onSelect, on
     <div className="flex h-full flex-col overflow-y-auto">
       <PanelSection label={side === "back" ? "On the back" : "On the front"}>
         <div className="space-y-1">
-          {/* Front-most first reads the way the card looks. */}
           {[...elements].reverse().map((el) => {
             const Icon = KIND_ICON[el.kind] || Type;
             const active = el.id === selectedId;
@@ -117,27 +113,27 @@ export function LayersPanel({ template, side = "front", selectedId, onSelect, on
 
                 <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                   <Button
-                    size="icon"
+                    size="icon-sm"
                     variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground"
                     aria-label="Bring forward"
                     onClick={() => move(el.id, 1)}
                   >
                     <ArrowUp className="h-4 w-4" />
                   </Button>
                   <Button
-                    size="icon"
+                    size="icon-sm"
                     variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground"
                     aria-label="Send backward"
                     onClick={() => move(el.id, -1)}
                   >
                     <ArrowDown className="h-4 w-4" />
                   </Button>
                   <Button
-                    size="icon"
+                    size="icon-sm"
                     variant="ghost"
-                    className="h-7 w-7 text-red-400 hover:text-red-400"
+                    className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
                     aria-label="Delete"
                     onClick={() => remove(el.id)}
                   >
@@ -146,9 +142,9 @@ export function LayersPanel({ template, side = "front", selectedId, onSelect, on
                 </div>
 
                 <Button
-                  size="icon"
+                  size="icon-sm"
                   variant="ghost"
-                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
                   aria-label={el.hidden ? "Show" : "Hide"}
                   onClick={() => patch(el.id, { hidden: !el.hidden })}
                 >

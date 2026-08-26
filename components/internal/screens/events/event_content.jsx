@@ -28,22 +28,13 @@ import {
 } from "@/components/ui/dialog";
 import { useEventConfig } from "@/lib/events/use-event-config";
 
-// Two authored-content sections for the public page — "What to expect"
-// highlights and the FAQ. Both are ordered lists of small records kept in the
-// event's metadata bag (like schedule/guests), so they grow without a
-// migration. The public page renders them in ExpectBlock / FaqBlock and omits
-// the section entirely when the list is empty — there is no sample fallback.
-
 const MARKDOWN_HINT =
   "Supports **bold**, *italic*, [links](https://…), and - bullet lists.";
 
-// Row editor driven by a field spec. The first field is the required one.
 function ItemDialog({ open, onOpenChange, title, description, fields, initial, onSave }) {
   const blank = Object.fromEntries(fields.map((f) => [f.key, ""]));
   const [draft, setDraft] = useState(blank);
 
-  // Re-seed whenever the dialog opens (render-phase reset — React's
-  // recommended alternative to a setState-in-effect).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -122,8 +113,6 @@ function ItemDialog({ open, onOpenChange, title, description, fields, initial, o
   );
 }
 
-// Ordered list of records under one metadata key, with the suite's standard
-// add / reorder / edit / delete row affordances.
 function ListSection({
   event,
   headerItem,
@@ -140,7 +129,7 @@ function ListSection({
 }) {
   const [items, , saveItems] = useEventConfig(event, configKey, []);
   const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // { index, item } | null
+  const [editing, setEditing] = useState(null);
 
   const rows = Array.isArray(items) ? items : [];
   const [primary, secondary] = fields;

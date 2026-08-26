@@ -15,7 +15,6 @@ type ListRowProps = {
   divider?: boolean;
 };
 
-// The standard tappable row; rows are separated by a hairline divider.
 export function ListRow({
   leading,
   title,

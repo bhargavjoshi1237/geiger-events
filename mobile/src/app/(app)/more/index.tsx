@@ -28,7 +28,6 @@ export default function MoreScreen() {
     <Screen scroll onScroll={(y) => (scrollY.value = y)}>
       <ScreenHeader title="More" subtitle="Everything that's not a tab." scrollY={scrollY} />
 
-      {/* Identity card doubles as the account entry point. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open account"

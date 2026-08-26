@@ -31,15 +31,8 @@ import { useOptionalProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import { conferenceApi } from "@/lib/supabase/conference";
 
-// Mobile Event App — a project-level singleton (module "mobile_app", one record
-// per project) that configures the attendee app and previews it live in a phone
-// mockup. The accent is user data applied via inline style (not a theme token).
-// Edits are optimistic: toggles/chips save immediately, text fields on blur.
-
 const MODULE = "mobile_app";
 
-// The tabs the attendee app can surface, each an on/off switch. `icon` is used in
-// both the config list and the phone preview's bottom bar.
 const TABS = [
   { key: "agenda", label: "Agenda", desc: "The full schedule and each attendee's picks.", icon: CalendarDays },
   { key: "speakers", label: "Speakers", desc: "Speaker profiles, bios, and their sessions.", icon: Mic },
@@ -71,8 +64,6 @@ const DEFAULT_CONFIG = {
   androidUrl: "",
 };
 
-// Populated config for the landing playground — a published, branded app so the
-// phone preview reads as a real product rather than an empty default.
 const DEMO_CONFIG = {
   ...DEFAULT_CONFIG,
   appName: "DevCon 2026",
@@ -84,22 +75,17 @@ const DEMO_CONFIG = {
   published: true,
 };
 
-// --- Phone preview -----------------------------------------------------------
-
 function PhonePreview({ config }) {
   const accent = config.accent || "#6366f1";
   const enabledTabs = TABS.filter((t) => config.tabs?.[t.key]);
-  // The bottom bar shows at most four tabs (as a real app would).
   const barTabs = enabledTabs.slice(0, 4);
   const cards = (config.homeCards || []).filter(Boolean);
 
   return (
     <div className="mx-auto w-full max-w-[300px]">
-      <div className="relative aspect-[9/19] w-full overflow-hidden rounded-[2.75rem] border-[6px] border-[#2a2a2a] bg-background shadow-2xl">
-        {/* Notch */}
+      <div className="relative aspect-[9/19] w-full overflow-hidden rounded-[2.75rem] border-[6px] border-border bg-background shadow-2xl">
         <div className="absolute left-1/2 top-0 z-10 h-6 w-32 -translate-x-1/2 rounded-b-2xl bg-[#2a2a2a]" />
 
-        {/* Header */}
         <div className="px-5 pb-4 pt-9 text-white" style={{ background: `linear-gradient(160deg, ${accent}, ${accent}cc)` }}>
           <p className="text-[10px] font-medium uppercase tracking-widest opacity-80">
             {config.published ? "Live" : "Preview"}
@@ -110,7 +96,6 @@ function PhonePreview({ config }) {
           <p className="mt-0.5 line-clamp-2 text-xs opacity-90">{config.tagline}</p>
         </div>
 
-        {/* Body */}
         <div className="space-y-2.5 px-4 py-4">
           {config.splashMessage ? (
             <div
@@ -143,7 +128,6 @@ function PhonePreview({ config }) {
           )}
         </div>
 
-        {/* Bottom tab bar */}
         <div className="absolute inset-x-0 bottom-0 border-t border-border bg-surface-subtle/95 px-2 py-2 backdrop-blur">
           {barTabs.length ? (
             <div className="flex items-center justify-around">
@@ -152,10 +136,13 @@ function PhonePreview({ config }) {
                 const first = i === 0;
                 return (
                   <div key={t.key} className="flex flex-col items-center gap-1">
-                    <Icon className="h-4 w-4" style={first ? { color: accent } : { color: "#737373" }} />
+                    <Icon
+                      className={cn("h-4 w-4", !first && "text-text-tertiary")}
+                      style={first ? { color: accent } : undefined}
+                    />
                     <span
-                      className="text-[9px] font-medium"
-                      style={first ? { color: accent } : { color: "#737373" }}
+                      className={cn("text-[9px] font-medium", !first && "text-text-tertiary")}
+                      style={first ? { color: accent } : undefined}
                     >
                       {t.label}
                     </span>
@@ -172,10 +159,6 @@ function PhonePreview({ config }) {
   );
 }
 
-// --- Screen ------------------------------------------------------------------
-
-// `demo` seeds a populated app config and skips the fetch/create so the phone
-// preview runs as a live playground on the public landing (no session there).
 export function MobileAppScreen({ demo = false }) {
   const projectId = useOptionalProject()?.projectId ?? null;
   const [recordId, setRecordId] = useState(null);
@@ -195,7 +178,6 @@ export function MobileAppScreen({ demo = false }) {
         setRecordId(rec.id);
         setConfig({ ...DEFAULT_CONFIG, ...rec.config, tabs: { ...DEFAULT_CONFIG.tabs, ...(rec.config?.tabs || {}) } });
       } else if (rows) {
-        // Configured DB with no record yet — create the singleton.
         const id = crypto.randomUUID();
         setRecordId(id);
         conferenceApi
@@ -220,7 +202,6 @@ export function MobileAppScreen({ demo = false }) {
     };
   }, [projectId, demo]);
 
-  // Merge a patch into the config, update local state, and (optionally) persist.
   const commit = (partial, { save = true } = {}) => {
     setConfig((prev) => {
       const next = { ...prev, ...partial };
@@ -269,7 +250,6 @@ export function MobileAppScreen({ demo = false }) {
       />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
-        {/* Config */}
         <div className="min-w-0 space-y-6">
           <SectionCard title="App identity" description="The name, tagline, and accent colour attendees see.">
             <div className="space-y-4">
@@ -362,7 +342,7 @@ export function MobileAppScreen({ demo = false }) {
                 <SettingRow
                   icon={Smartphone}
                   title="Published"
-                  description="Turn the app live for attendees."
+                  description="Turn the app live for attendees. Store links optional."
                   checked={Boolean(config.published)}
                   onCheckedChange={(on) => commit({ published: on })}
                 />
@@ -389,7 +369,6 @@ export function MobileAppScreen({ demo = false }) {
           </SectionCard>
         </div>
 
-        {/* Live preview */}
         <aside className="min-w-0">
           <div className="lg:sticky lg:top-0">
             <p className="mb-3 text-center text-[11px] font-semibold uppercase tracking-wider text-text-secondary">

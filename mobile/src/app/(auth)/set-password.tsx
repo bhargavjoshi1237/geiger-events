@@ -19,8 +19,6 @@ import * as auth from "@/lib/auth";
 import { useSession } from "@/state/session";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
-// Entered from the emailed geigerevents://set-password?token=… link, or in-app
-// from the setup prompt.
 export default function SetPasswordScreen() {
   const router = useRouter();
   const session = useSession();

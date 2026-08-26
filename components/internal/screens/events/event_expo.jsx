@@ -32,14 +32,6 @@ import {
 
 import { HallMapView } from "./hall_map_view";
 
-// Exhibitor Floor tab of the event editor. Picks which of the venue's hall
-// configurations this event sells booths from, how those booths are priced, and
-// how long a stall is held during checkout. Below the config sits the box
-// office: a live floor showing what's sold, held and reserved.
-//
-// Everything persists into event.metadata.expo via the shallow-merge RPC, so
-// this tab never clobbers another. The booth mirror of event_seating.jsx.
-
 const DEFAULT_EXPO = {
   hallMapId: "",
   pricing: "tier",
@@ -51,21 +43,22 @@ const DEFAULT_EXPO = {
 const NONE = "__none__";
 
 export function EventExpoSection({ event, headerItem }) {
-  const [expo, setExpo, saveExpo, saving] = useEventConfig(event, "expo", DEFAULT_EXPO);
+  const [expo, setExpo, saveExpo] = useEventConfig(event, "expo", DEFAULT_EXPO);
 
   const [maps, setMaps] = useState([]);
   const [loadingMaps, setLoadingMaps] = useState(true);
-  // Stamped with the map it was fetched for, so switching halls never renders
-  // the previous hall's booths while the new fetch is in flight.
   const [liveRaw, setLive] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [reloadToken, setReloadToken] = useState(0);
-  const reload = () => setReloadToken((t) => t + 1);
+  const [refreshing, setRefreshing] = useState(false);
+  const reload = () => {
+    setRefreshing(true);
+    setReloadToken((t) => t + 1);
+  };
 
   const tickets = Array.isArray(event?.tickets) ? event.tickets : [];
   const pricing = expo.pricing === "direct" ? "direct" : "tier";
 
-  // Halls belonging to this event's venue.
   useEffect(() => {
     if (!event?.venueId) return undefined;
     let alive = true;
@@ -79,15 +72,19 @@ export function EventExpoSection({ event, headerItem }) {
     };
   }, [event?.venueId]);
 
-  // Live booth state for the box office floor.
   useEffect(() => {
     if (!event?.id || !expo.hallMapId) return undefined;
     const mapId = expo.hallMapId;
     let alive = true;
-    getEventExpo(event.id).then(
-      (data) => alive && setLive(data ? { ...data, forMapId: mapId } : null),
-    );
-    listBoothAssignments(event.id).then((rows) => alive && setAssignments(rows ?? []));
+    Promise.all([
+      getEventExpo(event.id),
+      listBoothAssignments(event.id),
+    ]).then(([data, rows]) => {
+      if (!alive) return;
+      setLive(data ? { ...data, forMapId: mapId } : null);
+      setAssignments(rows ?? []);
+      setRefreshing(false);
+    });
     return () => {
       alive = false;
     };
@@ -115,6 +112,12 @@ export function EventExpoSection({ event, headerItem }) {
     if (ticketId === NONE) delete nextTiers[boothId];
     else nextTiers[boothId] = ticketId;
     patch({ boothTiers: nextTiers });
+    const ticket = ticketById.get(ticketId);
+    toast.success(
+      ticket
+        ? `Mapped to ${ticket.name || "ticket"}.`
+        : "Booth removed from sale.",
+    );
   };
 
   const sellableBooths = useMemo(
@@ -139,13 +142,10 @@ export function EventExpoSection({ event, headerItem }) {
 
   const bands = useMemo(
     () => buildPriceBands(sellableBooths, priceForBooth),
-    // priceForBooth closes over the pricing config, which is what should
-    // re-derive the bands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sellableBooths, pricing, expo.boothTiers, ticketById],
   );
 
-  // Box office: a click toggles a reservation on that booth.
   const toggleBlock = async (booth) => {
     if (soldIds.has(booth.id)) return;
     const isBlocked = blockedIds.has(booth.id);
@@ -356,8 +356,9 @@ export function EventExpoSection({ event, headerItem }) {
               variant="ghost"
               className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={reload}
-              disabled={saving}
+              disabled={refreshing}
             >
+              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Refresh
             </Button>
           }

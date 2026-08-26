@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Globe, Link2, Lock, EyeOff, Check, LayoutGrid } from "lucide-react";
+import { Loader2, Globe, Link2, Lock, EyeOff, Check, LayoutGrid } from "lucide-react";
 
 import {
   DataTable,
@@ -26,14 +26,11 @@ import {
 import { EVENT_STATUS_MAP, eventSlug } from "./sample_data";
 import { useEventConfig } from "@/lib/events/use-event-config";
 
-// UI radio values are lowercase; the event model stores capitalised labels.
 const VISIBILITY_TO_LABEL = {
   public: "Public",
   unlisted: "Unlisted",
   private: "Private",
 };
-
-// --- Visibility --------------------------------------------------------------
 
 const VISIBILITY_OPTIONS = [
   {
@@ -71,7 +68,6 @@ export function VisibilitySection({ event, headerItem, onPatch, onCommit }) {
   const choose = (value) => {
     setVisibility(value);
     const label = VISIBILITY_TO_LABEL[value] || "Public";
-    // Visibility is a column — persist immediately.
     (onCommit || onPatch)?.({ visibility: label });
   };
 
@@ -80,6 +76,18 @@ export function VisibilitySection({ event, headerItem, onPatch, onCommit }) {
       <EditorSectionHeader
         title={headerItem?.label || "Visibility"}
         description={headerItem?.desc}
+        action={
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={saving}
+            onClick={() =>
+              saveAccess(access, { successMsg: "Visibility settings saved." })
+            }
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        }
       />
       <div className="grid gap-3">
         {VISIBILITY_OPTIONS.map((opt) => {
@@ -109,10 +117,10 @@ export function VisibilitySection({ event, headerItem, onPatch, onCommit }) {
               <span
                 className={cn(
                   "mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border",
-                  active ? "border-white bg-white" : "border-[#444]",
+                  active ? "border-primary bg-primary/15" : "border-border",
                 )}
               >
-                {active ? <Check className="h-3 w-3 text-[#161616]" /> : null}
+                {active ? <Check className="h-3 w-3 text-foreground" /> : null}
               </span>
             </button>
           );
@@ -173,22 +181,9 @@ export function VisibilitySection({ event, headerItem, onPatch, onCommit }) {
           />
         </SettingsList>
       </SectionCard>
-      <div className="mt-5 flex justify-end">
-            <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={saving}
-            onClick={() =>
-              saveAccess(access, { successMsg: "Visibility settings saved." })
-            }
-          >
-            Save Changes
-          </Button>
-        </div>
     </div>
   );
 }
-
-// --- Custom URL --------------------------------------------------------------
 
 const REDIRECTS = [
   { id: "r1", from: "/summer-launch", to: "/summer-product-launch", status: "On sale" },
@@ -202,7 +197,6 @@ export function CustomUrlSection({ event, headerItem }) {
   });
   const slug = url.slug || "";
   const setSlug = (next) => setUrl({ ...url, slug: next });
-  const available = slug.length > 3;
 
   const columns = [
     {
@@ -235,6 +229,16 @@ export function CustomUrlSection({ event, headerItem }) {
       <EditorSectionHeader
         title={headerItem?.label || "Custom URL"}
         description={headerItem?.desc}
+        action={
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={saving}
+            onClick={() => saveUrl(url, { successMsg: "URL saved." })}
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        }
       />
       <Field label="URL slug" hint="Lowercase letters, numbers, and hyphens.">
         <div className="flex items-center overflow-hidden rounded-md border border-border bg-surface-card">
@@ -250,49 +254,20 @@ export function CustomUrlSection({ event, headerItem }) {
             }
             className="flex-1 bg-transparent px-3 py-2.5 text-sm text-foreground outline-none"
           />
-          <span
-            className={cn(
-              "mr-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium",
-              available
-                ? "bg-emerald-500/10 text-emerald-400"
-                : "bg-amber-500/10 text-amber-400",
-            )}
-          >
-            {available ? <Check className="h-3 w-3" /> : null}
-            {available ? "Available" : "Too short"}
-          </span>
         </div>
       </Field>
-
-      <div className="mt-5 flex justify-end">
-        <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-          disabled={saving}
-          onClick={() => saveUrl(url, { successMsg: "URL saved." })}
-        >
-          Save URL
-        </Button>
-      </div>
 
       <SectionCard
         title="Custom domain"
         description="Host event pages on your own domain (Pro plan)."
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <Field label="Domain" className="flex-1">
-            <Input
-              placeholder="events.yourbrand.com"
-              value={url.domain || ""}
-              onChange={(e) => setUrl({ ...url, domain: e.target.value })}
-            />
-          </Field>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          >
-            Verify domain
-          </Button>
-        </div>
+        <Field label="Domain">
+          <Input
+            placeholder="events.yourbrand.com"
+            value={url.domain || ""}
+            onChange={(e) => setUrl({ ...url, domain: e.target.value })}
+          />
+        </Field>
         <Badge variant="warning" className="mt-3">
           Not connected
         </Badge>

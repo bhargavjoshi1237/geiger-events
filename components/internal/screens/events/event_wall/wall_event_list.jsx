@@ -10,12 +10,6 @@ import { coverKind } from "@/lib/events/gallery";
 import { cardPriceLabel, isSoldOut } from "./wall_layout";
 import { formatTime, groupByDate } from "./wall_agenda";
 
-// The agenda body of the public wall: events grouped by day, in either the
-// roomy card view or the compact list view. Both views read the same groups, so
-// switching between them can never change which events are shown.
-
-// A cover can be a video (event pages allow one), and no player chrome fits a
-// thumbnail — so it plays muted and unattended, first frame only.
 function Cover({ event, className }) {
   if (!event.coverUrl) {
     return (
@@ -50,9 +44,6 @@ function Cover({ event, className }) {
   );
 }
 
-// Sold out reads as a waitlist to a buyer; otherwise the lead ticket price.
-// Returns null when there's nothing to say, so callers can skip the whole row
-// rather than leave its margin behind.
 function StatusChip({ event, meta }) {
   if (isSoldOut(event)) return <Badge variant="info">Waitlist</Badge>;
   if (!meta.price) return null;
@@ -87,7 +78,6 @@ function VenueLine({ event, className }) {
   );
 }
 
-// Card view — the event gets room for its cover, host, and venue.
 function EventCardRow({ event, meta, featured, accent }) {
   return (
     <Link
@@ -128,7 +118,6 @@ function EventCardRow({ event, meta, featured, accent }) {
   );
 }
 
-// List view — one line per event, time in a fixed gutter so the titles align.
 function EventListRow({ event, meta, featured, accent }) {
   return (
     <Link
@@ -186,8 +175,6 @@ export function WallEventList({
       {groups.map((group) => (
         <section
           key={group.date}
-          // In card view the group hangs off a dated timeline rail, so a run of
-          // days reads as one agenda rather than a stack of unrelated blocks.
           className={cn(cards && "relative border-l border-dashed border-border pl-6")}
         >
           {cards ? (

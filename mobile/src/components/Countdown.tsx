@@ -5,7 +5,6 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useCountdown } from "@/lib/countdown";
 import { colors, radius, spacing, timing, type } from "@/theme/tokens";
 
-// Port of the web Countdown: four tiles, cross-fading digits, "Happening now".
 export function Countdown({ dateStr }: { dateStr: string | null }) {
   const parts = useCountdown(dateStr);
   if (!parts) return null;
@@ -36,7 +35,6 @@ function Cell({ value, label }: { value: number; label: string }) {
   return (
     <View style={styles.cell}>
       <View style={styles.valueFrame}>
-        {/* Keyed remount cross-fades a changed digit in place. */}
         <Animated.Text
           key={value}
           entering={FadeIn.duration(timing.fast)}

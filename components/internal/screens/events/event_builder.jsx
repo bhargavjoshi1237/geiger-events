@@ -31,16 +31,9 @@ import {
 import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
 import { initials } from "./sample_data";
 
-// --- Basics (name, summary, format) ------------------------------------------
-
 export function BasicsSection({ event, headerItem, onPatch }) {
-  // Controlled directly off the lifted event so edits flow to the header,
-  // preview, and (on Save) back to the list. No section-local copy to drift.
   const patch = onPatch || (() => {});
 
-  // The organiser's photo lives in the metadata bag rather than a column, so it
-  // can't ride the form's Save Changes — it persists the moment it's uploaded,
-  // the way cover media does.
   const organizerAvatar = event?.organizerAvatar || "";
   const [avatarBusy, setAvatarBusy] = useState(false);
   const avatarInput = useRef(null);
@@ -81,7 +74,11 @@ export function BasicsSection({ event, headerItem, onPatch }) {
     <div className="space-y-6">
       <EditorSectionHeader
         title={headerItem?.label || "Event details"}
-        description={headerItem?.desc}
+        description={
+          headerItem?.desc
+            ? `${headerItem.desc} Use “Save Changes” at the top to persist these.`
+            : "Use “Save Changes” at the top to persist these."
+        }
       />
       <div className="grid gap-4">
         <Field label="Event name">
@@ -91,8 +88,6 @@ export function BasicsSection({ event, headerItem, onPatch }) {
             placeholder="What's it called?"
           />
         </Field>
-        {/* The name credited on the public page's host block ("Hosted by") —
-            co-hosts come from the event's team, this is the lead. */}
         <Field
           label="Organizer"
           hint="Shown as “Hosted by” on your event page. Without a photo it falls back to your Event Wall logo, then to initials."
@@ -134,7 +129,7 @@ export function BasicsSection({ event, headerItem, onPatch }) {
             {organizerAvatar ? (
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon-sm"
                 aria-label="Remove organizer photo"
                 className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                 disabled={avatarBusy}
@@ -174,8 +169,6 @@ export function BasicsSection({ event, headerItem, onPatch }) {
               </SelectContent>
             </Select>
           </Field>
-          {/* Date/time are the same columns Location & Time edits — both write
-              `date`/`time`, so the two sections stay in step. */}
           <Field label="Date">
             <EventDatePicker
               value={event?.date}
@@ -190,15 +183,9 @@ export function BasicsSection({ event, headerItem, onPatch }) {
           </Field>
         </div>
       </div>
-      <p className="text-xs text-text-tertiary">
-        Use <span className="font-medium text-text-secondary">Save Changes</span>{" "}
-        at the top to persist these.
-      </p>
     </div>
   );
 }
-
-// --- Registration settings ---------------------------------------------------
 
 const DEFAULT_REG_SETTINGS = { requireApproval: false, showRemaining: true };
 

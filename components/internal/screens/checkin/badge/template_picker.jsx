@@ -4,6 +4,7 @@ import React from "react";
 import { Check, ChevronDown, Copy, Layers, Plus, Star, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { stockSize } from "@/lib/passes/stock";
 import { BADGE_TEMPLATES } from "../constants";
+import { ConfirmDialog } from "./confirm_dialog";
 
 const Swatch = ({ color, className }) => (
   <span
@@ -26,9 +28,6 @@ const Swatch = ({ color, className }) => (
   />
 );
 
-// One picker for the whole design set: which design is open, how many passes it
-// covers, what to do with it, and how to start a new one. A dropdown rather
-// than a chip row so it still reads well at a dozen designs.
 export function TemplatePicker({
   templates,
   selectedId,
@@ -39,6 +38,7 @@ export function TemplatePicker({
   onSetDefault,
   onDelete,
 }) {
+  const [deletePending, setDeletePending] = React.useState(false);
   const active = templates.find((t) => t.id === selectedId) || templates[0];
   if (!active) return null;
   const activeCount = counts?.[active.id] ?? 0;
@@ -54,9 +54,7 @@ export function TemplatePicker({
             <Swatch color={active.accent} />
             <span className="truncate">{active.name || "Untitled"}</span>
             {active.isDefault ? (
-              <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-text-tertiary">
-                Default
-              </span>
+              <Badge className="shrink-0">Default</Badge>
             ) : null}
           </span>
           <span className="flex shrink-0 items-center gap-2">
@@ -80,9 +78,7 @@ export function TemplatePicker({
               <Swatch color={t.accent} />
               <span className="min-w-0 flex-1 truncate">{t.name || "Untitled"}</span>
               {t.isDefault ? (
-                <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-text-tertiary">
-                  Default
-                </span>
+                <Badge className="shrink-0">Default</Badge>
               ) : null}
               <span className="shrink-0 text-xs text-text-tertiary">{count}</span>
               {t.id === active.id ? (
@@ -112,8 +108,6 @@ export function TemplatePicker({
                   className="items-start gap-3 py-2"
                   onClick={() => onAdd(preset.value)}
                 >
-                  {/* The outline is drawn to the preset's real aspect ratio, so
-                      the shape of the pass is the thing you pick. */}
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center">
                     <span
                       className="rounded-[2px] border border-border-strong bg-surface-card"
@@ -151,11 +145,22 @@ export function TemplatePicker({
           variant="destructive"
           className="text-red-400 focus:bg-red-500/10"
           disabled={templates.length === 1}
-          onClick={() => onDelete(active.id)}
+          onClick={() => setDeletePending(true)}
         >
           <Trash2 className="h-4 w-4" /> Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
+
+      <ConfirmDialog
+        open={deletePending}
+        onOpenChange={setDeletePending}
+        title="Delete design"
+        description={`Delete ${active.name || "Untitled"}? Passes already printed keep their artwork, and ${
+          activeCount
+        } assigned pass${activeCount === 1 ? "" : "es"} will fall back to another design.`}
+        confirmLabel="Delete"
+        onConfirm={() => onDelete(active.id)}
+      />
     </DropdownMenu>
   );
 }

@@ -21,9 +21,6 @@ import {
 import { listPackageEnquiries } from "@/lib/supabase/package_enquiries";
 import { PageDesignSection, defaultPageDesign } from "./page_design";
 
-// Enquiries the form has collected. Read-only here — the point is that a
-// submission is visible to the organizer at all, next to the form that produced
-// it, rather than sitting unread in a table.
 function PackageEnquiries({ eventId }) {
   const [rows, setRows] = React.useState(null);
 
@@ -43,13 +40,17 @@ function PackageEnquiries({ eventId }) {
       title="Enquiries"
       description={
         rows === null
-          ? "Loading…"
+          ? undefined
           : rows.length
             ? `${rows.length} received.`
             : "Nothing yet. Submissions from the form above land here."
       }
     >
-      {rows?.length ? (
+      {rows === null ? (
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-text-secondary">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading enquiries…
+        </div>
+      ) : rows?.length ? (
         <div className="space-y-2">
           {rows.slice(0, 20).map((row) => (
             <div
@@ -94,13 +95,6 @@ function PackageEnquiries({ eventId }) {
     </SectionCard>
   );
 }
-
-// The standalone packages page: its copy, which bands it shows, and its design.
-//
-// Design is deliberately NOT a new editor. PageDesignSection is a controlled
-// component over a design object, so pointing it at `packagesDesign` gives this
-// page the same layout, theme and block editing the event page has, while the
-// two stay independently styleable — which is the point of a separate page.
 
 export function EventPackagesPageSection({ event, headerItem }) {
   const [cfg, setCfg, saveCfg, saving] = useEventConfig(

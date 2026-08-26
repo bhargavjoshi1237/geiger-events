@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getSessionMember } from "@/lib/portal/session";
 import { listMemberThreads, createThread } from "@/lib/portal/support";
 
-// GET -> { threads } for the signed-in member.
 export async function GET() {
   const member = await getSessionMember();
   if (!member) {
@@ -12,7 +11,6 @@ export async function GET() {
   return NextResponse.json({ threads });
 }
 
-// POST { subject, body, orderId? } -> opens a new thread with the organiser.
 export async function POST(request) {
   const member = await getSessionMember();
   if (!member) {

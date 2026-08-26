@@ -79,9 +79,6 @@ import {
   stockStatus,
 } from "./constants";
 
-// --- Create dialogs ----------------------------------------------------------
-
-// Shared numeric field — inventory forms are mostly numbers with a unit hint.
 function NumField({ label, hint, value, onChange, placeholder = "0" }) {
   return (
     <Field label={label} hint={hint}>
@@ -205,7 +202,11 @@ function CreateItemDialog({ open, onOpenChange, onCreate, pending }) {
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-primary" onClick={submit} disabled={pending}>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={submit}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Create item
           </Button>
@@ -296,7 +297,11 @@ function AddVariantDialog({ open, onOpenChange, parent, onCreate, pending }) {
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-primary" onClick={submit} disabled={pending}>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={submit}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Add variant
           </Button>
@@ -305,8 +310,6 @@ function AddVariantDialog({ open, onOpenChange, parent, onCreate, pending }) {
     </Dialog>
   );
 }
-
-// --- Screen ------------------------------------------------------------------
 
 export function InventoryItemsScreen() {
   const { projectId } = useProject();
@@ -321,6 +324,7 @@ export function InventoryItemsScreen() {
   const [creating, setCreating] = useState(false);
   const [variantParent, setVariantParent] = useState(null);
   const [pending, setPending] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -340,8 +344,6 @@ export function InventoryItemsScreen() {
   const allocated = useMemo(() => allocatedByItem(allocations), [allocations]);
   const tree = useMemo(() => buildItemTree(items), [items]);
 
-  // Filters match against a group *or* any of its variants, so searching "large"
-  // keeps the parent row visible with the matching size underneath.
   const filteredTree = useMemo(() => {
     const q = search.trim().toLowerCase();
     const matches = (row, rollup) => {
@@ -371,8 +373,6 @@ export function InventoryItemsScreen() {
       .filter(Boolean);
   }, [tree, search, category, stock]);
 
-  // Flatten the visible tree into table rows; a variant only appears when its
-  // group is expanded.
   const rows = useMemo(() => {
     const out = [];
     for (const group of filteredTree) {
@@ -413,8 +413,6 @@ export function InventoryItemsScreen() {
     ];
   }, [items, tree, allocated]);
 
-  // Only reserve the expander column when something is actually expandable —
-  // otherwise every row is indented past the "Item" header for nothing.
   const hasGroups = useMemo(
     () => filteredTree.some((g) => g.variants.length > 0),
     [filteredTree],
@@ -433,8 +431,6 @@ export function InventoryItemsScreen() {
       return next;
     });
 
-  // Create an item (or a variant when `parent` is set), plus an opening-stock
-  // receive movement when one was entered.
   const handleCreate = async (draft, reset, parent = null) => {
     setPending(true);
     const user = await getUser();
@@ -483,8 +479,6 @@ export function InventoryItemsScreen() {
       else toast.error("Item saved, but the opening stock didn't record.");
     }
 
-    // The photo goes up only once the row exists, so a failed create can't
-    // leave an orphaned object in the bucket.
     if (draft.imageFile) {
       const uploaded = await uploadInventoryImage(id, draft.imageFile);
       if (uploaded?.url && (await updateItem(id, { imageUrl: uploaded.url }))) {
@@ -503,30 +497,29 @@ export function InventoryItemsScreen() {
     toast.success(parent ? "Variant added." : "Item created.");
   };
 
-  const handleDelete = async (item) => {
+  const applyItemPatch = (id, patch) =>
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+
+  const confirmDelete = (item) => {
+    setDeleteTarget(null);
     const removed = items.filter((i) => i.id === item.id || i.parentId === item.id);
     setItems((prev) =>
       prev.filter((i) => i.id !== item.id && i.parentId !== item.id),
     );
     if (openId === item.id) setOpenId(null);
     toast.success("Item deleted.");
-    const ok = await softDeleteItem(item.id);
-    if (!ok) {
-      setItems((prev) => [...removed, ...prev]);
-      toast.error("Couldn't delete the item.");
-    }
+    softDeleteItem(item.id).then((ok) => {
+      if (!ok) {
+        setItems((prev) => [...removed, ...prev]);
+        toast.error("Couldn't delete the item.");
+      }
+    });
   };
-
-  // Reflect a drawer edit (fields or a stock movement) back onto the list.
-  const applyItemPatch = (id, patch) =>
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
   const columns = [
     {
       key: "item",
       header: "Item",
-      // Absorb the table's spare width so the numeric columns hug their values
-      // instead of drifting apart across the row.
       className: "w-full",
       headClassName: "w-full",
       render: (row) => {
@@ -694,7 +687,7 @@ export function InventoryItemsScreen() {
               <DropdownMenuSeparator className="bg-surface-strong" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => handleDelete(row)}
+                onClick={() => setDeleteTarget(row)}
               >
                 <Trash2 className="h-4 w-4 text-red-300" /> Delete
               </DropdownMenuItem>
@@ -711,7 +704,10 @@ export function InventoryItemsScreen() {
         title="Items"
         description="Your merch and stock catalog. Track what you hold, what's committed to upcoming events, and what needs reordering."
         actions={
-          <Button className="bg-primary gap-2" onClick={() => setCreating(true)}>
+          <Button
+            className="bg-primary gap-2 text-primary-foreground hover:bg-primary/90"
+            onClick={() => setCreating(true)}
+          >
             <Plus className="h-4 w-4" /> New item
           </Button>
         }
@@ -776,7 +772,7 @@ export function InventoryItemsScreen() {
                     </Button>
                   ) : (
                     <Button
-                      className="bg-primary gap-2"
+                      className="bg-primary gap-2 text-primary-foreground hover:bg-primary/90"
                       onClick={() => setCreating(true)}
                     >
                       <Plus className="h-4 w-4" /> New item
@@ -817,6 +813,35 @@ export function InventoryItemsScreen() {
           setVariantParent(parent);
         }}
       />
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete item</DialogTitle>
+            <DialogDescription>
+              Delete{" "}
+              <span className="font-medium text-foreground">{deleteTarget?.name}</span>?
+              {deleteTarget?.variants?.length
+                ? ` Its ${deleteTarget.variants.length} variant${
+                    deleteTarget.variants.length === 1 ? "" : "s"
+                  } and stock ledger go too.`
+                : " Its stock ledger goes too."}{" "}
+              This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => confirmDelete(deleteTarget)}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

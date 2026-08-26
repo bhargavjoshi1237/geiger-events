@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { listOrders } from "@/lib/supabase/orders";
 import { listGuests } from "@/lib/supabase/contacts";
 import { listSegments } from "@/lib/supabase/segments";
@@ -40,19 +41,6 @@ import {
   resolvePeople,
 } from "@/lib/audience/resolve";
 
-// Reusable audience builder — resolves guests/buyers from combinable facets
-// (ticket / offering-option / add-on when an eventId is given, plus tag / status
-// / segment / individual project-wide). Two modes:
-//
-//   • Spec mode  (spec + onSpecChange): stores a live rule — an All/Filtered
-//     toggle, facet criteria, and per-person include/exclude — so future buyers
-//     who match are picked up on the next resolve. This is what Community records
-//     and chat channels persist.
-//   • Set mode   (selected + onSelectedChange): a plain multi-select that
-//     resolves to a fixed Set<email> right now (e.g. "add these people"). Facets
-//     just narrow the visible list here.
-
-// A multi-select facet dropdown (label + count) over `[{ value, label }]` options.
 function FacetFilter({ label, icon: Icon, options, selected, onToggle }) {
   const count = selected.size;
   return (
@@ -133,7 +121,6 @@ function SegmentFilter({ segments, value, onChange }) {
   );
 }
 
-// One selectable person row (shared by both modes).
 function PersonRow({ person, on, onClick }) {
   const meta = [
     [...person.tickets][0],
@@ -148,6 +135,7 @@ function PersonRow({ person, on, onClick }) {
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={on}
       className={cn(
         "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors",
         on ? "bg-surface-active" : "hover:bg-surface-hover",
@@ -196,12 +184,10 @@ export function AudienceBuilder({
     [specMode, spec, eventId],
   );
 
-  const [data, setData] = useState(null); // { pool, segments, ctx, offeringLabels, purchasableLabels }
-  const [localFilters, setLocalFilters] = useState(EMPTY_LOCAL_FILTERS); // Set-mode only
+  const [data, setData] = useState(null);
+  const [localFilters, setLocalFilters] = useState(EMPTY_LOCAL_FILTERS);
   const [q, setQ] = useState("");
 
-  // Load the pool + CRM enrichment. Keyed by (projectId, eventId) — the parent
-  // remounts on scope change, so this runs once per scope with no reset churn.
   useEffect(() => {
     if (!projectId) return;
     let alive = true;
@@ -219,7 +205,6 @@ export function AudienceBuilder({
     };
   }, [projectId, eventId]);
 
-  // Facet option lists derived from the loaded pool.
   const facets = useMemo(() => {
     const pool = data?.pool || [];
     const tickets = new Set();
@@ -248,8 +233,6 @@ export function AudienceBuilder({
     };
   }, [data]);
 
-  // Emails the spec currently resolves to (spec mode) — drives the count + which
-  // rows read as "in".
   const resolvedEmails = useMemo(() => {
     if (!specMode || !data) return new Set();
     return new Set(
@@ -259,14 +242,12 @@ export function AudienceBuilder({
     );
   }, [specMode, activeSpec, data]);
 
-  // The visible people list (search + set-mode local filters applied).
   const shown = useMemo(() => {
     const pool = data?.pool || [];
     const term = q.trim().toLowerCase();
     const bySearch = (p) =>
       !term || p.email.includes(term) || (p.name || "").toLowerCase().includes(term);
     if (specMode) return pool.filter(bySearch);
-    // Set mode: facets narrow the list; individual selection is the output.
     const f = {
       tickets: [...localFilters.tickets],
       offerings: [...localFilters.offerings],
@@ -282,7 +263,6 @@ export function AudienceBuilder({
 
   const loading = !data;
 
-  // ---- Spec-mode helpers ---------------------------------------------------
   const specFilterSet = (group) => new Set(activeSpec?.filters?.[group] || []);
   const toggleSpecFacet = (group, value) => {
     const cur = specFilterSet(group);
@@ -327,7 +307,6 @@ export function AudienceBuilder({
       activeSpec.filters.statuses.length ||
       activeSpec.filters.segmentId);
 
-  // ---- Set-mode helpers ----------------------------------------------------
   const toggleLocalFacet = (group, value) =>
     setLocalFilters((f) => {
       const next = new Set(f[group]);
@@ -354,8 +333,6 @@ export function AudienceBuilder({
   };
   const clearSelected = () => onSelectedChange(new Set());
 
-  // Which facet dropdowns to render: bound to the spec (spec mode) or local
-  // state (set mode). Only shown in filtered spec mode / always in set mode.
   const showFacets = specMode ? activeSpec.mode === "filtered" : true;
   const facetSel = (group) => (specMode ? specFilterSet(group) : localFilters[group]);
   const onFacet = (group) => (v) =>
@@ -381,7 +358,6 @@ export function AudienceBuilder({
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface-card">
-      {/* Header — mode segmented control + live count (spec mode) */}
       {specMode ? (
         <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
           <div className="inline-flex rounded-lg bg-surface-subtle p-0.5">
@@ -413,7 +389,6 @@ export function AudienceBuilder({
         </div>
       ) : null}
 
-      {/* Filter bar — a labelled, uniform row of facet dropdowns */}
       {showFacets ? (
         <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2.5">
           <span className="mr-0.5 text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
@@ -471,16 +446,17 @@ export function AudienceBuilder({
         </div>
       ) : null}
 
-      {/* Search + bulk actions */}
       {specMode && activeSpec.mode === "all" ? null : (
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-          <Search className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={specMode ? "Search to include / exclude people…" : "Search people…"}
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-text-tertiary"
-          />
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={specMode ? "Search to include / exclude people…" : "Search people…"}
+              className="h-8 w-full border-border bg-transparent pl-8 text-sm focus-visible:ring-2 focus-visible:ring-ring/40"
+            />
+          </div>
           {specMode ? null : (
             <>
               <button
@@ -505,7 +481,6 @@ export function AudienceBuilder({
         </div>
       )}
 
-      {/* People list (or the all-mode summary panel) */}
       {specMode && activeSpec.mode === "all" ? (
         <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
           <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface-subtle text-text-secondary">
@@ -557,7 +532,6 @@ export function AudienceBuilder({
         </div>
       )}
 
-      {/* Footer — selection summary (set mode only; spec mode shows it in header) */}
       {!specMode ? (
         <div className="border-t border-border px-3 py-2 text-[11px] text-text-tertiary">
           {`${selected.size} ${selected.size === 1 ? "person" : "people"} selected`}

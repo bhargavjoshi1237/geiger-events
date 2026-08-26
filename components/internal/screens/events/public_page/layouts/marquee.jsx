@@ -24,9 +24,6 @@ const WIDE = new Set([
   "columns",
 ]);
 
-// Marquee — the event name repeated across an oversized scrolling band, the
-// way a flyer or a club listing shouts. Below it the page stays deliberately
-// tight: a cover strip, the facts as a table, and sections two-up.
 export function MarqueeLayout({ ctx }) {
   const {
     event,
@@ -44,8 +41,6 @@ export function MarqueeLayout({ ctx }) {
     coverStyle,
   } = ctx;
 
-  // Enough copies to overflow any viewport, so the -50% translate loops
-  // seamlessly against the duplicated half.
   const run = Array.from({ length: 8 }, (_, i) => i);
 
   return (

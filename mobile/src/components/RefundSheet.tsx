@@ -17,8 +17,6 @@ type RefundSheetProps = {
   orderId: string;
 };
 
-// Shared refund request flow for tickets and orders. Optimistic-ish: files the
-// request, toasts the web's copy, and refreshes so the status pill appears.
 export function RefundSheet({ visible, onClose, orderId }: RefundSheetProps) {
   const { token } = useSession();
   const { refreshAll } = usePortalData();

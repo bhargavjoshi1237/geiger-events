@@ -138,7 +138,6 @@ function ModeBadge({ mode }) {
   );
 }
 
-// A slim, full-width thread row. Clicking drills into the thread chat.
 function ThreadCard({ channel, eventName, onSelect }) {
   const archived = channel.status === "archived";
   return (
@@ -207,8 +206,6 @@ function CreateThreadDialog({ open, onOpenChange, projectId, events, onCreate })
     setSpec(normalizeSpec({ scope: "event", mode: "all" }));
   };
 
-  // Switching events re-scopes the audience rule (ticket/offering facets are
-  // per-event) and clears any per-person picks.
   const chooseEvent = (value) => {
     set("eventId")(value);
     setSpec((s) => ({
@@ -356,7 +353,6 @@ function CreateThreadDialog({ open, onOpenChange, projectId, events, onCreate })
   );
 }
 
-// Participants + moderation for a thread. Selected threads can add more members.
 function ThreadParticipantsDialog({ open, onOpenChange, projectId, channel }) {
   const channelId = channel?.id;
   const [rows, setRows] = useState(null);
@@ -370,7 +366,6 @@ function ThreadParticipantsDialog({ open, onOpenChange, projectId, channel }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, channelId]);
 
-  // Reset add-mode state on close (handler, not effect).
   const closeDialog = (o) => {
     if (!o) {
       setAdding(false);
@@ -552,6 +547,7 @@ export function QaThreadsScreen() {
   const [meKey, setMeKey] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState("all");
@@ -626,7 +622,6 @@ export function QaThreadsScreen() {
     const msgs = await listMessages(id);
     setMessages(msgs ?? []);
     setLoadingDetail(false);
-    // Live rule: additively enrol any newly-matching buyers on open.
     const ch = channels.find((c) => c.id === id);
     if (ch && ch.audienceSpec?.mode === "filtered") {
       reconcileChannelAudience(ch, projectId).then((added) => {
@@ -754,6 +749,8 @@ export function QaThreadsScreen() {
   const deleteThread = async () => {
     if (!active) return;
     const id = active.id;
+    const name = active.name;
+    setDeleteOpen(false);
     const ok = await softDeleteChannel(id);
     if (!ok) {
       toast.error("Couldn't delete the thread.");
@@ -772,7 +769,6 @@ export function QaThreadsScreen() {
     setStatus("active");
   };
 
-  // ---- Thread view (full-width drill-in) -----------------------------------
   if (activeId && active) {
     const archived = active.status === "archived";
     const eventName = eventsById[active.eventId] || "";
@@ -851,7 +847,7 @@ export function QaThreadsScreen() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                      onClick={deleteThread}
+                      onClick={() => setDeleteOpen(true)}
                     >
                       <Trash2 className="h-4 w-4" /> Delete thread
                     </DropdownMenuItem>
@@ -883,11 +879,35 @@ export function QaThreadsScreen() {
           projectId={projectId}
           channel={active}
         />
+
+        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Delete thread</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete{" "}
+                <span className="font-medium text-foreground">{active?.name}</span>
+                ? Members will lose access and the messages are removed. This
+                action can&apos;t be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-red-500/90 text-white hover:bg-red-500"
+                onClick={deleteThread}
+              >
+                <Trash2 className="h-4 w-4" /> Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </MainScreenWrapper>
     );
   }
 
-  // ---- List view -----------------------------------------------------------
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -904,7 +924,7 @@ export function QaThreadsScreen() {
       />
 
       {loadingList ? (
-        <div className="flex items-center justify-center gap-2 py-24 text-sm text-text-secondary">
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : !channels.length ? (
@@ -927,9 +947,9 @@ export function QaThreadsScreen() {
         <>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <FilterDropdown value={mode} options={MODE_FILTER} onValueChange={setMode} />
-              <FilterDropdown value={status} options={STATUS_FILTER} onValueChange={setStatus} />
-              <FilterDropdown value={sort} options={SORT_OPTIONS} onValueChange={setSort} />
+              <FilterDropdown value={mode} options={MODE_FILTER} onValueChange={setMode} height="h-9" />
+              <FilterDropdown value={status} options={STATUS_FILTER} onValueChange={setStatus} height="h-9" />
+              <FilterDropdown value={sort} options={SORT_OPTIONS} onValueChange={setSort} height="h-9" />
             </div>
             <SearchInput
               value={search}

@@ -1,16 +1,5 @@
 "use client";
 
-// How a clip sits on the page it was brought into.
-//
-// Detection at capture time gets the common case right but cannot always be
-// right, and it can't help a clip captured before detection existed. These are
-// applied at render time, so they fix already-saved clips without a re-clip.
-//
-// Two surfaces, one component: `compact` for the picker's review footer, where
-// the row sits under a preview and a full field label would be noise, and the
-// default Field-wrapped form for the item editor, where it has to match the
-// fields around it.
-
 import React from "react";
 
 import { Field } from "@/components/internal/shared/screen_kit";
@@ -37,9 +26,6 @@ function Choice({ active, onClick, title, children, className }) {
   );
 }
 
-// Miniature diagrams of how the clip meets its column, matching the image
-// position/fit pickers in the schedule item dialog. The dashed frame is the
-// column; the solid block is the clip.
 function FitArt({ kind }) {
   const frame = "relative h-7 w-full rounded-[3px] border border-dashed border-current/40";
   const block = "absolute rounded-[2px] bg-current";

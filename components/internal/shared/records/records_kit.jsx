@@ -44,26 +44,15 @@ import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import { FieldControl, FieldSection, readField, fieldPatch } from "./record_fields";
 
-// Generic scaffold for every config-driven "record manager" area. `RecordsScreen`
-// renders the list (header, stats, toolbar, table, create/delete dialogs);
-// `RecordDetail` renders the adaptive editor (rich = right-side section nav;
-// light = field panels). Both are driven by a module config (see an area's
-// modules.jsx) and an `api` (a data layer from makeRecordsApi).
-
 const emptyDraft = (mod) => ({
   name: "",
   status: mod.defaults.status,
-  // An `image` create field parks its File here as { file, preview } until the
-  // row exists (storage RLS admits writes only for a saved, owned record).
   coverUrl: "",
   startsAt: "",
   endsAt: "",
   config: { ...mod.defaults.config },
 });
 
-// Measured presence for the loaded rows, for modules that declare usesPresence.
-// Fails open: any problem leaves the map empty and the stats read zero rather
-// than breaking the screen.
 async function fetchPresence(ids) {
   if (!ids.length) return {};
   try {
@@ -75,16 +64,10 @@ async function fetchPresence(ids) {
   }
 }
 
-// --- Create dialog -----------------------------------------------------------
-
 function CreateRecordDialog({ mod, projectId, open, onOpenChange, onCreate }) {
   const [draft, setDraft] = useState(() => emptyDraft(mod));
   const Icon = mod.icon;
-  // FieldControl needs projectId for the audience picker (event scope + targeting)
-  // and deferUploads so an image field holds its File instead of uploading now.
   const values = { ...draft, projectId, deferUploads: true };
-  // Split essentials from the (taller) composite pickers (audience, access,
-  // image) so each of those gets its own full-width block below the basics.
   const RICH_TYPES = new Set(["audience", "access", "image"]);
   const basicFields = mod.createFields.filter((f) => !RICH_TYPES.has(f.type));
   const richFields = mod.createFields.filter((f) => RICH_TYPES.has(f.type));
@@ -92,8 +75,6 @@ function CreateRecordDialog({ mod, projectId, open, onOpenChange, onCreate }) {
   const onFieldValue = (field) => (val) =>
     setDraft((d) => ({ ...d, ...fieldPatch(field, d, val) }));
 
-  // Reset the draft when the dialog is dismissed. A picked-but-unsaved image's
-  // preview URL is discarded here; on submit it's handed to the create flow.
   const close = (o) => {
     if (!o) {
       if (draft.coverUrl?.preview) URL.revokeObjectURL(draft.coverUrl.preview);
@@ -122,7 +103,7 @@ function CreateRecordDialog({ mod, projectId, open, onOpenChange, onCreate }) {
             </div>
           ) : null}
           <div className="min-w-0 space-y-0.5">
-            <DialogTitle className="text-base capitalize">{mod.createLabel}</DialogTitle>
+            <DialogTitle className="text-base">{mod.createLabel}</DialogTitle>
             <DialogDescription className="text-xs">
               Set the essentials now — you can fill in the rest in the editor.
             </DialogDescription>
@@ -185,7 +166,7 @@ function CreateRecordDialog({ mod, projectId, open, onOpenChange, onCreate }) {
               type="submit"
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              <Plus className="h-4 w-4" /> <span className="capitalize">{mod.createLabel}</span>
+              <Plus className="h-4 w-4" /> {mod.createLabel}
             </Button>
           </DialogFooter>
         </form>
@@ -194,22 +175,17 @@ function CreateRecordDialog({ mod, projectId, open, onOpenChange, onCreate }) {
   );
 }
 
-// --- Adaptive detail editor --------------------------------------------------
-
 export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
   const { section: rawSection, setSection } = useWorkspaceUrl();
   const [form, setForm] = useState(record);
   const [seedId, setSeedId] = useState(record?.id);
+  const [saving, setSaving] = useState(false);
   if (record && record.id !== seedId) {
     setSeedId(record.id);
     setForm(record);
   }
 
   const isRich = mod.detail.depth === "rich";
-  // Optional block under the top bar (e.g. the Speaker identity strip). A hero
-  // owns the title/status unless the module sets `heroOwnsTitle: false`, in
-  // which case the top bar keeps the page title and `titleBadges` contributes
-  // any module-specific badges beside the status pill.
   const Hero = mod.detail.hero || null;
   const heroOwnsTitle = Boolean(Hero) && mod.detail.heroOwnsTitle !== false;
   const TitleBadges = mod.detail.titleBadges || null;
@@ -224,23 +200,35 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
     [isRich, nav, active],
   );
 
+  const isDirty = useMemo(() => {
+    try {
+      return JSON.stringify(form) !== JSON.stringify(record);
+    } catch {
+      return true;
+    }
+  }, [form, record]);
+
   if (!record) return null;
 
   const patch = (partial) => setForm((f) => ({ ...f, ...partial }));
-  // Commit = patch + persist immediately (used by media uploads).
   const commit = (partial) => {
     const next = { ...form, ...partial };
     setForm(next);
     onUpdate?.(next);
   };
-  const save = () => {
-    onUpdate?.(form);
-    toast.success("Changes saved.");
+  const save = async () => {
+    if (!isDirty || saving) return;
+    setSaving(true);
+    try {
+      await onUpdate?.(form);
+      toast.success("Changes saved.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <MainScreenWrapper>
-      {/* Editor header */}
       <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <button
@@ -256,7 +244,6 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
               <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
                 {form.name || `Untitled ${mod.singular.toLowerCase()}`}
               </h1>
-              {/* Modules that don't track a status (sponsors) omit the pill. */}
               {mod.statusMap ? (
                 <StatusPill status={form.status} map={mod.statusMap} />
               ) : null}
@@ -274,8 +261,10 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
           </Button>
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={!isDirty || saving}
             onClick={save}
           >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Save Changes
           </Button>
         </div>
@@ -295,8 +284,6 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
             {activeItem.render ? (
               activeItem.render({ record: form, patch, commit })
             ) : (
-              // Always `bare` — the section heading is rendered above, so a
-              // bordered card around the fields is redundant chrome.
               <FieldSection fields={activeItem.fields} values={form} onPatch={patch} bare />
             )}
           </div>
@@ -332,7 +319,6 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
           </aside>
         </div>
       ) : (
-        // Left-aligned, not centred — the panels share the header's left edge.
         <div className="w-full max-w-3xl space-y-10 pt-2">
           {mod.detail.panels.map((panel) => (
             <FieldSection
@@ -350,8 +336,6 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
     </MainScreenWrapper>
   );
 }
-
-// --- List screen -------------------------------------------------------------
 
 export function RecordsScreen({ mod, api }) {
   const [records, setRecords] = useState([]);
@@ -404,8 +388,6 @@ export function RecordsScreen({ mod, api }) {
 
   const stats = useMemo(() => mod.stats(records, { presence }), [records, mod, presence]);
 
-  // Applied after filtering; each dropdown is a high/low toggle over one
-  // numeric getter, so multiple sorts just apply in sequence.
   const sorted = useMemo(() => {
     let list = filtered;
     for (const s of mod.sorts || []) {
@@ -419,7 +401,6 @@ export function RecordsScreen({ mod, api }) {
     return list;
   }, [filtered, sorts, mod]);
 
-  // Column renderers read their row's measured numbers off `_presence`.
   const rows = useMemo(
     () =>
       mod.usesPresence
@@ -428,8 +409,6 @@ export function RecordsScreen({ mod, api }) {
     [sorted, presence, mod],
   );
 
-  // `pending` is a create-dialog image ({ file, preview, upload }) that had to
-  // wait for the row to exist before storage RLS would accept it.
   const persistCreate = (record, pending) => {
     api.create(record).then(async (saved) => {
       if (!saved) {
@@ -452,8 +431,6 @@ export function RecordsScreen({ mod, api }) {
   };
 
   const handleCreate = (draft) => {
-    // An image field defers its upload, so coverUrl may hold a File rather than
-    // a URL — the optimistic row shows the local preview until the upload lands.
     const imageField = mod.createFields.find((f) => f.type === "image");
     const pending =
       draft.coverUrl?.file && imageField?.upload
@@ -478,7 +455,7 @@ export function RecordsScreen({ mod, api }) {
 
   const handleUpdate = (updated) => {
     setRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-    api
+    return api
       .update(updated.id, {
         name: updated.name,
         status: updated.status,
@@ -489,6 +466,7 @@ export function RecordsScreen({ mod, api }) {
       })
       .then((saved) => {
         if (!saved) toast.error("Couldn't save your changes to the server.");
+        return saved;
       });
   };
 
@@ -499,6 +477,7 @@ export function RecordsScreen({ mod, api }) {
     api.remove(record.id).then((ok) => {
       if (!ok) toast.error("Couldn't delete on the server.");
     });
+    if (record.id === selectedRecord?.id) closeRecord();
   };
 
   const handleDuplicate = (record) => {
@@ -529,6 +508,7 @@ export function RecordsScreen({ mod, api }) {
               <Button
                 variant="ghost"
                 size="icon-sm"
+                aria-label={`Actions for ${r.name}`}
                 className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -564,18 +544,47 @@ export function RecordsScreen({ mod, api }) {
     },
   ];
 
+  const deleteDialog = (
+    <Dialog
+      open={!!deleteTarget}
+      onOpenChange={(open) => !open && setDeleteTarget(null)}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Delete {mod.singular.toLowerCase()}</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete{" "}
+            <span className="font-medium text-foreground">{deleteTarget?.name}</span>?
+            This action can&apos;t be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+            Cancel
+          </Button>
+          <Button
+            className="bg-red-500/90 text-white hover:bg-red-500"
+            onClick={() => handleDelete(deleteTarget)}
+          >
+            <Trash2 className="h-4 w-4" /> Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (selectedRecord) {
     return (
-      <RecordDetail
-        mod={mod}
-        record={selectedRecord}
-        onBack={closeRecord}
-        onUpdate={handleUpdate}
-        onDelete={(r) => {
-          handleDelete(r);
-          closeRecord();
-        }}
-      />
+      <>
+        <RecordDetail
+          mod={mod}
+          record={selectedRecord}
+          onBack={closeRecord}
+          onUpdate={handleUpdate}
+          onDelete={setDeleteTarget}
+        />
+        {deleteDialog}
+      </>
     );
   }
 
@@ -596,7 +605,7 @@ export function RecordsScreen({ mod, api }) {
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => setCreateOpen(true)}
             >
-              <Plus className="h-4 w-4" /> <span className="capitalize">{mod.createLabel}</span>
+              <Plus className="h-4 w-4" /> {mod.createLabel}
             </Button>
           </div>
         }
@@ -676,7 +685,7 @@ export function RecordsScreen({ mod, api }) {
                       className="bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={() => setCreateOpen(true)}
                     >
-                      <Plus className="h-4 w-4" /> <span className="capitalize">{mod.createLabel}</span>
+                      <Plus className="h-4 w-4" /> {mod.createLabel}
                     </Button>
                   )
                 }
@@ -694,34 +703,7 @@ export function RecordsScreen({ mod, api }) {
         onCreate={handleCreate}
       />
 
-      <Dialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete {mod.singular.toLowerCase()}</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-medium text-foreground">
-                {deleteTarget?.name}
-              </span>
-              ? This action can&apos;t be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
-              onClick={() => handleDelete(deleteTarget)}
-            >
-              <Trash2 className="h-4 w-4" /> Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {deleteDialog}
     </MainScreenWrapper>
   );
 }

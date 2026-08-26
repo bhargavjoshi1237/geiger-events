@@ -19,7 +19,6 @@ import {
 
 import { ScreenHeader, SearchInput, Toolbar } from "@/components/internal/shared/screen_kit";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button, Tabs, TabsList, TabsTrigger, cn } from "@geiger/ui";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { RecordsScreen } from "@/components/internal/shared/records/records_kit";
@@ -33,23 +32,21 @@ import {
   venueResultToLead,
 } from "@/lib/venues/discovery";
 
-// Venue Sourcing is a two-mode screen. "Discover" searches real venues on
-// OpenStreetMap (via /api/venues/search) and shortlists them into the pipeline;
-// "Pipeline" is the existing venue_lead record list (RecordsScreen).
-
 const VenueMap = dynamic(() => import("./venue_map"), {
   ssr: false,
   loading: () => <MapPlaceholder label="Loading map…" />,
 });
 
 const RADIUS_OPTIONS = [
-  { value: "2000", label: "Within 2 Km" },
-  { value: "5000", label: "Within 5 Km" },
-  { value: "10000", label: "Within 10 Km" },
-  { value: "25000", label: "Within 25 Km" },
+  { value: "2000", label: "Within 2 km" },
+  { value: "5000", label: "Within 5 km" },
+  { value: "10000", label: "Within 10 km" },
+  { value: "25000", label: "Within 25 km" },
 ];
 
 const TYPE_OPTIONS = VENUE_TYPES.map((t) => ({ value: t.value, label: t.label }));
+
+const POPULAR = ["London", "Amsterdam", "New York", "Austin", "Berlin", "Paris"];
 
 export function VenueSourcingScreen() {
   const [tab, setTab] = useState("discover");
@@ -134,7 +131,6 @@ function DiscoverPanel() {
     doSearch(query);
   };
 
-  // Quick-search chip — fills the box and searches in one tap.
   const searchFor = (city) => {
     setQuery(city);
     doSearch(city);
@@ -182,8 +178,6 @@ function DiscoverPanel() {
       <form onSubmit={onSubmit} className="shrink-0">
         <Toolbar>
           <div className="flex flex-1 flex-wrap items-center gap-2">
-            {/* The query field is this screen's primary input, so it stays
-                expanded rather than collapsing to an icon. */}
             <SearchInput
               expanded
               value={query}
@@ -220,7 +214,6 @@ function DiscoverPanel() {
       </form>
 
       {showResults ? (
-        // minmax(0,1fr) row caps the panels at the remaining viewport height so the list/map scroll internally, never the page
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)]">
           <ScrollArea className="h-[420px] rounded-xl lg:h-full">
             <div className="space-y-3 pr-3">
@@ -262,12 +255,10 @@ function DiscoverPanel() {
   );
 }
 
-// Pre-search state — a composed intro with quick-start city chips and the value
-// props, replacing the two empty panels. Shared shape with Housing & Travel.
-function DiscoverIntro({ title, description, features, onPick }) {
+function DiscoverIntro({ title, description, onPick }) {
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-surface-subtle  ">
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-surface-subtle">
         <div className="mx-auto flex max-w-xl flex-col items-center gap-6 px-6 py-16 text-center">
           <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-surface-card">
             <Search className="h-7 w-7 text-text-secondary" />
@@ -279,13 +270,26 @@ function DiscoverIntro({ title, description, features, onPick }) {
             <h3 className="text-xl font-semibold text-foreground">{title}</h3>
             <p className="text-sm leading-relaxed text-text-secondary">{description}</p>
           </div>
+          {onPick ? (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {POPULAR.map((city) => (
+                <button
+                  key={city}
+                  type="button"
+                  onClick={() => onPick(city)}
+                  className="rounded-full border border-border bg-surface-card px-3 py-1 text-xs font-medium text-text-secondary transition-colors hover:border-border-strong hover:bg-surface-hover hover:text-foreground"
+                >
+                  {city}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
 
-// A compact status block for the results column (loading / error / empty).
 function ColumnMessage({ icon: Icon, title, desc }) {
   return (
     <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface-subtle px-6 py-12 text-center">
@@ -352,7 +356,9 @@ function ResultsColumn({
 function ResultCard({ r, active, added, onHover, onAdd }) {
   return (
     <article
+      tabIndex={0}
       onMouseEnter={() => onHover(r.id)}
+      onFocus={() => onHover(r.id)}
       className={cn(
         "flex gap-3 rounded-xl border p-3 transition-colors",
         active

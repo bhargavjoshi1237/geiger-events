@@ -1,7 +1,3 @@
-// Section navigation + registry for the Event Wall editor. Mirrors
-// event_sections.js, but for the wall's single (singleton) config instead of
-// a per-row event.
-
 import { SquarePen, Palette, CalendarDays, Link2 } from "lucide-react";
 
 import { WallGeneralSection } from "./general";

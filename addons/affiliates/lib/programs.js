@@ -4,20 +4,10 @@ import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/events";
 import { getUser } from "@/lib/supabase/user";
 
-// Data access for the per-event program: events.affiliate_programs plus its
-// child affiliate_tiers and affiliate_enrolments, and the reusable
-// affiliate_program_templates a program is minted from.
-//
-// Programs are FULLY INDEPENDENT per event — creating one from a template
-// copies the ladder and rules; it never links back. Pure: validate,
-// console.error on failure, return null/false/[].
-
 const PROGRAMS = "affiliate_programs";
 const TIERS = "affiliate_tiers";
 const ENROLMENTS = "affiliate_enrolments";
 const TEMPLATES = "affiliate_program_templates";
-
-// --- Programs ----------------------------------------------------------------
 
 export function normalizeProgram(row) {
   if (!row) return null;
@@ -71,7 +61,6 @@ function programToRow(input) {
   if ("autoTierWindowDays" in input) {
     row.auto_tier_window_days = Number(input.autoTierWindowDays) || 90;
   }
-  // An empty cap means "uncapped", which is null — not zero.
   if ("budgetCap" in input) {
     row.budget_cap =
       input.budgetCap === "" || input.budgetCap === null
@@ -173,8 +162,6 @@ export async function softDeleteProgram(id) {
     return false;
   }
 }
-
-// --- Tiers -------------------------------------------------------------------
 
 export function normalizeTier(row) {
   if (!row) return null;
@@ -293,8 +280,6 @@ export async function softDeleteTier(id) {
   }
 }
 
-// --- Enrolments --------------------------------------------------------------
-
 export function normalizeEnrolment(row) {
   if (!row) return null;
   return {
@@ -310,7 +295,6 @@ export function normalizeEnrolment(row) {
     discountRecordId: row.discount_record_id ?? null,
     status: row.status ?? "active",
     cap: row.cap === null ? null : Number(row.cap),
-    // Present when the caller joined the affiliate row (see listEnrolments).
     affiliate: row.affiliates ? normalizeJoinedAffiliate(row.affiliates) : null,
   };
 }
@@ -354,8 +338,6 @@ function enrolmentToRow(input) {
   return row;
 }
 
-// Enrolments for one program, with the affiliate person joined so the program
-// editor can render a roster without a second round trip.
 export async function listEnrolments(programId) {
   if (!programId || !isSupabaseConfigured()) return null;
   try {
@@ -377,7 +359,6 @@ export async function listEnrolments(programId) {
   }
 }
 
-// Every program one affiliate is in — powers their portal "My programs" view.
 export async function listEnrolmentsForAffiliate(affiliateId) {
   if (!affiliateId || !isSupabaseConfigured()) return null;
   try {
@@ -459,8 +440,6 @@ export async function softDeleteEnrolment(id) {
     return false;
   }
 }
-
-// --- Templates ---------------------------------------------------------------
 
 export function normalizeTemplate(row) {
   if (!row) return null;
@@ -571,9 +550,6 @@ export async function softDeleteTemplate(id) {
   }
 }
 
-// Mint a program for an event from a template. COPY-ON-CREATE: the tiers and
-// rules are duplicated onto the new program, which then evolves independently —
-// editing the template later never touches a program built from it.
 export async function createProgramFromTemplate(projectId, eventId, template, overrides = {}) {
   const program = await createProgram(projectId, {
     eventId,
@@ -586,8 +562,6 @@ export async function createProgramFromTemplate(projectId, eventId, template, ov
 
   const tiers = Array.isArray(template?.tiers) ? template.tiers : [];
   for (const [index, tier] of tiers.entries()) {
-    // Sequential on purpose: a partial ladder is easier to reason about than a
-    // racing batch, and a template has a handful of tiers at most.
     await createTier(program.id, { ...tier, rank: tier.rank ?? index });
   }
   return program;

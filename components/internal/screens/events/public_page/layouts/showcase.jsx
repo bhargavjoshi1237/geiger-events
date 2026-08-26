@@ -15,13 +15,8 @@ import {
   priceLabel,
 } from "./shared";
 
-// Blocks that own their own multi-column layout are given the full row rather
-// than squeezed into half of one.
 const WIDE = new Set(["schedule", "location", "guests", "whosgoing", "infographics", "columns"]);
 
-// Split hero — type on one side, the cover shaped and offset on the other, then
-// a wide two-column body underneath. The asymmetric opening big product and
-// conference launches use: the headline reads first, the image anchors it.
 export function ShowcaseLayout({ ctx }) {
   const {
     event,
@@ -109,9 +104,6 @@ export function ShowcaseLayout({ ctx }) {
       </Shell>
 
       <Shell width={contentWidth} className="pb-16">
-        {/* Two-up, but a section left without a partner — because the next one
-            needs the full row, or because it rendered nothing — grows to fill
-            the row rather than sitting in half of it. */}
         <div className={PAIR_ROW}>
           {blocks.map((b) => (
             <div

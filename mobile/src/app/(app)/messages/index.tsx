@@ -60,7 +60,6 @@ export default function MessagesScreen() {
         )}
       </Screen>
 
-      {/* Floating composer entry, above the tab bar. */}
       <Animated.View
         entering={FadeInDown.delay(120).springify()}
         style={[styles.fab, { bottom: fabBottom }]}

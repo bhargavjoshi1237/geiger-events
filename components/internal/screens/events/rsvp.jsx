@@ -12,10 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEventConfig } from "@/lib/events/use-event-config";
+import { EventDatePicker } from "./date_time_fields";
 
-// All RSVP behaviour for an event lives here — the master toggle, response
-// options, capacity/waitlist, plus-ones, and confirmations. Persisted as a
-// single `rsvp` bag through the event metadata (see useEventConfig).
 const DEFAULT_RSVP = {
   enabled: true,
   allowMaybe: true,
@@ -38,9 +36,6 @@ export function RsvpOptionsSection({ event, headerItem, onCommit }) {
     DEFAULT_RSVP,
   );
 
-  // The attendance cap lives on the real events.capacity column — the single
-  // source of truth shared with ticketing and enforced at sale/RSVP time — not
-  // the rsvp metadata bag. `onCommit` patches the event and persists it.
   const cap = Number(event?.capacity) || 0;
   const limitCapacity = cap > 0;
   const [maxDraft, setMaxDraft] = React.useState(cap || 100);
@@ -53,8 +48,6 @@ export function RsvpOptionsSection({ event, headerItem, onCommit }) {
     onCommit?.({ capacity: Math.max(0, Number(value) || 0) });
   const toggleLimit = (on) => commitCapacity(on ? maxDraft || 100 : 0);
 
-  // Toggles persist immediately; free-text/number fields edit transiently and
-  // persist on blur (so we don't hit the server on every keystroke).
   const commit = (key) => (value) => saveRsvp({ ...rsvp, [key]: value });
   const draft = (key) => (value) => setRsvp({ ...rsvp, [key]: value });
 
@@ -68,7 +61,6 @@ export function RsvpOptionsSection({ event, headerItem, onCommit }) {
         }
       />
 
-      {/* Master switch — when off, the rest of the options are hidden. */}
       <SettingsList>
         <SettingRow
           title="Enable RSVPs"
@@ -108,13 +100,9 @@ export function RsvpOptionsSection({ event, headerItem, onCommit }) {
                 title="RSVP deadline"
                 description="Close RSVPs automatically after this date. Leave empty for no deadline."
                 control={
-                  <Input
-                    type="date"
+                  <EventDatePicker
                     value={rsvp.deadline}
-                    aria-label="RSVP deadline"
-                    onChange={(e) => draft("deadline")(e.target.value)}
-                    onBlur={() => saveRsvp()}
-                    className="w-44"
+                    onChange={(v) => commit("deadline")(v)}
                   />
                 }
               />

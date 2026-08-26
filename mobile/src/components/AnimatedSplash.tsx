@@ -29,9 +29,6 @@ type AnimatedSplashProps = {
   onFinish: () => void;
 };
 
-// Full-screen first impression: a soft Skia glow, the mark drawing in, then a
-// wordmark + rule, before the whole overlay cross-fades away once the session
-// has resolved for at least MIN_DURATION.
 export function AnimatedSplash({ ready, onFinish }: AnimatedSplashProps) {
   const reduced = useReducedMotion();
   const { width, height } = useWindowDimensions();
@@ -46,7 +43,6 @@ export function AnimatedSplash({ ready, onFinish }: AnimatedSplashProps) {
   const glowPulse = useSharedValue(1);
   const overlayOpacity = useSharedValue(1);
 
-  // Draw-in sequence (skipped under reduced motion).
   useEffect(() => {
     startedAt.current = Date.now();
     if (reduced) {
@@ -75,7 +71,6 @@ export function AnimatedSplash({ ready, onFinish }: AnimatedSplashProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Lift the overlay once the session has resolved and the beat has elapsed.
   useEffect(() => {
     if (!ready) return;
     const elapsed = startedAt.current ? Date.now() - startedAt.current : 0;

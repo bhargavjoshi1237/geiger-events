@@ -22,26 +22,11 @@ import {
   toTimeValue,
 } from "@/lib/agenda/sessions";
 
-// The Agenda Builder's grid view: one column per track, time down the side, and
-// every session as a block positioned by when it actually runs. It replaces the
-// day-grouped card list as the default view because a conference agenda is a
-// two-dimensional thing — the list could never show that two tracks collide.
-//
-// Three things the list couldn't do:
-//   * drag a block to a different track or time (persisted through onReschedule)
-//   * flag double-booked speakers and rooms, on the block and in a banner
-//   * park unscheduled sessions in a tray you drag onto the grid
-//
-// It renders view-model sessions and owns no data access — every mutation goes
-// back up to the builder, which persists it optimistically.
-
 const PX_PER_MIN = 1.4;
 const SNAP_MIN = 15;
 const DEFAULT_WINDOW = { from: 8 * 60, to: 18 * 60 };
 const MIN_BLOCK_MIN = 30;
 
-// Track colours mirror the display board's palette so a session reads the same
-// on the grid and on the wall. Tailwind classes, not the canvas hex values.
 const TRACK_STYLES = [
   { bar: "bg-orange-400", tint: "bg-orange-500/10", text: "text-orange-300" },
   { bar: "bg-sky-400", tint: "bg-sky-500/10", text: "text-sky-300" },
@@ -51,11 +36,10 @@ const TRACK_STYLES = [
   { bar: "bg-pink-400", tint: "bg-pink-500/10", text: "text-pink-300" },
 ];
 
-const trackStyle = (i) => TRACK_STYLES[((i % 6) + 6) % 6];
+export const trackStyle = (i) => TRACK_STYLES[((i % 6) + 6) % 6];
 
 const UNTRACKED = "__untracked__";
 
-// Snap a minute value to the grid's resolution, clamped to the day.
 const snap = (mins) =>
   Math.max(0, Math.min(24 * 60 - SNAP_MIN, Math.round(mins / SNAP_MIN) * SNAP_MIN));
 
@@ -82,8 +66,6 @@ function DayTabs({ days, value, onChange }) {
   );
 }
 
-// The amber banner over the grid. Naming both sides of a clash is the whole
-// point — "Ada Chen is in two rooms at 14:00" is actionable, "conflict" isn't.
 function ConflictBanner({ pairs, onEdit }) {
   if (!pairs.length) return null;
   return (
@@ -120,6 +102,8 @@ function SessionBlock({ session, top, height, style, conflicted, onEdit, onDelet
   const start = sessionStart(session);
   const end = start + sessionDuration(session);
   const compact = height < 64;
+  const timeRange =
+    start != null ? `${minutesToLabel(start)} – ${minutesToLabel(end)}` : "unscheduled";
 
   return (
     <div
@@ -127,6 +111,7 @@ function SessionBlock({ session, top, height, style, conflicted, onEdit, onDelet
       onDragStart={(e) => onDragStart(e, session)}
       role="button"
       tabIndex={0}
+      aria-label={`${session.name}, ${timeRange}`}
       onClick={() => onEdit(session)}
       onKeyDown={(e) => e.key === "Enter" && onEdit(session)}
       style={{ top, height }}
@@ -154,7 +139,7 @@ function SessionBlock({ session, top, height, style, conflicted, onEdit, onDelet
             e.stopPropagation();
             onDelete(session);
           }}
-          className="shrink-0 rounded p-0.5 text-text-tertiary opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+          className="shrink-0 rounded p-0.5 text-text-tertiary opacity-0 transition-opacity hover:text-red-400 focus-visible:opacity-100 group-hover:opacity-100"
         >
           <Trash2 className="h-3 w-3" />
         </button>
@@ -189,8 +174,6 @@ function SessionBlock({ session, top, height, style, conflicted, onEdit, onDelet
   );
 }
 
-// Sessions with no start time yet. Dragging one onto the grid is how it gets
-// scheduled, which is faster than opening the dialog to type a time.
 function UnscheduledTray({ sessions, onEdit, onDragStart }) {
   if (!sessions.length) return null;
   return (
@@ -210,6 +193,7 @@ function UnscheduledTray({ sessions, onEdit, onDragStart }) {
             onDragStart={(e) => onDragStart(e, session)}
             role="button"
             tabIndex={0}
+            aria-label={`${session.name}, unscheduled`}
             onClick={() => onEdit(session)}
             onKeyDown={(e) => e.key === "Enter" && onEdit(session)}
             className="cursor-grab rounded-lg border border-border bg-surface-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-border-strong active:cursor-grabbing"
@@ -222,10 +206,6 @@ function UnscheduledTray({ sessions, onEdit, onDragStart }) {
   );
 }
 
-// `sessions` is what the active filters let through and is what gets drawn;
-// `allSessions` is the unfiltered agenda, used for the day tabs, the track
-// columns, and conflict detection — a filter should never make a double-booking
-// look resolved, or a day disappear from the tab strip.
 export function AgendaGrid({
   sessions,
   allSessions,
@@ -239,8 +219,6 @@ export function AgendaGrid({
   const [day, setDay] = useState(() => days[0] || "");
   const activeDay = days.includes(day) ? day : days[0] || "";
 
-  // Where inside a block the pointer grabbed it, so a drag moves the block
-  // rather than snapping its start to the cursor.
   const grabOffset = useRef(0);
   const gridRef = useRef(null);
 
@@ -269,7 +247,6 @@ export function AgendaGrid({
     [conflicts, activeDay],
   );
 
-  // The visible window, snapped out to whole hours around the day's real extent.
   const window = useMemo(() => {
     if (!dayScheduled.length) return DEFAULT_WINDOW;
     const starts = dayScheduled.map(sessionStart);
@@ -316,7 +293,6 @@ export function AgendaGrid({
     });
   };
 
-  // Clicking empty space in a column starts a session at that time and track.
   const handleColumnClick = (track) => (e) => {
     if (!onAddAt || !gridRef.current) return;
     const rect = gridRef.current.getBoundingClientRect();
@@ -331,14 +307,12 @@ export function AgendaGrid({
 
   return (
     <div className="space-y-4">
-      {days.length > 1 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <DayTabs days={days} value={activeDay} onChange={setDay} />
-          <span className="text-xs text-text-tertiary">
-            Drag a session to move it; click an empty slot to add one.
-          </span>
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {days.length > 1 ? <DayTabs days={days} value={activeDay} onChange={setDay} /> : null}
+        <span className="text-xs text-text-tertiary">
+          Drag a session to move it; click an empty slot to add one.
+        </span>
+      </div>
 
       <ConflictBanner pairs={dayConflicts} onEdit={onEdit} />
 
@@ -350,7 +324,6 @@ export function AgendaGrid({
 
       <div className="overflow-x-auto rounded-xl border border-border bg-surface-subtle">
         <div className="min-w-[640px]">
-          {/* Column headers */}
           <div className="flex border-b border-border">
             <div className="w-20 shrink-0" />
             {columns.map((track, i) => (
@@ -365,7 +338,6 @@ export function AgendaGrid({
             ))}
           </div>
 
-          {/* Time rail + track columns */}
           <div className="flex">
             <div className="relative w-20 shrink-0" style={{ height: gridHeight }}>
               {hours.map((mins) => (
@@ -380,7 +352,6 @@ export function AgendaGrid({
             </div>
 
             <div ref={gridRef} className="relative flex flex-1" style={{ height: gridHeight }}>
-              {/* Hour rules, drawn once across the whole grid. */}
               {hours.map((mins) => (
                 <span
                   key={mins}

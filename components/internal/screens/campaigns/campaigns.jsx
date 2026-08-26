@@ -78,8 +78,6 @@ import {
 } from "./constants";
 import { CampaignEditor } from "./campaign_editor";
 
-// --- Create dialog -----------------------------------------------------------
-
 function CreateCampaignDialog({ open, onOpenChange, preset, onCreate }) {
   const [name, setName] = useState("");
   const [channel, setChannel] = useState(preset?.channel || "email");
@@ -120,6 +118,11 @@ function CreateCampaignDialog({ open, onOpenChange, preset, onCreate }) {
               id="camp-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                submit();
+              }}
               placeholder="e.g. June newsletter"
               autoFocus
             />
@@ -175,8 +178,6 @@ function CreateCampaignDialog({ open, onOpenChange, preset, onCreate }) {
   );
 }
 
-// --- Campaign card -----------------------------------------------------------
-
 function scheduleLine(c) {
   if (c.status === "sent") return c.sentAt ? `Sent ${formatDateTime(c.sentAt)}` : "Sent";
   if (c.status === "scheduled" && c.scheduledAt)
@@ -192,7 +193,11 @@ function CampaignCard({ campaign, segmentName, recipients, onOpen, onDuplicate, 
       role="button"
       tabIndex={0}
       onClick={onOpen}
-      onKeyDown={(e) => e.key === "Enter" && onOpen()}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        onOpen();
+      }}
       className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
@@ -255,10 +260,6 @@ function CampaignCard({ campaign, segmentName, recipients, onOpen, onDuplicate, 
   );
 }
 
-// --- Screen (hub + lens) -----------------------------------------------------
-
-// `preset` turns the hub into a filtered lens (see LENS in constants). Without
-// it, this is the full Campaigns hub.
 export function CampaignsScreen({ preset }) {
   const { projectId } = useProject();
   const [campaigns, setCampaigns] = useState([]);
@@ -324,7 +325,6 @@ export function CampaignsScreen({ preset }) {
   const segmentName = (segmentId) =>
     segmentId ? segmentById[segmentId]?.name || "Segment" : "All contacts";
 
-  // Base list narrowed by the lens preset.
   const presetList = useMemo(() => {
     let rows = campaigns;
     if (preset?.channel) rows = rows.filter((c) => c.channel === preset.channel);
@@ -427,7 +427,6 @@ export function CampaignsScreen({ preset }) {
     });
   };
 
-  // Editor takes over the screen when a campaign is open.
   const openCampaign = campaigns.find((c) => c.id === openId) || null;
   if (openCampaign) {
     return (

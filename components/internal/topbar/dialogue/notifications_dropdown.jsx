@@ -1,15 +1,19 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, Download, MessageSquare } from "lucide-react";
+import { Bell, Download, Loader2, MessageSquare } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { getUser } from "@/lib/supabase/user";
 import { formatDistanceToNow } from "date-fns";
 import { SegmentedTabs } from "@geiger/ui";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/internal/shared/screen_kit";
+import { cn } from "@/lib/utils";
 
 const NOTIFICATION_TABS = [
   { label: "All", value: "all" },
@@ -17,42 +21,104 @@ const NOTIFICATION_TABS = [
   { label: "Mentions", value: "mentions" },
 ];
 
+function SkeletonRows() {
+  return (
+    <div className="px-4 py-2">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex items-start gap-3 border-b border-border py-3.5 last:border-b-0">
+          <div className="mt-0.5 h-9 w-9 shrink-0 animate-pulse rounded-lg bg-surface-subtle" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="h-3 w-2/3 animate-pulse rounded bg-surface-subtle" />
+            <div className="h-3 w-full animate-pulse rounded bg-surface-subtle" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-surface-subtle" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function NotificationsDropdown({ children }) {
   const [activeTab, setActiveTab] = useState("all");
   const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [markingRead, setMarkingRead] = useState({});
+  const [downloading, setDownloading] = useState(null);
 
   useEffect(() => {
+    let alive = true;
     const fetchNotifications = async () => {
+      setLoading(true);
+      setError(null);
       const userData = await getUser();
 
       if (userData) {
         const { createClient } = await import("@/lib/supabase/client");
-        // The base client is scoped to this app's `events` schema, but
-        // flow_notifications is a suite-shared table in `public` — override the
-        // schema for this read so it doesn't resolve to events.flow_notifications.
         const supabase = createClient();
-        const { data, error } = await supabase
+        const { data, error: fetchError } = await supabase
           .schema("public")
           .from("flow_notifications")
           .select("*")
           .eq("user_id", userData.id)
           .order("time", { ascending: false });
 
-        if (error) {
-          console.error("[flow_notifications] fetch error:", error);
+        if (!alive) return;
+        if (fetchError) {
+          setError("Couldn't load notifications.");
         }
-
         if (data) {
           setNotifications(data);
         }
       }
+      if (alive) setLoading(false);
     };
     fetchNotifications();
+    return () => {
+      alive = false;
+    };
   }, []);
+
+  const markRead = async (notification) => {
+    if (notification.read || markingRead[notification.id]) return;
+    setMarkingRead((prev) => ({ ...prev, [notification.id]: true }));
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
+    );
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error: updateError } = await supabase
+        .schema("public")
+        .from("flow_notifications")
+        .update({ read: true })
+        .eq("id", notification.id);
+      if (updateError) throw updateError;
+    } catch {
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notification.id ? { ...n, read: notification.read } : n,
+        ),
+      );
+      setError("Couldn't update the notification.");
+    } finally {
+      setMarkingRead((prev) => ({ ...prev, [notification.id]: false }));
+    }
+  };
+
+  const openAttachment = (event, file) => {
+    event.stopPropagation();
+    if (!file.url || downloading) return;
+    setDownloading(file.name);
+    try {
+      window.open(file.url, "_blank", "noopener,noreferrer");
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   const filteredNotifications = notifications.filter((n) => {
     if (activeTab === "all") return true;
-    if (activeTab === "unread") return !n.read;
     if (activeTab === "discussions") return n.type === "discussion";
     if (activeTab === "mentions") return n.type === "mention";
     return true;
@@ -62,7 +128,10 @@ export function NotificationsDropdown({ children }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {children || (
-          <Button className="w-8 h-8 rounded-full border border-transparent hover:bg-surface-hover flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground relative">
+          <Button
+            aria-label="Notifications"
+            className="w-8 h-8 rounded-full border border-transparent hover:bg-surface-hover flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground relative"
+          >
             <Bell className="w-[18px] h-[18px]" strokeWidth={2} />
           </Button>
         )}
@@ -82,10 +151,19 @@ export function NotificationsDropdown({ children }) {
         </div>
 
         <div className="max-h-[420px] overflow-y-auto pb-2 custom-scrollbar">
-          {filteredNotifications.length === 0 ? (
-            <div className="px-4 py-12 text-center text-[13px] text-text-secondary">
-              No notifications found.
+          {loading ? (
+            <SkeletonRows />
+          ) : error ? (
+            <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-medium text-red-200">
+              {error}
             </div>
+          ) : filteredNotifications.length === 0 ? (
+            <EmptyState
+              icon={Bell}
+              title="No notifications"
+              description="You're all caught up."
+              className="py-12"
+            />
           ) : (
             filteredNotifications.map((notification) => {
               const IconComponent = LucideIcons[notification.icon] || Bell;
@@ -97,7 +175,7 @@ export function NotificationsDropdown({ children }) {
                     addSuffix: true,
                   });
                 }
-              } catch (e) {}
+              } catch {}
 
               let extraContent = null;
               try {
@@ -109,7 +187,7 @@ export function NotificationsDropdown({ children }) {
                 ) {
                   extraContent = notification.extra;
                 }
-              } catch (e) {}
+              } catch {}
 
               const isUnread = !notification.read;
               const bgColor = notification.bg_color || notification.bgColor || "bg-surface-card";
@@ -118,11 +196,12 @@ export function NotificationsDropdown({ children }) {
               return (
                 <div
                   key={notification.id}
-                  className={`px-4 py-3.5 transition-colors relative group cursor-pointer border-b border-border last:border-b-0 ${
+                  className={cn(
+                    "px-4 py-3.5 transition-colors relative group border-b border-border last:border-b-0",
                     isUnread
                       ? "bg-surface-subtle/50 hover:bg-surface-card"
-                      : "hover:bg-surface-subtle"
-                  }`}
+                      : "hover:bg-surface-subtle",
+                  )}
                 >
                   {isUnread && (
                     <div className="absolute left-1.5 top-5 w-1.5 h-1.5 rounded-full bg-blue-500"></div>
@@ -130,10 +209,14 @@ export function NotificationsDropdown({ children }) {
 
                   <div className="pl-3 flex items-start gap-3">
                     <div
-                      className={`mt-0.5 flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${bgColor} border border-foreground/10`}
+                      className={cn(
+                        "mt-0.5 flex items-center justify-center w-9 h-9 rounded-lg shrink-0",
+                        bgColor,
+                        "border border-foreground/10",
+                      )}
                     >
                       <IconComponent
-                        className={`w-4 h-4 ${iconColor}`}
+                        className={cn("w-4 h-4", iconColor)}
                         strokeWidth={1.8}
                       />
                     </div>
@@ -141,9 +224,10 @@ export function NotificationsDropdown({ children }) {
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex items-center justify-between gap-3 mb-1">
                         <h3
-                          className={`text-[13px] font-medium truncate ${
-                            isUnread ? "text-foreground" : "text-muted-foreground"
-                          }`}
+                          className={cn(
+                            "text-[13px] font-medium truncate",
+                            isUnread ? "text-foreground" : "text-muted-foreground",
+                          )}
                         >
                           {notification.title}
                         </h3>
@@ -151,17 +235,13 @@ export function NotificationsDropdown({ children }) {
                           {formattedTime}
                         </span>
                       </div>
-                      <p
-                        className={`text-[12px] leading-relaxed ${
-                          isUnread ? "text-muted-foreground" : "text-muted-foreground"
-                        } line-clamp-2`}
-                      >
+                      <p className="text-[12px] leading-relaxed text-muted-foreground line-clamp-2">
                         {notification.description}
                       </p>
 
                       {extraContent && (
                         <div className="mt-3">
-                      {extraContent.type === "comment" && (
+                          {extraContent.type === "comment" && (
                             <div className="bg-surface-subtle border border-border rounded-lg p-3 text-[12px] text-muted-foreground leading-relaxed">
                               {extraContent.text}
                             </div>
@@ -174,7 +254,7 @@ export function NotificationsDropdown({ children }) {
                                   <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
                                   {extraContent.channel}
                                 </span>
-                                <span className="text-[10px] text-text-secondary">
+                                <span className="text-[11px] text-text-secondary">
                                   {extraContent.replies} replies
                                 </span>
                               </div>
@@ -187,7 +267,7 @@ export function NotificationsDropdown({ children }) {
                                   {extraContent.participants?.map((person) => (
                                     <span
                                       key={person}
-                                      className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface-hover text-[9px] font-semibold text-foreground"
+                                      className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface-hover text-[11px] font-semibold text-foreground"
                                     >
                                       {person}
                                     </span>
@@ -211,16 +291,22 @@ export function NotificationsDropdown({ children }) {
                                     <div className="text-[12px] text-muted-foreground truncate">
                                       {f.name}
                                     </div>
-                                    <div className="text-[10px] text-text-secondary">
+                                    <div className="text-[11px] text-text-secondary">
                                       {f.size}
                                     </div>
                                   </div>
                                 </div>
                                 <Button
-                                  onClick={(e) => e.stopPropagation()}
+                                  onClick={(e) => openAttachment(e, f)}
+                                  disabled={!f.url || downloading === f.name}
+                                  aria-label={`Download ${f.name}`}
                                   className="w-8 h-8 rounded flex items-center justify-center text-text-secondary hover:text-foreground hover:bg-surface-hover transition-colors shrink-0"
                                 >
-                                  <Download className="w-4 h-4" />
+                                  {downloading === f.name ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Download className="w-4 h-4" />
+                                  )}
                                 </Button>
                               </div>
                             ))}
@@ -228,15 +314,26 @@ export function NotificationsDropdown({ children }) {
                           {extraContent.type === "actions" && (
                             <div className="flex items-center gap-2 mt-2.5">
                               <Button
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  markRead(notification);
+                                }}
+                                disabled={markingRead[notification.id]}
                                 className="px-3 py-1.5 rounded-lg border border-border text-[11px] font-medium text-muted-foreground hover:bg-surface-active hover:text-foreground transition-colors"
                               >
                                 {extraContent.options?.[0] || "Decline"}
                               </Button>
                               <Button
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  markRead(notification);
+                                }}
+                                disabled={markingRead[notification.id]}
                                 className="px-3 py-1.5 rounded-lg bg-primary text-[11px] font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                               >
+                                {markingRead[notification.id] ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : null}
                                 {extraContent.options?.[1] || "Accept"}
                               </Button>
                             </div>
@@ -245,7 +342,7 @@ export function NotificationsDropdown({ children }) {
                       )}
 
                       <div className="mt-3">
-                        <span className="text-[9px] uppercase font-semibold tracking-wider text-text-secondary bg-surface-card px-2 py-1 rounded-md border border-border">
+                        <span className="text-[11px] uppercase font-semibold tracking-wider text-text-secondary bg-surface-card px-2 py-1 rounded-md border border-border">
                           {notification.type}
                         </span>
                       </div>

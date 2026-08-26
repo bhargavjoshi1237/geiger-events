@@ -174,6 +174,7 @@ export function DisputesScreen() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -325,7 +326,7 @@ export function DisputesScreen() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
+              className="w-44 border-border bg-surface-subtle"
             >
               {DISPUTE_STATUSES.filter((s) => s !== d.status).map((s) => (
                 <DropdownMenuItem
@@ -336,10 +337,10 @@ export function DisputesScreen() {
                   Mark {s.toLowerCase()}
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuSeparator className="bg-surface-strong" />
+              <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => remove(d)}
+                onClick={() => setRemoveTarget(d)}
               >
                 <Trash2 className="h-4 w-4 text-red-300" /> Remove
               </DropdownMenuItem>
@@ -423,6 +424,39 @@ export function DisputesScreen() {
         orders={orders}
         onCreate={handleCreate}
       />
+
+      <Dialog
+        open={!!removeTarget}
+        onOpenChange={(o) => !o && setRemoveTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove dispute</DialogTitle>
+            <DialogDescription>
+              Remove the dispute against{" "}
+              <span className="font-medium text-foreground">
+                {ordersById[removeTarget?.orderId]?.name || "this order"} ·{" "}
+                {orderRef(removeTarget?.orderId)}
+              </span>
+              ? This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemoveTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                remove(removeTarget);
+                setRemoveTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

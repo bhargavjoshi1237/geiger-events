@@ -54,6 +54,19 @@ import {
 import { eventSlug, formatDate } from "./sample_data";
 import { useEventConfig } from "@/lib/events/use-event-config";
 
+function ProgressFill({ value }) {
+  return (
+    <div className="w-[140px] space-y-1.5">
+      <div className="h-1.5 overflow-hidden rounded-full bg-border">
+        <div
+          className="h-full rounded-full bg-primary"
+          style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function CodeBlock({ code }) {
   const copy = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -79,8 +92,6 @@ function CodeBlock({ code }) {
     </div>
   );
 }
-
-// --- Add to Calendar ---------------------------------------------------------
 
 const CAL_PROVIDERS = [
   { key: "google", title: "Google Calendar", icon: Calendar },
@@ -146,8 +157,6 @@ export function AddToCalendarSection({ event }) {
     </div>
   );
 }
-
-// --- Embeddable Widget -------------------------------------------------------
 
 export function EmbeddableWidgetSection({ event }) {
   const [cfg, , saveCfg] = useEventConfig(event, "embed", {
@@ -239,12 +248,28 @@ export function EmbeddableWidgetSection({ event }) {
   );
 }
 
-// --- SEO & Sharing -----------------------------------------------------------
-
 const SHARE_NETWORKS = [
-  { key: "x", title: "X / Twitter", icon: Twitter },
-  { key: "facebook", title: "Facebook", icon: Facebook },
-  { key: "linkedin", title: "LinkedIn", icon: Linkedin },
+  {
+    key: "x",
+    title: "X / Twitter",
+    icon: Twitter,
+    href: (url, text) =>
+      `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
+  },
+  {
+    key: "facebook",
+    title: "Facebook",
+    icon: Facebook,
+    href: (url) =>
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+  },
+  {
+    key: "linkedin",
+    title: "LinkedIn",
+    icon: Linkedin,
+    href: (url) =>
+      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+  },
   { key: "copy", title: "Copy link", icon: Link2 },
 ];
 
@@ -331,13 +356,35 @@ export function SeoSharingSection({ event }) {
         <div className="flex flex-wrap gap-2">
           {SHARE_NETWORKS.map((n) => {
             const Icon = n.icon;
+            const pageUrl =
+              typeof window !== "undefined"
+                ? `${window.location.origin}${window.location.pathname}`
+                : `https://geiger.events/e/${event?.id || ""}`;
+            const share = () => {
+              if (n.key === "copy") {
+                if (typeof navigator !== "undefined" && navigator.clipboard) {
+                  navigator.clipboard.writeText(pageUrl).then(
+                    () => toast("Link copied."),
+                    () => toast.error("Couldn't copy the link."),
+                  );
+                }
+                return;
+              }
+              if (typeof window !== "undefined") {
+                window.open(
+                  n.href(pageUrl, seo.title || event?.name || "Event"),
+                  "_blank",
+                  "noopener,noreferrer",
+                );
+              }
+            };
             return (
               <Button
                 key={n.key}
                 variant="outline"
                 size="sm"
                 className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                onClick={() => toast.success(`Shared via ${n.title}.`)}
+                onClick={share}
               >
                 <Icon className="h-4 w-4" /> {n.title}
               </Button>
@@ -349,8 +396,6 @@ export function SeoSharingSection({ event }) {
   );
 }
 
-// --- Localization ------------------------------------------------------------
-
 const LANGUAGES = [
   { id: "en", name: "English", locale: "en-GB", progress: 100, isDefault: true },
   { id: "fr", name: "French", locale: "fr-FR", progress: 86, isDefault: false },
@@ -358,9 +403,17 @@ const LANGUAGES = [
   { id: "es", name: "Spanish", locale: "es-ES", progress: 40, isDefault: false },
 ];
 
+const ADDABLE_LANGUAGES = [
+  { value: "it-IT", name: "Italian" },
+  { value: "pt-BR", name: "Portuguese" },
+  { value: "nl-NL", name: "Dutch" },
+  { value: "ja-JP", name: "Japanese" },
+];
+
 export function LocalizationSection({ event, headerItem }) {
   const [langs, , saveLangs] = useEventConfig(event, "languages", LANGUAGES);
   const [open, setOpen] = useState(false);
+  const [newLocale, setNewLocale] = useState(ADDABLE_LANGUAGES[0].value);
 
   const columns = [
     {
@@ -387,12 +440,7 @@ export function LocalizationSection({ event, headerItem }) {
       header: "Translated",
       render: (l) => (
         <div className="w-[140px] space-y-1.5">
-          <div className="h-1.5 overflow-hidden rounded-full bg-surface-hover">
-            <div
-              className="h-full rounded-full bg-[#ededed]"
-              style={{ width: `${l.progress}%` }}
-            />
-          </div>
+          <ProgressFill value={l.progress} />
           <p className="text-xs text-text-secondary">{l.progress}%</p>
         </div>
       ),
@@ -443,15 +491,16 @@ export function LocalizationSection({ event, headerItem }) {
             </DialogDescription>
           </DialogHeader>
           <Field label="Language">
-            <Select defaultValue="it-IT">
+            <Select value={newLocale} onValueChange={setNewLocale}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="it-IT">Italian (it-IT)</SelectItem>
-                <SelectItem value="pt-BR">Portuguese (pt-BR)</SelectItem>
-                <SelectItem value="nl-NL">Dutch (nl-NL)</SelectItem>
-                <SelectItem value="ja-JP">Japanese (ja-JP)</SelectItem>
+                {ADDABLE_LANGUAGES.map((l) => (
+                  <SelectItem key={l.value} value={l.value}>
+                    {l.name} ({l.value})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Field>
@@ -466,13 +515,16 @@ export function LocalizationSection({ event, headerItem }) {
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
+                const picked =
+                  ADDABLE_LANGUAGES.find((l) => l.value === newLocale) ||
+                  ADDABLE_LANGUAGES[0];
                 saveLangs(
                   [
                     ...langs,
                     {
                       id: `l${Date.now()}`,
-                      name: "Italian",
-                      locale: "it-IT",
+                      name: picked.name,
+                      locale: picked.value,
                       progress: 0,
                       isDefault: false,
                     },
@@ -490,8 +542,6 @@ export function LocalizationSection({ event, headerItem }) {
     </div>
   );
 }
-
-// --- Hybrid Mode -------------------------------------------------------------
 
 const FORMATS = [
   { value: "in-person", label: "In-person", icon: MapPin, description: "A physical venue only." },
@@ -522,7 +572,6 @@ export function HybridModeSection({ event, headerItem, onPatch, onCommit }) {
   );
   const setHybridField = (key) => (value) => setHybrid({ ...hybrid, [key]: value });
 
-  // Keep the event's headline format (a column) in sync with the choice here.
   const choose = (value) => {
     setFormat(value);
     const type = Object.keys(TYPE_TO_FORMAT).find(
@@ -558,8 +607,8 @@ export function HybridModeSection({ event, headerItem, onPatch, onCommit }) {
                   <Icon className="h-4 w-4" />
                 </div>
                 {active ? (
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white">
-                    <Check className="h-3 w-3 text-[#161616]" />
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full border border-primary bg-primary/15">
+                    <Check className="h-3 w-3 text-foreground" />
                   </span>
                 ) : null}
               </div>

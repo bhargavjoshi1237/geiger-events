@@ -51,6 +51,7 @@ import {
   Textarea,
 } from "@geiger/ui";
 import { MoreHorizontal } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { listEvents } from "@/lib/supabase/events";
 import { listRegistrations } from "@/lib/supabase/registrations";
@@ -74,16 +75,12 @@ import { downloadCsv } from "./csv";
 
 const shortId = () => `dq_${Math.random().toString(36).slice(2, 8)}`;
 
-// Tab switch — same segmented-control style as the Registrations view switch.
 const TABS = [
   { key: "report", label: "Needs report", icon: Accessibility },
   { key: "requests", label: "Requests", icon: MessageSquare },
   { key: "inquiry", label: "Inquiry", icon: MailQuestion },
 ];
 
-// ===========================================================================
-// Needs report (existing behaviour, now a tab).
-// ===========================================================================
 function NeedsReportTab({ regs, events, eventNames, questions, registerExport }) {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
@@ -136,8 +133,6 @@ function NeedsReportTab({ regs, events, eventNames, questions, registerExport })
     })).filter((b) => b.count > 0);
   }, [scoped]);
 
-  // Inquiry aggregate — option counts across the scoped registrations whose
-  // answers carry this question's structured response.
   const inquiryBreakdown = useMemo(() => {
     const scopedRegs =
       eventFilter === "all"
@@ -195,7 +190,6 @@ function NeedsReportTab({ regs, events, eventNames, questions, registerExport })
     toast.success(`Exported ${filtered.length} rows.`);
   }, [filtered, eventNames]);
 
-  // Register this tab's export with the shared top-row Export button.
   useEffect(() => {
     registerExport(() => handleExport);
     return () => registerExport(null);
@@ -360,14 +354,12 @@ function NeedsReportTab({ regs, events, eventNames, questions, registerExport })
   );
 }
 
-// ===========================================================================
-// Requests inbox (post-purchase free-text queries).
-// ===========================================================================
 function RequestsTab({ config, onConfigChange, requests, setRequests, events, eventNames, registerExport }) {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [promptDraft, setPromptDraft] = useState(config.requestPrompt || "");
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const eventFilterOptions = useMemo(
     () => [
@@ -439,7 +431,6 @@ function RequestsTab({ config, onConfigChange, requests, setRequests, events, ev
     toast.success(`Exported ${filtered.length} rows.`);
   }, [filtered, eventNames]);
 
-  // Register this tab's export with the shared top-row Export button.
   useEffect(() => {
     registerExport(() => handleExport);
     return () => registerExport(null);
@@ -509,7 +500,7 @@ function RequestsTab({ config, onConfigChange, requests, setRequests, events, ev
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
+              className="w-44 border-border bg-surface-subtle"
             >
               {r.status === "Open" ? (
                 <DropdownMenuItem
@@ -526,10 +517,10 @@ function RequestsTab({ config, onConfigChange, requests, setRequests, events, ev
                   <RotateCcw className="h-4 w-4" /> Reopen
                 </DropdownMenuItem>
               )}
-              <DropdownMenuSeparator className="bg-surface-strong" />
+              <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => remove(r)}
+                onClick={() => setDeleteTarget(r)}
               >
                 <Trash2 className="h-4 w-4 text-red-300" /> Delete
               </DropdownMenuItem>
@@ -614,13 +605,42 @@ function RequestsTab({ config, onConfigChange, requests, setRequests, events, ev
           </div>
         }
       />
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete request</DialogTitle>
+            <DialogDescription>
+              Delete the request from{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name || deleteTarget?.email || "this guest"}
+              </span>
+              ? This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                remove(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// ===========================================================================
-// Inquiry builder (radio / multiselect question set for ticket forms).
-// ===========================================================================
 function InquiryTab({ config, onSave }) {
   const [questions, setQuestions] = useState(config.questions || []);
   const [title, setTitle] = useState(config.inquiryTitle || "");
@@ -674,7 +694,6 @@ function InquiryTab({ config, onSave }) {
     );
 
   const save = async () => {
-    // Drop empty option labels; keep only questions with a label + an option.
     const cleaned = questions
       .map((q) => ({
         ...q,
@@ -889,9 +908,6 @@ function InquiryTab({ config, onSave }) {
   );
 }
 
-// ===========================================================================
-// Screen — tabbed shell.
-// ===========================================================================
 export function DietaryAccessibilityScreen() {
   const [regs, setRegs] = useState([]);
   const [events, setEvents] = useState([]);
@@ -899,8 +915,6 @@ export function DietaryAccessibilityScreen() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("report");
-  // The active tab registers its export here; the shared top-row button calls it
-  // (null → the tab has nothing to export, so the button is hidden, e.g. Inquiry).
   const [exportHandler, setExportHandler] = useState(null);
   const { projectId } = useProject();
 
@@ -915,8 +929,6 @@ export function DietaryAccessibilityScreen() {
       if (!alive) return;
       setRegs(rows ?? []);
       setEvents(evts ?? []);
-      // Fall back to an empty config so the screen renders even when the DB is
-      // unconfigured or the read failed (rather than stalling on "Loading…").
       setConfig(
         cfg ?? {
           projectId,
@@ -941,7 +953,6 @@ export function DietaryAccessibilityScreen() {
     return m;
   }, [events]);
 
-  // Config mutations are optimistic; persist through the data layer.
   const patchConfig = (patch) => {
     setConfig((prev) => ({ ...(prev || {}), ...patch }));
     upsertDietaryConfig(projectId, patch).then((saved) => {
@@ -959,8 +970,6 @@ export function DietaryAccessibilityScreen() {
     return false;
   };
 
-  // Icon-only Export (for the active tab) + segmented tab switch — rendered in
-  // the screen header's actions slot, to the right of the title.
   const tabSwitch = (
     <div className="flex items-center gap-2">
       {exportHandler ? (

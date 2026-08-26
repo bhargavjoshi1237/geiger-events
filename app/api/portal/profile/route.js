@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { getSessionMember } from "@/lib/portal/session";
 
-// POST { name, phone } -> updates the signed-in member's display name and phone
-// (phone lives in the metadata bag). Returns the updated view fields.
 export async function POST(request) {
   const member = await getSessionMember();
   if (!member) {

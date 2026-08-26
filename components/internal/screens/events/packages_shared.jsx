@@ -15,10 +15,6 @@ import {
 
 import { cn } from "@/lib/utils";
 
-// The bits of a package that both the editor and the public page draw, kept in
-// one place so a price never formats two different ways depending on where you
-// happen to be looking at it.
-
 const ICONS = {
   ticket: Ticket,
   seat: Armchair,
@@ -36,7 +32,6 @@ export function InclusionIcon({ icon, className }) {
   return <Icon className={cn("h-4 w-4 shrink-0", className)} />;
 }
 
-/** "$1,000.00/pp" — the amount plus whatever unit the organizer typed. */
 export function formatPackagePrice(pkg, currency = "USD") {
   const amount = Number(pkg?.price) || 0;
   let text;

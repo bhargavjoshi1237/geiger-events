@@ -27,8 +27,6 @@ import { getUser } from "@/lib/supabase/user";
 import { advertisingApi } from "@/lib/supabase/advertising";
 import { AD_PLATFORMS, CONNECTION_STATUS_MAP } from "./constants";
 
-// Per-platform icon for the connection cards. lucide has no brand marks, so these
-// are the closest generic stand-ins.
 const PLATFORM_ICON = {
   google_adsense: DollarSign,
   facebook_marketplace: Store,
@@ -36,15 +34,13 @@ const PLATFORM_ICON = {
   meta_ads: Facebook,
 };
 
-// The wrapper's entry point: link/unlink the four ad platforms. Each connection
-// is a `connection` record on events.advertising_records whose config holds the
-// account fields a live OAuth sync would later fill.
 export function ConnectionsScreen() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [connectTarget, setConnectTarget] = useState(null);
   const [accountName, setAccountName] = useState("");
+  const [disconnectTarget, setDisconnectTarget] = useState(null);
   const { projectId } = useProject();
 
   useEffect(() => {
@@ -60,7 +56,6 @@ export function ConnectionsScreen() {
     };
   }, [projectId]);
 
-  // platform value → its live connection record (if any).
   const byPlatform = useMemo(() => {
     const map = {};
     for (const r of records) if (r.config?.platform) map[r.config.platform] = r;
@@ -120,6 +115,7 @@ export function ConnectionsScreen() {
   };
 
   const disconnect = (platform) => {
+    setDisconnectTarget(null);
     const record = byPlatform[platform.value];
     if (!record) return;
     setRecords((prev) => prev.filter((r) => r.id !== record.id));
@@ -139,8 +135,9 @@ export function ConnectionsScreen() {
       <StatsBar stats={stats} columns={3} />
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading connections…
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -190,7 +187,7 @@ export function ConnectionsScreen() {
                     <Button
                       variant="outline"
                       className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
-                      onClick={() => disconnect(platform)}
+                      onClick={() => setDisconnectTarget(platform)}
                     >
                       Disconnect
                     </Button>
@@ -218,7 +215,13 @@ export function ConnectionsScreen() {
               for now this stores the account so campaigns and budgets can target it.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              confirmConnect();
+            }}
+            className="grid gap-4 py-2"
+          >
             <Field label="Ad account name">
               <Input
                 value={accountName}
@@ -227,7 +230,7 @@ export function ConnectionsScreen() {
                 autoFocus
               />
             </Field>
-          </div>
+          </form>
           <DialogFooter>
             <Button
               variant="outline"
@@ -241,6 +244,38 @@ export function ConnectionsScreen() {
               onClick={confirmConnect}
             >
               Connect
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!disconnectTarget}
+        onOpenChange={(o) => !o && setDisconnectTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Disconnect {disconnectTarget?.label}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to disconnect{" "}
+              <span className="font-medium text-foreground">
+                {disconnectTarget?.label}
+              </span>
+              ? Campaigns and budgets linked to it will stop syncing. This
+              action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDisconnectTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                if (disconnectTarget) disconnect(disconnectTarget);
+              }}
+            >
+              Disconnect
             </Button>
           </DialogFooter>
         </DialogContent>

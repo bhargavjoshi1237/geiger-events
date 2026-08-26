@@ -33,10 +33,6 @@ import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { EMPTY_BUNDLE, bundleTicketCount, bundlePrice } from "@/lib/events/bundles";
 
-// Per-event ticket-bundle editor. Bundles live in the event metadata bag
-// (metadata.bundles) and reference the event's OWN tickets (event.tickets[].id),
-// so each item picker lists this event's tickets. See lib/events/bundles.js.
-
 function fmtPrice(n) {
   const v = Number(n) || 0;
   return `$${v % 1 === 0 ? v : v.toFixed(2)}`;
@@ -54,7 +50,6 @@ function BundleDialog({ open, onOpenChange, tickets, initial, onSave }) {
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
 
   const items = Array.isArray(draft.items) ? draft.items : [];
-  // Tickets already chosen — hidden from the other item pickers.
   const usedIds = new Set(items.map((it) => it.ticketId).filter(Boolean));
 
   const ticketName = useMemo(() => {
@@ -264,16 +259,14 @@ function BundleDialog({ open, onOpenChange, tickets, initial, onSave }) {
 export function EventBundlesSection({ event, headerItem }) {
   const [bundles, , save] = useEventConfig(event, "bundles", []);
   const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // { index, bundle } | null
+  const [editing, setEditing] = useState(null);
 
-  // The event's own tickets — bundle items reference these ids.
   const tickets = (Array.isArray(event.tickets) ? event.tickets : []).map((t) => ({
     id: String(t.id),
     name: t.name || "Untitled",
     price: Number(t.price) || 0,
   }));
 
-  // { [ticketId]: price } lookup for "sum" pricing summaries.
   const priceById = useMemo(() => {
     const map = {};
     for (const t of tickets) map[t.id] = t.price;

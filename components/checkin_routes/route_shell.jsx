@@ -6,11 +6,6 @@ import { LogOut, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Full-screen shell shared by the staff routes (/checkin, /kiosk, /door). Dark,
-// chrome-free, with the event name, an optional live counter, and an exit that
-// clears the unlocked session.
-// `badge` is an optional custom pill for routes whose headline figure isn't a
-// check-in count (e.g. /issue shows items handed out).
 export function RouteShell({ title, subtitle, count, badge, onExit, children, className }) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">

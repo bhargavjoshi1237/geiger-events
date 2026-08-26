@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
 
-// Port of portal_kit.jsx's useCountdown. Ticks a counter each second; the parts
-// are derived at render time so the effect never calls setState with a computed
-// value (avoids cascading renders).
-
 export type CountdownParts = {
   days: number;
   hours: number;
@@ -12,8 +8,6 @@ export type CountdownParts = {
   done: boolean;
 };
 
-// A bare event_date ("2026-09-01") is local midnight, as on the web; anything
-// already carrying a time (membership expires_at) is parsed as-is.
 const isBareDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
 function diffParts(target: string): CountdownParts | null {

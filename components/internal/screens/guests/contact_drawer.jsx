@@ -11,14 +11,19 @@ import {
   ShieldCheck,
   StickyNote,
   Trash2,
+  X,
 } from "lucide-react";
 
-import { Field, StatusPill } from "@/components/internal/shared/screen_kit";
+import {
+  Field,
+  SettingsList,
+  SettingRow,
+  StatusPill,
+} from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -74,8 +79,6 @@ const OVERVIEW_FIELDS = [
   { key: "location", label: "Location", placeholder: "City / region" },
 ];
 
-// Full-height quick-look + edit panel for a single contact. Persistence is
-// delegated to the host via onPatch/onDelete so the list stays in sync.
 export function ContactDrawer({
   contact,
   projectId,
@@ -120,8 +123,6 @@ function ContactDrawerBody({
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
 
-  // Quick note — persists onto the contact's metadata.notes so it also shows up
-  // in the cross-contact Notes feed.
   const addQuickNote = () => {
     const body = noteText.trim();
     if (!body) {
@@ -325,7 +326,6 @@ function ContactDrawerBody({
   );
 }
 
-// --- Overview: editable core fields ------------------------------------------
 function OverviewTab({ contact, onPatch }) {
   const [draft, setDraft] = useState(contact);
   const [seed, setSeed] = useState(contact.id);
@@ -395,14 +395,13 @@ function OverviewTab({ contact, onPatch }) {
           className="bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={save}
         >
-          Save Changes
+          Save changes
         </Button>
       </div>
     </div>
   );
 }
 
-// --- Tags & Notes ------------------------------------------------------------
 function TagsNotesTab({ contact, userId, onPatch }) {
   const [tagInput, setTagInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
@@ -454,10 +453,10 @@ function TagsNotesTab({ contact, userId, onPatch }) {
                 <button
                   type="button"
                   onClick={() => removeTag(t)}
-                  className="text-text-tertiary hover:text-foreground"
+                  className="-mr-1 flex h-5 w-5 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-surface-hover hover:text-foreground"
                   aria-label={`Remove ${t}`}
                 >
-                  ×
+                  <X className="h-3 w-3" />
                 </button>
               </Badge>
             ))
@@ -537,7 +536,6 @@ function TagsNotesTab({ contact, userId, onPatch }) {
   );
 }
 
-// --- Activity (Communication History) ----------------------------------------
 function ActivityTab({ contact, projectId, userId }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -673,34 +671,23 @@ function ActivityTab({ contact, projectId, userId }) {
   );
 }
 
-// --- Consent -----------------------------------------------------------------
 function ConsentTab({ contact, onPatch }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between rounded-lg border border-border bg-surface-card px-4 py-3">
-        <div>
-          <p className="text-sm font-medium text-foreground">Marketing email</p>
-          <p className="text-xs text-text-secondary">
-            Include in email campaigns and newsletters.
-          </p>
-        </div>
-        <Switch
+      <SettingsList className="rounded-lg border border-border bg-surface-card px-4 py-1">
+        <SettingRow
+          title="Marketing email"
+          description="Include in email campaigns and newsletters."
           checked={contact.consentEmail}
           onCheckedChange={(v) => onPatch(contact.id, { consentEmail: v })}
         />
-      </div>
-      <div className="flex items-center justify-between rounded-lg border border-border bg-surface-card px-4 py-3">
-        <div>
-          <p className="text-sm font-medium text-foreground">SMS messages</p>
-          <p className="text-xs text-text-secondary">
-            Allow transactional and marketing SMS.
-          </p>
-        </div>
-        <Switch
+        <SettingRow
+          title="SMS messages"
+          description="Allow transactional and marketing SMS."
           checked={contact.consentSms}
           onCheckedChange={(v) => onPatch(contact.id, { consentSms: v })}
         />
-      </div>
+      </SettingsList>
       <p className="text-[11px] text-text-tertiary">
         {contact.consentUpdatedAt
           ? `Last updated ${formatDateTime(contact.consentUpdatedAt)}.`
@@ -710,7 +697,6 @@ function ConsentTab({ contact, onPatch }) {
   );
 }
 
-// --- Events attended ---------------------------------------------------------
 function EventsTab({ attendedEvents }) {
   const sorted = useMemo(
     () =>

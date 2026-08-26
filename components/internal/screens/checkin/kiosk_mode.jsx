@@ -23,57 +23,65 @@ export function KioskModeScreen() {
       enableLabel="Kiosk mode"
       enableHint="Allow a kiosk/tablet self-service screen for this project’s events."
     >
-      {({ slice, set, enabled }) => (
-        <div className={enabled ? "space-y-6" : "hidden"}>
-          <SectionCard title="Device" description="How the kiosk screen behaves.">
-            <SettingsList>
-              <SettingRow
-                title="Mode"
-                description="Kiosk pairs with a scanner; tablet is touch self-service."
-                control={
-                  <RowSelect
-                    value={slice.mode}
-                    onChange={(v) => set({ mode: v })}
-                    options={KIOSK_MODE_OPTIONS}
-                  />
-                }
-              />
-            </SettingsList>
-            <div className="mt-4 max-w-md">
-              <Field label="Idle screen message" hint="Shown between attendees.">
-                <Input
-                  value={slice.idleMessage || ""}
-                  onChange={(e) => set({ idleMessage: e.target.value })}
-                  placeholder="Welcome — tap to check in"
+      {({ slice, set, enabled }) =>
+        !enabled ? (
+          <div className="rounded-2xl border border-dashed border-border bg-surface-subtle px-6 py-12">
+            <p className="text-center text-sm text-text-secondary">
+              Turn on Kiosk mode to configure the self-service entrance screen.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <SectionCard title="Device" description="How the kiosk screen behaves.">
+              <SettingsList>
+                <SettingRow
+                  title="Mode"
+                  description="Kiosk pairs with a scanner; tablet is touch self-service."
+                  control={
+                    <RowSelect
+                      value={slice.mode}
+                      onChange={(v) => set({ mode: v })}
+                      options={KIOSK_MODE_OPTIONS}
+                    />
+                  }
                 />
-              </Field>
-            </div>
-          </SectionCard>
+              </SettingsList>
+              <div className="mt-4 max-w-md">
+                <Field label="Idle screen message" hint="Shown between attendees.">
+                  <Input
+                    value={slice.idleMessage || ""}
+                    onChange={(e) => set({ idleMessage: e.target.value })}
+                    placeholder="Welcome — tap to check in"
+                  />
+                </Field>
+              </div>
+            </SectionCard>
 
-          <SectionCard title="Allowed actions" description="What attendees can do at the kiosk.">
-            <SettingsList>
-              <SettingRow
-                title="Self check-in"
-                description="Scan or search to admit themselves."
-                checked={slice.actions?.checkin}
-                onCheckedChange={(v) => set({ actions: { ...slice.actions, checkin: v } })}
-              />
-              <SettingRow
-                title="On-site registration"
-                description="Register on the spot if they haven’t already."
-                checked={slice.actions?.register}
-                onCheckedChange={(v) => set({ actions: { ...slice.actions, register: v } })}
-              />
-              <SettingRow
-                title="Buy a ticket"
-                description="Purchase a ticket at the kiosk (requires Door Sales)."
-                checked={slice.actions?.buy}
-                onCheckedChange={(v) => set({ actions: { ...slice.actions, buy: v } })}
-              />
-            </SettingsList>
-          </SectionCard>
-        </div>
-      )}
+            <SectionCard title="Allowed actions" description="What attendees can do at the kiosk.">
+              <SettingsList>
+                <SettingRow
+                  title="Self check-in"
+                  description="Scan or search to admit themselves."
+                  checked={slice.actions?.checkin}
+                  onCheckedChange={(v) => set({ actions: { ...slice.actions, checkin: v } })}
+                />
+                <SettingRow
+                  title="On-site registration"
+                  description="Register on the spot if they haven’t already."
+                  checked={slice.actions?.register}
+                  onCheckedChange={(v) => set({ actions: { ...slice.actions, register: v } })}
+                />
+                <SettingRow
+                  title="Buy a ticket"
+                  description="Purchase a ticket at the kiosk (requires Door Sales)."
+                  checked={slice.actions?.buy}
+                  onCheckedChange={(v) => set({ actions: { ...slice.actions, buy: v } })}
+                />
+              </SettingsList>
+            </SectionCard>
+          </div>
+        )
+      }
     </CheckinSettingsScreen>
   );
 }

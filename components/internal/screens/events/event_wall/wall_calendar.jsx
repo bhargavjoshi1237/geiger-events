@@ -15,10 +15,6 @@ import {
   todayISO,
 } from "./wall_agenda";
 
-// Month grid for the wall's sidebar. Days carrying an event are emphasised and
-// dotted; clicking one narrows the agenda to that day, and clicking it again
-// clears the filter. Navigation is local to the calendar — paging to December
-// doesn't disturb the list until a day is actually picked.
 function CalendarCard({ events, day, onDay, accent }) {
   const today = todayISO();
   const anchor = parseISO(day) || parseISO(events[0]?.date) || parseISO(today);
@@ -125,8 +121,6 @@ function CalendarCard({ events, day, onDay, accent }) {
   );
 }
 
-// Upcoming / Past. Seeded from the wall's own default filter, then owned by the
-// viewer for the rest of the visit.
 function StatusToggle({ status, onStatus, accent }) {
   return (
     <div className="ev-surface mt-3 grid grid-cols-2 gap-1 rounded-xl border border-border bg-surface-subtle p-1">
@@ -155,8 +149,6 @@ function StatusToggle({ status, onStatus, accent }) {
   );
 }
 
-// Where the events are. Renders only when at least one event carries saved
-// coordinates — an empty world map beside a list of online events is noise.
 function MapCard({ events }) {
   const located = useMemo(() => locatedEvents(events), [events]);
   if (!located.length) return null;
@@ -183,8 +175,6 @@ function MapCard({ events }) {
 
 export function WallSidebar({ events, status, onStatus, day, onDay, accent }) {
   return (
-    // First on mobile: the status switch lives here, and burying it under a long
-    // agenda would hide the only way back to past events.
     <aside className="order-first lg:sticky lg:top-6 lg:order-none">
       <CalendarCard events={events} day={day} onDay={onDay} accent={accent} />
       <StatusToggle status={status} onStatus={onStatus} accent={accent} />

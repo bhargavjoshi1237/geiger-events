@@ -13,7 +13,6 @@ type EmptyStateProps = {
   onAction?: () => void;
 };
 
-// A quiet, centred moment: halo ring around the icon, then title and message.
 export function EmptyState({ icon, title, message, actionLabel, onAction }: EmptyStateProps) {
   return (
     <View style={styles.container}>

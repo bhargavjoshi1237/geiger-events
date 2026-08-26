@@ -2,24 +2,6 @@ import { defineRbacConfig, defineRole } from "@geiger/rbac";
 
 import { ADDON_PERMISSIONS } from "@/addons";
 
-// The @geiger/rbac catalog for Geiger Events.
-//
-// This is the TRUSTED half of authorization: permission keys, what each one is
-// scoped by, and the conditions attached to it are all declared here, in
-// versioned code. The database only ever stores which roles exist, which keys
-// they carry, and who holds them — customers compose roles and narrow grants,
-// they never author a predicate.
-//
-// Keys are "<product>.<resource>.<action>". The old catalog was nav-shaped
-// (view.orders), which could only ever gate a sidebar entry; the resource/action
-// split lets the same engine gate an operation and compile to an RLS policy.
-//
-// Titles below must match components/internal/sidebar/sidebar_nav.jsx exactly —
-// navPermissionKey() derives a key from a nav title, so a renamed section needs
-// its key renamed here too (and a migration to rewrite stored role rows).
-
-// Nav-section slug, matching the old normalizeRoleId() so backfilled keys line
-// up with what the migration rewrites.
 export function navSlug(title) {
   return String(title || "")
     .trim()
@@ -32,8 +14,6 @@ export function navPermissionKey(title) {
   return `events.${navSlug(title)}.view`;
 }
 
-// Every top-level sidebar section. Sub-items inherit their section's gate — the
-// nav filter only ever tests top-level titles.
 const NAV_SECTIONS = [
   "Overview",
   "Events",
@@ -67,9 +47,6 @@ const navPermissions = NAV_SECTIONS.map((title) => ({
   group: "Workspace views",
 }));
 
-// An addon declares nav-shaped keys in its manifest (view.affiliates). Translate
-// them into this namespace so an addon's gate rides the same code path as core
-// nav and cannot route around RBAC.
 const addonPermissions = (ADDON_PERMISSIONS || [])
   .filter((p) => typeof p?.key === "string" && p.key.startsWith("view."))
   .map((p) => ({
@@ -78,8 +55,6 @@ const addonPermissions = (ADDON_PERMISSIONS || [])
     group: p.group || "Workspace views",
   }));
 
-// Real operations. These are the keys worth gating a button on — and the ones
-// that will back RLS policies as tables are tightened one at a time.
 const operationPermissions = [
   {
     key: "events.event.edit",
@@ -100,8 +75,6 @@ const operationPermissions = [
     scopeBy: "event",
   },
   {
-    // Custom CSS/JS and raw-HTML blocks ship to the public page unfiltered, so
-    // the page builder gates that surface separately from ordinary editing.
     key: "events.page.customcode",
     label: "Add custom code to a page",
     group: "Events",
@@ -112,8 +85,6 @@ const operationPermissions = [
     label: "Refund an order",
     group: "Orders",
     scopeBy: "event",
-    // events.event_orders.status is 'confirmed' until a refund lands; a fully
-    // refunded order must not be refundable again.
     condition: { field: "order.status", op: "ne", value: "refunded" },
   },
   {
@@ -149,8 +120,6 @@ const permissions = [
   ...operationPermissions,
 ];
 
-// De-duplicate: an addon may legitimately reuse a key a core section already
-// declares (its nav title matching an existing section).
 const uniquePermissions = Array.from(
   new Map(permissions.map((p) => [p.key, p])).values(),
 );
@@ -159,10 +128,6 @@ const viewKeys = uniquePermissions
   .filter((p) => p.key.endsWith(".view"))
   .map((p) => p.key);
 
-// The five roles seeded into public.roles for a project the first time it needs
-// them. Owner holds "*" — the wildcard is what "the project owner can set all
-// things" means, and it keeps granting new permissions automatically as the
-// catalog grows.
 const systemRoles = [
   defineRole({
     key: "owner",

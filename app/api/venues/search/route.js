@@ -3,10 +3,6 @@ import { NextResponse } from "next/server";
 import { geocode, configuredProviders, MERGE_ORDER } from "@/lib/venues/providers";
 import { mergeResults } from "@/lib/venues/normalize";
 
-// GET /api/venues/search?q=&near=lat,lng&radius=&type=
-// Resolves a search centre (explicit `near`, else geocodes `q`), queries the
-// configured providers (OpenStreetMap) in parallel, and returns one merged,
-// deduped result set. A provider that errors is skipped, not fatal.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") || "").trim();

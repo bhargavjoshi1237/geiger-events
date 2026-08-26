@@ -105,7 +105,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
-  // Ref-suffixed so the React Compiler lets the gesture worklet mutate it.
   const offsetYRef = useSharedValue(0);
   const pan = Gesture.Pan()
     .activeOffsetY([-12, 12])

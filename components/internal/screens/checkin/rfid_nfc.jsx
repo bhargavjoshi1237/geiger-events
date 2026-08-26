@@ -16,11 +16,8 @@ import { downloadCsv } from "@/components/internal/screens/registrations/csv";
 import { CheckinSettingsScreen, RowSelect } from "./checkin_kit";
 import { RFID_MEDIUM_OPTIONS } from "./constants";
 
-// Short, human-readable ticket code derived from the registration id.
 const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUpperCase();
 
-// Deterministic sum-check over a column of values (the "checksum" an organizer
-// re-computes on the reading device to validate an uploaded encoding file).
 function checksum(values) {
   let sum = 0;
   for (const v of values) {
@@ -29,8 +26,6 @@ function checksum(values) {
   return sum.toString(16).toUpperCase().padStart(6, "0").slice(-6);
 }
 
-// Global data operations: export the attendee→ID map and verify an uploaded
-// encoding file's checksum. Fetches its own registrations.
 function RfidDataSync() {
   const { projectId } = useProject();
   const [regs, setRegs] = useState([]);
@@ -76,7 +71,7 @@ function RfidDataSync() {
     reader.onload = () => {
       const text = String(reader.result || "");
       const lines = text.split(/\r?\n/).filter(Boolean);
-      const rows = lines.slice(1); // drop header
+      const rows = lines.slice(1);
       const codes = rows
         .map((l) => l.split(",")[0]?.trim())
         .filter(Boolean);
@@ -139,31 +134,39 @@ export function RfidNfcScreen() {
       enableLabel="RFID / NFC"
       enableHint="Admit attendees by tapping a wristband, card, or NFC badge."
     >
-      {({ slice, set, enabled }) => (
-        <div className={enabled ? "space-y-6" : "hidden"}>
-          <SectionCard title="Medium" description="What attendees carry.">
-            <SettingsList>
-              <SettingRow
-                title="Credential type"
-                control={
-                  <RowSelect
-                    value={slice.medium}
-                    onChange={(v) => set({ medium: v })}
-                    options={RFID_MEDIUM_OPTIONS}
-                  />
-                }
-              />
-              <SettingRow
-                title="Checksum verification"
-                description="Validate the encoded file against a computed sum before the event."
-                checked={slice.checksum}
-                onCheckedChange={(v) => set({ checksum: v })}
-              />
-            </SettingsList>
-          </SectionCard>
-          <RfidDataSync />
-        </div>
-      )}
+      {({ slice, set, enabled }) =>
+        !enabled ? (
+          <div className="rounded-2xl border border-dashed border-border bg-surface-subtle px-6 py-12">
+            <p className="text-center text-sm text-text-secondary">
+              Turn on RFID / NFC to configure credential types and encoding data.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <SectionCard title="Medium" description="What attendees carry.">
+              <SettingsList>
+                <SettingRow
+                  title="Credential type"
+                  control={
+                    <RowSelect
+                      value={slice.medium}
+                      onChange={(v) => set({ medium: v })}
+                      options={RFID_MEDIUM_OPTIONS}
+                    />
+                  }
+                />
+                <SettingRow
+                  title="Checksum verification"
+                  description="Validate the encoded file against a computed sum before the event."
+                  checked={slice.checksum}
+                  onCheckedChange={(v) => set({ checksum: v })}
+                />
+              </SettingsList>
+            </SectionCard>
+            <RfidDataSync />
+          </div>
+        )
+      }
     </CheckinSettingsScreen>
   );
 }

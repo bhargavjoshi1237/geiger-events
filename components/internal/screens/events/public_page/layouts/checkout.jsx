@@ -5,10 +5,6 @@ import { cn } from "@/lib/utils";
 import { CoverImage } from "../hero";
 import { Shell, EventMetaLine, MetaRows } from "./shared";
 
-// Registration first — the ticket panel is the page. Everything descriptive
-// compresses into a narrow summary rail, so the buyer lands on the decision
-// instead of scrolling to find it. What high-intent ticketing and paid-workshop
-// pages use when the audience already knows what the event is.
 export function CheckoutLayout({ ctx }) {
   const {
     event,

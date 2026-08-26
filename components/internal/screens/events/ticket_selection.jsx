@@ -23,11 +23,6 @@ import {
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { TICKET_SELECTION_DEFAULTS } from "@/lib/events/ticket_selection";
 
-// Editor for the tickets card's selection modes: a seat-plan route and/or a
-// by-price route, the feature chips beneath them, and the numbered booking
-// notes. Config shape + defaults live in lib/events/ticket_selection.js so the
-// public RegisterCard renders exactly what is configured here.
-
 const MODE_OPTIONS = [
   { value: "both", label: "Seating plan and by price" },
   { value: "seats", label: "Seating plan only" },

@@ -29,7 +29,6 @@ import {
   defaultSequenceConfig,
 } from "./constants";
 
-// Campaign assets data adapter (module = 'sequence').
 const SEQUENCE_DATA = {
   list: listAssets,
   create: createAsset,
@@ -79,7 +78,7 @@ function StepCard({ step, index, onChange, onRemove, removable }) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Field label="Channel">
           <Select value={step.channel} onValueChange={(v) => onChange({ channel: v })}>
-            <SelectTrigger>
+            <SelectTrigger className="bg-surface-card">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -97,7 +96,7 @@ function StepCard({ step, index, onChange, onRemove, removable }) {
             min={0}
             value={step.delayDays ?? 0}
             onChange={(e) => onChange({ delayDays: Number(e.target.value) || 0 })}
-            className="tabular-nums"
+            className="bg-surface-card tabular-nums"
           />
         </Field>
       </div>
@@ -109,6 +108,7 @@ function StepCard({ step, index, onChange, onRemove, removable }) {
               value={step.subject || ""}
               onChange={(e) => onChange({ subject: e.target.value })}
               placeholder="Subject line"
+              className="bg-surface-card"
             />
           </Field>
         </div>
@@ -121,6 +121,7 @@ function StepCard({ step, index, onChange, onRemove, removable }) {
             value={step.body || ""}
             onChange={(e) => onChange({ body: e.target.value })}
             placeholder="What this step sends…"
+            className="bg-surface-card"
           />
         </Field>
       </div>
@@ -154,7 +155,7 @@ function SequenceEditForm({ config, setConfig }) {
             value={config.trigger || "registration"}
             onValueChange={(v) => set({ trigger: v })}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-surface-card">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

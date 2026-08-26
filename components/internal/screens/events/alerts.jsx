@@ -51,28 +51,6 @@ import { useEventConfig } from "@/lib/events/use-event-config";
 import { AudienceField } from "@/components/internal/shared/audience/audience_field";
 import { normalizeSpec, isEmptyFilters, describeSpec } from "@/lib/audience/resolve";
 
-// Per-event organizer alerts. Each rule — persisted in the event's metadata bag
-// (`metadata.alerts`) via useEventConfig, like tickets/schedule — asks to email
-// the organizer's team when a milestone or threshold is hit, so no migration is
-// needed and rules rehydrate on reload.
-//
-// ── Evaluation contract (for the future scheduler; not built in this pass) ──
-// A backend job reads `event.metadata.alerts` and, per enabled rule:
-//   • time-based  → fires once at `milestone ± {offsetValue}{offsetUnit}`, where
-//     milestone is the event start / registration close / sales open / event end.
-//   • threshold   → evaluates against live sales (tickets sold, capacity, revenue,
-//     waitlist, days since last sale) and fires when the condition first holds.
-//   • activity    → fires on each new registration (or batched into a daily
-//     digest when `digest` is true) or when the Nth registration lands.
-// Recipients = the event's co-hosts/admins when `notifyTeam`, plus any
-// `extraEmails`, plus — when set — the buyers a targeted audience spec resolves
-// to (`audience`, see lib/audience/resolve.js; resolve it at fire time via
-// resolveAudienceEmails). Dedupe with a persisted `lastFiredAt` stamp. Delivery
-// goes through the shared `sendSuiteEmail({ template: "event-Alert", to, data })`.
-
-// Trigger catalog — key → { label, category, icon, param kind, and a `clause`
-// that renders the human-readable "when" phrase for a saved rule. `param` drives
-// which parameter control the dialog shows; `defaults` seed a fresh rule.
 const CATEGORIES = ["Time-based", "Sales & capacity", "Activity"];
 
 const TRIGGERS = {
@@ -94,7 +72,7 @@ const TRIGGERS = {
     milestone: "registration closes",
     direction: "before",
     defaults: { offsetValue: 5, offsetUnit: "Days" },
-    clause: (r) => `${offsetLabel(r)} Before Registration Closes`,
+    clause: (r) => `${offsetLabel(r)} before registration closes`,
   },
   before_sales_open: {
     label: "Before tickets go on sale",
@@ -197,7 +175,6 @@ const TRIGGERS = {
   },
 };
 
-// ── Formatting helpers ──────────────────────────────────────────────────────
 function num(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -216,7 +193,6 @@ function parseEmails(str) {
     .map((s) => s.trim())
     .filter((s) => s.includes("@"));
 }
-// Whether an alert carries a real targeted-buyer audience (vs an empty/absent one).
 function audienceActive(spec) {
   if (!spec) return false;
   const s = normalizeSpec(spec);
@@ -253,7 +229,6 @@ const EMPTY_DRAFT = {
   enabled: true,
 };
 
-// Seed a draft's params from the chosen trigger's defaults, preserving recipients.
 function draftForTrigger(trigger, prev) {
   return { ...prev, trigger, ...TRIGGERS[trigger]?.defaults };
 }
@@ -261,7 +236,8 @@ function draftForTrigger(trigger, prev) {
 export function AlertsSection({ event, headerItem }) {
   const [alerts, , saveAlerts] = useEventConfig(event, "alerts", []);
   const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // { index, alert } | null
+  const [editing, setEditing] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const addAlert = (alert) =>
     saveAlerts([...alerts, { ...alert, id: `alr_${Date.now()}` }], {
@@ -329,14 +305,14 @@ export function AlertsSection({ event, headerItem }) {
                 <Switch
                   checked={a.enabled !== false}
                   onCheckedChange={(v) => toggleAlert(i, v)}
-                  aria-label={a.enabled ? "Disable Alert" : "Enable Alert"}
+                  aria-label={a.enabled ? "Disable alert" : "Enable alert"}
                 />
                 <div className="flex items-center">
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => setEditing({ index: i, alert: a })}
-                    aria-label="Edit Alert"
+                    aria-label="Edit alert"
                     className="text-text-secondary hover:bg-surface-active hover:text-foreground"
                   >
                     <Pencil className="h-4 w-4" />
@@ -344,8 +320,8 @@ export function AlertsSection({ event, headerItem }) {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => removeAlert(i)}
-                    aria-label="Delete Alert"
+                    onClick={() => setDeleteTarget({ index: i, alert: a })}
+                    aria-label="Delete alert"
                     className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -365,7 +341,7 @@ export function AlertsSection({ event, headerItem }) {
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => setAddOpen(true)}
             >
-              <Plus className="h-4 w-4" /> Create Your First Alert
+              <Plus className="h-4 w-4" /> Create your first alert
             </Button>
           }
         />
@@ -389,18 +365,47 @@ export function AlertsSection({ event, headerItem }) {
           setEditing(null);
         }}
       />
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete alert</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget ? alertSummary(deleteTarget.alert) : ""}
+              </span>
+              ? This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                removeAlert(deleteTarget.index);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// Create or edit a single alert — pick a trigger, fill its one parameter, choose
-// recipients, and see a live plain-English preview of what will be emailed.
 function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [alsoEmail, setAlsoEmail] = useState(false);
   const [alsoAudience, setAlsoAudience] = useState(false);
 
-  // Re-seed whenever the dialog opens (render-phase reset).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -415,7 +420,6 @@ function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
   const t = TRIGGERS[draft.trigger];
 
-  // Turning on buyer targeting seeds an event-scoped "all attendees" rule.
   const toggleAudience = (v) => {
     setAlsoAudience(v);
     if (v && !draft.audience) {
@@ -447,7 +451,7 @@ function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{initial ? "Edit Alert" : "New Alert"}</DialogTitle>
+          <DialogTitle>{initial ? "Edit alert" : "New alert"}</DialogTitle>
           <DialogDescription>
             We&apos;ll email you when this condition is met.
           </DialogDescription>
@@ -481,7 +485,6 @@ function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }
 
           <ParamField draft={draft} set={set} />
 
-          {/* Recipients */}
           <Field label="Recipients">
             <div className="space-y-3 rounded-lg border border-border bg-surface-card p-3">
               <label className="flex items-center gap-2.5 text-sm text-foreground">
@@ -522,7 +525,6 @@ function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }
             </div>
           </Field>
 
-          {/* Live preview */}
           {t ? (
             <div className="flex items-start gap-2 rounded-lg border border-border bg-surface-subtle px-3 py-2.5">
               <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-text-secondary" />
@@ -536,11 +538,11 @@ function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }
           ) : null}
         </div>
 
-        <DialogFooter>
+          <DialogFooter>
           <Button
-            variant="ghost"
+            variant="outline"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={() => onOpenChange(false)}
-            className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
             Cancel
           </Button>
@@ -548,7 +550,7 @@ function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }
             onClick={submit}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {initial ? "Save Alert" : "Add Alert"}
+            {initial ? "Save alert" : "Add alert"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -556,9 +558,6 @@ function AlertDialog({ open, onOpenChange, projectId, eventId, initial, onSave }
   );
 }
 
-// The single parameter control for the selected trigger — an offset (value +
-// unit), a numeric threshold (with a prefix/suffix), a digest frequency, or
-// nothing for parameterless triggers (e.g. "sells out").
 function ParamField({ draft, set }) {
   const t = TRIGGERS[draft.trigger];
   if (!t || t.param === "none") return null;
@@ -610,7 +609,6 @@ function ParamField({ draft, set }) {
     );
   }
 
-  // Numeric threshold.
   return (
     <Field label={t.paramLabel}>
       <div className="flex items-center gap-2">

@@ -100,8 +100,6 @@ function ScheduleItemCopy({ slot, onBg = false }) {
 function ScheduleTime({ slot, onBg = false }) {
     if (!slot.time)
         return null;
-    // Items store "HH:mm"; anything an organizer typed as a label ("TBA") comes
-    // back from the formatter untouched.
     return (<span className={cn("shrink-0 whitespace-nowrap text-sm font-medium tabular-nums sm:min-w-[6.5rem]", onBg ? "text-white/90" : "text-text-secondary")}>
       {formatScheduleTime(slot.time)}
     </span>);
@@ -140,23 +138,15 @@ const SCHEDULE_GAP_CLASSES = {
     normal: { pad: "p-4", grid: "gap-4", stack: "space-y-7", rail: -1.75 },
     wide: { pad: "p-5", grid: "gap-6", stack: "space-y-10", rail: -2.5 },
 };
-// A whole-item custom markup block — organizer-authored, like the page
-// builder's raw-HTML block. Time, title, image, and image settings are all
-// skipped; the HTML stands alone as the item (and as the section when the
-// frame is "bare").
 function ScheduleHtmlItem({ slot }) {
     return (<div className="ev-raw-html" dangerouslySetInnerHTML={{ __html: slot.description }}/>);
 }
 function isHtmlSlot(slot) {
     return slot.contentType === "html" && !!String(slot.description || "").trim();
 }
-// A component clipped off another website. Its CSS is already scoped to a
-// generated class by the extractor, so it renders inline here without a shadow
-// root or an iframe — see components/internal/shared/web_clip.
 function isClipSlot(slot) {
     return slot.contentType === "clip" && isClipFilled(slot.clip);
 }
-// Both whole-item modes stand alone: time, title, and image are all skipped.
 function isStandaloneSlot(slot) {
     return isHtmlSlot(slot) || isClipSlot(slot);
 }
@@ -182,8 +172,6 @@ export function ScheduleSlot({ slot, topClass = "mb-3 h-40", bodyGap = "gap-2" }
     </>);
 }
 function ScheduleListItems({ items, gapClass, bare = false }) {
-    // "bare" drops the section's outer panel entirely — each item stands
-    // alone, so a single item becomes the whole Schedule section.
     if (bare) {
         return (<div className={gapClass.stack}>
           {items.map((slot) => (<ScheduleSlot key={slot.id || slot.title} slot={slot}/>))}
@@ -348,9 +336,6 @@ function WhosGoingBlock({ event }) {
 function GuestPhoto({ guest, display, className }) {
     const frame = cn("overflow-hidden border border-border bg-surface-card", GUEST_SHAPE_CLASS[display.imageShape], className);
     if (guest.image) {
-        // "Fit inside" is the logo mode, and logos are drawn for light grounds —
-        // on a dark card a black wordmark is just an empty tile. Give contain a
-        // light chip with breathing room; cover (photography) is untouched.
         const logoMode = display.imageFit === "contain";
         return (<img src={guest.image} alt="" className={cn(frame, "block", GUEST_FIT_CLASS[display.imageFit], logoMode && "bg-white p-2")}/>);
     }
@@ -902,9 +887,6 @@ function InfographicFooter({ props, accent }) {
     </div>);
 }
 function showcaseCard(it) {
-    // "top" is the editorial treatment: oversized headline and a bold standfirst
-    // held at the head of the card, with the photograph running full-bleed
-    // underneath. Every other placement keeps the original compact card.
     const top = it.textSide === "top";
     const info = (<div className={cn(top ? "space-y-2" : "space-y-1.5")}>
       {it.title ? (<p className={cn(top
@@ -946,10 +928,6 @@ function showcaseCard(it) {
         </>)}
     </div>);
 }
-// The expanded card: the photograph fills the whole panel and the copy sits in
-// a column over it, the way a campaign page opens a feature. The image is the
-// subject rather than a thumbnail stacked above the text, so it keeps the frame
-// the card promised when it was clicked.
 function ShowcaseLightbox({ item, accent, onClose }) {
     const hasImage = !!item.image;
     return (<Dialog open onOpenChange={(o) => (o ? undefined : onClose())}>
@@ -957,8 +935,6 @@ function ShowcaseLightbox({ item, accent, onClose }) {
         <div className={cn("relative", hasImage && "min-h-[24rem] sm:min-h-[30rem]")}>
           {hasImage ? (<>
             <InfoImage src={item.image} className="absolute inset-0 h-full w-full object-cover" iconSize="h-10 w-10"/>
-            {/* Vertical on small screens (copy sits under the subject), lateral
-                from `sm` where there is room for a side column. */}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/30 sm:bg-gradient-to-r sm:from-black sm:via-black/85 sm:to-transparent"/>
           </>) : null}
 
@@ -1119,8 +1095,6 @@ export function PageBlock({ block, event, accent }) {
     </BlockShell>);
     if (!note)
         return content;
-    // Organizer note for this section: an "i" pinned to the block's top-right
-    // corner opens the full text.
     return (<div className="relative">
       <div className="absolute right-0 top-0 z-10">
         <SectionNoteBadge text={note}/>

@@ -16,8 +16,14 @@ export function SessionCheckinScreen() {
       enableLabel="Session check-in"
       enableHint="Record separate check-ins for each session within an event."
     >
-      {({ enabled }) => (
-        <div className={enabled ? "" : "hidden"}>
+      {({ enabled }) =>
+        !enabled ? (
+          <div className="rounded-2xl border border-dashed border-border bg-surface-subtle px-6 py-12">
+            <p className="text-center text-sm text-text-secondary">
+              Turn on Session check-in to record attendance per session, workshop, or track.
+            </p>
+          </div>
+        ) : (
           <SectionCard title="How it works">
             <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-card px-4 py-3">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" />
@@ -30,8 +36,8 @@ export function SessionCheckinScreen() {
               </p>
             </div>
           </SectionCard>
-        </div>
-      )}
+        )
+      }
     </CheckinSettingsScreen>
   );
 }

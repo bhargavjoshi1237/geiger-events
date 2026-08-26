@@ -1,17 +1,5 @@
 "use client";
 
-// The builder canvas: an iframe with the page portalled into it.
-//
-// It is an iframe because a device toggle has to change a real viewport. CSS
-// media queries — the page's own compiled breakpoints, Tailwind's, and any the
-// author writes in custom CSS — key off the viewport, so a scaled <div> would
-// preview desktop rules at phone width and quietly lie.
-//
-// It is a *portal*, not a separate app: the tree renders inside the iframe's
-// document but stays in this React tree, in this JS context. No message
-// protocol, no serialisation, and event handlers work exactly as they would
-// anywhere else.
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -19,9 +7,6 @@ import { cn } from "@/lib/utils";
 
 const SRC_DOC = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body></body></html>`;
 
-// The app's own stylesheet has to come along — every component is built from
-// Tailwind utilities and the theme's CSS variables. In dev those arrive as
-// <style> tags and move on hot reload, so we mirror head rather than copy once.
 function mirrorStyles(doc) {
   const head = doc.head;
   const sync = () => {
@@ -29,8 +14,6 @@ function mirrorStyles(doc) {
     document
       .querySelectorAll('link[rel="stylesheet"], style')
       .forEach((node) => {
-        // Skip anything the page itself injected into the iframe (custom CSS,
-        // compiled node styles) — those are owned elsewhere.
         if (node.hasAttribute("data-ev-custom")) return;
         const copy = node.cloneNode(true);
         copy.setAttribute("data-ev-mirrored", "");
@@ -44,8 +27,6 @@ function mirrorStyles(doc) {
   return () => observer.disconnect();
 }
 
-// Base rules for the canvas document itself. The body has to be transparent and
-// unpadded so what shows through is the page, not a browser default.
 const CANVAS_CSS = `
   html,body{margin:0;padding:0;background:transparent;}
   body{min-height:100%;}
@@ -53,12 +34,6 @@ const CANVAS_CSS = `
   ::-webkit-scrollbar-thumb{background:var(--surface-active);border-radius:8px}
 `;
 
-/**
- * @param width     device width in px (the iframe's real width)
- * @param zoom      display scale; the iframe still lays out at `width`
- * @param onDocument called with the iframe document once it is ready
- * @param frameRef  ref that receives the iframe element
- */
 export function BuilderCanvas({
   width,
   zoom = 1,
@@ -71,8 +46,6 @@ export function BuilderCanvas({
 }) {
   const [doc, setDoc] = useState(null);
 
-  // A ref callback rather than an effect: the iframe may already be loaded by
-  // the time React attaches, and this is the one place both cases are visible.
   const attach = useCallback(
     (el) => {
       if (frameRef) frameRef.current = el;
@@ -103,8 +76,6 @@ export function BuilderCanvas({
     if (doc && onDocument) onDocument(doc);
   }, [doc, onDocument]);
 
-  // The iframe is laid out at its true device width and then scaled, so its
-  // media queries see `width` while the pane shows it at `width * zoom`.
   const frameStyle = useMemo(
     () => ({
       width,

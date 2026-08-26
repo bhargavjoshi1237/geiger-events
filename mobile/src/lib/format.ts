@@ -1,5 +1,3 @@
-// Ports of the web formatters (components/portal/portal_kit.jsx) — byte-identical
-// output, locale pinned to "en-US" exactly as the web does.
 
 export const money = (n: number | string | null | undefined): string =>
   `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
@@ -32,7 +30,6 @@ export const fmtDay = (d: string | null | undefined): string =>
       })
     : "";
 
-// "2h ago" / "3d ago", falling back to fmtDate beyond 7 days.
 export function fmtTimeAgo(d: string | null | undefined): string {
   if (!d) return "";
   const then = new Date(d).getTime();
@@ -77,8 +74,6 @@ export function greeting(): string {
   return "Good evening";
 }
 
-// event_date is a plain date; treat the whole day (and grace to end of day) as
-// upcoming so a same-day event still counts.
 export function isUpcoming(dateStr: string | null | undefined): boolean {
   if (!dateStr) return true;
   const d = new Date(`${dateStr}T23:59:59`);

@@ -56,7 +56,6 @@ import {
 const OVERVIEW_STATUS = ["Draft", "Scheduled", "On sale", "Sold out", "Ended"];
 const OVERVIEW_VISIBILITY = ["Public", "Unlisted", "Private"];
 
-// Whole days between today and the event date (negative = in the past).
 function daysUntilEvent(dateStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -76,15 +75,19 @@ function GlanceRow({ icon: Icon, label }) {
   );
 }
 
-// Editable pre-launch checklist. Items are user-authored notes that can be
-// checked off; the whole list persists to public.flow_event_notes (one JSON row
-// per event) through the notes data layer. Optimistic: local state updates
-// first, the write follows. Degrades to local-only when Supabase is absent.
+function ProgressFill({ pct }) {
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-border">
+      <div
+        className="h-full rounded-full bg-primary transition-all"
+        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+      />
+    </div>
+  );
+}
+
 const EMPTY_NOTE_DRAFT = { text: "", dueDate: "" };
 
-// Dialog to author a new checklist item — a required label plus an optional due
-// date. Matches the suite's create-dialog rhythm (grid of Field-wrapped controls
-// + ghost Cancel / primary Add).
 function AddNoteDialog({ open, onOpenChange, onAdd }) {
   const [draft, setDraft] = useState(EMPTY_NOTE_DRAFT);
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
@@ -165,7 +168,6 @@ function PreLaunchNotes({ eventId, className }) {
     let alive = true;
     getEventNotes(eventId).then((rows) => {
       if (!alive) return;
-      // An array (even empty) means the table is reachable; null means no DB.
       if (rows) {
         setNotes(rows);
         setUsingDb(true);
@@ -222,11 +224,8 @@ function PreLaunchNotes({ eventId, className }) {
       }
     >
       {notes.length ? (
-        <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-surface-hover">
-          <div
-            className="h-full rounded-full bg-[#ededed] transition-all"
-            style={{ width: `${ready}%` }}
-          />
+        <div className="mb-4">
+          <ProgressFill pct={ready} />
         </div>
       ) : null}
 
@@ -235,7 +234,6 @@ function PreLaunchNotes({ eventId, className }) {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading checklist…
         </div>
       ) : notes.length ? (
-        // Fixed window of ~4 rows; anything beyond scrolls inside this area.
         <ScrollArea className="h-[148px]">
           <div className="space-y-0.5 pr-3">
             {notes.map((n) => {
@@ -276,14 +274,15 @@ function PreLaunchNotes({ eventId, className }) {
                     </p>
                   ) : null}
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => deleteNote(n.id)}
                   aria-label="Delete checklist item"
-                  className="shrink-0 text-text-tertiary opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                  className="shrink-0 text-text-tertiary opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
             );
           })}
@@ -307,8 +306,6 @@ export function OverviewSection({
   onNavigate,
   onViewLive,
 }) {
-  // Overview controls take effect immediately — `commit` persists right away
-  // (DB + list); `patch` (live, save-on-Save) is the fallback if no committer.
   const commit = onCommit || onPatch || (() => {});
 
   const capacity = event.capacity || 0;
@@ -350,8 +347,6 @@ export function OverviewSection({
     <div className="space-y-6">
       <StatGrid stats={stats} />
 
-      {/* A single full-width stack: the two box-less sections sit on the page
-          the way the section header above them does, then the checklist card. */}
       <SectionCard
         bare
         title="Status & sharing"
@@ -397,10 +392,9 @@ export function OverviewSection({
         </div>
       </SectionCard>
 
-      {/* At a glance — box-less too, sitting a little below Status & sharing. */}
       <SectionCard
         bare
-        title="At glance"
+        title="At a glance"
         className="pt-4"
         action={
           <div className="flex items-center gap-2">
@@ -419,7 +413,6 @@ export function OverviewSection({
           </div>
         }
       >
-        {/* Two-up: date/venue on the left, capacity/organizer on the right. */}
         <div className="grid grid-cols-1 gap-x-6 gap-y-2.5 text-sm sm:grid-cols-2">
           <GlanceRow
             icon={CalendarClock}
@@ -440,8 +433,6 @@ export function OverviewSection({
         </div>
       </SectionCard>
 
-      {/* The event's pass, hanging from its lanyard. Renders only once badge
-          printing is on for this event and a design resolves. */}
       <EventPassShowcase
         event={event}
         className="pt-4"
@@ -457,7 +448,6 @@ export function OverviewSection({
         }
       />
 
-      {/* Pre-launch checklist (editable, persisted notes) — full width. */}
       <PreLaunchNotes eventId={event.id} className="border-t border-border pt-6" />
     </div>
   );

@@ -79,7 +79,12 @@ import { useProject } from "@/context/project-context";
 import { useDefaultOrganizer } from "@/lib/events/use-default-organizer";
 import { SeriesDetailScreen } from "./series_detail";
 
-const TODAY = "2026-06-27";
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+};
 
 const EMPTY_DRAFT = {
   name: "",
@@ -190,9 +195,9 @@ export function EventSeriesScreen() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const { openEventInTab } = useWorkspaceUrl();
   const { projectId } = useProject();
-  // Fallback host for a series event when the series has no organizer default.
   const defaultOrganizer = useDefaultOrganizer();
 
   const usingDb = source === "db";
@@ -214,7 +219,6 @@ export function EventSeriesScreen() {
     };
   }, []);
 
-  // Group events by series once — powers per-series counts and next dates.
   const eventsBySeries = useMemo(() => {
     const map = {};
     for (const e of events) {
@@ -227,7 +231,7 @@ export function EventSeriesScreen() {
   const nextDateFor = (id) => {
     const dates = (eventsBySeries[id] || [])
       .map((e) => e.date)
-      .filter((d) => d && d >= TODAY)
+      .filter((d) => d && d >= todayISO())
       .sort();
     return dates[0] || null;
   };
@@ -262,7 +266,6 @@ export function EventSeriesScreen() {
     ];
   }, [seriesList, eventsBySeries]);
 
-  // --- Series mutations ---
   const handleCreate = (draft) => {
     const series = {
       id: newId(),
@@ -299,8 +302,6 @@ export function EventSeriesScreen() {
     }
   };
 
-  // Shallow-merge a settings patch (one top-level key per editor tab), mirroring
-  // the flow_series_merge_settings RPC so local and DB modes behave the same.
   const handleMergeSettings = (id, patch) => {
     setSeriesList((prev) =>
       prev.map((s) =>
@@ -315,7 +316,6 @@ export function EventSeriesScreen() {
   };
 
   const handleDelete = (series) => {
-    // Detach members locally so they return to the standalone pool.
     setEvents((prev) =>
       prev.map((e) =>
         e.seriesId === series.id ? { ...e, seriesId: null } : e,
@@ -334,7 +334,6 @@ export function EventSeriesScreen() {
     }
   };
 
-  // --- Membership / event mutations (lifted from the detail editor) ---
   const handleSetEventSeries = (eventId, seriesId) => {
     setEvents((prev) =>
       prev.map((e) => (e.id === eventId ? { ...e, seriesId } : e)),
@@ -488,7 +487,7 @@ export function EventSeriesScreen() {
               <DropdownMenuItem
                 variant="destructive"
                 className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                onClick={() => handleDelete(s)}
+                onClick={() => setDeleteTarget(s)}
               >
                 <Trash2 className="h-4 w-4" /> Delete
               </DropdownMenuItem>
@@ -573,6 +572,39 @@ export function EventSeriesScreen() {
         onOpenChange={setCreateOpen}
         onCreate={handleCreate}
       />
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete series</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name}
+              </span>
+              ? Its events stay in your workspace but leave the series. This
+              action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                handleDelete(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

@@ -16,8 +16,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, radius, spacing, spring, timing, type } from "@/theme/tokens";
 
-// The drag distance that counts as a dismiss; also the fade-out range for the
-// overlay as the sheet is dragged down.
 const DISMISS_DISTANCE = 140;
 const DISMISS_VELOCITY = 900;
 
@@ -29,9 +27,6 @@ type SheetProps = {
   snapToContent?: boolean;
 };
 
-// Bottom sheet built on RN Modal + gesture-handler. Drag-to-dismiss with
-// velocity; the overlay fades with drag progress. Shared values are ref-suffixed
-// so the React Compiler lets the gesture worklets mutate them.
 export function Sheet({ visible, onClose, title, children, snapToContent = true }: SheetProps) {
   const insets = useSafeAreaInsets();
   const translateYRef = useSharedValue(0);

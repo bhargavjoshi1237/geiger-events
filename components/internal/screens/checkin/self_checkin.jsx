@@ -20,26 +20,34 @@ export function SelfCheckinScreen() {
       enableLabel="Self check-in"
       enableHint="Allow attendees to admit themselves without a staff scan."
     >
-      {({ slice, set, enabled }) => (
-        <div className={enabled ? "" : "hidden"}>
-          <SectionCard title="Options" description="How self check-in behaves.">
-            <SettingsList>
-              <SettingRow
-                title="Require QR code"
-                description="Only allow self check-in when the attendee scans their own ticket QR."
-                checked={slice.requireQr}
-                onCheckedChange={(v) => set({ requireQr: v })}
-              />
-              <SettingRow
-                title="Confirmation screen"
-                description="Show a “You’re in” screen with next steps and directions after check-in."
-                checked={slice.confirmScreen}
-                onCheckedChange={(v) => set({ confirmScreen: v })}
-              />
-            </SettingsList>
-          </SectionCard>
-        </div>
-      )}
+      {({ slice, set, enabled }) =>
+        !enabled ? (
+          <div className="rounded-2xl border border-dashed border-border bg-surface-subtle px-6 py-12">
+            <p className="text-center text-sm text-text-secondary">
+              Turn on Self check-in to configure how attendees admit themselves.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <SectionCard title="Options" description="How self check-in behaves.">
+              <SettingsList>
+                <SettingRow
+                  title="Require QR code"
+                  description="Only allow self check-in when the attendee scans their own ticket QR."
+                  checked={slice.requireQr}
+                  onCheckedChange={(v) => set({ requireQr: v })}
+                />
+                <SettingRow
+                  title="Confirmation screen"
+                  description="Show a “You’re in” screen with next steps and directions after check-in."
+                  checked={slice.confirmScreen}
+                  onCheckedChange={(v) => set({ confirmScreen: v })}
+                />
+              </SettingsList>
+            </SectionCard>
+          </div>
+        )
+      }
     </CheckinSettingsScreen>
   );
 }

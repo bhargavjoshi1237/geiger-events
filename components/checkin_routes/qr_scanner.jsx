@@ -4,11 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { CameraOff, Loader2 } from "lucide-react";
 
-// Live camera QR scanner. Streams the rear camera into a hidden canvas and runs
-// jsQR on sampled frames; calls onDecode(text) once per distinct code (debounced
-// ~1.5s). Purely a reader — the parent decides what a decoded value means.
-// `paused` freezes decoding (e.g. while a result dialog is open) without tearing
-// the camera down.
 export function QrScanner({ onDecode, paused = false }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -17,7 +12,6 @@ export function QrScanner({ onDecode, paused = false }) {
   const lastRef = useRef({ text: "", at: 0 });
   const pausedRef = useRef(paused);
   const onDecodeRef = useRef(onDecode);
-  const [status, setStatus] = useState("starting"); // starting | live | denied | error | unsupported
 
   useEffect(() => {
     pausedRef.current = paused;
@@ -35,7 +29,6 @@ export function QrScanner({ onDecode, paused = false }) {
       rafRef.current = requestAnimationFrame(scan);
       if (pausedRef.current || !video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
       const now = Date.now();
-      // Throttle decode work to ~5fps; jsQR on every frame is wasteful.
       if (now - (scan._t || 0) < 200) return;
       scan._t = now;
 
@@ -99,7 +92,7 @@ export function QrScanner({ onDecode, paused = false }) {
 
       {status === "live" ? (
         <>
-          {/* Reticle */}
+          
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="h-56 w-56 max-w-[70%] rounded-2xl border-2 border-white/70 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
           </div>

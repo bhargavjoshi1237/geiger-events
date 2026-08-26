@@ -1,9 +1,6 @@
-// Lookups & formatters for the organiser Messages inbox. Config only — the data
-// layer (lib/supabase/messages.js) owns the rows.
-
 export const THREAD_STATUS_MAP = {
   open: { label: "Open", dotClass: "bg-emerald-400" },
-  closed: { label: "Closed", dotClass: "bg-text-tertiary" },
+  closed: { label: "Closed", dotClass: "bg-zinc-500" },
 };
 
 export const STATUS_FILTER_OPTIONS = [

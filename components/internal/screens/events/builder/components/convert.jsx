@@ -1,9 +1,5 @@
 "use client";
 
-// Conversion components: the parts of a page whose job is to turn a reader into
-// an attendee. These read live event data (tickets, capacity, dates) rather than
-// authored copy wherever they can, so they stay true as the event sells.
-
 import { useEffect, useMemo, useState } from "react";
 import { Timer, Table2, Ticket, Mail, Flame, Check } from "lucide-react";
 
@@ -25,8 +21,6 @@ function money(amount, currency = "USD") {
     return `${currency} ${n}`;
   }
 }
-
-// --- Countdown ---------------------------------------------------------------
 
 function partsUntil(target) {
   const ms = target - Date.now();
@@ -64,8 +58,6 @@ function Countdown({ props, accent }) {
 
   const [parts, setParts] = useState(() => (target ? partsUntil(target) : null));
 
-  // Re-seed on a render when the target moves (the organizer edited the date),
-  // rather than from an effect — same pattern the block editor uses.
   const [seed, setSeed] = useState(target);
   if (seed !== target) {
     setSeed(target);
@@ -74,7 +66,6 @@ function Countdown({ props, accent }) {
 
   useEffect(() => {
     if (!target) return undefined;
-    // A whole-second tick is enough; anything finer just burns battery.
     const timer = setInterval(() => setParts(partsUntil(target)), 1000);
     return () => clearInterval(timer);
   }, [target]);
@@ -115,8 +106,6 @@ function Countdown({ props, accent }) {
     </div>
   );
 }
-
-// --- Pricing table -----------------------------------------------------------
 
 function PricingTable({ props, event, accent }) {
   const currency = event?.payments?.currency || "USD";
@@ -194,11 +183,6 @@ function PricingTable({ props, event, accent }) {
   );
 }
 
-// --- Email capture -----------------------------------------------------------
-
-// Posts to the organizer's own endpoint when they give one. Without an endpoint
-// it still confirms to the visitor rather than silently doing nothing, because a
-// dead form is worse than an honest one.
 function EmailCapture({ props, accent }) {
   const [done, setDone] = useState(false);
   const action = String(props.action || "").trim();
@@ -254,10 +238,6 @@ function EmailCapture({ props, accent }) {
   );
 }
 
-// --- Urgency bar -------------------------------------------------------------
-
-// Only speaks when it has something true to say: no capacity set, or plenty
-// left, means it renders nothing rather than manufacturing scarcity.
 function UrgencyBar({ props, event, accent }) {
   const capacity = Number(event?.capacity) || 0;
   const sold = Number(event?.sold) || 0;
@@ -290,8 +270,6 @@ function UrgencyBar({ props, event, accent }) {
     </div>
   );
 }
-
-// --- Definitions -------------------------------------------------------------
 
 export const CONVERT_COMPONENTS = [
   {

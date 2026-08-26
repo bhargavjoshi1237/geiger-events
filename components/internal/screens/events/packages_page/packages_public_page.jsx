@@ -17,13 +17,6 @@ import {
 import { ctaHref } from "@/lib/events/ctas";
 import { PackagesLeadForm } from "./lead_form";
 
-// The public packages page: hero, intro, the tier cards, an optional pitch band
-// and the enquiry form.
-//
-// It draws its look from `event.packagesDesign` through the same usePageTheme
-// the event page uses, which is what lets the two pages be styled entirely
-// independently while still coming out of one theming system.
-
 const GRID_ID = "packages";
 
 function PackageCard({ pkg, primaryBtnStyle, ctaHover, onBuy, onEnquire }) {
@@ -39,7 +32,6 @@ function PackageCard({ pkg, primaryBtnStyle, ctaHover, onBuy, onEnquire }) {
     <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-surface-subtle">
       {pkg.image ? (
         <div className="aspect-[16/9] w-full overflow-hidden bg-surface-card">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={pkg.image}
             alt=""
@@ -157,7 +149,6 @@ export function PackagesPublicPage({ event, live = false, onBuy }) {
       className={cn("min-h-[100dvh] bg-background text-foreground", fontClass)}
       style={wrapperStyle}
     >
-      {/* Hero — the event's own cover, with the page's title over it. */}
       <div
         className={cn("relative w-full", coverClass)}
         style={
@@ -187,7 +178,6 @@ export function PackagesPublicPage({ event, live = false, onBuy }) {
         </div>
       </div>
 
-      {/* Intro */}
       {page.introHeading || page.introBody || intro ? (
         <div
           className="mx-auto px-6 py-12 text-center"
@@ -215,7 +205,6 @@ export function PackagesPublicPage({ event, live = false, onBuy }) {
         </div>
       ) : null}
 
-      {/* The tiers */}
       <div id={GRID_ID} className={cn("py-12", themed ? "" : "bg-surface-subtle/40")}>
         <div className="mx-auto px-6" style={{ maxWidth: contentWidth }}>
           {page.gridHeading ? (
@@ -245,7 +234,6 @@ export function PackagesPublicPage({ event, live = false, onBuy }) {
         </div>
       </div>
 
-      {/* Why choose us */}
       {page.pitchEnabled && (page.pitchHeading || page.pitchBody) ? (
         <div className="mx-auto px-6 py-14" style={{ maxWidth: contentWidth }}>
           <div className="grid items-center gap-8 lg:grid-cols-2">
@@ -282,7 +270,6 @@ export function PackagesPublicPage({ event, live = false, onBuy }) {
         </div>
       ) : null}
 
-      {/* Enquiries */}
       {page.leadsEnabled ? (
         <div
           className="mx-auto px-6 pb-16"

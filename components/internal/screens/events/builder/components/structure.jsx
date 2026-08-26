@@ -1,12 +1,5 @@
 "use client";
 
-// Structure and custom-code components.
-//
-// The raw-HTML component is the one place a page can contain markup this app did
-// not author. It renders the markup verbatim in both contexts, but only
-// re-executes embedded <script> tags when the renderer says scripts may run —
-// true on the published page, false inside the builder canvas.
-
 import { useEffect, useId, useRef } from "react";
 import {
   Code2,
@@ -32,8 +25,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useExternalResources } from "@/lib/events/custom_code";
 
-// A small curated set rather than all of lucide — an icon picker with 1,500
-// entries is worse than one with sixteen good ones.
 export const ICON_CHOICES = {
   check: Check,
   star: Star,
@@ -55,13 +46,6 @@ const ICON_OPTIONS = Object.keys(ICON_CHOICES).map((key) => ({
   label: key[0].toUpperCase() + key.slice(1),
 }));
 
-// --- Raw HTML ----------------------------------------------------------------
-
-// Markup set through innerHTML never runs its own <script> tags — that is a
-// browser rule, not an oversight. On the published page we deliberately clone
-// each one into a fresh element so pasted widgets initialise; in the canvas we
-// skip that step, which is what keeps a broken snippet from taking the editor
-// down with it.
 function activateScripts(root) {
   root.querySelectorAll("script").forEach((old) => {
     const script = document.createElement("script");
@@ -78,9 +62,6 @@ function RawHtml({ props, ctx }) {
   const clone = props.clone || {};
   const scope = useId();
 
-  // Assets extracted from the source page the markup was cloned from. Styles
-  // apply in every context (so the block renders styled here and on the page);
-  // scripts run only where scripts are allowed, never in the canvas.
   useExternalResources(ref, clone.enabled ? clone.assets : [], {
     runScripts,
     scope: `raw-html-${scope}`,
@@ -107,8 +88,6 @@ function RawHtml({ props, ctx }) {
     />
   );
 }
-
-// --- Icon list ---------------------------------------------------------------
 
 function IconList({ props, accent }) {
   const items = (Array.isArray(props.items) ? props.items : []).filter((i) => i?.title);
@@ -140,10 +119,6 @@ function IconList({ props, accent }) {
   );
 }
 
-// --- Table -------------------------------------------------------------------
-
-// Comma-separated cells keep the editor to two plain inputs per row. A richer
-// grid editor would be a better tool and a much worse fit for the inspector.
 function splitCells(value) {
   return String(value || "")
     .split(",")
@@ -197,8 +172,6 @@ function DataTable({ props }) {
   );
 }
 
-// --- Social links ------------------------------------------------------------
-
 function SocialLinks({ props, accent }) {
   const items = (Array.isArray(props.items) ? props.items : []).filter((i) => i?.url);
   if (!items.length) return null;
@@ -225,10 +198,6 @@ function SocialLinks({ props, accent }) {
   );
 }
 
-// --- Container ---------------------------------------------------------------
-
-// The only component that holds other components. `children` is rendered by the
-// tree renderer, which is also what makes it a legal drop target.
 function Container({ props, children }) {
   const padded = props.padding !== "none";
   return (
@@ -246,16 +215,12 @@ function Container({ props, children }) {
   );
 }
 
-// --- Definitions -------------------------------------------------------------
-
 export const STRUCTURE_COMPONENTS = [
   {
     type: "raw-html",
     label: "Raw HTML",
     icon: Code2,
     category: "custom",
-    // Custom code is what this component exists for, so it inherits the same
-    // permission gate as the page-level CSS/JS editor.
     requiresCustomCode: true,
     defaultProps: {
       html: "",
@@ -379,7 +344,6 @@ export const STRUCTURE_COMPONENTS = [
     label: "Container",
     icon: Box,
     category: "custom",
-    // Marks this as the one component that accepts children.
     container: true,
     defaultProps: { direction: "column", gap: "1rem", padding: "md", card: false },
     fields: [

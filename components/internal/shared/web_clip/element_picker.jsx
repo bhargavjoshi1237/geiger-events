@@ -1,25 +1,11 @@
 "use client";
 
-// The devtools-style element picker.
-//
-// The page is served from our own origin by /api/clip/page and framed with
-// `sandbox="allow-same-origin"` — same origin, but no allow-scripts. That pair
-// is the whole trick: the parent can reach into contentDocument and drive a
-// real picker against a real laid-out DOM, while none of the target site's own
-// JavaScript ever executes.
-//
-// The highlight is drawn in the parent, positioned over the iframe, rather than
-// by mutating the framed page. That keeps the target DOM pristine for
-// extraction and lets the overlay carry badges and measurements the page's own
-// stylesheet could otherwise fight with.
-
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { CornerUpLeft, MousePointerSquareDashed } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { describeElement } from "@/lib/clip/extract";
 
-// Elements too close to the whole document to be a useful "component".
 const NEVER_PICK = new Set(["html", "body", "head"]);
 
 function rectOf(el, frame) {
@@ -32,7 +18,6 @@ function rectOf(el, frame) {
   };
 }
 
-// The ancestor chain, outermost first, for the breadcrumb.
 function ancestorsOf(el) {
   const chain = [];
   let node = el;
@@ -69,8 +54,6 @@ export function ElementPicker({ src, onPick, onLoadState }) {
 
   const repaint = useCallback(() => forceTick((n) => n + 1), []);
 
-  // Keep the overlay aligned with the iframe as the dialog resizes or the
-  // framed page scrolls.
   const syncFrameBox = useCallback(() => {
     const wrap = wrapRef.current;
     const frame = frameRef.current;
@@ -88,8 +71,6 @@ export function ElementPicker({ src, onPick, onLoadState }) {
       return;
     }
 
-    // A page that renders entirely with JavaScript arrives structurally empty.
-    // Say so rather than letting the user hunt for elements that aren't there.
     const bodyText = (doc.body.textContent || "").trim();
     const nodeCount = doc.body.querySelectorAll("*").length;
     onLoadState?.({
@@ -142,7 +123,6 @@ export function ElementPicker({ src, onPick, onLoadState }) {
     };
   }, [attach, syncFrameBox, src]);
 
-  // Reset when a new page is loaded.
   const [prevSrc, setPrevSrc] = useState(src);
   if (src !== prevSrc) {
     setPrevSrc(src);
@@ -167,8 +147,6 @@ export function ElementPicker({ src, onPick, onLoadState }) {
     onPick?.(picked);
   }, [picked, onPick]);
 
-  // Keyboard refinement — the part that makes a picker feel like devtools
-  // rather than a click target. Arrow keys walk the tree from the selection.
   useEffect(() => {
     if (!picked) return;
     const onKey = (e) => {
@@ -204,15 +182,11 @@ export function ElementPicker({ src, onPick, onLoadState }) {
           ref={frameRef}
           src={src}
           title="Page to clip from"
-          // Same origin (we proxy it) so the parent can drive the picker, but
-          // no allow-scripts — the target site's JavaScript never runs.
           sandbox="allow-same-origin"
           referrerPolicy="no-referrer"
           className="h-full w-full border-0 bg-white"
         />
 
-        {/* Highlight. pointer-events-none throughout so the iframe keeps
-            receiving the mouse. */}
         {box ? (
           <div
             className={cn(
@@ -230,8 +204,6 @@ export function ElementPicker({ src, onPick, onLoadState }) {
           />
         ) : null}
 
-        {/* Devtools-style badge, flipped below the element when it would sit
-            off the top edge. */}
         {box && stats ? (
           <div
             className={cn(
@@ -261,8 +233,6 @@ export function ElementPicker({ src, onPick, onLoadState }) {
         ) : null}
       </div>
 
-      {/* Breadcrumb + stats. Only meaningful once something is selected, but the
-          row is always present so the panel doesn't jump. */}
       <div className="flex min-h-[3.25rem] shrink-0 flex-col gap-1.5 border-t border-border bg-surface-subtle px-3 py-2">
         {picked ? (
           <>

@@ -10,7 +10,6 @@ type AvatarProps = {
   size?: number;
 };
 
-// Circular initials chip.
 export function Avatar({ name, email, size = 40 }: AvatarProps) {
   return (
     <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2 }]}>

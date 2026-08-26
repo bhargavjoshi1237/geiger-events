@@ -3,9 +3,6 @@ import { after, NextResponse } from "next/server";
 import { fulfillCheckoutSession } from "@/lib/stripe/fulfill-checkout";
 import { isStripeConfigured } from "@/lib/stripe/server";
 
-// The return route gives the buyer immediate fulfillment. The signed webhook
-// calls the same idempotent function so payment completion does not depend on
-// the buyer successfully returning to this page.
 export async function GET(request) {
   const sessionId = request.nextUrl.searchParams.get("session_id");
   if (!sessionId) {

@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TAB_BAR_HEIGHT } from "@/components/TabBar";
 import { colors, spacing } from "@/theme/tokens";
 
-// Clearance for the floating tab bar: its height plus breathing room.
 const TAB_BAR_CLEARANCE = TAB_BAR_HEIGHT + spacing.lg;
 
 type ScreenProps = {

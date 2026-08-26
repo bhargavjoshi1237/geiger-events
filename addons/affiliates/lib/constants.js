@@ -1,5 +1,3 @@
-// Lookups and formatters for the Affiliates addon.
-// Config only — never row data.
 
 export const currency = (n) => `$${Number(n || 0).toLocaleString("en-US", {
   minimumFractionDigits: 2,
@@ -16,8 +14,6 @@ export const formatDate = (iso) => {
     year: "numeric",
   });
 };
-
-// --- Status maps (feed StatusPill) -------------------------------------------
 
 export const AFFILIATE_STATUS_MAP = {
   invited: { label: "Invited", dotClass: "bg-amber-400" },
@@ -45,8 +41,6 @@ export const PAYOUT_STATE_MAP = {
   failed: { label: "Failed", dotClass: "bg-red-400" },
 };
 
-// --- Filter options (an "all" sentinel first) --------------------------------
-
 export const AFFILIATE_STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "invited", label: "Invited" },
@@ -70,8 +64,6 @@ export const COMMISSION_STATE_FILTER_OPTIONS = [
   { value: "reversed", label: "Reversed" },
 ];
 
-// --- Commission shapes -------------------------------------------------------
-
 export const RATE_MODEL_OPTIONS = [
   { value: "percent", label: "Percent of ticket revenue" },
   { value: "flat_per_ticket", label: "Flat amount per ticket" },
@@ -88,7 +80,6 @@ export const DISCOUNT_HANDLING_OPTIONS = [
   { value: "pre", label: "Before the discount" },
 ];
 
-// How a rate reads in a table cell, given its model.
 export function formatRate(model, value) {
   const n = Number(value || 0);
   if (model === "percent") return `${n}%`;
@@ -97,8 +88,6 @@ export function formatRate(model, value) {
   return "—";
 }
 
-// Why attribution refused, in words an organiser can act on. Mirrors the reason
-// codes returned by events.attribute_affiliate_order.
 export const ATTRIBUTION_REASONS = {
   empty: "No referral link or code was present.",
   no_program: "This event has no affiliate program.",
@@ -119,7 +108,6 @@ export const ATTRIBUTION_REASONS = {
   already_attributed: "This order was already attributed.",
 };
 
-// A URL-safe token for a tracked link or a code.
 export function slugify(value, fallback = "aff") {
   const out = String(value || "")
     .toLowerCase()

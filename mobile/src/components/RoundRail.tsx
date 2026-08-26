@@ -17,8 +17,6 @@ const POLL_MS = 5_000;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-// The round clock + host broadcasts every breakout in a round shares. Rendered
-// under the room card in Live; mirrors the web's RoundRail.
 export function RoundRail({ parentSessionId }: RoundRailProps) {
   const { token } = useSession();
   const [round, setRound] = useState<RoundState | null>(null);

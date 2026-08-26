@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 
 import { SecondaryScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { Field, ScreenHeader } from "@/components/internal/shared/screen_kit";
+import {
+  DataTable,
+  Field,
+  ScreenHeader,
+} from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,7 +45,6 @@ const IMPORT_FIELDS = [
 const NONE = "__none__";
 const STEPS = ["Upload", "Map columns", "Preview", "Done"];
 
-// Guess which CSV column feeds a field from its header text.
 function autoGuess(fieldKey, headers) {
   const aliases = {
     name: ["name", "full name", "contact"],
@@ -59,11 +62,9 @@ function autoGuess(fieldKey, headers) {
   return idx >= 0 ? String(idx) : NONE;
 }
 
-// Rendered standalone or as a Contact Book sub-view. `onBack` shows a return
-// affordance; `onImported` lets the host refetch after a successful import.
 export function GuestImportScreen({ onBack, onImported } = {}) {
   const [step, setStep] = useState(0);
-  const [parsed, setParsed] = useState(null); // { headers, rows }
+  const [parsed, setParsed] = useState(null);
   const [mapping, setMapping] = useState({});
   const [existingEmails, setExistingEmails] = useState(new Set());
   const [importing, setImporting] = useState(false);
@@ -101,7 +102,6 @@ export function GuestImportScreen({ onBack, onImported } = {}) {
     setStep(1);
   };
 
-  // Build contact drafts from the mapping (only rows with a name or email).
   const drafts = useMemo(() => {
     if (!parsed) return [];
     const pick = (row, key) => {
@@ -287,35 +287,48 @@ export function GuestImportScreen({ onBack, onImported } = {}) {
             ) : null}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-border bg-surface-subtle">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-text-secondary">
-                  <th className="px-4 py-2 font-medium">Name</th>
-                  <th className="px-4 py-2 font-medium">Email</th>
-                  <th className="px-4 py-2 font-medium">Company</th>
-                  <th className="px-4 py-2 font-medium">Tags</th>
-                </tr>
-              </thead>
-              <tbody>
-                {drafts.slice(0, 8).map((d, i) => (
-                  <tr key={i} className="border-b border-border last:border-0">
-                    <td className="px-4 py-2 text-foreground">{d.name}</td>
-                    <td className="px-4 py-2 text-text-secondary">
+          <div className="space-y-2">
+            <DataTable
+              columns={[
+                {
+                  key: "name",
+                  header: "Name",
+                  render: (d) => (
+                    <span className="font-medium text-foreground">{d.name}</span>
+                  ),
+                },
+                {
+                  key: "email",
+                  header: "Email",
+                  render: (d) => (
+                    <span className="text-sm text-text-secondary">
                       {d.email || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-text-secondary">
+                    </span>
+                  ),
+                },
+                {
+                  key: "company",
+                  header: "Company",
+                  render: (d) => (
+                    <span className="text-sm text-text-secondary">
                       {d.company || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-text-secondary">
+                    </span>
+                  ),
+                },
+                {
+                  key: "tags",
+                  header: "Tags",
+                  render: (d) => (
+                    <span className="text-sm text-text-secondary">
                       {d.tags.join(", ") || "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </span>
+                  ),
+                },
+              ]}
+              data={drafts.slice(0, 8)}
+            />
             {drafts.length > 8 ? (
-              <p className="px-4 py-2 text-xs text-text-tertiary">
+              <p className="px-4 text-xs text-text-tertiary">
                 +{drafts.length - 8} more…
               </p>
             ) : null}
@@ -396,7 +409,10 @@ function Stepper({ step }) {
     <div className="flex items-center gap-2">
       {STEPS.map((label, i) => (
         <React.Fragment key={label}>
-          <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2"
+            aria-current={i === step ? "step" : undefined}
+          >
             <span
               className={cn(
                 "flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold",

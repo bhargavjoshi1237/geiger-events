@@ -8,16 +8,6 @@ import { getPublicBoard } from "@/lib/supabase/display_boards";
 import { BOARD_H, BOARD_W } from "@/lib/display/constants";
 import { BoardPlayer, preloadImages } from "@/lib/display/renderer";
 
-// The live board at /display/<boardId> — the URL an organiser points a lobby
-// screen, a door display, or a billboard's browser at.
-//
-// It runs the same BoardPlayer the builder previews and the export records, so
-// the wall and the downloaded video can never disagree. The page reads through
-// the anon client (scoped public-read RLS, see
-// 20260812060147_display_boards_public.sql), so the screen never needs to sign
-// in, and re-polls every 30s so a re-published board updates in place — a
-// display left running for three days should never need a human to reload it.
-
 const POLL_MS = 30_000;
 
 export default function PublicDisplayBoardPage() {
@@ -29,8 +19,6 @@ export default function PublicDisplayBoardPage() {
   const [state, setState] = useState({ status: "loading", data: null });
   const [chromeVisible, setChromeVisible] = useState(false);
 
-  // Load once, then poll. The player is updated in place rather than rebuilt so
-  // a refresh never interrupts the rotation mid-slide.
   useEffect(() => {
     if (!boardId) return undefined;
     let alive = true;
@@ -56,7 +44,6 @@ export default function PublicDisplayBoardPage() {
     };
   }, [boardId]);
 
-  // Start the player once the canvas and the first payload are both present.
   useEffect(() => {
     if (state.status !== "ready" || !canvasRef.current) return undefined;
     const { board, event, sessions, images } = state.data;
@@ -87,7 +74,6 @@ export default function PublicDisplayBoardPage() {
     return undefined;
   }, [state]);
 
-  // Stop the loop when the page goes away.
   useEffect(
     () => () => {
       playerRef.current?.stop();
@@ -96,8 +82,6 @@ export default function PublicDisplayBoardPage() {
     [],
   );
 
-  // A display is a screen nobody touches, so the only chrome is a fullscreen
-  // button that fades in on mouse movement and back out after a few seconds.
   useEffect(() => {
     let timer = null;
     const wake = () => {
@@ -106,8 +90,12 @@ export default function PublicDisplayBoardPage() {
       timer = setTimeout(() => setChromeVisible(false), 2500);
     };
     window.addEventListener("mousemove", wake);
+    window.addEventListener("touchstart", wake, { passive: true });
+    window.addEventListener("pointerdown", wake);
     return () => {
       window.removeEventListener("mousemove", wake);
+      window.removeEventListener("touchstart", wake);
+      window.removeEventListener("pointerdown", wake);
       if (timer) clearTimeout(timer);
     };
   }, []);

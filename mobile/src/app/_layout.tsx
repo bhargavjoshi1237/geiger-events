@@ -44,18 +44,14 @@ function RootNavigator() {
   const { status } = useSession();
   const [splashDone, setSplashDone] = useState(false);
 
-  // Hide the native splash as soon as the first frame is drawn so it hands off
-  // to the animated one with no white flash.
   useEffect(() => {
     void SplashScreen.hideAsync();
   }, []);
 
-  // Route tapped notifications into the app; a no-op under Expo Go.
   useEffect(
     () =>
       addNotificationResponseHandler((data) => {
         const route = notificationRoute(data);
-        // The mapper only emits known route strings, but typed routes need the hint.
         if (route) router.push(route as Href);
       }),
     [],

@@ -16,13 +16,6 @@ import {
   packageAsTicket,
 } from "@/lib/events/packages";
 
-// The standalone packages page, at /e/<uuid>/packages.
-//
-// Deliberately a separate route from the event's own page: packages are sold
-// here and nowhere else, so the event page stays about tickets. The look comes
-// from `event.packagesDesign`, which is edited independently of the event
-// page's design.
-
 export default function PublishedPackagesPage() {
   const params = useParams();
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
@@ -43,8 +36,6 @@ export default function PublishedPackagesPage() {
     };
   }, [id]);
 
-  // Hooks must run before any early return, so the theme is resolved even while
-  // the event is still loading.
   const { accent } = usePageTheme({
     design: event?.packagesDesign,
     live: true,
@@ -92,8 +83,7 @@ export default function PublishedPackagesPage() {
     <>
       <PackagesPublicPage event={event} live onBuy={setBuying} />
 
-      {/* A package is sold through the ticket checkout, mapped onto the ticket
-          shape — the checkout needs to know nothing about packages. */}
+      
       {buying ? (
         <TicketCheckout
           open

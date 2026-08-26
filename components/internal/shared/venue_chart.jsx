@@ -14,6 +14,7 @@ import * as echarts from "echarts/core";
 import { CustomChart } from "echarts/charts";
 import { GridComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import { Maximize2, Minus, Plus } from "lucide-react";
 
 import { aspectRatio } from "@/lib/seating/geometry";
 import {
@@ -27,38 +28,8 @@ import {
 } from "@/lib/seating/viewport";
 import { cn } from "@/lib/utils";
 
-// The venue, drawn on a canvas by ECharts.
-//
-// It replaces a DOM renderer that had run out of road: every chair was an
-// element, strokes had to be counter-scaled against a zoom of 15, chair boxes
-// landed sub-pixel and rounded to different device pixels, and the whole thing
-// only stayed upright because just ONE section's seats were ever mounted. The
-// "Whole venue" drill-in existed to serve that budget rather than the buyer.
-//
-// Here there is no drill-in. One continuous zoom runs from the whole arena down
-// to a single chair, and detail arrives on the way (see viewport.js): chairs
-// fade in once the visible span is small enough to be worth them, and only the
-// chairs inside the window are ever handed to the renderer. The element count
-// is bounded by the VIEWPORT, not by the venue, so a 20,000-seat bowl costs the
-// same to draw as a 200-seat theatre.
-//
-// Pan and zoom are ours rather than ECharts'. `dataZoom: inside` re-renders the
-// whole series on every wheel tick and roam over a custom series is documented
-// as slow; both are the hot path here. Driving the axis window directly is a
-// dozen lines and keeps the aspect lock that makes a chair come out square.
-//
-// It owns no data and no persistence: the caller supplies the sections, the
-// seats, a state per seat, the colours, and the handlers.
-
-// Tree-shaken build: the cartesian grid the seats are plotted on has to be
-// registered alongside the series and the renderer.
 echarts.use([CustomChart, GridComponent, CanvasRenderer]);
 
-// Fill colours per seat state. The DOM renderer told these apart with Tailwind
-// classes; a canvas needs the values.
-// The neutrals are the suite's own surface greys rather than the slate they
-// started as — a chair that isn't for sale should read as the same grey the
-// rest of the app is built from. The states that MEAN something keep their hue.
 export const SEAT_COLOR = {
   available: "#6e6e6e",
   selected: "#3b82f6",
@@ -71,26 +42,14 @@ export const SEAT_COLOR = {
 
 const INTERACTIVE = new Set(["available", "selected", "blocked"]);
 
-// The floor the venue sits on: a pool of light at the middle, falling away at
-// the edges. Storefront only — the editor wants flat, honest colour.
-//
-// Strictly neutral, and built on the suite's own darkest surface. An earlier
-// pass graded this in slate, which put a blue cast on a palette that runs
-// #161616 -> #474747 without a trace of hue in it.
 const AMBIENT =
   "radial-gradient(115% 85% at 50% 40%, rgba(255,255,255,0.045), transparent 62%)," +
   "radial-gradient(150% 120% at 50% 50%, transparent 45%, rgba(0,0,0,0.38)), #161616";
 
-// Share of the chair pitch a chair fills. Below this the block reads as one
-// slab you cannot aim at; above it the gutters close up.
 const SEAT_FILL = 0.62;
 
-// How long the camera takes to travel to a section or a row. Long enough to
-// see where you were carried from, short enough not to be waited on.
 const CAMERA_MS = 420;
 
-// ECharts turns anticlockwise in radians; the geometry is stored as clockwise
-// degrees, the way CSS draws it.
 const toRadians = (deg) => (-(Number(deg) || 0) * Math.PI) / 180;
 
 const hexAlpha = (hex, alpha) => {
@@ -106,13 +65,7 @@ export const VenueChart = forwardRef(function VenueChart({
   field = null,
   aspect = "16/10",
   seatState,
-  // Colours per state, merged over the buyer-facing defaults. The editor paints
-  // by seat KIND rather than by availability, and it is the caller that knows
-  // which vocabulary its `seatState` speaks.
   seatColors,
-  // Which states may be clicked. Defaults to the buyer's answer (an open seat);
-  // the editor lets every chair be clicked, because there it changes the seat's
-  // KIND rather than buying it.
   seatInteractive = (state) => INTERACTIVE.has(state),
   onSeatClick,
   sectionMeta,
@@ -120,24 +73,11 @@ export const VenueChart = forwardRef(function VenueChart({
   seatLabel,
   colorBySectionId,
   formatPrice,
-  // Chair pitch in units, measured by the caller from the seats it holds. The
-  // renderer will not guess it: an arena and a studio theatre disagree by an
-  // order of magnitude.
   seatPitch = 1.2,
   className,
   onHoverSection,
-  // The editor layers real DOM controls over the canvas — draggable section
-  // boxes, a resize handle — and has to position them against whatever slice of
-  // the venue is on screen. It gets the window rather than the transform: the
-  // window is in the same percent space the geometry is stored in, so the boxes
-  // are placed by the same numbers that get saved.
   onViewChange,
-  // Panning is suspended while a section is being dragged, so the floor doesn't
-  // slide out from under the block.
   panDisabled = false,
-  // Lights down: the venue sits in a pool of light rather than on a flat panel.
-  // On for the storefront, off in the editor, where a graded floor would lie
-  // about the colours the organiser is painting with.
   ambient = false,
 }, ref) {
   const hostRef = useRef(null);
@@ -145,21 +85,14 @@ export const VenueChart = forwardRef(function VenueChart({
   const ar = aspectRatio(aspect);
 
   const [size, setSize] = useState({ width: 0, height: 0 });
-  // null means "nobody has touched the map yet", so it keeps framing the whole
-  // venue as the dialog is resized. The view is DERIVED rather than stored:
-  // holding an unclamped view in state and re-clamping it from an effect is a
-  // cascading render, and it lets an impossible view exist for a frame.
   const [userView, setUserView] = useState(null);
   const [hover, setHover] = useState(null);
-  // Pointer bookkeeping for pan and pinch, kept out of state so a drag doesn't
-  // re-render on every move.
   const drag = useRef(null);
   const pointers = useRef(new Map());
   const pinch = useRef(null);
 
   const viewAspect = size.height > 0 ? size.width / size.height : ar;
 
-  // Whatever the buyer asked for, made legal for the viewport it has to fit.
   const resolve = useCallback(
     (current) => clampView(current ?? fitView(aspect, viewAspect), aspect, viewAspect),
     [aspect, viewAspect],
@@ -168,10 +101,6 @@ export const VenueChart = forwardRef(function VenueChart({
   const window_ = useMemo(() => viewWindow(view, viewAspect), [view, viewAspect]);
   const opacity = seatOpacity(view.spanY);
 
-  // --- the camera -------------------------------------------------------------
-
-  // Where a move starts from, kept in a ref so starting one doesn't make every
-  // tween a dependency of the render that reads it.
   const viewRef = useRef(view);
   useEffect(() => {
     viewRef.current = view;
@@ -184,13 +113,6 @@ export const VenueChart = forwardRef(function VenueChart({
   }, []);
   useEffect(() => stopCamera, [stopCamera]);
 
-  // Travel to a view rather than cutting to it. Only for moves the buyer did
-  // NOT make with their hand: a pan or a pinch has to track the pointer exactly,
-  // and easing those would just read as lag.
-  //
-  // `settle` ends on null instead of the target — that hands the view back to
-  // the "frame the whole venue" default so Fit goes on tracking the dialog as
-  // it is resized.
   const animateTo = useCallback(
     (target, { settle = false } = {}) => {
       stopCamera();
@@ -208,7 +130,6 @@ export const VenueChart = forwardRef(function VenueChart({
 
       const ratio = to.spanY / from.spanY;
       const travel = Math.hypot(to.cx - from.cx, to.cy - from.cy);
-      // Already there — a tween would only add a frame of stutter.
       if (Math.abs(Math.log(ratio)) < 0.02 && travel < to.spanY * 0.02) {
         arrive();
         return;
@@ -221,8 +142,6 @@ export const VenueChart = forwardRef(function VenueChart({
         setUserView({
           cx: from.cx + (to.cx - from.cx) * eased,
           cy: from.cy + (to.cy - from.cy) * eased,
-          // Zoom is multiplicative: ease the RATIO. Easing the span itself
-          // makes a long move crawl at one end and race at the other.
           spanY: from.spanY * ratio ** eased,
         });
         if (t < 1) {
@@ -237,9 +156,6 @@ export const VenueChart = forwardRef(function VenueChart({
     [aspect, viewAspect, stopCamera],
   );
 
-  // Picking a row in the rail should move the map to it. Imperative on purpose:
-  // it is a response to an event, not a value the map can derive, and driving it
-  // from an effect would re-frame the venue every time the offer list changed.
   useImperativeHandle(
     ref,
     () => ({
@@ -250,9 +166,6 @@ export const VenueChart = forwardRef(function VenueChart({
       fit() {
         animateTo(fitView(aspect, viewAspect), { settle: true });
       },
-      // Pointer position -> percent of the map, the space the geometry tables
-      // store. Same contract as MapCanvas, so a caller layering DOM controls
-      // over the canvas does the same arithmetic it always did.
       toPercent(clientX, clientY) {
         const box = hostRef.current?.getBoundingClientRect();
         if (!box?.width || !box.height) return { x: 0, y: 0 };
@@ -261,8 +174,6 @@ export const VenueChart = forwardRef(function VenueChart({
           y: window_.yMin + ((clientY - box.top) / box.height) * window_.spanY,
         };
       },
-      // A drag delta in pixels -> a delta in percent, so a block tracks the
-      // cursor at any zoom.
       toPercentDelta(dx, dy) {
         const box = hostRef.current?.getBoundingClientRect();
         if (!box?.width || !box.height) return { x: 0, y: 0 };
@@ -274,8 +185,6 @@ export const VenueChart = forwardRef(function VenueChart({
     }),
     [aspect, viewAspect, seatPitch, window_, ar, animateTo],
   );
-
-  // --- the chart instance -----------------------------------------------------
 
   useEffect(() => {
     const host = hostRef.current;
@@ -301,9 +210,6 @@ export const VenueChart = forwardRef(function VenueChart({
     };
   }, []);
 
-  // --- pointer -> view --------------------------------------------------------
-
-  // Client pixels -> units, against the window currently on screen.
   const toUnits = useCallback(
     (clientX, clientY) => {
       const host = hostRef.current;
@@ -321,12 +227,8 @@ export const VenueChart = forwardRef(function VenueChart({
   const onWheel = useCallback(
     (event) => {
       event.preventDefault();
-      // The hand always wins: a wheel or a drag takes the camera off its tween
-      // rather than fighting it for the same state.
       stopCamera();
       const anchor = toUnits(event.clientX, event.clientY);
-      // A trackpad reports many small deltas and a mouse a few large ones;
-      // exponentiating keeps both feeling like the same gesture.
       const factor = Math.exp(-event.deltaY * 0.0016);
       setUserView((current) => zoomAt(resolve(current), factor, anchor, aspect, viewAspect));
     },
@@ -372,8 +274,6 @@ export const VenueChart = forwardRef(function VenueChart({
         const distance = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         const anchor = toUnits((a.x + b.x) / 2, (a.y + b.y) / 2);
         const factor = distance / pinch.current.distance;
-        // Read the gesture off the ref here: the updater runs later, by which
-        // point the pointer may have lifted and cleared it.
         const spanY = pinch.current.spanY;
         setUserView((current) =>
           zoomAt({ ...resolve(current), spanY }, factor, anchor, aspect, viewAspect),
@@ -401,14 +301,11 @@ export const VenueChart = forwardRef(function VenueChart({
     pointers.current.delete(event.pointerId);
     if (pointers.current.size < 2) pinch.current = null;
     if (pointers.current.size === 0) {
-      // Held for the click handler, which has to know a drag from a tap.
       setTimeout(() => {
         drag.current = null;
       }, 0);
     }
   }, []);
-
-  // --- what to draw -----------------------------------------------------------
 
   const visibleSeats = useMemo(
     () => (opacity > 0 ? seatsInView(seats, window_, aspect) : []),
@@ -476,9 +373,6 @@ export const VenueChart = forwardRef(function VenueChart({
                     height: bottomRight[1] - topLeft[1],
                     r: 4,
                   },
-            // The ring, pitch or stage in the middle of the bowl. A plain
-            // raised slab in the suite's own surface greys: it is the thing
-            // everyone is looking AT, so it has no business glowing.
             style: { fill: "#242424", stroke: "#474747", lineWidth: 1 },
           };
         },
@@ -502,8 +396,6 @@ export const VenueChart = forwardRef(function VenueChart({
         const colour = item.band?.hex || "#6e6e6e";
         const isHovered = hover?.kind === "section" && hover.id === item.section.id;
 
-        // Once the chairs are up, the sections behind them are context — let
-        // them recede rather than compete with what the buyer is aiming at.
         const alpha = item.disabled ? 0.1 : (isHovered ? 0.42 : 0.24) * (1 - opacity * 0.55);
 
         const children = [
@@ -518,8 +410,6 @@ export const VenueChart = forwardRef(function VenueChart({
           },
         ];
 
-        // The name only while there is room for it and no chairs to name
-        // themselves.
         if (opacity < 0.6 && Math.abs(width) > 34 && Math.abs(height) > 16) {
           children.push({
             type: "text",
@@ -550,8 +440,6 @@ export const VenueChart = forwardRef(function VenueChart({
       series.push({
         type: "custom",
         z: 3,
-        // Batched so a viewport full of chairs paints across frames rather than
-        // blocking the one the buyer is panning in.
         progressive: 800,
         progressiveThreshold: 1200,
         data: visibleSeats.map((seat) => [
@@ -568,8 +456,6 @@ export const VenueChart = forwardRef(function VenueChart({
           const isHovered = hover?.kind === "seat" && hover.id === seat.id;
           const colour = palette[state] || palette.available;
 
-          // A claimed seat lights up: a halo the eye finds without hunting, so
-          // the buyer can pan away and still see where their seats are.
           if (state === "selected") {
             return {
               type: "group",
@@ -599,8 +485,6 @@ export const VenueChart = forwardRef(function VenueChart({
             style: {
               fill: colour,
               opacity,
-              // The chair under the cursor picks up a rim rather than just
-              // growing, so it stays legible against its own neighbours.
               stroke: isHovered ? "#f8fafc" : undefined,
               lineWidth: isHovered ? 1.25 : 0,
             },
@@ -621,7 +505,6 @@ export const VenueChart = forwardRef(function VenueChart({
         axisPointer: { show: false },
       },
       yAxis: {
-        // Stored geometry grows downward, the way a screen does.
         inverse: true,
         type: "value",
         min: window_.yMin,
@@ -653,17 +536,11 @@ export const VenueChart = forwardRef(function VenueChart({
     chart.setOption(option, { notMerge: true, lazyUpdate: false, silent: true });
   }, [option]);
 
-  // Publish the window so anything layered over the canvas can be placed
-  // against it. Reported rather than derived by the caller because only the
-  // chart knows how big its host ended up.
   useEffect(() => {
     if (!size.width || !size.height) return;
     onViewChange?.(window_);
   }, [window_, size.width, size.height, onViewChange]);
 
-  // --- hit testing ------------------------------------------------------------
-
-  // What is under a point, chairs first — they sit on top of their section.
   const hitTest = useCallback(
     (clientX, clientY) => {
       const point = toUnits(clientX, clientY);
@@ -683,7 +560,6 @@ export const VenueChart = forwardRef(function VenueChart({
         if (best) return { kind: "seat", id: best.id, seat: best, point };
       }
 
-      // Sections are rotated, so a point is tested in each one's own frame.
       for (let i = sections.length - 1; i >= 0; i -= 1) {
         const section = sections[i];
         const x = (Number(section.x) || 0) * ar;
@@ -733,8 +609,6 @@ export const VenueChart = forwardRef(function VenueChart({
         return;
       }
       if (disabledSectionIds?.has(hit.id)) return;
-      // Clicking a section is a zoom request, not a mode change: travel in far
-      // enough that its chairs are worth drawing.
       const section = hit.section;
       const height = Number(section.height) || 10;
       animateTo({
@@ -763,6 +637,20 @@ export const VenueChart = forwardRef(function VenueChart({
       className={cn("relative min-h-0", className)}
       style={ambient ? { background: AMBIENT } : undefined}
     >
+      <ul className="sr-only">
+        {sections.map((section) => {
+          const meta = sectionMeta?.(section) || {};
+          const available = meta.available ?? 0;
+          return (
+            <li key={section.id}>
+              {`${section.name || "Section"}: ${available} ${
+                available === 1 ? "seat" : "seats"
+              } available${meta.price ? `, ${meta.price}` : ""}${disabledSectionIds?.has(section.id) ? ", unavailable" : ""}`}
+            </li>
+          );
+        })}
+      </ul>
+
       <div
         ref={hostRef}
         role="presentation"
@@ -782,8 +670,6 @@ export const VenueChart = forwardRef(function VenueChart({
         onClick={onClick}
       />
 
-      {/* What the pointer is over. Follows the cursor rather than sitting in a
-          corner, so the buyer's eye never leaves the seat they're aiming at. */}
       {hoverLabel && hover?.point ? (
         <div
           className="pointer-events-none absolute z-20 max-w-[15rem] -translate-x-1/2 -translate-y-[calc(100%+0.7rem)] whitespace-nowrap rounded-lg border border-white/10 bg-black/85 px-2.5 py-1.5 text-xs font-medium tracking-tight text-white shadow-xl shadow-black/50 ring-1 ring-inset ring-white/5 backdrop-blur-md"
@@ -793,7 +679,6 @@ export const VenueChart = forwardRef(function VenueChart({
           }}
         >
           {hoverLabel}
-          {/* Points back at the chair it is describing. */}
           <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 border-b border-r border-white/10 bg-black/85" />
         </div>
       ) : null}
@@ -802,16 +687,12 @@ export const VenueChart = forwardRef(function VenueChart({
         onZoom={(factor) =>
           animateTo(zoomAt(view, factor, { x: view.cx, y: view.cy }, aspect, viewAspect))
         }
-        // Settles on null rather than on the fitted view — the map goes on
-        // tracking the dialog's shape again as if it had never been touched.
         onReset={() => animateTo(fitView(aspect, viewAspect), { settle: true })}
       />
     </div>
   );
 });
 
-// One instrument rather than three loose buttons, so it reads as a control the
-// map came with instead of chrome dropped on top of it.
 function ZoomControls({ onZoom, onReset }) {
   const button =
     "flex h-8 w-8 items-center justify-center text-text-secondary transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary";
@@ -819,26 +700,26 @@ function ZoomControls({ onZoom, onReset }) {
   return (
     <div className="absolute bottom-2.5 right-2.5 z-20 flex flex-col divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10 bg-black/60 shadow-lg shadow-black/40 backdrop-blur-md">
       {[
-        { label: "Zoom in", glyph: "+", factor: 1.6 },
-        { label: "Zoom out", glyph: "−", factor: 1 / 1.6 },
-      ].map((control) => (
+        { label: "Zoom in", Icon: Plus, factor: 1.6 },
+        { label: "Zoom out", Icon: Minus, factor: 1 / 1.6 },
+      ].map(({ label, Icon, factor }) => (
         <button
-          key={control.label}
+          key={label}
           type="button"
-          aria-label={control.label}
-          onClick={() => onZoom(control.factor)}
-          className={cn(button, "text-base leading-none")}
+          aria-label={label}
+          onClick={() => onZoom(factor)}
+          className={button}
         >
-          {control.glyph}
+          <Icon className="h-4 w-4" />
         </button>
       ))}
       <button
         type="button"
         aria-label="Whole venue"
         onClick={onReset}
-        className={cn(button, "text-[10px] font-medium uppercase tracking-wider")}
+        className={button}
       >
-        Fit
+        <Maximize2 className="h-4 w-4" />
       </button>
     </div>
   );

@@ -15,17 +15,14 @@ import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { EMPTY_GROUP } from "@/lib/events/group";
 
-// Per-event group ordering. Config lives in the event metadata bag
-// (metadata.groupPurchase); group mode lets a buyer take a block of seats in one
-// payment and dispense one ticket to each attendee's email. See lib/events/group.js.
-
 export function EventGroupSection({ event, headerItem }) {
-  const [cfg, , save] = useEventConfig(event, "groupPurchase", EMPTY_GROUP);
+  const [cfg, setCfg, save] = useEventConfig(event, "groupPurchase", EMPTY_GROUP);
 
-  const setField = (key, value) =>
+  const commit = (key, value) =>
     save({ ...cfg, [key]: value }, { successMsg: "Group settings updated." });
 
-  // Ticket tiers (id + name) so the eligibility chips key on the stable id.
+  const draft = (key) => (value) => setCfg({ ...cfg, [key]: value });
+
   const ticketTypes = (Array.isArray(event.tickets) ? event.tickets : [])
     .filter((t) => t && t.id)
     .map((t) => ({ id: String(t.id), name: t.name || "Untitled" }));
@@ -34,7 +31,7 @@ export function EventGroupSection({ event, headerItem }) {
   const toggleTicket = (id) => {
     const cur = Array.isArray(cfg.eligibleTickets) ? cfg.eligibleTickets : [];
     const next = cur.includes(id) ? cur.filter((t) => t !== id) : [...cur, id];
-    setField("eligibleTickets", next.length ? next : "all");
+    commit("eligibleTickets", next.length ? next : "all");
   };
 
   return (
@@ -56,7 +53,8 @@ export function EventGroupSection({ event, headerItem }) {
               min={1}
               inputMode="numeric"
               value={cfg.minSeats ?? ""}
-              onChange={(e) => setField("minSeats", Number(e.target.value) || 0)}
+              onChange={(e) => draft("minSeats")(Number(e.target.value) || 0)}
+              onBlur={() => commit("minSeats", cfg.minSeats)}
               className="tabular-nums"
               placeholder="5"
             />
@@ -68,7 +66,8 @@ export function EventGroupSection({ event, headerItem }) {
               min={0}
               inputMode="numeric"
               value={cfg.maxSeats ?? ""}
-              onChange={(e) => setField("maxSeats", Number(e.target.value) || 0)}
+              onChange={(e) => draft("maxSeats")(Number(e.target.value) || 0)}
+              onBlur={() => commit("maxSeats", cfg.maxSeats)}
               className="tabular-nums"
               placeholder="0"
             />
@@ -80,7 +79,8 @@ export function EventGroupSection({ event, headerItem }) {
               min={0}
               inputMode="numeric"
               value={cfg.discountPercent ?? ""}
-              onChange={(e) => setField("discountPercent", Number(e.target.value) || 0)}
+              onChange={(e) => draft("discountPercent")(Number(e.target.value) || 0)}
+              onBlur={() => commit("discountPercent", cfg.discountPercent)}
               className="tabular-nums"
               placeholder="10"
             />
@@ -95,7 +95,7 @@ export function EventGroupSection({ event, headerItem }) {
             title="Require approval"
             description="Review each group order before it's confirmed."
             checked={!!cfg.requireApproval}
-            onCheckedChange={(v) => setField("requireApproval", v)}
+            onCheckedChange={(v) => commit("requireApproval", v)}
           />
         </SettingsList>
       </SectionCard>
@@ -107,11 +107,11 @@ export function EventGroupSection({ event, headerItem }) {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setField("eligibleTickets", "all")}
+            onClick={() => commit("eligibleTickets", "all")}
             className={cn(
               "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
               isAllTickets
-                ? "border-white bg-white text-[#161616]"
+                ? "border-primary bg-primary/15 text-foreground"
                 : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
             )}
           >
@@ -130,7 +130,7 @@ export function EventGroupSection({ event, headerItem }) {
                 className={cn(
                   "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                   active
-                    ? "border-white bg-white text-[#161616]"
+                    ? "border-primary bg-primary/15 text-foreground"
                     : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
                 )}
               >

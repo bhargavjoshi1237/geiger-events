@@ -13,8 +13,6 @@ type CardProps = {
 };
 
 export function Card({ children, onPress, style }: CardProps) {
-  // Mutations defined before useAnimatedStyle so the React Compiler keeps the
-  // shared value's mutable range open.
   const scaleRef = useSharedValue(1);
   const pressIn = () => {
     scaleRef.value = withSpring(0.98, spring);

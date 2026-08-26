@@ -189,8 +189,6 @@ function HeldCard({ m }: { m: Membership }) {
 
 function RenewalBar({ m }: { m: Membership }) {
   const parts = useCountdown(m.expiresAt);
-  // Fraction of the term elapsed, derived from the live countdown so no clock is
-  // read during render (purity) — remaining ms comes from the ticking parts.
   const progress = useMemo(() => {
     if (!m.startedAt || !m.expiresAt || !parts || parts.done) return 1;
     const s = new Date(m.startedAt).getTime();

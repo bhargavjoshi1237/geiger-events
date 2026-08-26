@@ -30,8 +30,6 @@ type ChatComposerProps = {
 
 const MAX_LINES = 5;
 
-// The shared message input pinned above the keyboard. When disabled it degrades
-// to a muted line so chat screens can surface "announce only" / "muted" states.
 export function ChatComposer({
   onSend,
   placeholder = "Write a message…",
@@ -42,7 +40,6 @@ export function ChatComposer({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const reduced = useReducedMotion();
-  // Send button fades and scales in only while there is text to send.
   const sendOpacity = useSharedValue(0);
   const sendScale = useSharedValue(0.5);
 

@@ -12,24 +12,16 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getCheckinSettings } from "@/lib/supabase/checkin";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { newId } from "./sample_data";
+import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
 import { withDefaults } from "../checkin/constants";
 
-// Per-event Check-in config lives in independent metadata keys (like guidelines
-// / dietaryRequests) so each section's save never clobbers another's:
-//   checkin           → { qrOnTicket, walletPass, selfCheckin, methods }
-//   checkinGates      → { gates: [id], zones: [id] }
-//   checkinSessions   → { sessions: [{ id, name, startsAt }] }
-//   checkinDoorKiosk  → { doorSales, kiosk, rfid }
-// Each per-event toggle is gated on the matching GLOBAL feature being enabled
-// (checkin_settings), configured under the Check-in sidebar screens.
-
-// The project's global check-in settings (null while loading).
 function useCheckinGlobals() {
   const { projectId } = useProject();
   const [config, setConfig] = useState(null);
@@ -45,8 +37,6 @@ function useCheckinGlobals() {
   return config;
 }
 
-// A note shown when a feature is off globally, with a jump to the screen that
-// owns the project-wide switch — `feature` is that screen's exact sidebar title.
 function GlobalOffHint({ feature }) {
   const { setTab } = useWorkspaceUrl();
   return (
@@ -69,8 +59,6 @@ function GlobalOffHint({ feature }) {
     </div>
   );
 }
-
-// --- Check-in options --------------------------------------------------------
 
 export function CheckinOptionsSection({ event, headerItem }) {
   const globals = useCheckinGlobals();
@@ -162,16 +150,9 @@ export function CheckinOptionsSection({ event, headerItem }) {
   );
 }
 
-// A read-only, off-looking switch stand-in for gated rows.
 function DisabledSwitch() {
-  return (
-    <span className="inline-flex h-5 w-9 items-center rounded-full border border-border bg-surface-strong opacity-50">
-      <span className="ml-0.5 h-4 w-4 rounded-full bg-text-tertiary" />
-    </span>
-  );
+  return <Switch checked={false} disabled />;
 }
-
-// --- Gates & Zones -----------------------------------------------------------
 
 function ChipToggle({ options, selectedIds, onToggle, emptyHint }) {
   if (!options.length) return <p className="text-xs text-text-tertiary">{emptyHint}</p>;
@@ -217,8 +198,6 @@ export function GatesZonesSection({ event, headerItem }) {
     );
   }
 
-  // Store the full { id, name } so the anonymous staff routes (which can't read
-  // the member-only global gate/zone names) can render pickers from the event.
   const toggle = (key, opt) => {
     const has = (cfg[key] || []).some((x) => x.id === opt.id);
     setCfg({
@@ -276,8 +255,6 @@ export function GatesZonesSection({ event, headerItem }) {
   );
 }
 
-// --- Sessions ----------------------------------------------------------------
-
 export function SessionsSection({ event, headerItem }) {
   const globals = useCheckinGlobals();
   const [cfg, setCfg, save, saving] = useEventConfig(event, "checkinSessions", {
@@ -309,6 +286,13 @@ export function SessionsSection({ event, headerItem }) {
       ...cfg,
       sessions: (cfg.sessions || []).map((s) => (s.id === id ? { ...s, startsAt } : s)),
     });
+  const splitDateTime = (v) => {
+    if (!v) return ["", ""];
+    const [date, time = ""] = String(v).split("T");
+    return [date || "", time];
+  };
+  const joinDateTime = (date, time) =>
+    [date, time].filter(Boolean).join("T");
 
   return (
     <div className="space-y-6">
@@ -349,25 +333,37 @@ export function SessionsSection({ event, headerItem }) {
           </div>
           {cfg.sessions?.length ? (
             <div className="space-y-2">
-              {cfg.sessions.map((s) => (
-                <div key={s.id} className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2">
-                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{s.name}</span>
-                  <Input
-                    type="datetime-local"
-                    value={s.startsAt || ""}
-                    onChange={(e) => setTime(s.id, e.target.value)}
-                    className="h-8 w-52 bg-surface-subtle"
-                  />
-                  <button
-                    type="button"
-                    aria-label={`Remove ${s.name}`}
-                    onClick={() => remove(s.id)}
-                    className="text-text-tertiary transition-colors hover:text-red-400"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+              {cfg.sessions.map((s) => {
+                const [sessionDate, sessionTime] = splitDateTime(s.startsAt || "");
+                return (
+                  <div key={s.id} className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2">
+                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">{s.name}</span>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <div className="w-[9.5rem]">
+                        <EventDatePicker
+                          value={sessionDate}
+                          onChange={(date) => setTime(s.id, joinDateTime(date, sessionTime))}
+                          placeholder="Session date"
+                        />
+                      </div>
+                      <div className="w-36">
+                        <EventTimeSelect
+                          value={sessionTime}
+                          onChange={(time) => setTime(s.id, joinDateTime(sessionDate, time))}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${s.name}`}
+                      onClick={() => remove(s.id)}
+                      className="text-text-tertiary transition-colors hover:text-red-400"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs text-text-tertiary">No sessions yet.</p>
@@ -377,8 +373,6 @@ export function SessionsSection({ event, headerItem }) {
     </div>
   );
 }
-
-// --- Door Sales & Kiosk ------------------------------------------------------
 
 export function DoorKioskSection({ event, headerItem }) {
   const globals = useCheckinGlobals();

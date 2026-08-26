@@ -16,26 +16,6 @@ import {
 import { cn } from "@/lib/utils";
 import { OFFER_SORTS } from "@/lib/seating/offers";
 
-// The panel beside the seat map: every row that is actually on sale, ranked and
-// filtered, and the way in to any of them.
-//
-// A map answers "where is section 228?". It does not answer "where are two
-// seats together under $80?" — the question buyers actually arrive with, and
-// the reason every modern ticketing site puts a list next to the map.
-//
-// Two things it deliberately does NOT do any more. It no longer draws a venue
-// thumbnail per row: at 56px, with every section in the venue rendered into it,
-// the highlight was a smudge, and there were sections x rows x sections of them.
-// And it no longer lists every row flat — a venue selling at one price produced
-// fourteen indistinguishable rows of one section before it reached anything
-// else. Rows are grouped under their section and led by the best seat on sale.
-//
-// It owns no data and no persistence: the offers, the selection and the
-// handlers all come from the picker. It is also the ACCESSIBLE path to the map,
-// which is a canvas: every row here is a real button.
-
-// A postage-stamp of the whole venue with one section lit up. Still used by the
-// DOM seat map (the box office), which draws its own drill-down.
 export function VenueThumb({ sections, field, aspect, highlightId, className }) {
   return (
     <span
@@ -77,8 +57,6 @@ export function VenueThumb({ sections, field, aspect, highlightId, className }) 
   );
 }
 
-// Quality is a 0-1 score from the map's geometry (lib/seating/quality.js). Shown
-// as a word rather than a number: nobody buys "0.82".
 function qualityBadge(score) {
   if (score >= 0.8)
     return { label: "Prime", tone: "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" };
@@ -103,8 +81,6 @@ function OfferRow({ offer, selected, onSelect, formatPrice, quantity }) {
           selected ? "bg-surface-active" : "hover:bg-surface-hover",
         )}
       >
-        {/* The row you're standing in, marked down the edge rather than by a
-            fill that has to fight the hover state. */}
         <span
           aria-hidden="true"
           className={cn(
@@ -129,8 +105,6 @@ function OfferRow({ offer, selected, onSelect, formatPrice, quantity }) {
             ) : null}
           </span>
           <span className="mt-0.5 block truncate text-xs text-text-tertiary">
-            {/* "1 together" is not a thing — at a party of one the count is the
-                only fact worth stating. */}
             {!offer.fits
               ? `${offer.available} open · not together`
               : quantity > 1
@@ -146,8 +120,6 @@ function OfferRow({ offer, selected, onSelect, formatPrice, quantity }) {
   );
 }
 
-// The single best seat on sale, pulled out of the list. With one flat ticket
-// price this is the only thing on the panel carrying a recommendation.
 function BestValue({ offer, onSelect, formatPrice, accent }) {
   if (!offer) return null;
   return (
@@ -158,8 +130,6 @@ function BestValue({ offer, onSelect, formatPrice, accent }) {
         className="group relative flex w-full items-center gap-3 overflow-hidden rounded-lg border border-primary/25 bg-primary/[0.07] py-2.5 pl-3 pr-2.5 text-left transition-colors hover:bg-primary/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         style={accent ? { borderColor: `${accent}40` } : undefined}
       >
-        {/* Marked the same way the selected row is, so the rail has one
-            vocabulary for "this one" rather than a badge language of its own. */}
         <span
           aria-hidden="true"
           className="absolute inset-y-0 left-0 w-0.5 bg-primary"
@@ -197,8 +167,6 @@ export function SeatOffers({
   accessibleOnly,
   onAccessibleChange,
   quantity,
-  // Present only when the buyer is free to choose their party size — in
-  // type-first mode the earlier step already fixed it.
   onQuantityChange,
   maxQuantity = 8,
   bestOffer,
@@ -207,27 +175,17 @@ export function SeatOffers({
   formatPrice,
   accent,
 }) {
-  // One price on sale is not a range — a slider there can only ever remove
-  // seats from a list the buyer already asked for.
   const hasRange = priceRange.max > priceRange.min;
-  // The endpoints are exact prices now, so a fixed step of 1 would overshoot a
-  // narrow spread and never land on either end of a wide fractional one.
   const priceStep = hasRange
     ? Math.max(0.01, Math.round(((priceRange.max - priceRange.min) / 100) * 100) / 100)
     : 1;
 
-  // Rows under their section, in whatever order the sort put the sections in.
-  // Grouping is what stops fourteen rows of one section reading as the whole
-  // venue's worth of choice.
   const groups = useMemo(() => {
     const bySection = new Map();
     for (const offer of offers) {
       const group = bySection.get(offer.sectionId);
       if (group) {
         group.offers.push(offer);
-        // What the section costs, so the buyer can skip a whole block without
-        // opening it. Tracked as a spread: most sections sell at one price, and
-        // "from $45" on a section where every row is $45 is a small lie.
         group.low = Math.min(group.low, offer.price);
         group.high = Math.max(group.high, offer.price);
       } else
@@ -246,7 +204,6 @@ export function SeatOffers({
   return (
     <div className="flex h-full flex-col">
       <div className="space-y-2.5 border-b border-border p-3">
-        {/* The panel has never said what it is. Name it once, quietly. */}
         <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
           Rows on sale
         </h2>
@@ -302,15 +259,11 @@ export function SeatOffers({
               step={priceStep}
               value={[maxPrice ?? priceRange.max]}
               onValueChange={([v]) =>
-                // Top of the slider means "no ceiling", so the dearest seat
-                // never filters itself out of its own range.
                 onMaxPriceChange(v >= priceRange.max ? null : v)
               }
               aria-label="Maximum price"
               className="flex-1"
             />
-            {/* A ceiling the buyer set is a live filter, not a caption — it
-                takes the accent so it reads as something they did. */}
             <span
               className={cn(
                 "shrink-0 text-xs font-medium tabular-nums",

@@ -25,8 +25,6 @@ type ChannelListProps = {
 const stagger = (i: number) => Math.min(i, 11) * 40;
 const POLL_MS = 15_000;
 
-// The shared event-channel / Q&A channel list. Polls while focused so unread
-// counts and previews stay fresh; the route files are thin wrappers over this.
 export function ChannelList({ kind, emptyTitle, emptyMessage, routeBase }: ChannelListProps) {
   const router = useRouter();
   const { token } = useSession();

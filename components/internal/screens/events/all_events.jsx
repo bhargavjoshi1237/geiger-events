@@ -89,14 +89,23 @@ const TYPE_FILTER_OPTIONS = [
   { value: "Hybrid", label: "Hybrid" },
 ];
 
+function ProgressFill({ pct }) {
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-border">
+      <div
+        className="h-full rounded-full bg-primary transition-all"
+        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+      />
+    </div>
+  );
+}
+
 const EMPTY_DRAFT = {
   name: "",
   type: "In-person",
   date: "",
   time: "",
   venue: "",
-  // Set when a managed venue is picked; also snapshots address/city onto the
-  // event so its page reads right even before the venue is fetched.
   venueId: null,
   address: "",
   city: "",
@@ -109,7 +118,6 @@ function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
 
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
 
-  // Picking a managed venue links it and snapshots its location onto the draft.
   const pickVenue = (id) => {
     const v = venues.find((x) => x.id === id);
     setDraft((d) => ({
@@ -151,7 +159,14 @@ function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
               id="evt-name"
               value={draft.name}
               onChange={(e) => set("name")(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
               placeholder="e.g. Autumn Design Meetup"
+              autoFocus
             />
           </Field>
 
@@ -255,8 +270,6 @@ function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
 }
 
 export function AllEventsScreen() {
-  // Seed from bundled sample data for an instant first paint, then replace with
-  // the live table once it loads. `source` decides whether mutations persist.
   const [events, setEvents] = useState(EVENTS);
   const [source, setSource] = useState("sample");
   const [loading, setLoading] = useState(true);
@@ -265,23 +278,14 @@ export function AllEventsScreen() {
   const [type, setType] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  // Managed venues for this project — populate the create dialog's venue picker.
-  // Empty (no DB / none created) falls back to the sample venue list.
   const [venues, setVenues] = useState([]);
-  // The open event lives in the URL (?event=<id>) so a refresh stays on it.
   const { eventId, openEvent, closeEvent } = useWorkspaceUrl();
   const { projectId } = useProject();
-  // Signed-in user — new events are stamped with created_by so only they can
-  // upload that event's images (enforced by storage RLS).
   const [userId, setUserId] = useState(null);
-  // Who a new event is credited to on its public page — the creator, else the
-  // project. Editable afterwards under Event details.
   const defaultOrganizer = useDefaultOrganizer();
 
   const usingDb = source === "db";
 
-  // Resolve the open event from local state. Sample data resolves instantly;
-  // a db-only id resolves once the live table loads. Unknown id ⇒ list view.
   const selectedEvent = useMemo(
     () => (eventId ? events.find((e) => e.id === eventId) || null : null),
     [eventId, events],
@@ -333,9 +337,6 @@ export function AllEventsScreen() {
     ];
   }, [events]);
 
-  // Mutations update local state optimistically (instant UI) and, when backed
-  // by the live table, persist through the data layer — surfacing a toast only
-  // if the write fails. Local-only mode keeps working with no DB.
   const persistCreate = (event) => {
     if (!usingDb) return;
     createEvent(event).then((saved) => {
@@ -405,8 +406,6 @@ export function AllEventsScreen() {
       status: "Draft",
       sold: 0,
       revenue: 0,
-      // The copy is owned by whoever duplicated it, and starts with no images
-      // (they live under the original event's folder).
       createdBy: userId,
       projectId,
       coverUrl: "",
@@ -464,12 +463,7 @@ export function AllEventsScreen() {
           : 0;
         return (
           <div className="w-[150px] space-y-1.5">
-            <div className="h-1.5 overflow-hidden rounded-full bg-surface-hover">
-              <div
-                className="h-full rounded-full bg-[#ededed]"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            <ProgressFill pct={pct} />
             <p className="text-xs text-text-secondary">
               {e.sold.toLocaleString("en-US")} / {e.capacity.toLocaleString("en-US")} · {pct}%
             </p>
@@ -496,6 +490,7 @@ export function AllEventsScreen() {
             <Button
               variant="ghost"
               size="icon-sm"
+              aria-label="Actions"
               className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
             >
               <MoreHorizontal className="h-4 w-4" />

@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { newId } from "@/components/internal/screens/events/sample_data";
 import { CheckinSettingsScreen } from "./checkin_kit";
 
-// A reusable add/remove list of named entries (gates or zones).
 function NamedList({ label, placeholder, items, onChange }) {
   const [draft, setDraft] = useState("");
   const add = () => {
@@ -71,26 +70,34 @@ export function MultiGateZonesScreen() {
       enableLabel="Multi-gate & zones"
       enableHint="Track which gate an attendee entered and which zones a ticket can access."
     >
-      {({ slice, set, enabled }) => (
-        <div className={enabled ? "grid gap-6 lg:grid-cols-2" : "hidden"}>
-          <SectionCard title="Gates" description="Entrances staff scan attendees through.">
-            <NamedList
-              label="Gates"
-              placeholder="e.g. North entrance"
-              items={slice.gates}
-              onChange={(gates) => set({ gates })}
-            />
-          </SectionCard>
-          <SectionCard title="Zones" description="Restricted areas a ticket may grant access to.">
-            <NamedList
-              label="Zones"
-              placeholder="e.g. Backstage"
-              items={slice.zones}
-              onChange={(zones) => set({ zones })}
-            />
-          </SectionCard>
-        </div>
-      )}
+      {({ slice, set, enabled }) =>
+        !enabled ? (
+          <div className="rounded-2xl border border-dashed border-border bg-surface-subtle px-6 py-12">
+            <p className="text-center text-sm text-text-secondary">
+              Turn on Multi-gate & zones to define entrances and restricted areas.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <SectionCard title="Gates" description="Entrances staff scan attendees through.">
+              <NamedList
+                label="Gates"
+                placeholder="e.g. North entrance"
+                items={slice.gates}
+                onChange={(gates) => set({ gates })}
+              />
+            </SectionCard>
+            <SectionCard title="Zones" description="Restricted areas a ticket may grant access to.">
+              <NamedList
+                label="Zones"
+                placeholder="e.g. Backstage"
+                items={slice.zones}
+                onChange={(zones) => set({ zones })}
+              />
+            </SectionCard>
+          </div>
+        )
+      }
     </CheckinSettingsScreen>
   );
 }

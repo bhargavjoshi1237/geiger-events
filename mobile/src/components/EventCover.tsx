@@ -13,7 +13,6 @@ type EventCoverProps = {
   radius?: number;
 };
 
-// Event artwork with a deterministic initial-letter fallback (web Cover port).
 export function EventCover({ uri, name, height, radius: round = radius.lg }: EventCoverProps) {
   if (uri) {
     return (
@@ -23,7 +22,6 @@ export function EventCover({ uri, name, height, radius: round = radius.lg }: Eve
     );
   }
 
-  // Prop-derived sizes are computed at render; everything else lives in styles.
   const initialSize = Math.max(28, Math.round(height * 0.42));
   const markWidth = Math.round(height * 0.3);
   return (
@@ -34,7 +32,6 @@ export function EventCover({ uri, name, height, radius: round = radius.lg }: Eve
         end={{ x: 1, y: 1 }}
         style={[StyleSheet.absoluteFill, styles.fallback]}
       >
-        {/* Oversized ghosted initial reads as artwork rather than an empty box. */}
         <Text
           style={[
             styles.initial,

@@ -56,12 +56,6 @@ import {
 } from "@/lib/events/packages";
 import { InclusionIcon, PackagePrice } from "./packages_shared";
 
-// Authoring for an event's VIP packages.
-//
-// A package carries more fields than a list row can hold legibly, so editing
-// happens in a dialog and the section itself stays a scannable ladder of tiers —
-// which is also the order buyers see them in.
-
 function InclusionRows({ items, onChange }) {
   const patch = (id, key, value) =>
     onChange(items.map((i) => (i.id === id ? { ...i, [key]: value } : i)));
@@ -152,7 +146,6 @@ function PackageDialog({ open, onOpenChange, eventId, initial, onSave }) {
   const [busy, setBusy] = useState(false);
   const fileInput = useRef(null);
 
-  // Re-seed whenever the dialog opens (render-phase reset).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);

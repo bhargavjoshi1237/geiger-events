@@ -51,20 +51,9 @@ import {
 import { BOOTH_STATUS_MAP } from "./constants";
 import { DEMO_BOOTHS } from "./demo_floor_plan";
 
-// Floor Plan & Booths — an interactive expo map over events.hall_booths, the one
-// booth concept in the app. A hall is a reusable venue-level template; an event
-// attaches one on its Exhibitor Floor tab and sells stalls from it, and this
-// screen is where the floor itself is laid out.
-//
-// Booths carry a position in x / y (percent of the canvas); a booth marked
-// unplaced sits in a tray you drag onto the floor. The Available / Reserved /
-// Occupied status here is PLANNING state on the template (metadata.status) — the
-// live sold state is per event and lives in the event editor'"'"'s box office.
-
 const SIZE_OPTIONS = ["Standard", "Large", "Premium"];
 const STATUS_OPTIONS = Object.keys(BOOTH_STATUS_MAP);
 
-// Status → floor-tile styling (semantic tailwind color utilities at /10–/30).
 const FLOOR_STYLE = {
   Available: "border-emerald-400/30 bg-emerald-400/10 text-emerald-100",
   Reserved: "border-sky-400/30 bg-sky-400/10 text-sky-100",
@@ -79,9 +68,6 @@ const DOT_STYLE = {
 const isPlaced = (b) =>
   typeof b.config?.x === "number" && typeof b.config?.y === "number";
 
-// hall_booths row -> the floor plan'"'"'s view model. The screen keeps its original
-// { name, status, config } shape so the map, tray and inspector are untouched;
-// only what backs them changed.
 function toFloorBooth(row) {
   const meta = row.metadata || {};
   const placed = meta.placed !== false;
@@ -101,8 +87,6 @@ function toFloorBooth(row) {
   };
 }
 
-// …and back. Every save sends the whole booth, which keeps the three call sites
-// (drag, inspector edit, status change) identical.
 function toBoothPatch(view) {
   const cfg = view.config || {};
   const placed = typeof cfg.x === "number" && typeof cfg.y === "number";
@@ -209,8 +193,6 @@ function CreateBoothDialog({ open, onOpenChange, onCreate }) {
   );
 }
 
-// `demo` seeds bundled sample booths and skips fetching/persisting so the map can
-// run as a live playground on the public landing (no session there).
 export function FloorPlanScreen({ demo = false }) {
   const projectId = useOptionalProject()?.projectId ?? null;
   const [booths, setBooths] = useState(demo ? DEMO_BOOTHS : []);
@@ -218,12 +200,11 @@ export function FloorPlanScreen({ demo = false }) {
   const [userId, setUserId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
-  // The project's halls, and which one this screen is laying out. A hall is a
-  // reusable template, so a project can have several (main hall, atrium…).
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [halls, setHalls] = useState([]);
   const [hallId, setHallId] = useState(null);
   const canvasRef = useRef(null);
-  const dragRef = useRef(null); // { id, moved }
+  const dragRef = useRef(null);
 
   useEffect(() => {
     if (demo) return undefined;
@@ -276,8 +257,6 @@ export function FloorPlanScreen({ demo = false }) {
     ];
   }, [booths, placed, tray]);
 
-  // Persist one booth (optimistic local state already set). The caller hands us
-  // the config it just wrote, because setBooths hasn't flushed yet.
   const persist = (id, config) => {
     if (demo) return;
     const current = booths.find((b) => b.id === id);
@@ -317,8 +296,6 @@ export function FloorPlanScreen({ demo = false }) {
     }
   };
 
-  // --- Drag to position ------------------------------------------------------
-
   const pointToPercent = (clientX, clientY) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return null;
@@ -348,7 +325,6 @@ export function FloorPlanScreen({ demo = false }) {
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
-      /* capture may already be gone */
     }
     if (!drag || drag.id !== booth.id) return;
     if (drag.moved) {
@@ -358,10 +334,7 @@ export function FloorPlanScreen({ demo = false }) {
     }
   };
 
-  // --- Tray → floor ----------------------------------------------------------
-
   const placeFromTray = (booth) => {
-    // Drop near the center with a little scatter so stacked booths don't hide.
     const scatter = (placed.length % 5) * 6;
     patchConfig(booth.id, { x: clamp(40 + scatter), y: clamp(42 + scatter) });
     setSelectedId(booth.id);
@@ -371,14 +344,11 @@ export function FloorPlanScreen({ demo = false }) {
     patchConfig(booth.id, { x: null, y: null });
   };
 
-  // --- Create / delete -------------------------------------------------------
-
   const handleCreate = (draft) => {
     const booth = {
       id: crypto.randomUUID(),
       name: draft.name.trim(),
       status: "Available",
-      // A new booth starts in the tray, so it has no position yet.
       config: { hall: draft.hall, size: draft.size, exhibitor: "", price: 0, notes: "", x: null, y: null },
     };
     setBooths((prev) => [booth, ...prev]);
@@ -400,8 +370,6 @@ export function FloorPlanScreen({ demo = false }) {
     });
   };
 
-  // Create the project's first hall from here, so the screen is usable without
-  // going to a venue first. It has no venue until someone attaches one.
   const handleCreateHall = async () => {
     const created = await createHallMap({
       id: crypto.randomUUID(),
@@ -504,7 +472,6 @@ export function FloorPlanScreen({ demo = false }) {
       ) : (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
           <div className="min-w-0 space-y-4">
-            {/* Legend */}
             <div className="flex flex-wrap items-center gap-4 text-xs text-text-secondary">
               {STATUS_OPTIONS.map((s) => (
                 <span key={s} className="inline-flex items-center gap-1.5">
@@ -517,7 +484,6 @@ export function FloorPlanScreen({ demo = false }) {
               </span>
             </div>
 
-            {/* Canvas */}
             <div
               ref={canvasRef}
               className="relative aspect-[4/3] w-full touch-none overflow-hidden rounded-2xl border border-border bg-surface-subtle"
@@ -566,7 +532,6 @@ export function FloorPlanScreen({ demo = false }) {
               })}
             </div>
 
-            {/* Tray */}
             <div className="rounded-xl border border-dashed border-border bg-surface-subtle/60 p-4">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
                 Unplaced booths · {tray.length}
@@ -592,7 +557,6 @@ export function FloorPlanScreen({ demo = false }) {
             </div>
           </div>
 
-          {/* Inspector */}
           <aside className="min-w-0">
             <div className="rounded-2xl border border-border bg-surface-subtle p-5 xl:sticky xl:top-0">
               {selected ? (
@@ -699,7 +663,7 @@ export function FloorPlanScreen({ demo = false }) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(selected)}
+                      onClick={() => setDeleteTarget(selected)}
                       className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
                     >
                       <Trash2 className="h-4 w-4" /> Delete
@@ -723,6 +687,38 @@ export function FloorPlanScreen({ demo = false }) {
       )}
 
       <CreateBoothDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={handleCreate} />
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete booth</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name}
+              </span>
+              ? This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                handleDelete(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

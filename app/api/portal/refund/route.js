@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getSessionMember } from "@/lib/portal/session";
 import { fileRefund } from "@/lib/portal/refunds";
 
-// POST { orderId, reason } -> files a refund request for the member's order.
 export async function POST(request) {
   const member = await getSessionMember();
   if (!member) {

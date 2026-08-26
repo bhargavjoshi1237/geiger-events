@@ -2,59 +2,49 @@
 
 import React from "react";
 import { useBanner } from "@/context/banner-context";
-import { AlertCircle, X, ExternalLink } from "lucide-react";
+import { AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+const THEMES = {
+  warning: {
+    root: "border-amber-500/25 bg-amber-500/10 text-amber-200",
+    chip: "border-amber-500/30 bg-amber-500/15 text-amber-200",
+    linkDecoration: "decoration-amber-300/40",
+  },
+  info: {
+    root: "border-primary/20 bg-primary/10 text-foreground",
+    chip: "border-primary/30 bg-primary/15 text-primary",
+    linkDecoration: "decoration-primary/40",
+  },
+};
 
 export function GlobalBanner() {
   const { banner, hideBanner } = useBanner();
 
   if (!banner.isVisible) return null;
 
-  const themes = {
-    warning: {
-      bg: "linear-gradient(45deg, #7c2d12 25%, #9a3412 25%, #9a3412 50%, #7c2d12 50%, #7c2d12 75%, #9a3412 75%, #9a3412 100%)",
-      border: "#b45309",
-      text: "#ffedd5",
-      iconBg: "bg-orange-950/40",
-      iconColor: "#e7e7e7",
-      linkDecoration: "decoration-orange-300/40",
-    },
-    info: {
-      bg: "linear-gradient(45deg, #1e3a8a 25%, #1d4ed8 25%, #1d4ed8 50%, #1e3a8a 50%, #1e3a8a 75%, #1d4ed8 75%, #1d4ed8 100%)",
-      border: "#1d4ed8",
-      text: "#dbeafe",
-      iconBg: "bg-blue-950/40",
-      iconColor: "#e7e7e7",
-      linkDecoration: "decoration-blue-300/40",
-    },
-  };
-
-  const currentTheme = themes[banner.type] || themes.warning;
+  const theme = THEMES[banner.type] || THEMES.warning;
 
   return (
     <div
+      role="status"
       className={cn(
         "relative w-full border-b px-4 py-2.5 flex items-center justify-center gap-3 transition-all duration-500 animate-in fade-in slide-in-from-top-full z-[100]",
+        theme.root,
       )}
-      style={{
-        background: currentTheme.bg,
-        backgroundSize: "32px 32px",
-        borderColor: currentTheme.border,
-        color: currentTheme.text,
-      }}
     >
       <div className="flex items-center gap-3 max-w-7xl mx-auto w-full justify-center">
         <div
           className={cn(
-            "flex items-center justify-center w-5 h-5 rounded flex-shrink-0",
-            currentTheme.iconBg,
+            "flex h-7 w-7 items-center justify-center rounded border flex-shrink-0",
+            theme.chip,
           )}
         >
-          <AlertCircle className={cn("w-3.5 h-3.5", currentTheme.iconColor)} />
+          <AlertCircle className="h-4 w-4" />
         </div>
         <div className="flex items-center gap-2 text-[13px] font-semibold tracking-tight leading-none">
-          <span className="translate-y-[0.5px] -mt-1.5">{banner.message}</span>
+          <span>{banner.message}</span>
           {banner.link && (
             <>
               <span className="opacity-40 font-normal">·</span>
@@ -62,7 +52,7 @@ export function GlobalBanner() {
                 href={banner.link.url}
                 className={cn(
                   "hover:text-foreground transition-colors underline underline-offset-4 font-bold flex items-center gap-1.5",
-                  currentTheme.linkDecoration,
+                  theme.linkDecoration,
                 )}
                 target="_blank"
                 rel="noopener noreferrer"

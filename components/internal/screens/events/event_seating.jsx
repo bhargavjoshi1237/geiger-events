@@ -30,15 +30,6 @@ import {
 
 import { SeatMapView } from "./seat_map_view";
 
-// Seating tab of the event editor. Picks which of the venue's seat map
-// configurations this event sells from, how buyers choose (map-first or
-// type-first), which ticket each section prices against, and how long a seat is
-// held during checkout. Below the config sits the box office: a live map of
-// what's sold, held and blocked, with production holds.
-//
-// Everything persists into event.metadata.seating via the shallow-merge RPC, so
-// this tab never clobbers another.
-
 const DEFAULT_SEATING = {
   seatMapId: "",
   mode: "map-first",
@@ -57,8 +48,6 @@ export function EventSeatingSection({ event, headerItem }) {
 
   const [maps, setMaps] = useState([]);
   const [loadingMaps, setLoadingMaps] = useState(true);
-  // Stamped with the map it was fetched for, so switching configurations never
-  // renders the previous map's sections while the new fetch is in flight.
   const [liveRaw, setLive] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [activeSectionId, setActiveSectionId] = useState(null);
@@ -67,8 +56,6 @@ export function EventSeatingSection({ event, headerItem }) {
 
   const tickets = Array.isArray(event?.tickets) ? event.tickets : [];
 
-  // Configurations belonging to this event's venue. When there is no venue the
-  // component renders its empty state before ever reading `loadingMaps`.
   useEffect(() => {
     if (!event?.venueId) return undefined;
     let alive = true;
@@ -82,7 +69,6 @@ export function EventSeatingSection({ event, headerItem }) {
     };
   }, [event?.venueId]);
 
-  // Live seat state for the box office map.
   useEffect(() => {
     if (!event?.id || !seating.seatMapId) return undefined;
     const mapId = seating.seatMapId;
@@ -120,7 +106,6 @@ export function EventSeatingSection({ event, headerItem }) {
     patch({ sectionTiers: nextTiers });
   };
 
-  // Box office: a click toggles a production hold on that seat.
   const toggleBlock = async (seat) => {
     if (soldIds.has(seat.id)) return;
     const isBlocked = blockedIds.has(seat.id);
@@ -141,8 +126,6 @@ export function EventSeatingSection({ event, headerItem }) {
     return "available";
   };
 
-  // Grouped once rather than filtered per section — the box office renders one
-  // block per section, and a big arena made that quadratic on every refresh.
   const seatsBySection = useMemo(() => {
     const map = new Map();
     for (const seat of live?.seats ?? []) {

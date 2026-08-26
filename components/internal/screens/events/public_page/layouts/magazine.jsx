@@ -10,10 +10,6 @@ import { Shell, EventMetaLine, StickyBuyBar } from "./shared";
 
 const READ_WIDTH = "44rem";
 
-// Magazine — one narrow reading measure, a full-bleed cover band above it, and
-// the ticket panel dropped in as an interruption partway down rather than
-// parked in a rail. The long-form treatment: editorial sites and the write-ups
-// that big conferences run alongside their registration page.
 export function MagazineLayout({ ctx }) {
   const {
     event,
@@ -31,8 +27,6 @@ export function MagazineLayout({ ctx }) {
     parts,
   } = ctx;
 
-  // The panel interrupts after the first section, the way a magazine breaks a
-  // feature for a pull-out. With one section or none it lands at the foot.
   const breakAt = blocks.length > 1 ? 1 : blocks.length;
 
   return (
@@ -89,8 +83,6 @@ export function MagazineLayout({ ctx }) {
           {parts.hostsBlock}
           {blocks.slice(0, breakAt).map((b) => b.node)}
 
-          {/* The panel is already a card — it only needs rules above and below
-              to read as a break in the article, not a second box around it. */}
           <div className="border-y border-border py-8">{register}</div>
 
           {blocks.slice(breakAt).map((b) => b.node)}

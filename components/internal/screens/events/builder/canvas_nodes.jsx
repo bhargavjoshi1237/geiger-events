@@ -1,13 +1,5 @@
 "use client";
 
-// Editing chrome for the canvas.
-//
-// The canvas renders the *same* PageTree the published page does. Rather than
-// wrapping nodes in extra elements — which would break the grid, since a column
-// has to stay a direct child of its row — this decorates the elements the
-// renderer already produced: it adds classes, a click-to-select handler, and
-// absolutely-positioned overlays as extra children.
-
 import React, { useCallback, useMemo } from "react";
 import {
   GripVertical,
@@ -36,8 +28,6 @@ const KIND_ICON = {
   component: Square,
 };
 
-// Injected into the canvas document. Everything here is editor-only chrome, so
-// it hangs off `.ev-editing` and never reaches the published page.
 export const EDITING_CSS = `
   .ev-editing [data-ev-kind="section"],
   .ev-editing [data-ev-kind="row"],
@@ -48,11 +38,6 @@ export const EDITING_CSS = `
   .ev-editing [data-ev-kind="column"] { min-height: 3.5rem; }
   .ev-editing [data-ev-kind="row"] { min-height: 3.5rem; }
   .ev-editing .ev-chrome { position: absolute; z-index: 40; }
-  /* Anything switched off would otherwise vanish from the canvas and be
-     unreachable. In the editor it stays visible, faded, so you can select it
-     and switch it back on — each kind restored to the display the compiler
-     gives it. Breakpoint hiding is left alone on purpose: previewing a device
-     should show what that device shows. */
   .ev-editing .ev-off { opacity: .35; }
   .ev-editing [data-ev-kind="section"].ev-off { display: block; }
   .ev-editing [data-ev-kind="row"].ev-off { display: grid; }
@@ -66,7 +51,6 @@ export const EDITING_CSS = `
   }
 `;
 
-/** Small floating toolbar shown on the selected node. */
 function NodeToolbar({ kind, onDragStart, onDuplicate, onDelete, canDelete }) {
   const Icon = KIND_ICON[kind] || Square;
   return (
@@ -104,7 +88,6 @@ function NodeToolbar({ kind, onDragStart, onDuplicate, onDelete, canDelete }) {
   );
 }
 
-/** The divider handle between two columns; drags the grid split in 1/12 steps. */
 function ResizeHandle({ onPointerDown }) {
   return (
     <span
@@ -118,16 +101,11 @@ function ResizeHandle({ onPointerDown }) {
   );
 }
 
-/**
- * Precompute each node's index among its siblings once per tree, so the
- * decorator can answer "is this the last column?" without re-walking.
- */
 function buildIndex(tree) {
   const map = new Map();
   walk(tree, (node, path, kind) => {
     map.set(node.id, { path, kind, index: path[path.length - 1] });
   });
-  // Sibling counts come from a second pass over the parents we already saw.
   walk(tree, (node) => {
     const children = node.rows || node.columns || node.components;
     if (!Array.isArray(children)) return;
@@ -142,18 +120,6 @@ function buildIndex(tree) {
   return map;
 }
 
-/**
- * Builds the `editing` object PageTree takes.
- *
- * @param tree        current tree
- * @param selectedId  selected node id
- * @param onSelect    (id) => void
- * @param onDragStart (event, payload) => void
- * @param onResize    (event, rowId, columnIndex) => void
- * @param onDuplicate (id) => void
- * @param onDelete    (id) => void
- * @param onAddInto   (columnId) => void
- */
 export function useEditingChrome({
   tree,
   selectedId,
@@ -170,8 +136,6 @@ export function useEditingChrome({
     (node, kind, element) => {
       const selected = selectedId === node.id;
       const entry = index.get(node.id) || {};
-      // The last section is the only thing keeping the canvas droppable, so it
-      // never offers a delete.
       const canDelete = kind !== "section" || tree.sections.length > 1;
       const isLastColumn =
         kind === "column" && entry.index === (entry.siblingCount || 1) - 1;
@@ -221,8 +185,6 @@ export function useEditingChrome({
     [index, selectedId, tree.sections.length, onSelect, onDragStart, onResize, onDuplicate, onDelete],
   );
 
-  // An empty column is invisible without this, and an invisible column is one
-  // you cannot drop into.
   const renderColumnAffordance = useCallback(
     (node) => {
       if ((node.components || []).length) return null;
@@ -249,10 +211,6 @@ export function useEditingChrome({
   );
 }
 
-/**
- * The floating rail that shows where a drop will land. Rendered in the parent
- * document, in viewport coordinates, because the drag already works there.
- */
 export function DropIndicator({ hit }) {
   if (!hit?.rect) return null;
   const { rect, orientation, after } = hit;

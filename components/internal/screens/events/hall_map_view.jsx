@@ -6,15 +6,6 @@ import { MapCanvas } from "@/components/internal/shared/map_canvas";
 import { MapField } from "@/components/internal/shared/map_field";
 import { cn } from "@/lib/utils";
 
-// Presentational exhibitor floor, shared by the exhibitor's booth picker and
-// the organiser's box office. The booth mirror of seat_map_view — with one
-// deliberate difference: there is no drill-down, because a booth IS the unit of
-// sale. A hall is a few hundred stalls at most, so they all render at once and
-// pan/zoom does the rest.
-//
-// It owns no data and no persistence: callers supply the booths, a state per
-// booth, the colours and the click handlers.
-
 export const BOOTH_STATE_STYLE = {
   available: "border-border-strong bg-surface-strong hover:border-primary hover:bg-surface-active",
   selected: "border-primary bg-primary/25",
@@ -23,7 +14,6 @@ export const BOOTH_STATE_STYLE = {
   blocked: "border-violet-400/40 bg-violet-400/15",
 };
 
-// Zones and features are floor furniture, never sellable.
 const DECOR_STYLE = {
   zone: "border-dashed border-border-strong bg-transparent",
   feature: "border-border bg-surface-subtle/60",
@@ -106,8 +96,6 @@ export function HallMapView({
               title={[booth.code || booth.name, meta.price].filter(Boolean).join(" · ")}
               className={cn(
                 "absolute flex flex-col items-center justify-center overflow-hidden rounded-md border p-0.5 text-center transition-colors",
-                // A price band colours an available booth; taken states always
-                // win so the floor never lies about what's left.
                 state === "available" && band ? [band.fill, band.stroke, "hover:brightness-125"] : null,
                 state !== "available" || !band ? BOOTH_STATE_STYLE[state] : null,
                 !interactive && "opacity-70",

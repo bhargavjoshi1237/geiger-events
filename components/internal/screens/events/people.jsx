@@ -69,7 +69,6 @@ import {
 } from "@/lib/supabase/event_team";
 import { uploadEventImage } from "@/lib/supabase/storage";
 
-// Lucide components for the icon names carried by EVENT_TEAM_ROLES.
 const ROLE_ICONS = { Crown, ShieldCheck, Users, ScanLine, Eye };
 const FALLBACK_ROLE = EVENT_TEAM_ROLE_MAP.Viewer;
 
@@ -88,8 +87,6 @@ function RoleBadge({ role }) {
   );
 }
 
-// Display name for a grant — falls back to the email's local part, then a
-// placeholder, since neither field is required.
 function displayName(m) {
   return m.name || (m.email || "").split("@")[0] || "Teammate";
 }
@@ -108,8 +105,6 @@ export function CoHostsAdminsSection({ event, headerItem }) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
-  // One dialog serves both "add a co-host" and "edit their details" — editingId
-  // is null for an add, the member's id for an edit.
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -120,9 +115,6 @@ export function CoHostsAdminsSection({ event, headerItem }) {
   const [rosterPicked, setRosterPicked] = useState([]);
   const [adding, setAdding] = useState(false);
 
-  // Load the grants, the project roster (for the picker) and the signed-in user.
-  // A brand-new event has no grants yet — bootstrap the viewer as Owner so the
-  // event always has one, matching the "creator owns it" rule.
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -164,9 +156,6 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     };
   }, [projectId]);
 
-  // Access is granted directly, so there is no pending state to hold anyone in.
-  // Rows left over from the old email-invite flow (status 'invited') are listed
-  // alongside everyone else rather than disappearing.
   const members = team;
 
   const filtered = useMemo(() => {
@@ -180,7 +169,6 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     });
   }, [members, search, roleFilter]);
 
-  // Roster people who don't already hold a grant on this event.
   const available = useMemo(() => {
     const takenIds = new Set(team.map((m) => m.memberId).filter(Boolean));
     const takenEmails = new Set(
@@ -253,8 +241,6 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     setFormOpen(true);
   };
 
-  // Profile photos ride in the event's own media folder, so they inherit the
-  // creator-only storage RLS the rest of the event's uploads already use.
   const pickAvatar = async (file) => {
     if (!file) return;
     setUploading(true);
@@ -267,8 +253,6 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     }
   };
 
-  // Add grants access immediately — there is no invitation to accept. Editing
-  // reuses the same form, so both paths validate identically.
   const saveMember = async () => {
     const name = form.name.trim();
     const email = form.email.trim().toLowerCase();
@@ -357,6 +341,14 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     }
   };
 
+  const [removeTarget, setRemoveTarget] = useState(null);
+
+  const confirmRemove = async () => {
+    if (!removeTarget) return;
+    await removeMember(removeTarget.id, `${displayName(removeTarget)} removed.`);
+    setRemoveTarget(null);
+  };
+
   const columns = [
     {
       key: "name",
@@ -411,8 +403,6 @@ export function CoHostsAdminsSection({ event, headerItem }) {
             align="end"
             className="border-border bg-surface-subtle text-foreground"
           >
-            {/* The owner's photo and name stay editable; only their role and
-                their access are fixed, so the event always keeps an owner. */}
             <DropdownMenuItem
               className="focus:bg-surface-hover"
               onClick={() => openEdit(m)}
@@ -437,7 +427,7 @@ export function CoHostsAdminsSection({ event, headerItem }) {
                 <DropdownMenuItem
                   variant="destructive"
                   className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                  onClick={() => removeMember(m.id, "Member removed.")}
+                  onClick={() => setRemoveTarget(m)}
                 >
                   Remove from event
                 </DropdownMenuItem>
@@ -467,13 +457,13 @@ export function CoHostsAdminsSection({ event, headerItem }) {
               className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => setRosterOpen(true)}
             >
-              <UserPlus className="h-4 w-4" /> Add From Team
+              <UserPlus className="h-4 w-4" /> Add from team
             </Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={openAdd}
             >
-              <Plus className="h-4 w-4" /> Add Member
+              <Plus className="h-4 w-4" /> Add member
             </Button>
           </div>
         }
@@ -533,18 +523,17 @@ export function CoHostsAdminsSection({ event, headerItem }) {
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={openAdd}
               >
-                <Plus className="h-4 w-4" /> Add Member
+                <Plus className="h-4 w-4" /> Add member
               </Button>
             }
           />
         </div>
       )}
 
-      {/* Add existing project members ---------------------------------------- */}
       <Dialog open={rosterOpen} onOpenChange={setRosterOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add From Team</DialogTitle>
+            <DialogTitle>Add from team</DialogTitle>
             <DialogDescription>
               Give people already on this project access to this event.
             </DialogDescription>
@@ -609,7 +598,7 @@ export function CoHostsAdminsSection({ event, headerItem }) {
                 </div>
               ) : (
                 <p className="rounded-lg border border-border bg-surface-card px-3 py-3 text-xs text-text-secondary">
-                  Everyone on this project already has access. Use Add Member to
+                  Everyone on this project already has access. Use Add member to
                   bring in someone from outside it.
                 </p>
               )}
@@ -636,12 +625,11 @@ export function CoHostsAdminsSection({ event, headerItem }) {
         </DialogContent>
       </Dialog>
 
-      {/* Add or edit a co-host ------------------------------------------------ */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingId ? "Edit Member" : "Add Member"}
+              {editingId ? "Edit member" : "Add member"}
             </DialogTitle>
             <DialogDescription>
               {editingId
@@ -713,6 +701,12 @@ export function CoHostsAdminsSection({ event, headerItem }) {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, name: e.target.value }))
                 }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveMember();
+                  }
+                }}
                 placeholder="Alex Morgan"
               />
             </Field>
@@ -766,6 +760,36 @@ export function CoHostsAdminsSection({ event, headerItem }) {
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {editingId ? "Save changes" : "Add member"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!removeTarget}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove from event</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove{" "}
+              <span className="font-medium text-foreground">
+                {removeTarget ? displayName(removeTarget) : ""}
+              </span>{" "}
+              from this event? They will lose access immediately. This action
+              can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemoveTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={confirmRemove}
+            >
+              Remove
             </Button>
           </DialogFooter>
         </DialogContent>

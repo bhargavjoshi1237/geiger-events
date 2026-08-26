@@ -17,7 +17,6 @@ type SkeletonProps = {
   radius?: number;
 };
 
-// A shimmering placeholder block — a looping 0.35 ↔ 0.7 opacity pulse.
 export function Skeleton({ width = "100%", height, radius: round = radius.sm }: SkeletonProps) {
   const opacity = useSharedValue(0.35);
   useEffect(() => {

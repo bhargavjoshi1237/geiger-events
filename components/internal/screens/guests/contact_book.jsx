@@ -104,11 +104,9 @@ export function ContactBookScreen() {
   const [blockEmailOpen, setBlockEmailOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [userId, setUserId] = useState(null);
-  // "list" | "import" | "dedupe" — Import and Dedupe fold in as full sub-views.
   const [view, setView] = useState("list");
   const { projectId } = useProject();
 
-  // Refetch just the contacts (used after an import/merge sub-view returns).
   const reloadContacts = useCallback(() => {
     listContacts(projectId).then((cs) => setContacts(cs ?? []));
   }, [projectId]);
@@ -134,7 +132,6 @@ export function ContactBookScreen() {
     };
   }, [projectId]);
 
-  // email -> [{ eventId, status, createdAt }] for the attending badge + drawer.
   const regsByEmail = useMemo(() => {
     const m = new Map();
     for (const r of regs) {
@@ -213,7 +210,6 @@ export function ContactBookScreen() {
     setSearch("");
   };
 
-  // --- Mutations (optimistic + persisted) ---
   const handleCreate = (draft) => {
     const tags = String(draft.tags || "")
       .split(",")
@@ -254,7 +250,6 @@ export function ContactBookScreen() {
       prev.map((c) => {
         if (c.id !== id) return c;
         const next = { ...c, ...patch };
-        // Keep the derived notes field in sync when metadata is patched.
         if (patch.metadata) {
           next.notes = Array.isArray(patch.metadata.notes)
             ? patch.metadata.notes
@@ -279,8 +274,6 @@ export function ContactBookScreen() {
     });
   };
 
-  // Manually add/remove a contact to a segment (stored in the segment's
-  // manualIds; membership ORs these with the rule matches).
   const handleToggleSegment = (contactId, segmentId) => {
     const seg = segments.find((s) => s.id === segmentId);
     if (!seg) return;
@@ -320,8 +313,6 @@ export function ContactBookScreen() {
     toast.success(`Exported ${filtered.length} contacts.`);
   };
 
-  // Block an email that may not be a contact yet (folds in the old Blocklist
-  // "Block someone" flow): flag an existing record, or mint a minimal blocked one.
   const handleBlockEmail = async ({ email, reason }) => {
     const trimmed = email.trim().toLowerCase();
     const existing = contacts.find((c) => c.email.toLowerCase() === trimmed);
@@ -492,7 +483,6 @@ export function ContactBookScreen() {
     },
   ];
 
-  // Import and Dedupe fold in as full sub-views; refetch contacts on return.
   if (view === "import") {
     return (
       <GuestImportScreen
@@ -721,9 +711,15 @@ function CreateContactDialog({ open, onOpenChange, onCreate }) {
     onOpenChange(false);
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submit();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl bg-background">
+        <form onSubmit={handleSubmit}>
         <DialogHeader>
           <DialogTitle>Add contact</DialogTitle>
           <DialogDescription>
@@ -741,7 +737,6 @@ function CreateContactDialog({ open, onOpenChange, onCreate }) {
               placeholder="e.g. Jordan Lee"
             />
           </Field>
-
           <div className="grid grid-cols-2 gap-4">
             <Field label="Email">
               <Input
@@ -795,6 +790,7 @@ function CreateContactDialog({ open, onOpenChange, onCreate }) {
 
         <DialogFooter>
           <Button
+            type="button"
             variant="outline"
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={() => onOpenChange(false)}
@@ -802,12 +798,13 @@ function CreateContactDialog({ open, onOpenChange, onCreate }) {
             Cancel
           </Button>
           <Button
+            type="submit"
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={submit}
           >
             Add contact
           </Button>
         </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
@@ -828,6 +825,11 @@ function BlockEmailDialog({ open, onOpenChange, onBlock }) {
     onOpenChange(false);
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submit();
+  };
+
   return (
     <Dialog
       open={open}
@@ -840,6 +842,7 @@ function BlockEmailDialog({ open, onOpenChange, onBlock }) {
       }}
     >
       <DialogContent className="max-w-md bg-background">
+        <form onSubmit={handleSubmit}>
         <DialogHeader>
           <DialogTitle>Block an email</DialogTitle>
           <DialogDescription>
@@ -867,6 +870,7 @@ function BlockEmailDialog({ open, onOpenChange, onBlock }) {
         </div>
         <DialogFooter>
           <Button
+            type="button"
             variant="outline"
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={() => onOpenChange(false)}
@@ -874,12 +878,13 @@ function BlockEmailDialog({ open, onOpenChange, onBlock }) {
             Cancel
           </Button>
           <Button
+            type="submit"
             className="bg-red-500/90 text-white hover:bg-red-500"
-            onClick={submit}
           >
             <ShieldBan className="h-4 w-4" /> Block
           </Button>
         </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

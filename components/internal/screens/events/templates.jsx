@@ -54,6 +54,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   EVENT_TEMPLATES,
   TEMPLATE_CATEGORY_MAP,
@@ -74,8 +75,6 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
 import { useDefaultOrganizer } from "@/lib/events/use-default-organizer";
 
-// Lucide name (stored as data on the template) → component. Falls back to a
-// neutral icon so an unknown name never crashes the card.
 const TEMPLATE_ICONS = {
   Users,
   Music,
@@ -108,7 +107,6 @@ const EMPTY_DRAFT = {
   visibility: "Public",
 };
 
-// Flatten a template view model into the dialog's flat draft shape.
 function templateToDraft(t) {
   return {
     name: t.name,
@@ -124,14 +122,12 @@ function templateToDraft(t) {
 function TemplateDialog({ open, onOpenChange, onSubmit, initial, mode }) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
 
-  // Re-seed the form whenever a different template is edited (or on create).
   const [seedKey, setSeedKey] = useState("");
   const key = `${mode}:${initial?.id || "new"}`;
   if (open && key !== seedKey) {
     setSeedKey(key);
     setDraft(initial ? templateToDraft(initial) : EMPTY_DRAFT);
   } else if (!open && seedKey !== "") {
-    // Reset on close so the next open always re-seeds (even create→create).
     setSeedKey("");
   }
 
@@ -284,8 +280,6 @@ function TemplateDialog({ open, onOpenChange, onSubmit, initial, mode }) {
 }
 
 export function TemplatesScreen() {
-  // Seed from bundled samples for an instant paint, then replace with the live
-  // table. `source` decides whether mutations persist.
   const [templates, setTemplates] = useState(EVENT_TEMPLATES);
   const [source, setSource] = useState("sample");
   const [loading, setLoading] = useState(true);
@@ -294,9 +288,9 @@ export function TemplatesScreen() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const { openEventInTab } = useWorkspaceUrl();
   const { projectId } = useProject();
-  // Who an event built from a template is credited to on its public page.
   const defaultOrganizer = useDefaultOrganizer();
 
   const usingDb = source === "db";
@@ -381,8 +375,6 @@ export function TemplatesScreen() {
     }
   };
 
-  // Use = spin up a fresh draft event seeded from the blueprint, persist it,
-  // then hand off to the event editor (in the All Events tab).
   const handleUse = (t) => {
     const bp = t.blueprint || {};
     const id = newId();
@@ -410,7 +402,6 @@ export function TemplatesScreen() {
       projectId,
     };
 
-    // Optimistically bump the use counter.
     setTemplates((prev) =>
       prev.map((x) => (x.id === t.id ? { ...x, uses: (x.uses || 0) + 1 } : x)),
     );
@@ -451,18 +442,12 @@ export function TemplatesScreen() {
       />
 
       <Toolbar>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="h-9 w-44 bg-surface-card">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TEMPLATE_CATEGORY_OPTIONS.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FilterDropdown
+          value={category}
+          onValueChange={setCategory}
+          options={TEMPLATE_CATEGORY_OPTIONS}
+          height="h-9"
+        />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -549,7 +534,7 @@ export function TemplatesScreen() {
                           <DropdownMenuItem
                             variant="destructive"
                             className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                            onClick={() => handleDelete(t)}
+                            onClick={() => setDeleteTarget(t)}
                           >
                             <Trash2 className="h-4 w-4" /> Delete
                           </DropdownMenuItem>
@@ -590,6 +575,38 @@ export function TemplatesScreen() {
         initial={editing}
         mode={editing ? "edit" : "create"}
       />
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete template</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name}
+              </span>
+              ? This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                handleDelete(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

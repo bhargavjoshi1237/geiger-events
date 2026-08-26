@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { getSessionMember, hashPassword, verifyPassword } from "@/lib/portal/session";
 
-// POST { currentPassword, newPassword } -> verifies the current password and sets
-// a new one (min 8). The current session stays valid.
 export async function POST(request) {
   const member = await getSessionMember();
   if (!member) {
@@ -25,8 +23,6 @@ export async function POST(request) {
     .eq("id", member.id)
     .maybeSingle();
 
-  // If a password is set, the current one must match. (A passwordless member who
-  // reached the portal shouldn't happen, but treat it as needing the setup link.)
   if (!row?.password_hash) {
     return NextResponse.json(
       { error: "Set a password from the sign-in screen first." },

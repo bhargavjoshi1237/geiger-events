@@ -6,6 +6,7 @@ import { ArrowLeft, Eye, ExternalLink } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
+  EditorSectionHeader,
   SearchInput,
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
@@ -22,22 +23,14 @@ import { NAV_GROUPS, SECTIONS } from "./event_sections";
 import { updateEventMeta } from "@/lib/supabase/events";
 
 export function EventDetailScreen({ event, onBack, onUpdate }) {
-  // The active editor section lives in the URL (?section=<key>) so a refresh
-  // keeps the user on the same tab inside the event.
   const { section: active, setSection: setActive } = useWorkspaceUrl();
-  // Project-wide feature switches, for sections gated on something outside the
-  // event record (Packages).
   const { isEnabled } = useAddons();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [screenQuery, setScreenQuery] = useState("");
   const [design, setDesign] = useState(
     () => event?.pageDesign || defaultPageDesign(),
   );
-  // Editable working copy of the event. Sections read from and patch this; the
-  // header and preview reflect edits live, and Save lifts it back to the list.
   const [form, setForm] = useState(event);
-  // Re-seed when a different event is opened (render-phase reset — React's
-  // recommended alternative to a setState-in-effect).
   const [seedId, setSeedId] = useState(event?.id);
   if (event && event.id !== seedId) {
     setSeedId(event.id);
@@ -45,8 +38,6 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
     setDesign(event?.pageDesign || defaultPageDesign());
   }
 
-  // The section nav is long enough to scroll; once it's been left alone for a
-  // while it glides the current section back to the middle of the column.
   const navRef = useIdleRecenter(active);
 
   const activeItem = useMemo(
@@ -60,8 +51,6 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
 
   const patch = (partial) => setForm((f) => ({ ...f, ...partial }));
 
-  // Commit = patch + persist immediately. Used by the Overview dashboard so its
-  // controls (status, visibility, publish) take effect without a separate Save.
   const commit = (partial) => {
     const next = { ...form, ...partial };
     setForm(next);
@@ -71,14 +60,10 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
   const save = () => {
     const next = { ...form, pageDesign: design };
     onUpdate?.(next);
-    // Page design lives in the metadata bag, not a column — persist it there.
     updateEventMeta(form.id, { pageDesign: design });
     toast.success("Changes saved.");
   };
 
-  // The page builder saves on its own rather than sending the author back here
-  // to find Save. Returns false only on a real write failure — a missing DB
-  // returns null, which still leaves the design in local state.
   const persistDesign = async (next) => {
     setDesign(next);
     onUpdate?.({ ...form, pageDesign: next });
@@ -98,13 +83,9 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
   const ActiveSection = SECTIONS[active] || SECTIONS.overview;
   const sectionCtx = { isEnabled };
 
-  // Right-hand section nav, filtered by the search box. Group names also count
-  // as matches (typing "Tickets" surfaces every ticket-related topic).
   const normalizedQuery = screenQuery.trim().toLowerCase().replace(/[-_]/g, " ");
   const navGroups = NAV_GROUPS.map((group) => ({
     ...group,
-    // `showIf` gets the event plus a context bag, so a section can be gated on
-    // something outside the event record — a project-wide feature switch.
     items: group.items.filter((i) => !i.showIf || i.showIf(form, sectionCtx)),
   }))
     .map((group) => ({
@@ -124,11 +105,8 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
 
   return (
     <MainScreenWrapper className="lg:flex lg:h-full lg:flex-col lg:gap-6 lg:space-y-0 lg:overflow-hidden lg:py-0">
-      {/* Editor header */}
       <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between lg:shrink-0">
         <div className="min-w-0">
-          {/* Breadcrumb back — reads as part of the page rather than a stray
-              icon button, matching the suite's text-link navigation. */}
           <button
             type="button"
             onClick={onBack}
@@ -154,8 +132,10 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
             variant="outline"
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={viewLive}
+            title="View live page"
+            aria-label="View live page"
           >
-            <ExternalLink className="h-4 w-4" /> 
+            <ExternalLink className="h-4 w-4" />
           </Button>
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -166,35 +146,26 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
         </div>
       </div>
 
-      {/* Content (left) + section nav (right). On lg the grid fills the
-          remaining editor height (one 1fr row) so each column scrolls inside
-          its own area rather than growing the page. */}
       <div className="grid grid-cols-1 gap-8 lg:min-h-0 lg:flex-1 lg:grid-rows-1 lg:grid-cols-[1fr_260px]">
         <div className="scrollbar-subtle order-2 min-w-0 lg:order-1 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
-          {/* Sections flagged `ownHeader` render their own title row (e.g. so
-              summary stats can sit beside it); everything else gets the
-              standard label + description block. */}
           {activeItem.ownHeader ? null : (
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold capitalize text-white">
-                  {activeItem.label}
-                </h2>
-                <p className="mt-0.5 text-sm text-text-secondary">
-                  {activeItem.desc}
-                </p>
-              </div>
-              {active === "design" ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                  onClick={() => setPreviewOpen(true)}
-                >
-                  <Eye className="h-4 w-4" /> Preview
-                </Button>
-              ) : null}
-            </div>
+            <EditorSectionHeader
+              title={activeItem.label}
+              description={activeItem.desc}
+              action={
+                active === "design" ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    onClick={() => setPreviewOpen(true)}
+                  >
+                    <Eye className="h-4 w-4" /> Preview
+                  </Button>
+                ) : null
+              }
+              className="mb-5"
+            />
           )}
           {active === "design" ? (
             <PageDesignSection
@@ -223,21 +194,16 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
             <SearchInput
               value={screenQuery}
               onChange={setScreenQuery}
-              placeholder="Search screens..."
+              placeholder="Search screens…"
               aria-label="Search screens"
-
             />
           </div>
-          {/* Fills the editor column and scrolls inside its own area rather than
-              the whole page. The thin scrollbar is hidden to match the suite's
-              chrome-free scroll surfaces. */}
           <nav
             ref={navRef}
             className="space-y-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {navGroups.map((group, gi) => {
-              // Feature-gated items (Ticket Rules tabs) only show once their rule
-              // is on; a group whose items all filter out is hidden entirely.
+              
               return (
                 <div key={group.group || `g${gi}`}>
                   {group.group ? (

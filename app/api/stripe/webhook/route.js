@@ -25,7 +25,6 @@ export async function POST(request) {
 
   let event;
   try {
-    // Signature verification requires the exact, unparsed UTF-8 request body.
     event = getStripe().webhooks.constructEvent(await request.text(), signature, secret);
   } catch (error) {
     console.error("[stripe.webhook] signature verification failed", error.message);
@@ -41,7 +40,6 @@ export async function POST(request) {
         defer: after,
       });
     } catch (error) {
-      // A non-2xx response tells Stripe to retry this delivery.
       console.error("[stripe.webhook] fulfillment failed", error);
       return NextResponse.json({ error: "Fulfillment failed." }, { status: 500 });
     }

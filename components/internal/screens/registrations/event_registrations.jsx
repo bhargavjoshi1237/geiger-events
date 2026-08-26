@@ -7,6 +7,7 @@ import {
   ArrowUp,
   Check,
   Download,
+  Loader2,
   MoreHorizontal,
   Trash2,
   UserPlus,
@@ -48,10 +49,6 @@ import {
 } from "./registration_drawer";
 import { downloadCsv } from "./csv";
 
-// The per-event registration roster — the heart of the redesign. One event's
-// people, with the lifecycle as tabs and context-aware bulk actions. State for
-// the rows lives on the hub; this owns only view state (tab, search, selection).
-// Cap painted rows so a single popular event (thousands confirmed) stays snappy.
 const PAGE_ROWS = 100;
 
 export function EventRegistrationsDetail({
@@ -71,6 +68,7 @@ export function EventRegistrationsDetail({
   const [openId, setOpenId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const counts = useMemo(() => countRegs(regs), [regs]);
 
@@ -94,7 +92,6 @@ export function EventRegistrationsDetail({
     });
   }, [regs, tab, search]);
 
-  // Reset selection when the tab or search changes the visible set.
   const visibleIds = useMemo(() => filtered.map((r) => r.id), [filtered]);
   const selectedVisible = useMemo(
     () => [...selected].filter((id) => visibleIds.includes(id)),
@@ -116,6 +113,15 @@ export function EventRegistrationsDetail({
   const runBulk = (status) => {
     onBulkStatus(selectedVisible, status);
     setSelected(new Set());
+  };
+
+  const handleBulk = async (status) => {
+    setBulkBusy(true);
+    try {
+      await Promise.resolve(runBulk(status));
+    } finally {
+      setBulkBusy(false);
+    }
   };
 
   const handleExport = () => {
@@ -254,7 +260,7 @@ export function EventRegistrationsDetail({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
+              className="w-44 border-border bg-surface-subtle"
             >
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
@@ -278,7 +284,7 @@ export function EventRegistrationsDetail({
                   <ArrowUp className="h-4 w-4 rotate-180" /> Move to waitlist
                 </DropdownMenuItem>
               ) : null}
-              <DropdownMenuSeparator className="bg-surface-strong" />
+              <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
                 onClick={() => setDeleteTarget(r)}
@@ -306,7 +312,6 @@ export function EventRegistrationsDetail({
         <ArrowLeft className="h-4 w-4" /> All Events
       </Button>
 
-      {/* Event header with the pipeline front and centre. */}
       <div className="space-y-4 border-b border-border pb-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 space-y-1">
@@ -352,7 +357,6 @@ export function EventRegistrationsDetail({
         </div>
       </div>
 
-      {/* Lifecycle tabs and search share one flex row. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex w-fit flex-wrap items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
         {tabs.map((t) => (
@@ -371,6 +375,14 @@ export function EventRegistrationsDetail({
             )}
           >
             {t.label}
+            <span
+              className={cn(
+                "text-xs tabular-nums",
+                tab === t.key ? "text-text-secondary" : "text-text-tertiary",
+              )}
+            >
+              {t.count}
+            </span>
           </button>
         ))}
         </div>
@@ -384,7 +396,46 @@ export function EventRegistrationsDetail({
         />
       </div>
 
-    
+      {selectedVisible.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface-subtle px-4 py-3">
+          <span className="text-sm font-medium text-foreground tabular-nums">
+            {selectedVisible.length} selected
+          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              disabled={bulkBusy}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => handleBulk("Confirmed")}
+            >
+              {bulkBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Confirm
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkBusy}
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={() => handleBulk("Waitlisted")}
+            >
+              <ArrowUp className="h-4 w-4 rotate-180" /> Waitlist
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={bulkBusy}
+              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={() => setSelected(new Set())}
+            >
+              <X className="h-4 w-4" /> Clear
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <DataTable
         columns={columns}

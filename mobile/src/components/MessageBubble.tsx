@@ -10,7 +10,6 @@ import { tapFeedback } from "@/lib/haptics";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { ChatMessage, PollData, ThreadMessage } from "@/types/portal";
 
-// Quick-react set; keys are stored verbatim on the message's reactions map.
 const REACTION_EMOJIS = ["👍", "❤️", "🎉", "👏", "😂"] as const;
 
 type MessageBubbleProps = {
@@ -42,7 +41,6 @@ function isSystem(m: ChatMessage | ThreadMessage): boolean {
   return isChatMessage(m) && m.senderKind === "system";
 }
 
-// The metadata.poll payload arrives as a loose object; narrow it before render.
 function narrowPoll(poll: Record<string, unknown> | null): PollData | null {
   if (!poll || typeof poll !== "object") return null;
   const p = poll as Record<string, unknown>;
@@ -78,8 +76,6 @@ function pollVoterCount(poll: PollData): number {
   return set.size;
 }
 
-// One chat message. Long-press either opens the caller's reaction picker or, in
-// plain threads, copies the text.
 export function MessageBubble({
   message,
   isOwn,

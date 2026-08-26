@@ -1,6 +1,3 @@
-// Tracks the one live room a member has "left running" so a docked bar can
-// bring them back to it — RN gives us no real background video, so this is
-// a presence indicator + resume shortcut, not picture-in-picture.
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 export type LivePlayerState = {

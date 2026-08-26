@@ -90,12 +90,6 @@ import {
   qty,
 } from "./constants";
 
-// --- Allocate dialog ---------------------------------------------------------
-
-// The issuance mode decides which buyer link is shown: none for internal,
-// a ticket multi-select for ticket-based, a purchasable picker for add-ons.
-// `items` are the selectable leaves; `allItems` is the full catalog, so a
-// variant's thumbnail can fall back to its parent's photo.
 function AllocateDialog({
   open,
   onOpenChange,
@@ -124,8 +118,6 @@ function AllocateDialog({
   const purchasables = Array.isArray(event?.purchasables) ? event.purchasables : [];
   const buyerMode = BUYER_ISSUANCE_MODES.includes(issuance);
 
-  // Tags and segments can't be evaluated by the issuing RPCs (they live in the
-  // contacts/segments tables), so a spec using them would entitle nobody.
   const unsupportedAudience =
     issuance === "audience" &&
     audience?.mode === "filtered" &&
@@ -172,8 +164,6 @@ function AllocateDialog({
       sessionIds: issuance === "session" ? sessionIds : [],
       audience: issuance === "audience" ? audience : {},
       qtyPerAttendee: Number(qtyPerAttendee) || 1,
-      // A collection rule only means something when a buyer is on the other
-      // end; internal stock is issued walk-up.
       periodMode: buyerMode ? rule.periodMode : "none",
       periodConfig: buyerMode ? rule.periodConfig : {},
       status,
@@ -376,7 +366,11 @@ function AllocateDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-primary" onClick={submit} disabled={pending}>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={submit}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Allocate
           </Button>
@@ -386,7 +380,6 @@ function AllocateDialog({
   );
 }
 
-// Issue stock out to an event, or take unused stock back.
 function IssueDialog({
   open,
   onOpenChange,
@@ -460,7 +453,11 @@ function IssueDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-primary" onClick={submit} disabled={pending}>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={submit}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {mode === "issue" ? "Issue" : "Return"}
           </Button>
@@ -469,8 +466,6 @@ function IssueDialog({
     </Dialog>
   );
 }
-
-// --- Screen ------------------------------------------------------------------
 
 export function EventAllocationsScreen() {
   const { projectId } = useProject();
@@ -485,10 +480,11 @@ export function EventAllocationsScreen() {
   const [issuanceFilter, setIssuanceFilter] = useState("all");
   const [creating, setCreating] = useState(false);
   const [pending, setPending] = useState(false);
-  const [issueTarget, setIssueTarget] = useState(null); // { allocation, mode }
+  const [issueTarget, setIssueTarget] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [redemptions, setRedemptions] = useState([]);
   const [sellTarget, setSellTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -533,9 +529,6 @@ export function EventAllocationsScreen() {
     [redemptions],
   );
 
-  // Decorate each allocation with its projected demand, what has actually been
-  // collected, and the shortfall. `reserved` is demand not yet collected — the
-  // units already spoken for, which is what reduces available-to-promise.
   const decorated = useMemo(
     () =>
       allocations.map((a) => {
@@ -576,7 +569,6 @@ export function EventAllocationsScreen() {
         }
         return true;
       })
-      // Cluster by event so one event's commitments read together.
       .sort((a, b) => a.eventName.localeCompare(b.eventName));
   }, [decorated, search, eventFilter, statusFilter, issuanceFilter]);
 
@@ -644,6 +636,7 @@ export function EventAllocationsScreen() {
   };
 
   const handleDelete = async (allocation) => {
+    setDeleteTarget(null);
     setAllocations((prev) => prev.filter((a) => a.id !== allocation.id));
     toast.success("Allocation removed.");
     const ok = await softDeleteAllocation(allocation.id);
@@ -653,8 +646,6 @@ export function EventAllocationsScreen() {
     }
   };
 
-  // Issue/return go through the data layer so the movement and the allocation
-  // stay in step; the item's on-hand is patched locally to match the ledger.
   const handleIssueOrReturn = async (amount) => {
     const { allocation, mode } = issueTarget;
     setPending(true);
@@ -685,10 +676,6 @@ export function EventAllocationsScreen() {
     toast.success(mode === "issue" ? "Stock issued." : "Stock returned.");
   };
 
-  // --- Selling an item as a checkout add-on ---------------------------------
-  //
-  // Writes the purchasable into the event's metadata and points the allocation
-  // at it, so a purchase entitles the buyer and the desk hands the item over.
   const handlePublish = async (draft) => {
     const allocation = sellTarget;
     const event = eventsById.get(allocation.eventId);
@@ -764,7 +751,6 @@ export function EventAllocationsScreen() {
     {
       key: "item",
       header: "Item",
-      // Takes the table's spare width so the rest hug their values.
       className: "w-full",
       headClassName: "w-full",
       render: (a) => (
@@ -907,7 +893,7 @@ export function EventAllocationsScreen() {
               <DropdownMenuSeparator className="bg-surface-strong" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => handleDelete(a)}
+                onClick={() => setDeleteTarget(a)}
               >
                 <Trash2 className="h-4 w-4 text-red-300" /> Remove
               </DropdownMenuItem>
@@ -925,7 +911,7 @@ export function EventAllocationsScreen() {
         description="Commit stock to events and see whether it covers demand. Ticket-based and add-on allocations project demand from live sales."
         actions={
           <Button
-            className="bg-primary gap-2"
+            className="bg-primary gap-2 text-primary-foreground hover:bg-primary/90"
             onClick={() => setCreating(true)}
             disabled={!stocked.length || !events.length}
           >
@@ -1050,6 +1036,36 @@ export function EventAllocationsScreen() {
         pending={pending}
         onConfirm={handleIssueOrReturn}
       />
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove allocation</DialogTitle>
+            <DialogDescription>
+              Remove{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.item ? itemLabel(deleteTarget.item) : "Deleted item"}
+              </span>{" "}
+              from{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.eventName || "Untitled event"}
+              </span>
+              ? Issued stock stays on the ledger. This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => handleDelete(deleteTarget)}
+            >
+              <Trash2 className="h-4 w-4" /> Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainScreenWrapper>
   );
 }

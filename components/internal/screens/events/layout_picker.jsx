@@ -6,8 +6,6 @@ import { Check } from "lucide-react";
 import { PAGE_LAYOUTS, PAGE_LAYOUT_CATEGORIES } from "@/lib/events/theme";
 import { cn } from "@/lib/utils";
 
-// Wireframe primitives. Everything is drawn from the current text colour so a
-// thumbnail reads correctly in either viewer theme without its own palette.
 const Fill = ({ className }) => (
   <div className={cn("rounded-[2px] bg-foreground/15", className)} />
 );
@@ -25,8 +23,6 @@ const Lines = ({ n = 3, className }) => (
   </div>
 );
 
-// One wireframe per PAGE_LAYOUTS key. They exist to make the difference between
-// eighteen arrangements legible at a glance — they are not previews of content.
 const THUMBS = {
   classic: () => (
     <div className="flex h-full gap-1.5">
@@ -276,7 +272,7 @@ function LayoutCard({ layout, active, onChange }) {
       className={cn(
         "flex flex-col gap-3 rounded-xl border p-3 text-left transition-colors",
         active
-          ? "border-primary bg-surface-active"
+          ? "border-primary bg-primary/10"
           : "border-border bg-surface-subtle hover:bg-surface-active",
       )}
     >
@@ -298,8 +294,6 @@ function LayoutCard({ layout, active, onChange }) {
 
 export function LayoutPicker({ value, onChange }) {
   const current = value || "classic";
-  // "All" groups by category so the whole set can be read top to bottom; a
-  // single category narrows it once the organizer knows what they're after.
   const [filter, setFilter] = useState("all");
   const shown = PAGE_LAYOUT_CATEGORIES.filter(
     (c) => filter === "all" || c.key === filter,

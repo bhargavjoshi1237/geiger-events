@@ -67,11 +67,6 @@ import {
 } from "@/lib/supabase/checkin";
 import { itemLabel } from "./constants";
 
-// Issuing roles + their access codes. An 'issue' code is its own space: it
-// opens /issue only, and a scanning or kiosk code can never open it.
-// Deliberately reuses the checkin_staff_roles table (and its CRUD) rather than
-// duplicating the plumbing — the `type` column keeps the spaces apart.
-
 const genCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const defaultPermissions = () => ({
@@ -94,8 +89,6 @@ function permSummary(p) {
   ].join(" · ");
 }
 
-// The shareable staff link. Built from the browser origin so it works on
-// preview deployments as well as production.
 function issueLink(eventId, code) {
   if (!eventId) return "";
   const origin = typeof window === "undefined" ? "" : window.location.origin;
@@ -119,7 +112,6 @@ function RoleEditPage({ role, events, allocations, onBack, onSave }) {
         : [...(p.allocationIds || []), id],
     }));
 
-  // Scope chips are grouped by event so a long list stays readable.
   const grouped = useMemo(() => {
     const byEvent = new Map();
     for (const a of allocations) {
@@ -350,7 +342,6 @@ export function IssuingStaffScreen() {
     };
   }, [projectId]);
 
-  // Allocations for the scope picker, labelled with their item's name.
   useEffect(() => {
     let alive = true;
     Promise.all([listAllocations(projectId), listItems(projectId)]).then(
@@ -452,7 +443,6 @@ export function IssuingStaffScreen() {
       />
 
       <Toolbar>
-        <span />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -492,7 +482,11 @@ export function IssuingStaffScreen() {
               role="button"
               tabIndex={0}
               onClick={() => setOpenId(role.id)}
-              onKeyDown={(e) => e.key === "Enter" && setOpenId(role.id)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                setOpenId(role.id);
+              }}
               className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">

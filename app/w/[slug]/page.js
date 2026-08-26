@@ -1,14 +1,6 @@
 import WallClient from "./wall_client";
 
-// Standalone published Event Wall, reachable at /w/<slug> — the public hub
-// listing every event an organizer has marked listable. This server wrapper
-// resolves SEO/OG metadata for the shared link; the interactive listing renders
-// in the client child (WallClient), mirroring app/e/[id].
 
-// Minimal server-side read of the wall's public branding for <head> tags. Uses a
-// plain PostgREST GET with the anon key (RLS allows public read of the wall) —
-// no browser client, so it's safe on the server. Degrades to null on any
-// failure or when Supabase isn't configured; the page still renders.
 async function fetchWallMeta(slug) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -20,11 +12,8 @@ async function fetchWallMeta(slug) {
         headers: {
           apikey: key,
           Authorization: `Bearer ${key}`,
-          // The wall lives in the `events` schema, not `public`.
           "Accept-Profile": "events",
         },
-        // Public branding changes rarely; a short revalidate keeps OG fresh
-        // without hitting the DB on every crawl.
         next: { revalidate: 300 },
       },
     );

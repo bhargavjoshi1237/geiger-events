@@ -3,18 +3,9 @@ import { NextResponse } from "next/server";
 import { extractBrand } from "@/lib/brand/extract";
 import { classifyPalette } from "@/lib/brand/to-theme";
 
-// Node runtime: extraction base64-encodes fetched images with Buffer.
 export const runtime = "nodejs";
-// Extraction fetches the page, its stylesheets, then its logos — comfortably
-// past a serverless function's default budget, which is why this worked locally
-// and 504'd in production.
 export const maxDuration = 60;
 
-// GET /api/brand/extract?url=acme.com
-// Reads a public website and returns its brand signals — logo candidates (as data
-// URLs), a ranked palette with roles pre-assigned, fonts, radius, and button
-// style. Extraction failures come back as a typed `error`, never a throw, so the
-// import dialog can show the right message and keep the URL for a retry.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const target = searchParams.get("url");
@@ -25,8 +16,6 @@ export async function GET(request) {
     return NextResponse.json({ error: result.error }, { status });
   }
 
-  // A site we could read but got nothing usable from — say so rather than
-  // handing back a blank theme the user would have to undo.
   const hasColors = result.palette.length > 0 || !!result.themeColor;
   const hasFonts = !!(result.fonts.heading || result.fonts.body);
   if (!result.logos.length && !hasColors && !hasFonts) {
@@ -42,7 +31,6 @@ export async function GET(request) {
     );
   }
 
-  // Pre-assign roles server-side so the dialog can render swatches immediately.
   const colors = hasColors ? classifyPalette(result) : null;
 
   return NextResponse.json({

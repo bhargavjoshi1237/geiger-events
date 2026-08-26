@@ -13,18 +13,10 @@ import { Input } from "@/components/ui/input";
 import { ticketAvailable } from "@/lib/events/reserved";
 import { useEventConfig } from "@/lib/events/use-event-config";
 
-// Reserved (held-back) ticket allocation editor. Holds a block of a ticket's
-// inventory out of public sale so the organiser hands it out or sells it offline.
-// Config lives in the event metadata bag (metadata.reserved), an object keyed by
-// the event's ticket id: { [ticketId]: { qty, note } }. Availability everywhere
-// becomes `capacity − sold − reserved`. See lib/events/reserved.js for helpers.
-
 function fmtCount(n) {
   return n === Infinity ? "Unlimited" : String(n);
 }
 
-// One held-quantity row per ticket tier. Note is buffered locally and persisted
-// on blur; the reserved qty persists immediately and clamps to the tier qty.
 function ReservedRow({ event, ticket, entry, ticketSold, onSave }) {
   const [note, setNote] = useState(entry.note || "");
 
@@ -44,7 +36,7 @@ function ReservedRow({ event, ticket, entry, ticketSold, onSave }) {
 
   const onQty = (value) => {
     let next = Math.max(0, Number(value) || 0);
-    if (qty > 0) next = Math.min(next, qty); // never hold back more than the tier has
+    if (qty > 0) next = Math.min(next, qty);
     persist(next, note);
   };
 

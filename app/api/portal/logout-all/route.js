@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { getSessionMember, SESSION_COOKIE } from "@/lib/portal/session";
 
-// POST -> revokes every session for the signed-in member (all devices) and clears
-// this device's cookie.
 export async function POST() {
   const member = await getSessionMember();
   if (!member) {

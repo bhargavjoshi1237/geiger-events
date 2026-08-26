@@ -73,7 +73,6 @@ export function PortalDataProvider({ children }: { children: React.ReactNode }) 
     notifications: false,
   });
 
-  // Keyed by member id so a changed member (re-auth) reloads everything.
   const memberId = member?.id;
   const memberIdRef = useRef(memberId);
 
@@ -126,7 +125,6 @@ export function PortalDataProvider({ children }: { children: React.ReactNode }) 
     setRefreshing(false);
   }, [token, loadData, loadPlans, loadWatch, loadThreads, loadNotifications]);
 
-  // Load once authed, and again when the member id changes.
   useEffect(() => {
     if (status !== "authed" || !token) return;
     if (memberIdRef.current === memberId && memberIdRef.current !== undefined) return;
@@ -134,7 +132,6 @@ export function PortalDataProvider({ children }: { children: React.ReactNode }) 
     void refreshAll();
   }, [status, token, memberId, refreshAll]);
 
-  // Clear everything back to null on sign-out.
   /* eslint-disable react-hooks/set-state-in-effect -- resetting on auth change */
   useEffect(() => {
     if (status !== "guest") return;
@@ -148,7 +145,6 @@ export function PortalDataProvider({ children }: { children: React.ReactNode }) 
 
   const markNotificationsRead = useCallback(async () => {
     if (!token) return;
-    // Optimistic: zero the badge and flip items before the POST settles.
     void api("/api/portal/notifications", { method: "POST", token });
     setNotifications((n) => ({
       unread: 0,

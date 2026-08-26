@@ -115,7 +115,6 @@ export function VenueDetailsDialog({ open, onClose, venueId, fallback, accent })
             <>
               {v?.coverUrl ? (
                 <div className="overflow-hidden rounded-xl border border-border">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={v.coverUrl}
                     alt={`${v.name} cover`}

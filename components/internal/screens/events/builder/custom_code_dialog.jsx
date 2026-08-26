@@ -1,13 +1,5 @@
 "use client";
 
-// Page-level custom CSS, JS and external resources.
-//
-// This ships verbatim to the published page — no sanitising, because stripping
-// scripts is exactly what would break the pasted widgets and author-defined
-// functions it exists for. The gate is consent, not filtering: the organizer
-// acknowledges once that this runs on their public page, and the whole surface
-// is behind the events.page.customcode permission.
-
 import { useState } from "react";
 import { AlertTriangle, Plus, Trash2, ShieldCheck } from "lucide-react";
 

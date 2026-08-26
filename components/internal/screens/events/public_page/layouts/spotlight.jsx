@@ -15,9 +15,6 @@ import {
   priceLabel,
 } from "./shared";
 
-// Spotlight — a full-height cover with the title set over it, the way a venue,
-// festival or film-premiere page opens. Everything else stacks in one centred
-// column under it, and buying moves to a pinned bar so the hero stays clean.
 export function SpotlightLayout({ ctx }) {
   const {
     event,
@@ -118,9 +115,6 @@ export function SpotlightLayout({ ctx }) {
           {parts.hostsBlock}
           {parts.gallery}
           {blocks.map((b) => b.node)}
-          {/* The ticket panel keeps a rail's width and the remaining cards
-              stack beside it — side by side they'd stretch to the height of
-              the longest one, and guidelines run long. */}
           <div className="grid items-start gap-6 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-10">
             <div>{register}</div>
             <div className="space-y-4">{sidebarRest.map((b) => b.node)}</div>

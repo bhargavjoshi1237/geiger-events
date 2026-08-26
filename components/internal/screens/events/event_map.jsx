@@ -33,8 +33,6 @@ import {
 import { cn } from "@/lib/utils";
 import { fetchWeather } from "@/lib/map/geo";
 
-// Our own zoom control (Leaflet's default is hard to theme reliably). Pure UI —
-// the map wires the callbacks to map.zoomIn()/zoomOut(). Shared by every map.
 export function MapZoomControls({ onZoomIn, onZoomOut, className }) {
   return (
     <div
@@ -64,24 +62,13 @@ export function MapZoomControls({ onZoomIn, onZoomOut, className }) {
   );
 }
 
-// Neutral world view used when we have neither a pinned venue nor a geocoded
-// address yet — so the panel always shows a real map rather than a blank.
 const DEFAULT_CENTER = { lat: 25, lng: 5 };
 
-// CARTO's keyless, OSM-attributed basemaps, one per scheme. Which one loads is
-// decided by the surface the map is sitting on, not by a prop — see detectScheme.
 const TILES = {
   dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
   light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
 };
 
-// Perceived brightness of a CSS color, 0-255, or null if it isn't one.
-//
-// A computed color comes back in whatever space it was authored, and this has to
-// read all of them: `rgb()` for a plain declaration, `color(srgb r g b)` — 0-1
-// channels — for anything the browser resolved from a color-mix(), and
-// `oklch()/lab()` for the app's own tokens. Reading only rgb() is what made a
-// light brand still report as dark.
 function brightnessOf(color) {
   let raw = String(color || "").trim();
   if (!raw) return null;
@@ -94,8 +81,6 @@ function brightnessOf(color) {
     return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
   }
 
-  // The color-space keyword can itself contain a digit ("display-p3"), so drop
-  // it before harvesting the channel numbers.
   raw = raw.replace(/^color\(\s*[\w-]+/i, "color(");
   const nums = (raw.match(/-?\d*\.?\d+/g) || []).map(Number);
   if (nums.length < 3) return null;
@@ -106,25 +91,11 @@ function brightnessOf(color) {
   if (/^color\(/i.test(raw)) {
     return 255 * (0.299 * nums[0] + 0.587 * nums[1] + 0.114 * nums[2]);
   }
-  // Perceptual lightness is the first component — 0-1 for ok*, 0-100 for lab/lch.
   if (/^okl(ch|ab)\(/i.test(raw)) return 255 * nums[0];
   if (/^l(ch|ab)\(/i.test(raw)) return 255 * (nums[0] / 100);
   return null;
 }
 
-// "light" | "dark" for the surface the map is drawn on, or null if it can't be
-// read yet.
-//
-// A dark basemap under an imported light brand is the single loudest seam on a
-// themed event page. Rather than threading the theme through every caller, the
-// map reads the tokens it has already inherited: the themed page wrapper
-// overrides --background for its whole subtree, so the page color the map sees
-// *is* the brand's. Dashboard maps resolve to the app's dark tokens and are
-// unaffected.
-//
-// --background is preferred over the container's own computed background because
-// we author it as a plain hex, where --surface-card is a color-mix() the browser
-// re-serialises into another space.
 function detectScheme(el) {
   if (!el) return null;
   const cs = getComputedStyle(el);
@@ -135,7 +106,6 @@ function detectScheme(el) {
   return y > 140 ? "light" : "dark";
 }
 
-// Escape user-supplied strings before they go into popup innerHTML.
 function escapeHtml(str) {
   return String(str ?? "").replace(
     /[&<>"']/g,
@@ -150,18 +120,6 @@ function escapeHtml(str) {
   );
 }
 
-// Key-less map built on Leaflet + CARTO raster tiles (free, OSM-attributed).
-// Vanilla Leaflet is loaded dynamically inside the effect so it never touches
-// `window` during SSR. Markers use divIcon/circleMarker to avoid Leaflet's
-// bundler-unfriendly default marker images.
-//
-// Every colour it draws — basemap, pin, popup link — comes from the CSS tokens
-// of whatever surface it lands on, so an imported brand re-skins the map along
-// with the rest of the page instead of leaving a dark hole in a light one.
-//
-// The map always renders. It centres on `coords` (with a venue pin + nearby
-// markers) when pinned; otherwise on `fallbackCenter` (a lightly geocoded
-// address) so attendees still see the right area before auto-detect runs.
 export function EventMap({
   coords,
   places = [],
@@ -177,13 +135,10 @@ export function EventMap({
   const markersRef = useRef(null);
   const LRef = useRef(null);
   const [ready, setReady] = useState(false);
-  // First paint is instant; a later pin move animates (Google-style fly-to).
   const initedRef = useRef(false);
   const lastCoordRef = useRef(null);
   const sigRef = useRef(null);
 
-  // Build the map a single time — markers and camera are updated imperatively
-  // below so a location change flies to the new spot instead of rebuilding.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -195,8 +150,6 @@ export function EventMap({
         scrollWheelZoom: false,
         attributionControl: false,
       }).setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 2);
-      // Pick the basemap up front — requesting the wrong set of tiles and
-      // swapping them a moment later is a visible flash.
       const initial = detectScheme(containerRef.current) || "dark";
       tileRef.current = L.tileLayer(TILES[initial] || TILES.dark, {
         subdomains: "abcd",
@@ -221,10 +174,6 @@ export function EventMap({
     };
   }, []);
 
-  // Follow the surface after every commit, so a brand import can flip the page
-  // from dark to light with the map already on screen. Kept imperative on
-  // purpose: this measures the DOM, and routing it through state would cost a
-  // render pass and paint one frame of the wrong basemap first.
   useEffect(() => {
     const el = containerRef.current;
     const next = detectScheme(el);
@@ -234,7 +183,6 @@ export function EventMap({
     tileRef.current?.setUrl(TILES[next]);
   });
 
-  // Redraw markers and move the camera when the pin or nearby places change.
   useEffect(() => {
     const L = LRef.current;
     const map = mapInstanceRef.current;
@@ -247,8 +195,6 @@ export function EventMap({
       (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng),
     );
 
-    // Skip unrelated re-renders so a manual zoom/pan isn't reset — only redraw
-    // when the pin, its label, or the nearby places actually change.
     const coordKey = coords ? `${coords.lat},${coords.lng}` : "none";
     const sig = `${coordKey}|${zoom}|${label}|${address}|${valid
       .map((p) => `${p.lat},${p.lng}`)
@@ -261,8 +207,6 @@ export function EventMap({
     if (coords) {
       const pin = L.divIcon({
         className: "",
-        // Brand fill, ringed in the page colour — the same shape as before on
-        // the dark app tokens, and legible on any imported palette.
         html: `<span style="display:flex;height:18px;width:18px;border-radius:9999px;background:var(--primary);border:3px solid var(--background);box-shadow:0 0 0 2px var(--primary)"></span>`,
         iconSize: [18, 18],
         iconAnchor: [9, 9],
@@ -272,7 +216,6 @@ export function EventMap({
         .bindPopup(
           venuePopupHtml({ label, address, lat: coords.lat, lng: coords.lng }),
         );
-      // Nearby places — one Lucide-icon marker per place, tinted by category.
       valid.forEach((p) => {
         L.marker([p.lat, p.lng], { icon: placeMarkerIcon(L, p) })
           .addTo(layer)
@@ -280,8 +223,6 @@ export function EventMap({
       });
     }
 
-    // Animate only when the location itself moved — first paint and nearby
-    // places loading in settle instantly, a pin change flies.
     const moved = lastCoordRef.current !== null && lastCoordRef.current !== coordKey;
     const animate = initedRef.current && moved;
     lastCoordRef.current = coordKey;
@@ -310,13 +251,6 @@ export function EventMap({
     <div
       ref={containerRef}
       className={cn(
-        // ev-map-light / ev-map-dark are stamped on by the effect above; the
-        // tile-pane treatment differs per basemap (globals.css).
-        //
-        // `isolate` is load-bearing: Leaflet's panes and controls run z-index
-        // 200-1000, and `relative` alone doesn't open a stacking context — so
-        // without it those layers compete at the document root and paint over a
-        // z-50 dialog. Isolating scopes them to this box.
         "relative isolate overflow-hidden rounded-xl border border-border bg-surface-card",
         className,
       )}
@@ -363,8 +297,6 @@ const KIND_ICON = {
   Pub: Beer,
 };
 
-// A `lat, lng` chip + an "open in Google Maps" link, shared by every popup so
-// the layout stays consistent. Returns the inner HTML for the popup footer.
 function popupFooterHtml(lat, lng, linkLabel) {
   const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
   const linkIcon = renderToStaticMarkup(
@@ -383,7 +315,6 @@ function popupFooterHtml(lat, lng, linkLabel) {
   return `<div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:8px">${coordsHtml}${linkHtml}</div>`;
 }
 
-// Popup for the venue pin — title, address, coords, and a Maps link.
 function venuePopupHtml({ label, address, lat, lng }) {
   return `
     <div style="min-width:190px">
@@ -401,7 +332,6 @@ function venuePopupHtml({ label, address, lat, lng }) {
     </div>`;
 }
 
-// Popup for a nearby place — name, detail + walk time, coords, and a Maps link.
 function placePopupHtml(p) {
   const meta = [
     p.detail || p.kind,
@@ -425,8 +355,6 @@ function placePopupHtml(p) {
     </div>`;
 }
 
-// A round divIcon carrying the place's Lucide icon, tinted by its category
-// accent (currentColor drives both the ring and the icon stroke).
 function placeMarkerIcon(L, place) {
   const Icon = KIND_ICON[place.kind] || MapPin;
   const svg = renderToStaticMarkup(
@@ -441,7 +369,6 @@ function placeMarkerIcon(L, place) {
   });
 }
 
-// A compact list row for one nearby place.
 function NearbyRow({ item, accentClass }) {
   const Icon = KIND_ICON[item.kind] || MapPin;
   return (
@@ -470,8 +397,6 @@ function NearbyRow({ item, accentClass }) {
   );
 }
 
-// Group metadata — maps each saved map-config key to a label + accent colour.
-// `EventMap` and the public page share these so the columns stay consistent.
 export const GETTING_THERE_GROUPS = [
   { key: "nearbyTransit", label: "Public transport", accentClass: "text-sky-400" },
   { key: "nearbyParking", label: "Parking", accentClass: "text-amber-400" },
@@ -486,9 +411,6 @@ export const AROUND_VENUE_GROUPS = [
 
 const ALL_NEARBY_GROUPS = [...GETTING_THERE_GROUPS, ...AROUND_VENUE_GROUPS];
 
-// Flatten a saved `map` config into the point list `EventMap` plots — every
-// nearby place across all categories, each tagged with its category accent so
-// the marker can be tinted to match its group in the lists below.
 export function flattenPlaces(mapConfig) {
   if (!mapConfig) return [];
   return ALL_NEARBY_GROUPS.flatMap((g) =>
@@ -499,7 +421,6 @@ export function flattenPlaces(mapConfig) {
   );
 }
 
-// Build the `groups` array NearbyList expects from a saved `map` config.
 export function nearbyGroups(map, meta) {
   return meta.map((m) => ({
     label: m.label,
@@ -508,18 +429,14 @@ export function nearbyGroups(map, meta) {
   }));
 }
 
-// Any non-empty group across the given metadata sets?
 export function hasNearby(map, ...metas) {
   return metas.some((meta) =>
     meta.some((m) => (map?.[m.key] || []).length > 0),
   );
 }
 
-// Number of rows shown before a group collapses (when `collapse` is on).
 const COLLAPSE_LIMIT = 3;
 
-// One group column. With `collapse`, only the first `limit` rows show; the rest
-// sit behind a faded "Show all" toggle that reveals them on click.
 function NearbyGroup({ group, collapse, limit = COLLAPSE_LIMIT }) {
   const [expanded, setExpanded] = useState(false);
   const items = group.items;
@@ -561,9 +478,6 @@ function NearbyGroup({ group, collapse, limit = COLLAPSE_LIMIT }) {
   );
 }
 
-// Given a set of groups headed for a 2-col grid, sink any short (< limit)
-// group to the end and trim the final row to its shorter mate's height, so a
-// short group in the bottom row never leaves a hole beside its partner.
 function packForGrid(groups, limit) {
   const ordered = [...groups].sort(
     (a, b) => Number(a.items.length < limit) - Number(b.items.length < limit),
@@ -647,16 +561,11 @@ const WEATHER_ICON = {
   thunder: CloudLightning,
 };
 
-// Compact, keyless weather forecast for the event date (Open-Meteo). Forecasts
-// are live (never persisted) and only render when the date is within range —
-// renders nothing otherwise, so it's safe to drop in unconditionally.
 export function WeatherCard({ coords, date, className }) {
   const [wx, setWx] = useState(null);
   const lat = coords?.lat;
   const lng = coords?.lng;
   useEffect(() => {
-    // fetchWeather guards invalid coords/date (returns null), so the only
-    // setState here is async — no synchronous cascade.
     let alive = true;
     fetchWeather(lat, lng, date).then((w) => alive && setWx(w));
     return () => {

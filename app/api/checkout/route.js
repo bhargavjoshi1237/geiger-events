@@ -11,11 +11,6 @@ import {
 import { earlybirdReduction } from "@/lib/events/earlybird";
 import { groupDiscountAmount } from "@/lib/events/group";
 
-// Creates a Stripe Checkout Session for a priced ticket. Free ($0) tickets
-// never call this — the public page finalizes those directly through the
-// existing buy_ticket RPC. `returnUrl` is the buyer's current event page URL
-// (the client already knows its own origin/basePath); Stripe redirects back to
-// it with `?session_id=` on success or `?canceled=1` on cancel.
 export async function POST(request) {
   if (!isStripeConfigured()) {
     return NextResponse.json(
@@ -52,12 +47,7 @@ export async function POST(request) {
     answers = null,
     formId = null,
     clientRef = null,
-    // Assigned seating: the buyer's hold token. Only the token travels — the
-    // seat ids live in events.seat_holds and buy_seats resolves them on return,
-    // which also keeps a large block inside Stripe's 500-char metadata cap.
     seatToken = null,
-    // Exhibitor booths: the same arrangement as seats. Only the token travels;
-    // buy_booths resolves the held stalls from events.booth_holds on return.
     boothToken = null,
     skipRegistration = false,
     returnUrl,
@@ -91,10 +81,6 @@ export async function POST(request) {
 
   const currency = paymentsCfg.currency || "usd";
 
-  // Early-bird: reduce the ticket line by the in-window per-unit amount (skipped
-  // for bundles). The ORIGINAL price still travels in metadata — buy_ticket
-  // re-derives the same reduction from the server clock, so the two agree without
-  // double-reducing.
   const ebPerUnit = bundleId ? 0 : earlybirdReduction(event, price);
   const effUnit = Math.max(0, price - ebPerUnit);
 
@@ -129,18 +115,11 @@ export async function POST(request) {
     });
   }
 
-  // Stripe's statement_descriptor_suffix only allows letters/digits/spaces,
-  // max 22 chars — sanitize rather than pass through raw organizer input.
   const descriptor = (paymentsCfg.statementDescriptor || "")
     .replace(/[^a-zA-Z0-9 ]/g, "")
     .slice(0, 22)
     .trim();
 
-  // Offering selections + registration answers ride along in a single metadata
-  // value so the return trip can also file a registration record (parity with
-  // the free-ticket path). Stripe caps each metadata value at 500 chars, so we
-  // degrade gracefully — drop the bulkiest parts first — rather than fail the
-  // whole checkout over a large custom-question form.
   const extra = { selections, purchasables, slot, answers, formId };
   let extraJson = JSON.stringify(extra);
   if (extraJson.length > 480) {
@@ -155,16 +134,12 @@ export async function POST(request) {
     );
   }
 
-  // Discount code: re-validate server-side against the event's attached coupons
-  // and compute the exact amount off, so the Stripe charge matches what the order
-  // RPC will record (buy_ticket re-derives the same discount on return).
   let discountAmount = 0;
   let appliedCode = null;
   if (discountCode && !bundleId) {
     const dres = await validateEventDiscount(eventId, discountCode);
     if (dres.ok) {
       const appliesTo = event.discountSettings?.appliesTo || "order";
-      // Base off the post-early-bird unit so the coupon matches buy_ticket.
       discountAmount = discountAmountFor(
         dres,
         discountBase({ price: effUnit, qty, addonUnit: addons }, appliesTo),
@@ -173,15 +148,12 @@ export async function POST(request) {
     }
   }
 
-  // Group discount (when dispensing to attendees) rides in the same one-off
-  // coupon as the code discount so Stripe charges what buy_ticket will record.
   const groupAmount = attendeeList ? groupDiscountAmount(event, effUnit * qty) : 0;
   const totalOff = Math.round((discountAmount + groupAmount) * 100) / 100;
 
   try {
     const stripe = getStripe();
     const separator = returnUrl.includes("?") ? "&" : "?";
-    // A one-off coupon applies the exact amount off to this session only.
     let discounts;
     if (totalOff > 0) {
       const coupon = await stripe.coupons.create({
@@ -198,9 +170,6 @@ export async function POST(request) {
       });
       discounts = [{ coupon: coupon.id }];
     }
-    // Carry the event page's imported brand onto Stripe's own page, so the
-    // buyer doesn't leave the site they think they're on. Omitted entirely for
-    // standard pages, which keep the account's Dashboard branding.
     const branding = checkoutBranding(event.pageDesign);
     const params = {
       mode: "payment",
@@ -215,43 +184,26 @@ export async function POST(request) {
       metadata: {
         eventId,
         ticketName: ticketName || "General Admission",
-        // The chosen tier id (when a real tier) so the return trip can enforce
-        // that tier's inventory in buy_ticket. Empty string when untiered.
         ticketId: ticketId != null ? String(ticketId) : "",
-        // The booked slot id (when slot booking is on) so the return trip can
-        // enforce that slot's inventory in buy_ticket. Empty string when none.
         slotId: slotId != null ? String(slotId) : "",
-        // The applied discount code so the return trip re-derives the discount in
-        // buy_ticket (matching what Stripe charged). Empty when none applied.
         discountCode: appliedCode || "",
-        // Original (pre-early-bird) price — buy_ticket re-derives the reduction.
         price: String(price),
         quantity: String(qty),
         addons: String(addons),
-        // Donation (once), bundle id, and access code for the return-trip order.
         donation: String(donationAmount),
         bundleId: bundleId || "",
         accessCode: accessCode || "",
-        // Group attendees (one row per email in buy_ticket) in their own key so
-        // they don't compete with `extra` for the 500-char cap.
         attendees: attendeeList ? JSON.stringify(attendeeList).slice(0, 490) : "",
         name,
         email,
-        // "1" for approved guests already registered — verify skips re-filing.
         skipReg: skipRegistration ? "1" : "",
-        // Correlates the pre-payment ticket answers to the order on return.
         clientRef: clientRef || "",
-        // The seat hold token; empty for unseated events.
         seatToken: seatToken || "",
-        // The booth hold token; empty when no exhibitor space is being bought.
         boothToken: boothToken || "",
         extra: extraJson,
       },
     };
 
-    // Branding is cosmetic, so it must never be able to cost a sale: an image
-    // Stripe won't fetch or a colour it rejects fails the whole session, and the
-    // buyer would just see "Couldn't start checkout". Retry once unbranded.
     let session;
     try {
       session = await stripe.checkout.sessions.create(

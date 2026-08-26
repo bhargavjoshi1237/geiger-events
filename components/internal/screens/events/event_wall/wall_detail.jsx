@@ -13,11 +13,6 @@ import { useProject } from "@/context/project-context";
 import { getWall } from "@/lib/supabase/event_wall";
 import { NAV_GROUPS, SECTIONS } from "./wall_sections";
 
-// Top-level, self-contained screen (registered under "Event Wall" in
-// registry.jsx) — reached directly from the sidebar, not via a list row, so
-// unlike EventDetailScreen there's no back button or list to return to. The
-// section (?section=) shares the same URL param the event editor uses; since
-// they're never open at once that's harmless.
 export function EventWallScreen() {
   const { section: active, setSection: setActive } = useWorkspaceUrl();
   const { projectId } = useProject();
@@ -43,7 +38,6 @@ export function EventWallScreen() {
     [active],
   );
 
-  // The public path (basePath included) and, on the client, its absolute URL.
   const wallPath = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/w/${wall?.slug || "events"}`;
   const wallUrl =
     typeof window !== "undefined" ? `${window.location.origin}${wallPath}` : wallPath;
@@ -72,8 +66,6 @@ export function EventWallScreen() {
     );
   }
 
-  // No wall row (unconfigured DB, or no authenticated project session). Render a
-  // clear empty state instead of feeding a null wall into the editor sections.
   if (!wall) {
     return (
       <MainScreenWrapper>
@@ -100,7 +92,6 @@ export function EventWallScreen() {
           <p className="mt-1 text-sm font-medium text-muted-foreground">
             The public page listing every event you&apos;ve marked listable.
           </p>
-          {/* The live, shareable address — click to copy. */}
           <button
             type="button"
             onClick={copyLink}
@@ -137,9 +128,6 @@ export function EventWallScreen() {
             </h2>
             <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
           </div>
-          {/* Sections seed their own state from `wall`, so one that writes the
-              row's own columns lifts the result back here — otherwise the next
-              section to mount reads the values it replaced. */}
           <ActiveSection
             wall={wall}
             headerItem={activeItem}

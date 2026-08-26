@@ -21,7 +21,6 @@ import {
 import { CampaignSettingsScreen } from "./campaigns_kit";
 import { MERGE_TAGS, TONE_OPTIONS } from "./constants";
 
-// Copy a merge tag to the clipboard for pasting into campaign content.
 function copyTag(tag) {
   try {
     navigator.clipboard?.writeText(tag);
@@ -50,6 +49,7 @@ export function PersonalizationScreen() {
                   value={slice.greeting}
                   onChange={(e) => set({ greeting: e.target.value })}
                   placeholder="Hi {{first_name}},"
+                  className="bg-surface-card"
                 />
               </Field>
               <Field
@@ -60,11 +60,12 @@ export function PersonalizationScreen() {
                   value={slice.fallbackName}
                   onChange={(e) => set({ fallbackName: e.target.value })}
                   placeholder="there"
+                  className="bg-surface-card"
                 />
               </Field>
               <Field label="Tone">
                 <Select value={slice.tone} onValueChange={(v) => set({ tone: v })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-surface-card">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

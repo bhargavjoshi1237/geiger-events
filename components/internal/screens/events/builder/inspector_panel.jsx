@@ -1,14 +1,5 @@
 "use client";
 
-// The inspector: everything about the selected node.
-//
-// Four tabs — Content, Style, Layout, Advanced — driven by a declarative schema
-// per node kind, so a new control is a line of data rather than a new panel.
-//
-// Every control is breakpoint-aware. On desktop it writes the base value; on
-// tablet or mobile it writes into that node's sparse override bag and shows a
-// dot you can click to drop the override and inherit again.
-
 import React from "react";
 import { RotateCcw, MousePointerSquareDashed } from "lucide-react";
 
@@ -36,9 +27,6 @@ const TABS = [
   { key: "layout", label: "Layout" },
   { key: "advanced", label: "Advanced" },
 ];
-
-// --- Schemas -----------------------------------------------------------------
-// `group` is which bag on the node the value lives in; `key` is the property.
 
 const LAYOUT_SCHEMA = {
   section: [
@@ -125,13 +113,8 @@ const ADVANCED_SCHEMA = [
   },
 ];
 
-// Whether a kind supports a background editor at all.
 const HAS_BACKGROUND = { section: true, column: true };
 
-// --- Controls ----------------------------------------------------------------
-
-// The override dot. Present only away from desktop, and only clickable when
-// this breakpoint is actually holding a value of its own.
 function OverrideBadge({ active, onClear }) {
   if (!active) return null;
   return (
@@ -171,8 +154,6 @@ function SchemaControl({ field, node, bp, resolved, onSet, onClear }) {
   );
 }
 
-// Background is one nested object rather than four flat keys, so it writes as a
-// whole and the shape stays easy to read in saved JSON.
 function BackgroundEditor({ background, onChange }) {
   const bg = background || { type: "none" };
   const patch = (next) => onChange({ ...bg, ...next });
@@ -236,8 +217,6 @@ function BackgroundEditor({ background, onChange }) {
   );
 }
 
-// --- Panel -------------------------------------------------------------------
-
 function EmptyInspector() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
@@ -250,16 +229,6 @@ function EmptyInspector() {
   );
 }
 
-/**
- * @param node      selected node (null when nothing is selected)
- * @param kind      its kind
- * @param bp        active breakpoint
- * @param tab/onTab controlled tab state
- * @param onSet     (group, key, value) => void   — group null writes the node itself
- * @param onClear   (group, key) => void          — drop this breakpoint's override
- * @param onSetProp (key, value) => void          — component content
- * @param onRename  (name) => void                — sections only
- */
 export function InspectorPanel({
   node,
   kind,

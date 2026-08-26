@@ -1,9 +1,5 @@
 "use client";
 
-// "Insert dynamic value" — the dropdown that writes a binding token into a
-// field at the cursor. Authors never type `{{event.startsAt | date:long}}` by
-// hand; they pick "Start date" and the token appears.
-
 import React from "react";
 import { Braces } from "lucide-react";
 

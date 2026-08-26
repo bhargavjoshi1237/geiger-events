@@ -11,19 +11,11 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-// Small theme-editing primitives shared by the per-event Design section
-// (page_design.jsx) and the Event Wall's Design section — both compile edits
-// through lib/events/theme.js's theme model.
 
-// Above this many choices a segmented row wraps onto three lines and stops
-// being scannable, so it becomes a dropdown instead.
 const SEGMENTED_MAX = 4;
 
 const optionKey = (o) => o.key ?? o.value;
 
-// Compact dropdown over the same `{ key|value, label }` options a Segmented
-// takes. Keys are coerced to strings for the Select and mapped back on the way
-// out, so numeric option keys (column counts, sizes) survive the round trip.
 export function OptionSelect({ value, onChange, options, placeholder }) {
   const pick = (raw) => {
     const hit = options.find((o) => String(optionKey(o)) === raw);
@@ -45,10 +37,6 @@ export function OptionSelect({ value, onChange, options, placeholder }) {
   );
 }
 
-// Segmented control — even buttons over a row, one selected. `options` are
-// `{ key|value, label }`; the resolved key is passed to `onChange`. Long option
-// lists fall through to OptionSelect so a design panel stays compact; pass
-// `alwaysSegmented` when the row itself is the point (a 5-way alignment picker).
 export function Segmented({ value, onChange, options, alwaysSegmented = false }) {
   if (!alwaysSegmented && options.length > SEGMENTED_MAX) {
     return <OptionSelect value={value} onChange={onChange} options={options} />;
@@ -65,7 +53,7 @@ export function Segmented({ value, onChange, options, alwaysSegmented = false })
             className={cn(
               "min-w-[72px] flex-1 break-words rounded-lg border px-3 py-2 text-xs font-medium leading-tight transition-colors",
               value === key
-                ? "border-foreground bg-foreground text-background"
+                ? "border-primary bg-primary/10 text-foreground"
                 : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
             )}
           >
@@ -77,12 +65,11 @@ export function Segmented({ value, onChange, options, alwaysSegmented = false })
   );
 }
 
-// Color picker — a native swatch plus an editable hex field.
 export function ColorField({ label, value, onChange }) {
   return (
     <Field label={label}>
       <div className="flex items-center gap-2">
-        <span className="relative h-9 w-10 shrink-0 overflow-hidden rounded-md border border-border">
+        <span className="relative h-9 w-10 shrink-0 overflow-hidden rounded-lg border border-border">
           <span
             className="block h-full w-full"
             style={{ backgroundColor: value || "#000000" }}

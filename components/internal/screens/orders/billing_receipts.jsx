@@ -54,7 +54,6 @@ export function BillingReceiptsScreen() {
     };
   }, [projectId]);
 
-  // Each order is a billable document (receipt); invoices are generated on demand.
   const documents = useMemo(() => orders.filter((o) => !o.cancelledAt), [orders]);
 
   const filtered = useMemo(() => {
@@ -82,8 +81,6 @@ export function BillingReceiptsScreen() {
     [openId, orders],
   );
 
-  // Client-side actions for now — a real email/PDF pipeline belongs in a server
-  // route; here we log the action to the order timeline.
   const sendReceipt = async (o) => {
     const ok = await addOrderEvent({
       orderId: o.id,
@@ -161,7 +158,7 @@ export function BillingReceiptsScreen() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
+              className="w-44 border-border bg-surface-subtle"
             >
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
@@ -175,7 +172,7 @@ export function BillingReceiptsScreen() {
               >
                 <Receipt className="h-4 w-4" /> Resend receipt
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-strong" />
+              <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
                 onClick={() => generateInvoice(o)}
@@ -199,7 +196,6 @@ export function BillingReceiptsScreen() {
       <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}

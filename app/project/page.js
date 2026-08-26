@@ -9,8 +9,6 @@ import {
 } from "@/context/project-context";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 
-// Entry resolver for the project-scoped workspace. Opens the last-used (or
-// first) project; a signed-out user with no reachable projects is sent to login.
 function ProjectResolver() {
   const router = useRouter();
   const { projects, loading } = useProject();
@@ -18,7 +16,6 @@ function ProjectResolver() {
   useEffect(() => {
     if (loading) return;
     if (projects.length === 0) {
-      // Workspace intent: /login must not hijack a member cookie to /members.
       router.replace("/login?workspace=1");
       return;
     }

@@ -35,13 +35,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { cn } from "@/lib/utils";
 
-// Authored page embellishments: carousels, split CTAs, quote walls, a closing
-// footer band, and info showcases laid out on a grid or flex row. Every block
-// is a record in the event's metadata bag (key "infographics"), so they grow
-// without a migration, and its editable surface is declared as a fields array
-// that the page builder's FieldList renders — the same schema language the
-// drag-and-drop blocks use, so the controls match the rest of the product.
-
 const TITLE_ALIGN_OPTIONS = [
   { key: "left", label: "Left" },
   { key: "center", label: "Center" },
@@ -161,8 +154,6 @@ const SECTION_TITLE_FIELD = {
   hint: "Leave empty for no heading.",
 };
 
-// The five infographic families. `fields` drives the edit dialog (rendered by
-// FieldList); `defaultProps` seeds a freshly added block.
 export const INFOGRAPHIC_TYPES = [
   {
     type: "carousel",
@@ -267,8 +258,6 @@ function createInfographic(type) {
   };
 }
 
-// --- Live previews (read-only renderings of the block's current props) ------
-
 const TITLE_ALIGN_CLASS = {
   left: "text-left",
   center: "text-center",
@@ -315,9 +304,6 @@ function PreviewEmpty({ label }) {
   );
 }
 
-// Decorative stand-in for the "one at a time" modes: shows the active item
-// with prev/next buttons and a position counter, sliding between items. Callers
-// guard against an empty list before rendering.
 function SingleRotatorPreview({ items, render }) {
   const [i, setI] = useState(0);
   const [dir, setDir] = useState(1);
@@ -736,10 +722,6 @@ function BlockPreview({ block }) {
   }
 }
 
-// --- Type picker -------------------------------------------------------------
-
-// Mini wireframes for each family — pure divs over the design tokens, so they
-// read as native previews rather than screenshots.
 function CarouselMock() {
   return (
     <div className="flex h-full items-stretch gap-1.5">
@@ -889,8 +871,6 @@ function TypePicker({ open, onOpenChange, onPick }) {
   );
 }
 
-// --- Block editor ------------------------------------------------------------
-
 function BlockDialog({ draft, meta, onChange, onClose, onSave }) {
   const patch = (key, value) =>
     onChange({ ...draft, props: { ...draft.props, [key]: value } });
@@ -900,7 +880,7 @@ function BlockDialog({ draft, meta, onChange, onClose, onSave }) {
       <DialogContent className="max-w-2xl bg-background">
         <DialogHeader>
           <DialogTitle>
-            {draft?.saved ? "Edit Infographic" : "Add Infographic"} — {meta?.label}
+            {draft?.saved ? "Edit infographic" : "Add infographic"} — {meta?.label}
           </DialogTitle>
           <DialogDescription>
             The preview updates as you type. Items hold everything you&apos;d
@@ -931,7 +911,7 @@ function BlockDialog({ draft, meta, onChange, onClose, onSave }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={onSave}
           >
-            {draft?.saved ? "Save Changes" : "Add Infographic"}
+            {draft?.saved ? "Save changes" : "Add infographic"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -939,13 +919,9 @@ function BlockDialog({ draft, meta, onChange, onClose, onSave }) {
   );
 }
 
-// --- Section -----------------------------------------------------------------
-
 export function InfographicsSection({ event, headerItem }) {
   const [blocks, , saveBlocks] = useEventConfig(event, "infographics", []);
   const [picking, setPicking] = useState(false);
-  // { id, isNew, saved } — `saved` marks an existing block so the draft seeds
-  // from it but edits never touch the persisted list until Save.
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState(null);
   const [removing, setRemoving] = useState(null);
@@ -1009,7 +985,7 @@ export function InfographicsSection({ event, headerItem }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setPicking(true)}
           >
-            <Plus className="h-4 w-4" /> Add Infographic
+            <Plus className="h-4 w-4" /> Add infographic
           </Button>
         }
       />

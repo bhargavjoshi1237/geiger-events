@@ -51,10 +51,6 @@ function CtaBand({ ctx, tone = "accent" }) {
   );
 }
 
-// Landing page — full-width alternating bands with the call to action repeated
-// down the page, the way a conference's own marketing site is built. Sections
-// get their own heading and their own slab of colour instead of stacking inside
-// one column.
 export function LandingLayout({ ctx }) {
   const {
     event,
@@ -72,12 +68,8 @@ export function LandingLayout({ ctx }) {
     coverStyle,
   } = ctx;
 
-  // The CTA band repeats once mid-page on longer pages, then closes the page.
   const midpoint = blocks.length >= 4 ? Math.ceil(blocks.length / 2) : -1;
 
-  // Each section gets its own slab of colour. Sections carry their own
-  // headings, so the band adds none — and an unfilled one hides rather than
-  // painting an empty stripe across the page.
   const band = (b, i) => (
     <BlockSlot
       key={b.id}

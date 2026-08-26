@@ -7,11 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { DISCLAIMER_POSITIONS } from "./public_page/disclaimer";
 
-// Placement is a plain checklist — one readable row per slot. Each row carries a
-// short hint (what "under the pay button" actually means) and a position glyph:
-// a page-shaped outline with the line drawn at the height the disclaimer lands.
-// The glyph is the spatial cue; the label is what you read.
-
 const SLOTS = {
   top: { at: 8, hint: "Before everything, above the hero" },
   hero: { at: 32, hint: "Straight after the hero" },

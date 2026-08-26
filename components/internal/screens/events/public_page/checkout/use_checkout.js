@@ -66,10 +66,6 @@ export function useCheckout({
 
   const ticket = seatTicket || boothTicket || baseTicket;
 
-  // Which step a freshly-opened checkout lands on. The page can request a
-  // route via `entry` — "seats" enters through the seating plan, "price"
-  // skips it and goes straight to ticket details; anything else uses the
-  // event's default flow.
   const defaultEntryStep =
     (seatingOn && (seating?.mode || "map-first") === "map-first" && "seats") ||
     (expoOn && "booths") ||
@@ -98,17 +94,11 @@ export function useCheckout({
   const [order, setOrder] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Seat holds outlive the picker — it unmounts as soon as the buyer moves to
-  // the details step — so the dialog owns releasing them. They go back on sale
-  // when checkout is abandoned, and only then; a completed order keeps them.
   const seatHoldRef = useRef(null);
   useEffect(() => {
     seatHoldRef.current = seatSel?.seatIds?.length ? seatSel.token : null;
   }, [seatSel]);
 
-  // Set once the seats are spoken for — by a completed order, or by a Stripe
-  // redirect that already extended the hold. Releasing in either case would
-  // put seats the buyer has paid for back on sale.
   const keepHoldRef = useRef(false);
   useEffect(() => {
     if (!open) return undefined;
@@ -394,7 +384,6 @@ export function useCheckout({
       boothToken: boothSel?.token ?? null,
     });
     if (res.ok) {
-      // The seats are sold now — the hold must not be released on close.
       keepHoldRef.current = true;
       if (approvedResume) setRegStatus("Confirmed");
       else {
@@ -484,8 +473,6 @@ export function useCheckout({
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
-        // Handing off to Stripe against the 30-minute hold taken above — the
-        // unmount that follows this navigation must not release it.
         keepHoldRef.current = true;
         setRedirectUrl(data.url);
         return;
@@ -545,9 +532,6 @@ export function useCheckout({
 
   const submitDetails = () => {
     if (!validateDetails()) return;
-    // Seats are a step of this flow, not a one-off errand. Skipping it once
-    // seats are held sent a buyer who went BACK to details straight to payment
-    // on their next Continue — the only way past seating is "Confirm seats".
     if (seatingOn && seatMode === "type-first") {
       setStep("seats");
       return;
@@ -736,8 +720,6 @@ export function useCheckout({
     applyDiscount,
     removeDiscount,
     headerLabel,
-    // The same slot helper the public page uses, so a step names the slot it
-    // offers and stays unaware of where else the disclaimer is placed.
     disclaimerSlot,
   };
 }

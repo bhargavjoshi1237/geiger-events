@@ -91,9 +91,6 @@ export function EventPublicPageContent({
     fontFaceCss,
   } = page;
 
-  // A CSS background-image can't play a video, so a video background renders as
-  // a fixed layer under the content (the same overlay scrim a background image
-  // would get). Content siblings are raised above it with `relative z-10`.
   const bgVideo = themed ? pageBackgroundVideo(theme) : null;
 
   const soldCount = soldOverride ?? event.sold;
@@ -114,16 +111,12 @@ export function EventPublicPageContent({
   const checkoutRemaining = Number.isFinite(remaining) ? remaining : 9999;
   const showRemaining = event.regSettings?.showRemaining !== false;
 
-  // Which route opened the checkout: "seats" enters via the seating plan,
-  // "price" skips straight to ticket details, null keeps the default flow.
   const [checkoutEntry, setCheckoutEntry] = useState(null);
   const openCheckout = (entry) => {
     setCheckoutEntry(entry || null);
     setCheckoutOpen(true);
   };
 
-  // Organizer-typed disclaimer, rendered at whichever page slots it's placed in.
-  // Every layout calls this by slot name and stays unaware of the config shape.
   const disclaimerSlot = makeDisclaimerSlot(event);
 
   const regQuestions = Array.isArray(event.questions)
@@ -217,10 +210,6 @@ export function EventPublicPageContent({
     />
   );
 
-  // Infographics authored in the editor's Page → Infographics screen render at
-  // the foot of the main column (after venue/location), the natural spot for a
-  // footer band. A virtual block keeps them out of the page design — they're
-  // event content, not layout — while still flowing through PageBlock.
   const contentBlocks = [
     ...orderedBlocks,
     ...(Array.isArray(event.infographics) && event.infographics.length
@@ -228,8 +217,6 @@ export function EventPublicPageContent({
       : []),
   ];
 
-  // Sidebar entries resolved to elements, keeping their type so a layout can
-  // pull the registration panel out and place the rest somewhere else.
   const sidebarNodes = sidebarBlocks.map((b) => ({
     id: b.id,
     type: b.type,
@@ -251,9 +238,6 @@ export function EventPublicPageContent({
     />
   );
 
-  // Everything a layout can arrange, rendered once here so no layout has to
-  // know about themes, tickets or the block catalog — it only decides where
-  // each piece sits and how big it is.
   const layoutCtx = {
     event,
     theme,
@@ -332,8 +316,6 @@ export function EventPublicPageContent({
         </div>
       ) : null}
 
-      {/* A built page owns its own body via PageTree — it only takes the brand
-          bar and hero from here, and only when they're switched on. */}
       {built ? (
         hero === "none" && !headerCfg ? null : (
           <div

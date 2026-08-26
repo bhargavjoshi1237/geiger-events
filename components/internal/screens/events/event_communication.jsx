@@ -15,9 +15,6 @@ import { Button } from "@/components/ui/button";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getEventChannel, ensureEventChat, updateChannel } from "@/lib/supabase/chat";
 
-// Event editor "Communication" section — SETTINGS ONLY. The live chat itself
-// lives in the workspace at Community → Event Chat; here the organiser opens the
-// chat and configures how attendees participate.
 export function EventCommunicationSection({ event, headerItem }) {
   const { setTab } = useWorkspaceUrl();
   const [channel, setChannel] = useState(null);

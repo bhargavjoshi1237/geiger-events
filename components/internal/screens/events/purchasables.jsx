@@ -40,18 +40,11 @@ import { useEventConfig } from "@/lib/events/use-event-config";
 import { TIME_BANDS, bandLabel, EMPTY_SLOT } from "@/lib/events/slots";
 import { EMPTY_PURCHASABLE, EMPTY_SHOWIF } from "@/lib/events/purchasables";
 
-// Additional-purchasables editor. Each purchasable is a conditional add-on the
-// buyer sees in the animated checkout step, gated by a fully-configurable
-// showIf rule set (band / slots / ticket / quantity / membership / cutoff /
-// dependency). Stored in metadata.purchasables via useEventConfig. See
-// lib/events/purchasables.js for the shape + the visibility evaluator.
-
 function priceLabel(price) {
   const n = Number(price) || 0;
   return n > 0 ? `$${n.toLocaleString("en-US")}` : "Free";
 }
 
-// One-line human summary of a purchasable's conditions for the list card.
 function conditionSummary(showIf, { slots }) {
   const s = { ...EMPTY_SHOWIF, ...(showIf || {}) };
   const parts = [];
@@ -72,7 +65,6 @@ function conditionSummary(showIf, { slots }) {
   return `${s.match === "any" ? "Any of" : "When"}: ${parts.join(" · ")}`;
 }
 
-// A pill toggle used across the conditions builder.
 function Chip({ active, onClick, children }) {
   return (
     <button
@@ -81,7 +73,7 @@ function Chip({ active, onClick, children }) {
       className={cn(
         "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
         active
-          ? "border-white bg-white text-[#161616]"
+          ? "border-primary bg-primary/15 text-foreground"
           : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
       )}
     >
@@ -109,8 +101,6 @@ function PurchasableDialog({ open, onOpenChange, tickets, slots, siblings, initi
   const setCond = (key, value) =>
     setDraft((d) => ({ ...d, showIf: { ...d.showIf, [key]: value } }));
 
-  // "Allow buying multiple" is a friendly view over pickType: quantity → the
-  // buyer gets a stepper (capped by maxPerOrder); toggle → simple add/remove.
   const allowMultiple = draft.pickType === "quantity";
   const setAllowMultiple = (on) =>
     setDraft((d) => ({ ...d, pickType: on ? "quantity" : "toggle" }));
@@ -122,7 +112,6 @@ function PurchasableDialog({ open, onOpenChange, tickets, slots, siblings, initi
       return { ...d, showIf: { ...d.showIf, [key]: next } };
     });
 
-  // tickets condition is "all" or an array of ticket ids.
   const ticketsAll = draft.showIf.tickets === "all";
   const toggleTicket = (id) =>
     setDraft((d) => {
@@ -260,7 +249,6 @@ function PurchasableDialog({ open, onOpenChange, tickets, slots, siblings, initi
             </label>
           </div>
 
-          {/* Conditions builder — full control over when this is shown. */}
           <div className="space-y-4 rounded-xl border border-border bg-surface-subtle p-4">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -442,7 +430,8 @@ function PurchasableDialog({ open, onOpenChange, tickets, slots, siblings, initi
 export function PurchasablesSection({ event, headerItem }) {
   const [purchasables, , savePurchasables] = useEventConfig(event, "purchasables", []);
   const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // { index, item } | null
+  const [editing, setEditing] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const tickets = (Array.isArray(event.tickets) ? event.tickets : [])
     .filter((t) => t && t.id)
@@ -577,7 +566,7 @@ export function PurchasablesSection({ event, headerItem }) {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => remove(i)}
+                    onClick={() => setDeleteTarget(i)}
                     aria-label="Delete purchasable"
                     className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
                   >
@@ -621,6 +610,38 @@ export function PurchasablesSection({ event, headerItem }) {
           setEditing(null);
         }}
       />
+
+      <Dialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete purchasable</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget != null ? purchasables[deleteTarget]?.name : ""}
+              </span>
+              ? This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                remove(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

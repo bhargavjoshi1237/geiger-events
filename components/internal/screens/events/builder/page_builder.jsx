@@ -1,15 +1,5 @@
 "use client";
 
-// The page builder.
-//
-// A full-screen surface over the event editor: palette left, live canvas
-// centre, inspector right. It owns exactly one piece of state that matters —
-// the tree — and every edit goes through a single `commit`, which is what makes
-// undo/redo a stack of snapshots rather than a diff engine.
-//
-// The canvas renders the same PageTree the published page does, portalled into
-// an iframe so each device toggle is a real viewport.
-
 import {
   useCallback,
   useEffect,
@@ -67,15 +57,11 @@ import { createComponentOfType, getComponentMeta } from "./components";
 const DEVICE_ICON = { lg: Monitor, md: Tablet, sm: Smartphone };
 const HISTORY_LIMIT = 50;
 
-// --- History -----------------------------------------------------------------
-
 function useTreeHistory(initial) {
   const [state, setState] = useState({ past: [], present: initial, future: [] });
 
   const commit = useCallback((next) => {
     setState((s) => {
-      // A no-op edit (a drop that resolved to the same place) must not consume
-      // an undo step.
       if (next === s.present) return s;
       return {
         past: [...s.past, s.present].slice(-HISTORY_LIMIT),
@@ -119,16 +105,6 @@ function useTreeHistory(initial) {
   };
 }
 
-// --- Shell -------------------------------------------------------------------
-
-/**
- * @param design    the current pageDesign (theme, blocks, tree, customCode)
- * @param event     the event view model — drives smart blocks and bindings
- * @param eventId   for the "open published page" link
- * @param canUseCustomCode  events.page.customcode
- * @param onSave    (patch) => Promise<boolean> | boolean
- * @param onClose   () => void
- */
 export function PageBuilder({
   design,
   event,
@@ -137,13 +113,8 @@ export function PageBuilder({
   onSave,
   onClose,
 }) {
-  // Migration happens once, on open: a page still on the legacy flat arrays
-  // becomes an equivalent tree, and the arrays stay in the saved design.
   const initialTree = useMemo(() => treeForDesign(design), [design]);
   const { tree, commit, undo, redo, canUndo, canRedo } = useTreeHistory(initialTree);
-  // Which tree is on the server. Every commit mints a new object, so reference
-  // identity is an exact "has anything changed since the last save?" — and it
-  // clears correctly when undo walks the page back to its saved state.
   const [savedTree, setSavedTree] = useState(initialTree);
 
   const [customCode, setCustomCode] = useState(() =>
@@ -158,17 +129,12 @@ export function PageBuilder({
   const [codeDirty, setCodeDirty] = useState(false);
 
   const frameRef = useRef(null);
-  // Handlers and the drag engine read the tree through a ref so they never
-  // close over a stale copy. Written in an effect (not during render) — effects
-  // land before any user event can fire, so it is always current when read.
   const treeRef = useRef(tree);
   useEffect(() => {
     treeRef.current = tree;
   }, [tree]);
 
   const [canvasDoc, setCanvasDoc] = useState(null);
-  // Custom CSS renders in the canvas so authored classes are visible while
-  // designing; scripts are deliberately never run here.
   useCustomCode(customCode, { doc: canvasDoc, runScripts: false, scope: "canvas" });
 
   const theme = useMemo(() => resolveTheme(design), [design]);
@@ -188,12 +154,9 @@ export function PageBuilder({
 
   const device = BREAKPOINTS.find((b) => b.key === bp) || BREAKPOINTS[0];
 
-  // --- Edits ---
-
   const setValue = useCallback(
     (group, key, value) => {
       if (!selectedId) return;
-      // `group: null` addresses the node itself (span, hidden).
       commit(setNodeValue(treeRef.current, selectedId, bp, group ?? key, group ? key : null, value));
     },
     [commit, selectedId, bp],
@@ -233,8 +196,6 @@ export function PageBuilder({
     [commit, selectedId],
   );
 
-  // Switches a block off everywhere. Per-device hiding is the same flag written
-  // into that breakpoint's override bag, from the inspector's Advanced tab.
   const toggleVisible = useCallback(
     (id) => {
       commit(
@@ -266,8 +227,6 @@ export function PageBuilder({
     [commit],
   );
 
-  // The default landing spot for a click-to-add: the selected column, the
-  // column holding the selected block, or the last column on the page.
   const defaultTarget = useCallback(() => {
     const current = treeRef.current;
     if (selectedId) {
@@ -353,11 +312,8 @@ export function PageBuilder({
     },
   });
 
-  // --- Keyboard ---
-
   useEffect(() => {
     const onKey = (e) => {
-      // Never hijack a key the author is typing into a field.
       const el = e.target;
       const typing =
         el?.tagName === "INPUT" ||
@@ -388,8 +344,6 @@ export function PageBuilder({
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, duplicate, remove, selectedId]);
 
-  // Warn on a real browser navigation with unsaved work. In-app closing is
-  // handled by the Exit button's own confirm.
   const unsaved = tree !== savedTree || codeDirty;
   useEffect(() => {
     if (!unsaved) return undefined;
@@ -400,8 +354,6 @@ export function PageBuilder({
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [unsaved]);
-
-  // --- Save / exit ---
 
   const save = async () => {
     setSaving(true);
@@ -427,7 +379,6 @@ export function PageBuilder({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      {/* Top bar */}
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-3">
         <div className="flex min-w-0 items-center gap-2">
           <Button
@@ -530,7 +481,6 @@ export function PageBuilder({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        {/* Palette / layers */}
         <aside className="flex w-[16.5rem] shrink-0 flex-col border-r border-border bg-surface-subtle">
           <div className="flex border-b border-border">
             {[
@@ -573,7 +523,6 @@ export function PageBuilder({
           </div>
         </aside>
 
-        {/* Canvas */}
         <main
           className="min-w-0 flex-1 overflow-hidden bg-surface-strong p-4"
           onClick={() => setSelectedId(null)}
@@ -600,7 +549,6 @@ export function PageBuilder({
           </div>
         </main>
 
-        {/* Inspector */}
         <aside className="flex w-[18rem] shrink-0 flex-col border-l border-border bg-surface-subtle">
           {selected ? (
             <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -636,7 +584,6 @@ export function PageBuilder({
         </aside>
       </div>
 
-      {/* Drop rail, drawn in the parent document where the drag lives. */}
       {drag ? <DropIndicator hit={drag.hit} /> : null}
 
       <CustomCodeDialog

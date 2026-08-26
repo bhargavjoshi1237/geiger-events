@@ -15,30 +15,7 @@ import { Button } from "@geiger/ui";
 import { aspectRatio } from "@/lib/seating/geometry";
 import { cn } from "@/lib/utils";
 
-// The pan/zoom surface every map in the app draws on: seat map editor, seat map
-// viewer, hall map editor, booth picker. It owns a viewport transform and an
-// optional traced-over background image, and nothing else — no data, no
-// persistence, no knowledge of seats or booths.
-//
-// Children are positioned in PERCENT of the canvas (left/top/width/height), the
-// same coordinate space every geometry table in `events` stores. Callers that
-// need to convert a pointer position back into that space call `toPercent()` on
-// the ref rather than reading getBoundingClientRect() themselves, which would
-// ignore the transform and place things wrong the moment anyone zoomed.
-//
-// Percent is anisotropic, so the box those children sit in HAS to be the shape
-// the geometry was authored at. That box is the STAGE, and it is not always the
-// viewport: `fill` lets the viewport take whatever room a dialog gives it and
-// letterboxes the stage inside. Letting the stage take the viewport's shape
-// instead squashes one axis, and everything that mixes the axes then breaks
-// with it — chairs stop being square, and a CSS `rotate()` (which turns things
-// in PIXELS) lands a section's highlight at a different angle from the chairs
-// inside it, which reads as a scatter of dots rather than a seating chart.
-
 const MIN_SCALE = 0.25;
-// Deep enough that one section of a 120-block arena can fill the viewport —
-// below that, drilling in left the chosen block floating in the middle of a
-// mostly-empty canvas.
 const MAX_SCALE = 40;
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -47,22 +24,13 @@ const IDENTITY = { scale: 1, tx: 0, ty: 0 };
 export const MapCanvas = forwardRef(function MapCanvas(
   {
     children,
-    // The shape the geometry was authored at. Always honoured by the stage;
-    // `fill` only decides whether the viewport takes that shape too.
     aspect = "16/10",
-    // Fill whatever height the parent gives it instead of taking the shape of
-    // `aspect` — a map inside a dialog wants the room. The stage is letterboxed
-    // inside, so the coordinate space keeps its shape either way.
     fill = false,
     background = null,
     minScale = MIN_SCALE,
     maxScale = MAX_SCALE,
-    // The editor turns panning off while a section is being dragged, so the
-    // floor doesn't slide out from under the block.
     panDisabled = false,
     zoomDisabled = false,
-    // Lifts the zoom level out on every change, for callers that counter-scale
-    // children (constant on-screen seat size) against the layer transform.
     onScaleChange,
     onCanvasPointerDown,
     overlay = null,
@@ -74,17 +42,14 @@ export const MapCanvas = forwardRef(function MapCanvas(
 ) {
   const viewportRef = useRef(null);
   const [view, setView] = useState(IDENTITY);
-  // Live pointers, so two fingers become a pinch rather than two pans.
   const pointers = useRef(new Map());
   const panState = useRef(null);
   const pinchState = useRef(null);
-  // The viewport's own size, needed only to letterbox the stage inside it.
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const node = viewportRef.current;
     if (!node || !fill || typeof ResizeObserver === "undefined") return undefined;
-    // Measure once up front so the first paint has a stage to draw on.
     const first = node.getBoundingClientRect();
     setViewportSize({ width: first.width, height: first.height });
     const observer = new ResizeObserver(([entry]) => {
@@ -95,8 +60,6 @@ export const MapCanvas = forwardRef(function MapCanvas(
     return () => observer.disconnect();
   }, [fill]);
 
-  // The coordinate space, in viewport-local pixels. Held at `aspect` and
-  // centred; null when the viewport already IS that shape.
   const stage = useMemo(() => {
     if (!fill) return null;
     const { width, height } = viewportSize;
@@ -107,8 +70,6 @@ export const MapCanvas = forwardRef(function MapCanvas(
     return { left: (width - w) / 2, top: (height - h) / 2, width: w, height: h };
   }, [fill, aspect, viewportSize]);
 
-  // The stage in CLIENT coordinates. Every transform below is expressed against
-  // the coordinate space, not the viewport it may be letterboxed in.
   const rect = useCallback(() => {
     const box = viewportRef.current?.getBoundingClientRect() ?? null;
     if (!box) return null;
@@ -121,14 +82,9 @@ export const MapCanvas = forwardRef(function MapCanvas(
     };
   }, [stage]);
 
-  // Keep the layer covering the viewport: at scale 1 it is pinned, and beyond
-  // that it may only travel as far as its own overhang.
   const clampView = useCallback((next, box) => {
     const scale = clamp(next.scale, minScale, maxScale);
     if (!box) return { ...next, scale };
-    // Zoomed in (scale > 1) the layer overflows and may only travel as far as
-    // its own overhang; zoomed out (scale < 1) it is smaller than the viewport
-    // and may sit anywhere between the two edges, so the bounds flip sign.
     const spanX = box.width * (1 - scale);
     const spanY = box.height * (1 - scale);
     return {
@@ -138,8 +94,6 @@ export const MapCanvas = forwardRef(function MapCanvas(
     };
   }, [minScale, maxScale]);
 
-  // Zoom about a point given in stage-local pixels, so the spot under the
-  // cursor stays under the cursor.
   const zoomAt = useCallback(
     (factor, px, py) => {
       const box = rect();
@@ -161,9 +115,6 @@ export const MapCanvas = forwardRef(function MapCanvas(
     [clampView, rect, minScale, maxScale],
   );
 
-  // Programmatic moves (drill into a section, back out to the venue) read
-  // better with a slower glide than the snappy follow of a wheel notch, so
-  // they flip a temporary longer transition on.
   const [glide, setGlide] = useState(false);
   const glideTimer = useRef(null);
   const beginGlide = useCallback(() => {
@@ -178,9 +129,6 @@ export const MapCanvas = forwardRef(function MapCanvas(
     setView(IDENTITY);
   }, [beginGlide]);
 
-  // Frame a rectangle given in percent of the canvas. `padding` shrinks the
-  // zoom so the surroundings stay in frame — drilling into one section
-  // shouldn't erase the buyer's sense of the venue around it.
   const zoomToRect = useCallback(
     (target, { padding = 0.8 } = {}) => {
       const box = rect();
@@ -208,7 +156,6 @@ export const MapCanvas = forwardRef(function MapCanvas(
   useImperativeHandle(
     ref,
     () => ({
-      // Pointer position -> percent of the canvas, transform included.
       toPercent(clientX, clientY) {
         const box = rect();
         if (!box || !box.width || !box.height) return { x: 0, y: 0 };
@@ -217,8 +164,6 @@ export const MapCanvas = forwardRef(function MapCanvas(
           y: ((clientY - box.top - view.ty) / view.scale / box.height) * 100,
         };
       },
-      // A drag delta in pixels -> a delta in percent, so a section moves with
-      // the cursor at any zoom.
       toPercentDelta(dx, dy) {
         const box = rect();
         if (!box || !box.width || !box.height) return { x: 0, y: 0 };
@@ -241,8 +186,6 @@ export const MapCanvas = forwardRef(function MapCanvas(
     onScaleChange?.(view.scale);
   }, [onScaleChange, view.scale]);
 
-  // Wheel zoom. Registered natively (not via onWheel) because React's synthetic
-  // wheel listener is passive and cannot preventDefault the page scroll.
   useEffect(() => {
     const node = viewportRef.current;
     if (!node || zoomDisabled) return undefined;
@@ -375,17 +318,12 @@ export const MapCanvas = forwardRef(function MapCanvas(
             width: stage ? stage.width : "100%",
             height: stage ? stage.height : "100%",
             transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`,
-            // Snap back to fit without animating every pan frame.
             transition:
               panState.current || pinchState.current
                 ? undefined
                 : `transform ${glide ? 400 : 120}ms ease-out`,
           }}
         >
-          {/* A faint grid so an empty floor still reads as a surface. Its cells
-              and its hairlines are both drawn in layer space, so they magnify
-              with everything else — divide both back out, and let it fade off
-              once the zoom is deep enough that a floor isn't what's on show. */}
           <div
             className="pointer-events-none absolute inset-0 transition-opacity"
             style={{
@@ -412,34 +350,31 @@ export const MapCanvas = forwardRef(function MapCanvas(
           >
             <Button
               type="button"
-              size="icon"
               variant="ghost"
               aria-label="Zoom in"
-              className="h-7 w-7 text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              className="h-8 w-8 text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => zoomAt(1.4)}
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
             </Button>
             <Button
               type="button"
-              size="icon"
               variant="ghost"
               aria-label="Zoom out"
-              className="h-7 w-7 text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              className="h-8 w-8 text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={() => zoomAt(1 / 1.4)}
             >
-              <Minus className="h-3.5 w-3.5" />
+              <Minus className="h-4 w-4" />
             </Button>
             <Button
               type="button"
-              size="icon"
               variant="ghost"
               aria-label="Fit map to view"
               disabled={!zoomed}
-              className="h-7 w-7 text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              className="h-8 w-8 text-muted-foreground hover:bg-surface-active hover:text-foreground"
               onClick={fit}
             >
-              <Maximize2 className="h-3.5 w-3.5" />
+              <Maximize2 className="h-4 w-4" />
             </Button>
           </div>
         ) : null}

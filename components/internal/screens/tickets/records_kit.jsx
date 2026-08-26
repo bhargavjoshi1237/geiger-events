@@ -61,9 +61,6 @@ import {
   softDeleteRecord,
 } from "@/lib/supabase/ticketing";
 
-// Default data adapter — the ticketing records store. Other areas (e.g.
-// Campaigns' template/sequence assets) pass their own `data` adapter with the
-// same shape so this screen backs any reusable-records module.
 const TICKETING_DATA = {
   list: listRecords,
   create: createRecord,
@@ -73,8 +70,6 @@ const TICKETING_DATA = {
 
 const kindLabel = (kinds, value) =>
   kinds.find((k) => k.value === value)?.label || value;
-
-// --- Create dialog -----------------------------------------------------------
 
 function CreateRecordDialog({ open, onOpenChange, singular, kinds, onCreate }) {
   const [name, setName] = useState("");
@@ -108,7 +103,13 @@ function CreateRecordDialog({ open, onOpenChange, singular, kinds, onCreate }) {
             page.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+          className="grid gap-4"
+        >
           <Field label="Name" htmlFor="rec-name">
             <Input
               id="rec-name"
@@ -134,7 +135,7 @@ function CreateRecordDialog({ open, onOpenChange, singular, kinds, onCreate }) {
               </Select>
             </Field>
           ) : null}
-        </div>
+        </form>
         <DialogFooter>
           <Button
             variant="outline"
@@ -155,8 +156,6 @@ function CreateRecordDialog({ open, onOpenChange, singular, kinds, onCreate }) {
   );
 }
 
-// --- Per-record edit page ----------------------------------------------------
-
 function RecordEditPage({
   record,
   singular,
@@ -171,8 +170,6 @@ function RecordEditPage({
   const [active, setActive] = useState(record.active);
   const [config, setConfig] = useState(record.config || {});
   const [saving, setSaving] = useState(false);
-  // The open section lives in the URL (?section=<key>) so a refresh keeps the
-  // user on the same tab, exactly like the event editor.
   const { section, setSection } = useWorkspaceUrl();
 
   const save = async () => {
@@ -197,10 +194,8 @@ function RecordEditPage({
     setActive,
   };
 
-  // Sectioned mode: content left, section nav right (the event-editor layout).
   if (sections?.length) {
     const activeItem = sections.find((s) => s.key === section) || sections[0];
-    // Rendered as an element, not called — sections own their own hooks.
     const Body = activeItem.render;
     return (
       <MainScreenWrapper>
@@ -288,8 +283,6 @@ function RecordEditPage({
   );
 }
 
-// Shared editor header: breadcrumb back, inline-editable name, active switch,
-// and Save. Used by both the plain and the sectioned edit layouts.
 function EditHeader({
   singular,
   kinds,
@@ -347,15 +340,6 @@ function EditHeader({
   );
 }
 
-// --- List screen -------------------------------------------------------------
-
-// A reusable global-records screen: list of a module's records, a create
-// dialog, and a per-record edit page. Each module supplies its kinds, list-card
-// summary, and edit form; persistence + optimistic state live here.
-//
-// The editor comes in two shapes: pass `EditForm` for a single scrolling form,
-// or `sections` ([{ key, label, icon, desc, render }]) for the event-editor
-// layout — content on the left, section nav on the right, active key in the URL.
 export function RecordsScreen({
   module,
   title,
@@ -430,7 +414,6 @@ export function RecordsScreen({
     );
     const saved = await api.update(id, patch);
     if (saved === false || saved === null) {
-      // null = not configured (local-only, treat as ok); false = write failed.
       if (saved === false) {
         toast.error("Couldn't save your changes to the server.");
         return;
@@ -458,7 +441,6 @@ export function RecordsScreen({
     });
   };
 
-  // Edit page takes over the screen when a record is open.
   const openRecord = records.find((r) => r.id === openId) || null;
   if (openRecord) {
     return (

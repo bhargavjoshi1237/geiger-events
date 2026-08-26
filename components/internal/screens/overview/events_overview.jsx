@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -65,6 +66,7 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { EVENT_STATUS_MAP } from "@/components/internal/screens/events/sample_data";
 import FilterDropdown from "./filter_dropdown";
+import { tabToSlug } from "@/lib/workspace/tabs";
 import { cn } from "@/lib/utils";
 import { useOptionalProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
@@ -84,9 +86,6 @@ const CHART_SERIES_COLORS = ["#ffffff", "#d4d4d4", "#a3a3a3", "#737373", "#52525
 function formatCurrency(value) {
   return `$${Math.round(value || 0).toLocaleString("en-US")}`;
 }
-
-// --- Demo data (landing-page playground only; the real workspace below fetches
-// live rows through the data layer) ------------------------------------------
 
 const DEMO_WORKSPACE_SUMMARY = [
   { label: "Events", value: "24" },
@@ -119,8 +118,6 @@ const DEMO_TICKET_MIX = [
   { key: "vip", label: "VIP", value: 124 },
 ];
 
-// Acquisition funnel — where the audience drops off on the way to a ticket.
-// `short` is the compact label used around the radar's polar axis.
 const DEMO_CONVERSION_FUNNEL = [
   { key: "views", label: "Event page views", short: "Views", value: 8420 },
   { key: "started", label: "Registration started", short: "Started", value: 2140 },
@@ -131,7 +128,6 @@ const DEMO_CONVERSION_FUNNEL = [
 const DEMO_SELL_THROUGH = { value: 78, sold: 1544, capacity: 1980 };
 const DEMO_ATTENDANCE = { value: 82, attended: 962, registered: 1173 };
 
-// Events ranked by performance for the selected period.
 const DEMO_TOP_EVENTS = [
   { id: "demo-1", name: "Summer Product Launch", status: "On sale", revenue: 9840, sold: 312, capacity: 400, momentum: "fast" },
   { id: "demo-2", name: "Local Music Night", status: "Sold out", revenue: 5400, sold: 300, capacity: 300, momentum: "track" },
@@ -147,7 +143,6 @@ const MOMENTUM_META = {
   upcoming: { label: "Not yet on sale", icon: Clock, className: "text-text-secondary" },
 };
 
-// Operational tasks waiting on the organizer — the reason to open this screen.
 const DEMO_ATTENTION_ITEMS = [
   { key: "refunds", label: "Refund requests", hint: "Awaiting your decision", value: "3", count: 3, cta: "Process", icon: RotateCcw, urgency: "urgent" },
   { key: "disputes", label: "Disputes needing response", hint: "Evidence due soon", value: "1", count: 1, cta: "Respond", icon: AlertTriangle, urgency: "urgent" },
@@ -160,13 +155,17 @@ const URGENCY_ORDER = ["urgent", "soon", "routine"];
 
 const URGENCY_LABELS = { urgent: "Urgent", soon: "Soon", routine: "Routine" };
 
-// --- Live data derivation -----------------------------------------------------
-// Pure helpers that turn fetched rows (orders/registrations/attendance/events)
-// into the same shapes the widgets below already know how to render.
+const ATTENTION_TAB_TITLES = {
+  refunds: "Refunds & Cancellations",
+  disputes: "Disputes & Chargebacks",
+  waitlist: "Waitlist",
+  capacity: "Capacity Limits",
+  drafts: "All Events",
+};
 
 function startOfWeek(date) {
   const d = new Date(date);
-  const day = (d.getDay() + 6) % 7; // Monday = 0
+  const day = (d.getDay() + 6) % 7;
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - day);
   return d;
@@ -187,8 +186,6 @@ function weekLabel(date) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// Adds `amount` into the last bucket whose start is <= the row's date; rows
-// older than the whole window are dropped rather than lumped into bucket 0.
 function addToBucket(totals, buckets, dateStr, amount) {
   const t = new Date(dateStr).getTime();
   if (!Number.isFinite(t)) return;
@@ -237,8 +234,6 @@ function sumInWindow(rows, dateKey, valueFn, startMs, endMs) {
   return total;
 }
 
-// No prior-period data to compare against -> omit the delta chip rather than
-// showing a misleading +/-100%.
 function periodDelta(current, previous) {
   if (previous <= 0) return { delta: null, trend: "up" };
   const pct = Math.round(((current - previous) / previous) * 100);
@@ -272,8 +267,6 @@ function momentumFor(row) {
 
 const CONFIRMED_REGISTRATION_STATUSES = new Set(["Confirmed", "Checked-in"]);
 
-// --- Widgets -----------------------------------------------------------------
-
 function WidgetShell({ children, className, contentClassName }) {
   return (
     <Card
@@ -298,8 +291,6 @@ function WidgetHeader({ title, subtitle, action }) {
     </div>
   );
 }
-
-// --- Registrations over time (line + label, with detail) ---------------------
 
 function RegistrationsTrendWidget({ demo, events = [], orders = [], registrations = [] }) {
   const [metric, setMetric] = useState("rsvps");
@@ -418,8 +409,6 @@ function RegistrationsTrendWidget({ demo, events = [], orders = [], registration
   );
 }
 
-// --- Ticket type mix (donut) -------------------------------------------------
-
 function TicketMixWidget({ demo, events = [], orders = [] }) {
   const [eventScope, setEventScope] = useState([]);
   const mix = useMemo(() => {
@@ -428,8 +417,6 @@ function TicketMixWidget({ demo, events = [], orders = [] }) {
   }, [demo, orders, eventScope]);
 
   const [selectedType, setSelectedType] = useState(null);
-  // Falls back to the top item whenever the current selection isn't in the
-  // (possibly just-changed) mix — derived, not synced via an effect.
   const activeType = mix.some((item) => item.key === selectedType) ? selectedType : mix[0]?.key ?? null;
 
   const total = mix.reduce((sum, item) => sum + item.value, 0);
@@ -519,8 +506,6 @@ function TicketMixWidget({ demo, events = [], orders = [] }) {
   );
 }
 
-// --- Registration funnel (radar chart — dots) --------------------------------
-
 function ConversionFunnelWidget({ demo, registered, confirmed, checkedIn }) {
   const stages = demo
     ? DEMO_CONVERSION_FUNNEL
@@ -533,8 +518,6 @@ function ConversionFunnelWidget({ demo, registered, confirmed, checkedIn }) {
   const bottom = stages[stages.length - 1]?.value || 0;
   const overall = top > 0 ? Math.round((bottom / top) * 100) : 0;
 
-  // Plot each stage as its share of the top of the funnel, so the radar's
-  // silhouette reads as the drop-off toward the final stage.
   const chartData = stages.map((stage) => ({
     ...stage,
     share: top > 0 ? Math.round((stage.value / top) * 100) : 0,
@@ -606,8 +589,6 @@ function ConversionFunnelWidget({ demo, registered, confirmed, checkedIn }) {
   );
 }
 
-// --- Lifecycle gauge (radial text) -------------------------------------------
-
 function GaugeWidget({ title, subtitle, caption, events = [], demo, demoValue, demoFootnote, computeLive }) {
   const [eventScope, setEventScope] = useState([]);
   const { pct, footnote } = useMemo(() => {
@@ -616,7 +597,6 @@ function GaugeWidget({ title, subtitle, caption, events = [], demo, demoValue, d
   }, [demo, demoValue, demoFootnote, computeLive, eventScope]);
 
   const clamped = Math.max(0, Math.min(100, pct));
-  // Sweep the colored arc clockwise from the top, proportional to the value.
   const endAngle = 90 - (clamped / 100) * 360;
   const data = [{ name: caption, value: clamped, fill: CHART_COLORS.primary }];
 
@@ -645,7 +625,6 @@ function GaugeWidget({ title, subtitle, caption, events = [], demo, demoValue, d
             innerRadius={72}
             outerRadius={104}
           >
-            {/* Full-circle track behind the value arc */}
             <PolarGrid
               gridType="circle"
               radialLines={false}
@@ -695,8 +674,6 @@ function GaugeWidget({ title, subtitle, caption, events = [], demo, demoValue, d
   );
 }
 
-// --- Top performing events (table) -------------------------------------------
-
 const TOP_EVENTS_SORT_OPTIONS = [
   { value: "revenue", label: "Revenue" },
   { value: "sellthrough", label: "Sell-through" },
@@ -705,6 +682,12 @@ const TOP_EVENTS_SORT_OPTIONS = [
 function TopEventsTable({ demo, events = [] }) {
   const [sortBy, setSortBy] = useState("revenue");
   const [eventScope, setEventScope] = useState([]);
+  const router = useRouter();
+  const projectId = useOptionalProject()?.projectId ?? null;
+  const canOpenEvent = !demo && Boolean(projectId);
+
+  const openEvent = (eventId) =>
+    projectId && router.push(`/project/${projectId}/allevents?event=${eventId}`);
 
   const rows = useMemo(() => {
     if (demo) return DEMO_TOP_EVENTS;
@@ -805,14 +788,18 @@ function TopEventsTable({ demo, events = [] }) {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                      >
-                        <ArrowUpRight className="h-4 w-4" />
-                      </Button>
+                      {canOpenEvent ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Open ${event.name}`}
+                          className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                          onClick={() => openEvent(event.id)}
+                        >
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 );
@@ -825,13 +812,20 @@ function TopEventsTable({ demo, events = [] }) {
   );
 }
 
-// --- General stats (flat list of key numbers) -------------------------------
-
 function GeneralStatsCard({ items }) {
+  const router = useRouter();
+  const projectId = useOptionalProject()?.projectId ?? null;
   const sorted = [...items].sort(
     (a, b) => URGENCY_ORDER.indexOf(a.urgency) - URGENCY_ORDER.indexOf(b.urgency),
   );
   const total = items.length;
+
+  const hrefFor = (item) => {
+    const title = ATTENTION_TAB_TITLES[item.key];
+    return title && projectId
+      ? `/project/${projectId}/${tabToSlug(title)}`
+      : null;
+  };
 
   return (
     <WidgetShell contentClassName="flex flex-col">
@@ -848,11 +842,19 @@ function GeneralStatsCard({ items }) {
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {sorted.map((item) => {
           const Icon = item.icon;
+          const href = hrefFor(item);
+          const rowProps = href
+            ? { type: "button", onClick: () => router.push(href), tabIndex: 0 }
+            : {};
+          const RowTag = href ? "button" : "div";
           return (
-            <button
+            <RowTag
               key={item.key}
-              type="button"
-              className="group flex items-center gap-3.5 rounded-xl p-3.5 text-left transition-colors hover:bg-surface-card"
+              {...rowProps}
+              className={cn(
+                "group flex items-center gap-3.5 rounded-xl p-3.5 text-left transition-colors",
+                href && "cursor-pointer hover:bg-surface-card",
+              )}
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
                 <Icon className="h-[18px] w-[18px]" />
@@ -867,20 +869,18 @@ function GeneralStatsCard({ items }) {
                 <p className="mt-0.5 truncate text-xs text-text-secondary">{item.hint}</p>
               </div>
               <span className="shrink-0 text-xl font-bold tabular-nums text-white">{item.value}</span>
-              <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-medium text-text-secondary transition-colors group-hover:text-foreground">
-                <ChevronRight className="h-3 w-3" />
-              </span>
-            </button>
+              {href ? (
+                <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-medium text-text-secondary transition-colors group-hover:text-foreground">
+                  <ChevronRight className="h-3 w-3" />
+                </span>
+              ) : null}
+            </RowTag>
           );
         })}
       </div>
     </WidgetShell>
   );
 }
-
-// --- Loading skeleton ----------------------------------------------------------
-// Mirrors the loaded layout section-for-section (same card shells and heights)
-// so there's no layout shift when the real widgets swap in.
 
 function SkeletonWidget({ className, shape = "line" }) {
   return (
@@ -908,7 +908,6 @@ function SkeletonWidget({ className, shape = "line" }) {
 function OverviewSkeleton() {
   return (
     <>
-      {/* Header: title + workspace summary stats */}
       <div className="mt-2">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="space-y-2">
@@ -926,7 +925,6 @@ function OverviewSkeleton() {
         </div>
       </div>
 
-      {/* Summary stats bar */}
       <Card className="gap-0 overflow-hidden rounded-xl border-border bg-surface-subtle py-0">
         <CardContent className="p-0">
           <div className="grid grid-cols-2 md:grid-cols-4">
@@ -950,20 +948,17 @@ function OverviewSkeleton() {
         </CardContent>
       </Card>
 
-      {/* Bento hero: wide trend + donut */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <SkeletonWidget className="lg:col-span-2 h-[360px]" />
         <SkeletonWidget className="h-[360px]" shape="circle" />
       </div>
 
-      {/* Attendee lifecycle: funnel + two gauges */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <SkeletonWidget className="h-[300px]" shape="circle" />
         <SkeletonWidget className="h-[300px]" shape="circle" />
         <SkeletonWidget className="h-[300px]" shape="circle" />
       </div>
 
-      {/* Top performing events table */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
@@ -993,7 +988,6 @@ function OverviewSkeleton() {
         </div>
       </div>
 
-      {/* General stats */}
       <Card className="bg-surface-subtle border-border rounded-xl py-0 gap-0 overflow-hidden">
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-3">
@@ -1021,13 +1015,8 @@ function OverviewSkeleton() {
   );
 }
 
-// --- Event scope selector (multi-select) -------------------------------------
-
-// Scopes a widget's stats to a chosen set of events. Empty selection means
-// "all events".
 function EventScopeSelect({ events, selected, onChange }) {
   const all = selected.length === 0;
-  // Clip a single event's name to 5 chars + ellipsis so the trigger stays compact.
   const clip = (s) => (s.length > 5 ? `${s.slice(0, 5)}…` : s);
   const label = all
     ? "All"
@@ -1082,15 +1071,8 @@ function EventScopeSelect({ events, selected, onChange }) {
   );
 }
 
-// --- Screen ------------------------------------------------------------------
-
-// `demo` renders the fixed showcase dataset (the landing-page playground, which
-// has no real project/session); the real workspace mounts this with no props
-// and fetches live rows through the data layer instead.
 export function EventsOverviewScreen({ demo = false }) {
   const live = !demo;
-  // useOptionalProject so this screen can also mount on the public landing page
-  // (as a live playground) with no ProjectProvider above it.
   const projectCtx = useOptionalProject();
   const projectId = projectCtx?.projectId ?? null;
   const projectLoading = projectCtx?.loading ?? false;
@@ -1102,8 +1084,6 @@ export function EventsOverviewScreen({ demo = false }) {
   const [refunds, setRefunds] = useState([]);
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(live);
-  // Snapshot of "now" taken when the data last loaded, so period comparisons
-  // below can derive from state instead of calling Date.now() during render.
   const [asOf, setAsOf] = useState(0);
 
   useEffect(() => {
@@ -1257,7 +1237,6 @@ export function EventsOverviewScreen({ demo = false }) {
 
   return (
     <MainScreenWrapper>
-      {/* Header: title + workspace summary stats */}
       <div className="mt-2">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
@@ -1265,7 +1244,7 @@ export function EventsOverviewScreen({ demo = false }) {
               <h1 className="text-2xl font-bold text-white tracking-tight">Events Overview</h1>
 
             </div>
-            <p className="mt-1 text-center text-sm text-foreground0 md:text-left">
+            <p className="mt-1 text-center text-sm text-muted-foreground md:text-left">
               Track registrations, ticket sales, check-ins, and revenue across all your events.
             </p>
           </div>
@@ -1300,10 +1279,8 @@ export function EventsOverviewScreen({ demo = false }) {
         </div>
       </div>
 
-      {/* Summary stats bar */}
       <StatsBar stats={statsData} />
 
-      {/* Bento hero: wide trend + donut */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 h-[360px]">
           <RegistrationsTrendWidget demo={demo} events={events} orders={orders} registrations={registrations} />
@@ -1313,7 +1290,6 @@ export function EventsOverviewScreen({ demo = false }) {
         </div>
       </div>
 
-      {/* Attendee lifecycle: funnel + two gauges (equal ratio) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="h-[300px]">
           <ConversionFunnelWidget
@@ -1349,10 +1325,8 @@ export function EventsOverviewScreen({ demo = false }) {
         </div>
       </div>
 
-      {/* Top performing events table */}
       <TopEventsTable demo={demo} events={events} />
 
-      {/* General stats */}
       <GeneralStatsCard items={attentionItems} />
     </MainScreenWrapper>
   );

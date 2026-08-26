@@ -6,10 +6,6 @@ import { cn } from "@/lib/utils";
 import { CoverImage } from "../hero";
 import { Shell, EventMetaLine, OVER_COVER, StickyBuyBar } from "./shared";
 
-// Glass panel — the cover is pinned behind the whole page and never scrolls;
-// the content rides over it inside one frosted panel. The treatment used when
-// the artwork is the atmosphere rather than the information, and it keeps
-// working on a page with only one image.
 export function GlassLayout({ ctx }) {
   const {
     event,
@@ -64,9 +60,6 @@ export function GlassLayout({ ctx }) {
             <EventMetaLine event={event} className="justify-center" />
           </header>
 
-          {/* One panel holds the whole body. Its own translucent fill is what
-              separates the copy from the photo, so nothing inside needs a
-              second surface of its own. */}
           <div className="rounded-3xl border border-border bg-black/40 p-6 backdrop-blur-xl sm:p-10">
             <div
               className={cn("min-w-0", themed ? "flex flex-col" : "space-y-10")}

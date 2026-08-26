@@ -31,10 +31,6 @@ import {
 } from "@/lib/supabase/issuing";
 import { blockLabel, redeemLabel } from "@/lib/inventory/entitlements";
 
-// The hand-out desk for /issue. Scan or search an attendee, see exactly what
-// they may collect, pick the size, hand it over. Every decision is re-derived
-// server-side by the issue_* RPCs — this screen only renders their answers.
-
 const qty = (n) => {
   const v = Number(n || 0);
   return Number.isInteger(v) ? String(v) : v.toFixed(2);
@@ -52,8 +48,6 @@ const timeAgo = (iso) => {
 function Thumb({ url, className }) {
   if (url) {
     return (
-      // Item photos are arbitrary Supabase Storage URLs on an unauthenticated
-      // route; next/image adds no value here.
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={url}
@@ -90,8 +84,6 @@ function Notice({ tone = "warning", children }) {
     </p>
   );
 }
-
-// --- Find an attendee --------------------------------------------------------
 
 function FindView({ onPick, onWalkup, canWalkup, lookup, recent, onUndo, canReturn }) {
   const [query, setQuery] = useState("");
@@ -217,8 +209,6 @@ function FindView({ onPick, onWalkup, canWalkup, lookup, recent, onUndo, canRetu
   );
 }
 
-// --- What this attendee may collect ------------------------------------------
-
 function EntitlementsView({ subject, entitlements, loading, onIssue, onBack, canOverride }) {
   return (
     <div className="space-y-4">
@@ -291,8 +281,6 @@ function EntitlementsView({ subject, entitlements, loading, onIssue, onBack, can
     </div>
   );
 }
-
-// --- Pick the size and confirm -----------------------------------------------
 
 function ConfirmView({
   entitlement,
@@ -432,8 +420,6 @@ function ConfirmView({
   );
 }
 
-// --- Done --------------------------------------------------------------------
-
 function DoneView({ result, onDone, onUndo, canReturn }) {
   useEffect(() => {
     const t = setTimeout(onDone, 8000);
@@ -471,8 +457,6 @@ function DoneView({ result, onDone, onUndo, canReturn }) {
     </div>
   );
 }
-
-// --- Walk-up -----------------------------------------------------------------
 
 function WalkupView({ allocations, loading, onPick, onBack }) {
   return (
@@ -520,10 +504,7 @@ function WalkupView({ allocations, loading, onPick, onBack }) {
   );
 }
 
-// --- Desk --------------------------------------------------------------------
-
 export function IssueDesk({ eventId, code, role, exit, event }) {
-  const [view, setView] = useState("find"); // find | subject | confirm | done | walkup
   const [subject, setSubject] = useState(null);
   const [entitlements, setEntitlements] = useState([]);
   const [loadingEnts, setLoadingEnts] = useState(false);

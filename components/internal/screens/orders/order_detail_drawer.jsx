@@ -57,10 +57,6 @@ import {
   methodLabel,
 } from "./constants";
 
-// --- Refund dialog -----------------------------------------------------------
-
-// Remounted (via key) each time it opens, so state initializes fresh — no reset
-// effect needed.
 function RefundDialog({ open, onOpenChange, order, onConfirm, pending }) {
   const remaining = Math.max(0, (order?.total || 0) - (order?.refundedTotal || 0));
   const [amount, setAmount] = useState(remaining);
@@ -68,8 +64,10 @@ function RefundDialog({ open, onOpenChange, order, onConfirm, pending }) {
   const [method, setMethod] = useState("original");
   const [reason, setReason] = useState("");
 
+  const value = Number(amount) || 0;
+  const amountInvalid = value <= 0 || value > remaining;
+
   const submit = () => {
-    const value = Number(amount) || 0;
     if (value <= 0) {
       toast.error("Enter a refund amount above zero.");
       return;
@@ -155,7 +153,7 @@ function RefundDialog({ open, onOpenChange, order, onConfirm, pending }) {
           </Button>
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={pending}
+            disabled={pending || amountInvalid}
             onClick={submit}
           >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -166,8 +164,6 @@ function RefundDialog({ open, onOpenChange, order, onConfirm, pending }) {
     </Dialog>
   );
 }
-
-// --- Line items --------------------------------------------------------------
 
 function LineRow({ label, value, muted, strong }) {
   return (
@@ -202,7 +198,7 @@ function StripeDetail({ label, value, mono = false }) {
   if (value == null || value === "") return null;
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
         {label}
       </p>
       <p
@@ -228,11 +224,6 @@ function addressText(address) {
     .join(", ");
 }
 
-// --- Drawer ------------------------------------------------------------------
-
-// The drawer's inner content — mounted fresh per order (keyed by order.id), so
-// `loading` starts true and the fetch effect only ever sets state in its async
-// continuation.
 function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
   const [events, setEvents] = useState([]);
   const [refunds, setRefunds] = useState([]);
@@ -240,7 +231,7 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
   const [refundOpen, setRefundOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [note, setNote] = useState("");
-  // Assigned seats on this order, empty for a general-admission event.
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [seats, setSeats] = useState([]);
 
   useEffect(() => {
@@ -343,7 +334,6 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
     }
     setRefundOpen(false);
     toast.success(`Refunded ${currency(amount)}.`);
-    // Refresh the drawer's lists and let the parent update the row.
     const [ev, rf] = await Promise.all([
       listOrderEvents(order.id),
       listRefundsForOrder(order.id),
@@ -378,7 +368,6 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
       toast.error("Couldn't send the receipt.");
       return;
     }
-    // Client-side action for now; a real email send belongs in a server route.
     setEvents((prev) => [saved, ...prev]);
     toast.success("Receipt sent.");
   };
@@ -413,7 +402,6 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
       </SheetHeader>
 
       <div className="space-y-6 p-5">
-              {/* Buyer + payment */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">
@@ -435,7 +423,6 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                 </div>
               </div>
 
-              {/* Line items */}
               <div className="rounded-xl border border-border bg-surface-subtle p-4">
                 <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-text-secondary">
                   Items
@@ -460,7 +447,6 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                 </div>
               </div>
 
-              {/* Persisted Stripe payment snapshot */}
               {stripeDetails ? (
                 <div className="rounded-xl border border-border bg-surface-subtle p-4">
                   <div className="mb-4 flex items-start justify-between gap-3">
@@ -621,7 +607,6 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                 </div>
               ) : null}
 
-              {/* Actions */}
               <div className="flex flex-wrap gap-2">
                 <Button
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -641,13 +626,12 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                   variant="outline"
                   className="border-border bg-surface-card text-red-300 hover:bg-red-500/10 hover:text-red-300"
                   disabled={!canCancel}
-                  onClick={handleCancel}
+                  onClick={() => setCancelConfirmOpen(true)}
                 >
                   <Ban className="h-4 w-4" /> Cancel
                 </Button>
               </div>
 
-              {/* Refunds on this order */}
               {refunds.length ? (
                 <div>
                   <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-text-secondary">
@@ -671,7 +655,6 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                 </div>
               ) : null}
 
-              {/* Add note */}
               <div className="flex items-center gap-2">
                 <Input
                   value={note}
@@ -690,7 +673,6 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                 </Button>
               </div>
 
-              {/* Timeline */}
               <div>
                 <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-text-secondary">
                   Timeline
@@ -730,7 +712,6 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
               </div>
             </div>
 
-      {/* Keyed on open so the form resets to fresh state each time it opens. */}
       <RefundDialog
         key={refundOpen ? "open" : "closed"}
         open={refundOpen}
@@ -739,12 +720,46 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
         onConfirm={handleRefund}
         pending={pending}
       />
+
+      <Dialog
+        open={cancelConfirmOpen}
+        onOpenChange={setCancelConfirmOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel order</DialogTitle>
+            <DialogDescription>
+              Cancel{" "}
+              <span className="font-medium text-foreground">
+                {orderRef(order.id)}
+              </span>{" "}
+              from{" "}
+              <span className="font-medium text-foreground">
+                {order.name || "this buyer"}
+              </span>
+              ? The buyer loses their tickets. This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCancelConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                setCancelConfirmOpen(false);
+                handleCancel();
+              }}
+            >
+              <Ban className="h-4 w-4" /> Cancel order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 
-// The Sheet stays mounted (for enter/exit animation); the body remounts per
-// order via key so its data-loading state initializes cleanly.
 export function OrderDetailDrawer({
   order,
   eventName,

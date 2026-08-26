@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getSessionMember } from "@/lib/portal/session";
 import { voteMemberPoll } from "@/lib/portal/chat";
 
-// POST { messageId, optionId } -> toggle this member's vote on a poll message.
 export async function POST(request, { params }) {
   const member = await getSessionMember();
   if (!member) {

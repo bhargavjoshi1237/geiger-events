@@ -8,8 +8,6 @@ type SectionTitleProps = {
   action?: React.ReactNode;
 };
 
-// Uppercase micro-kicker that opens each section; keeps hierarchy without
-// competing with card titles.
 export function SectionTitle({ children, action }: SectionTitleProps) {
   return (
     <View style={styles.row}>

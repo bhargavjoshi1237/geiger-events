@@ -21,8 +21,6 @@ import { formatDate } from "./constants";
 
 const REFRESH_MS = 15000;
 
-// `demo` seeds the board from bundled sample data and skips fetching/polling, so
-// it can run as a live playground on the public landing page (no session there).
 export function RealTimeAttendanceScreen({ demo = false }) {
   const projectId = useOptionalProject()?.projectId ?? null;
   const [events, setEvents] = useState(demo ? DEMO_ATTENDANCE.events : []);
@@ -33,7 +31,6 @@ export function RealTimeAttendanceScreen({ demo = false }) {
   const [refreshing, setRefreshing] = useState(false);
   const timer = useRef(null);
 
-  // Attendance-only refresh so live counts update without re-pulling everything.
   const refreshAttendance = async () => {
     if (demo) return;
     setRefreshing(true);
@@ -67,8 +64,6 @@ export function RealTimeAttendanceScreen({ demo = false }) {
     };
   }, [projectId, demo]);
 
-  // checked-in (unique, status "in") + confirmed registration counts per event,
-  // plus the raw in-status rows per event for the gate/session breakdown.
   const byEvent = useMemo(() => {
     const inByEvent = {};
     const rowsByEvent = {};
@@ -96,7 +91,6 @@ export function RealTimeAttendanceScreen({ demo = false }) {
         const checkedIn = byEvent.inByEvent[e.id]?.size || 0;
         const expected = byEvent.confByEvent[e.id] || e.sold || 0;
         const pct = expected ? Math.round((checkedIn / expected) * 100) : 0;
-        // Gate + session breakdown from the in-status rows.
         const evRows = byEvent.rowsByEvent[e.id] || [];
         const sessName = new Map((e.checkinSessions?.sessions || []).map((s) => [s.id, s.name]));
         const gateB = {};
@@ -150,7 +144,6 @@ export function RealTimeAttendanceScreen({ demo = false }) {
       <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <span />
         <SearchInput
           value={search}
           onChange={setSearch}

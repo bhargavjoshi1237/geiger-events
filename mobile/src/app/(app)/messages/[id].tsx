@@ -38,8 +38,6 @@ function replaceTemp(messages: ThreadMessage[], tempId: string, real: ThreadMess
   return rest;
 }
 
-// One support thread with the organiser — messages, optimistic composer, and a
-// closed state that locks the composer.
 export default function ThreadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token } = useSession();

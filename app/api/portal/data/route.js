@@ -19,11 +19,8 @@ export async function GET() {
     listMemberRefunds(member.email),
   ]);
 
-  // Fold the member's latest refund status onto each order it belongs to.
   const withRefund = orders.map((o) => ({ ...o, refund: refunds[o.id] || null }));
 
-  // Entitlements are looked up per order, so this runs after the orders are
-  // known and only over orders that are already scoped to this member.
   const entitlements = await listMemberEntitlements(withRefund);
 
   return NextResponse.json({

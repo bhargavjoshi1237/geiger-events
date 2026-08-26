@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/supabase/admin";
 
-// { email } -> { exists, hasPassword }. Drives the email-first login UI.
 export async function POST(request) {
   const { email } = await request.json().catch(() => ({}));
   const clean = String(email || "").trim().toLowerCase();

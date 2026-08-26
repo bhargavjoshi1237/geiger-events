@@ -1,13 +1,5 @@
 "use client";
 
-// Section-level schedule styling.
-//
-// Layout, gap, frame and the section note describe the whole Schedule section,
-// not one item — the public renderer reads them off the first item, so the
-// editor fans any change across the list. They used to sit in the per-item
-// dialog, where changing "Gap" while adding one item silently rewrote every
-// other item in the schedule. Here their scope is stated instead of hidden.
-
 import React from "react";
 import { Settings2 } from "lucide-react";
 
@@ -18,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Field } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
 
 export const SCHEDULE_LAYOUTS = [
@@ -37,8 +30,6 @@ export const SCHEDULE_FRAMES = [
   { key: "bare", label: "Bare", hint: "No panel" },
 ];
 
-// Miniature drawings of each layout — the same idea as the image-position
-// pickers in the item dialog. A word like "Flex" tells you nothing; a shape does.
 function LayoutArt({ kind }) {
   const bar = "rounded-[2px] bg-current";
   if (kind === "flex") {
@@ -93,7 +84,6 @@ function FrameArt({ kind }) {
   );
 }
 
-/** A row of illustrated choices. Replaces the old text-pill Segmented rows. */
 export function ChoiceRow({ label, hint, value, onChange, options, render, columns }) {
   return (
     <div className="space-y-1.5">
@@ -177,13 +167,11 @@ export function ScheduleStyleButton({ section, onChange, disabled }) {
           render={(o) => <FrameArt kind={o.key} />}
         />
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="sched-section-note"
-            className="text-xs font-medium text-foreground"
-          >
-            Section note
-          </label>
+        <Field
+          label="Section note"
+          hint="Shown under the “Schedule” heading."
+          htmlFor="sched-section-note"
+        >
           <Textarea
             id="sched-section-note"
             rows={2}
@@ -191,10 +179,7 @@ export function ScheduleStyleButton({ section, onChange, disabled }) {
             onChange={(e) => set("sectionNote")(e.target.value)}
             placeholder="e.g. All times are in Pacific Time."
           />
-          <p className="text-[11px] text-text-tertiary">
-            Shown under the “Schedule” heading.
-          </p>
-        </div>
+        </Field>
       </PopoverContent>
     </Popover>
   );

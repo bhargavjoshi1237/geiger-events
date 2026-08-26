@@ -19,8 +19,6 @@ import type { WatchItem } from "@/types/portal";
 const stagger = (i: number) => Math.min(i, 11) * 40;
 const LEAVING_DAYS = 7;
 
-// Now-based checks live in helpers so the compiler doesn't flag them as impure
-// render calls (same pattern as fmtTimeAgo).
 function notYetPremiered(premiereAt: string | null): boolean {
   return !!premiereAt && new Date(premiereAt).getTime() > Date.now();
 }
@@ -95,7 +93,6 @@ export default function WatchScreen() {
 }
 
 function WatchCard({ item, onOpen }: { item: WatchItem; onOpen: () => void }) {
-  // A simulive that hasn't premiered is locked until its premiere time.
   const premiere = item.kind === "simulive" && notYetPremiered(item.premiereAt);
   const days = leavingDays(item.expiresAt);
   const leaving = days !== null && days > 0 && days <= LEAVING_DAYS;
@@ -117,7 +114,6 @@ function WatchCard({ item, onOpen }: { item: WatchItem; onOpen: () => void }) {
           end={{ x: 0, y: 0 }}
           style={StyleSheet.absoluteFill}
         />
-        {/* Frosted disc reads as a button; the bare icon didn't. */}
         <View style={styles.playWrap} pointerEvents="none">
           <View style={styles.playDisc}>
             <Feather
@@ -215,7 +211,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
   },
-  // Nudge the play glyph right so it optically centres inside the disc.
   playGlyph: {
     marginLeft: 3,
   },

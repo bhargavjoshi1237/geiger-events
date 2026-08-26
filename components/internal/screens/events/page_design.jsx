@@ -75,18 +75,6 @@ import {
   uploadEventVideo,
 } from "@/lib/supabase/storage";
 
-// ---------------------------------------------------------------------------
-// Shared page-design model
-//
-// The public event page is an ordered list of block instances plus a theme.
-// Every mode reads the same model:
-//   - Standard : rendered with defaults, no controls
-//   - Themed   : theme + show/hide/reorder the default event blocks
-//   - Custom   : the full builder — add/edit/remove/reorder any block
-// ---------------------------------------------------------------------------
-
-// The site header bar — the brand's own nav reproduced above the event hero.
-// Populated by an import, editable by hand afterwards.
 function SiteHeaderEditor({ header, onChange }) {
   const h = { ...DEFAULT_HEADER, ...(header || {}) };
   const links = Array.isArray(h.links) ? h.links : [];
@@ -141,6 +129,26 @@ function SiteHeaderEditor({ header, onChange }) {
                 placeholder="https://…"
                 className="flex-1"
               />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={i === 0}
+                onClick={() => patch({ links: moveItem(links, i, -1) })}
+                aria-label="Move up"
+                className="shrink-0 text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={i === links.length - 1}
+                onClick={() => patch({ links: moveItem(links, i, 1) })}
+                aria-label="Move down"
+                className="shrink-0 text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -207,10 +215,6 @@ import {
   defaultSidebarBlocks,
 } from "./page_block_library";
 
-// The block catalog, option lists and page-design factories moved to
-// page_block_library.js so the page builder can read them without importing
-// this file (which renders the builder). Re-exported here so every existing
-// `from "./page_design"` import keeps resolving.
 export {
   PAGE_MODES,
   ACCENTS,
@@ -236,8 +240,6 @@ export {
   resolveFont,
 } from "./page_block_library";
 
-// The builder is a whole editor's worth of code and only opens on demand, so it
-// loads lazily rather than riding along in the event editor's bundle.
 const PageBuilder = lazy(() =>
   import("./builder/page_builder").then((m) => ({ default: m.PageBuilder })),
 );
@@ -249,10 +251,6 @@ function moveItem(arr, index, dir) {
   [copy[index], copy[ni]] = [copy[ni], copy[index]];
   return copy;
 }
-
-// ---------------------------------------------------------------------------
-// Add-block palette
-// ---------------------------------------------------------------------------
 
 function AddBlockDialog({ open, onOpenChange, surface, existingTypes, onAdd }) {
   const available = addableBlocks(surface, existingTypes);
@@ -296,15 +294,9 @@ function AddBlockDialog({ open, onOpenChange, surface, existingTypes, onAdd }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Block property editor
-// ---------------------------------------------------------------------------
-
 const RICHTEXT_HINT =
   "Supports **bold**, *italic*, [links](https://…), ## headings, and - bullet lists.";
 
-// One field of a block (or of a repeater row). Field types: text, textarea,
-// richtext, select, items.
 function BlockField({ field, value, onChange }) {
   if (field.type === "select") {
     return (
@@ -338,7 +330,6 @@ function BlockField({ field, value, onChange }) {
   );
 }
 
-// Repeater for list-shaped props (accordion rows, button groups).
 function ItemsField({ field, items, onChange }) {
   const rows = Array.isArray(items) ? items : [];
   const setRow = (i, patch) =>
@@ -429,8 +420,6 @@ function BlockEditorDialog({ block, onOpenChange, onSave }) {
   const [draft, setDraft] = useState(block?.props || {});
   const [layout, setLayout] = useState(block?.layout || DEFAULT_BLOCK_LAYOUT);
 
-  // Re-seed the draft whenever a different block is opened (render-phase reset —
-  // React's recommended alternative to a setState-in-effect).
   const [seedId, setSeedId] = useState(block?.id);
   if (block?.id !== seedId) {
     setSeedId(block?.id);
@@ -442,7 +431,6 @@ function BlockEditorDialog({ block, onOpenChange, onSave }) {
 
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
   const setLayoutKey = (key) => (value) => setLayout((l) => ({ ...l, [key]: value }));
-  // Fields gated on another field's value (an image column hides the text field).
   const visible = (f) =>
     !f.showWhen ||
     Object.entries(f.showWhen).every(([k, v]) => (draft[k] ?? "") === v);
@@ -476,7 +464,6 @@ function BlockEditorDialog({ block, onOpenChange, onSave }) {
             </React.Fragment>
           ))}
 
-          {/* Layout applies to any content block, including ones with no fields. */}
           <p className="mt-1 border-t border-border pt-4 text-xs font-semibold uppercase tracking-wider text-text-secondary">
             Layout
           </p>
@@ -522,10 +509,6 @@ function BlockEditorDialog({ block, onOpenChange, onSave }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Block list (shared by the main column and the sidebar)
-// ---------------------------------------------------------------------------
-
 function BlockList({ blocks, isCustom, onToggle, onMove, onRemove, onEdit }) {
   if (!blocks.length) {
     return (
@@ -540,8 +523,6 @@ function BlockList({ blocks, isCustom, onToggle, onMove, onRemove, onEdit }) {
         const meta = getBlockMeta(b.type);
         const Icon = meta?.icon;
         const editable = isCustom && meta?.category === "content";
-        // The registration card is the page's reason to exist — it can be moved,
-        // never hidden or deleted.
         const locked = meta?.locked;
         return (
           <div
@@ -628,10 +609,6 @@ function BlockList({ blocks, isCustom, onToggle, onMove, onRemove, onEdit }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Editor section (right-nav "Page design")
-// ---------------------------------------------------------------------------
-
 export function PageDesignSection({
   design,
   onChange,
@@ -640,14 +617,10 @@ export function PageDesignSection({
   eventId,
   event,
 }) {
-  // Which surface the add-block palette / editor dialog is acting on
-  // ("main" | "sidebar"), or null when closed.
   const [adding, setAdding] = useState(null);
   const [editing, setEditing] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
-  // Background media upload lives here beside the URL input. Uploads go into
-  // the event's own media folder (same RLS as cover/gallery uploads).
   const bgInput = useRef(null);
   const [bgBusy, setBgBusy] = useState(false);
 
@@ -656,14 +629,9 @@ export function PageDesignSection({
   const isCustom = design.mode === "custom";
   const isImported = design.mode === "imported";
 
-  // Once a page has a builder tree, the tree is what renders — the flat block
-  // lists below are the pre-builder editor and would fight it.
   const built = hasTree(design);
   const canUseCustomCode = useCan("events.page.customcode");
 
-  // The builder saves on its own, rather than making the author exit and find
-  // the editor's Save button. Falls back to lifting state when no persister is
-  // wired (the preview-only paths).
   const saveFromBuilder = async ({ tree, customCode }) => {
     const next = { ...design, tree, customCode };
     onChange(next);
@@ -671,8 +639,6 @@ export function PageDesignSection({
     return (await onPersist(next)) !== false;
   };
 
-  // Brand theme (Themed mode). Reads the resolved theme (explicit, or legacy
-  // back-compat, or defaults) and writes an explicit `design.theme`.
   const theme = resolveTheme(design);
   const setTheme = (patch) => set({ theme: { ...theme, ...patch } });
   const setColors = (patch) => setTheme({ colors: { ...theme.colors, ...patch } });
@@ -681,9 +647,6 @@ export function PageDesignSection({
     setTheme({ base, colors: { ...theme.colors, ...BASE_PALETTES[base] } });
   const applyPreset = (preset) => set({ theme: preset.theme });
 
-  // Upload a background image or video straight to the event's media folder
-  // and point the background at it — the URL input stays for media hosted
-  // elsewhere. Mirrors the cover upload flow in Content & media.
   const onBgFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -712,15 +675,10 @@ export function PageDesignSection({
   };
   const fontOptions = themeFontOptions(theme);
 
-  // Selecting Import opens the dialog straight away the first time; afterwards it
-  // just switches back to the imported look (re-import lives in Brand & logo).
   const selectMode = (key) => {
     set({ mode: key });
     if (key === "imported" && !theme.source?.url) setImportOpen(true);
   };
-  // An imported brand is a theme patch — merged over what's there so a partial
-  // import (colors only, say) leaves the rest of the theme alone. The footer
-  // rides alongside the theme rather than inside it, so it patches separately.
   const applyImport = (patch, nextFooter) =>
     set({
       mode: "imported",
@@ -728,16 +686,12 @@ export function PageDesignSection({
       ...(nextFooter ? { footer: nextFooter } : null),
     });
 
-  // The two block surfaces. A design saved before the sidebar became
-  // block-driven has no `sidebarBlocks` — fall back to the defaults so the list
-  // renders, and the first edit persists it.
   const mainBlocks = design.blocks || [];
   const sidebarBlocks = useMemo(
     () => design.sidebarBlocks || defaultSidebarBlocks(),
     [design.sidebarBlocks],
   );
 
-  // One set of list handlers, bound to whichever surface's array it's given.
   const handlersFor = (key, list) => ({
     onToggle: (id) =>
       set({
@@ -764,8 +718,6 @@ export function PageDesignSection({
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        {/* Page mode — shown without a card wrapper, the selector sits directly
-            on the section surface. */}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {PAGE_MODES.map((mode) => {
             const active = design.mode === mode.key;
@@ -787,8 +739,8 @@ export function PageDesignSection({
                     {mode.label}
                   </span>
                   {active ? (
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white">
-                      <Check className="h-3 w-3 text-[#161616]" />
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-foreground">
+                      <Check className="h-3 w-3 text-background" />
                     </span>
                   ) : null}
                 </div>
@@ -816,10 +768,6 @@ export function PageDesignSection({
         </SectionCard>
       ) : (
         <Tabs defaultValue="brand" className="gap-4">
-          {/* Fourteen stacked panels was a long scroll to find one control.
-              Grouped into tabs, each panel is a short list you can take in at
-              once, and the mode selector above stays the only thing you have
-              to scroll past. */}
           <TabsList
             variant="line"
             className="w-full justify-start gap-1 overflow-x-auto border-b border-border pb-1"

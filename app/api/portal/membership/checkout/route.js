@@ -7,9 +7,6 @@ import {
 } from "@/lib/portal/memberships";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
 
-// POST { planId, returnUrl } -> for a free plan, enrolls directly ({ enrolled });
-// for a paid plan, opens a Stripe Checkout session ({ url }). Price/project are
-// resolved server-side from the plan — the client value is never trusted.
 export async function POST(request) {
   const member = await getSessionMember();
   if (!member) {
@@ -34,7 +31,6 @@ export async function POST(request) {
     );
   }
 
-  // Free membership — enroll immediately, no payment.
   if (plan.price <= 0) {
     const res = await enrollMembership({
       email: member.email,
@@ -47,7 +43,6 @@ export async function POST(request) {
     return NextResponse.json({ enrolled: true, planName: plan.name });
   }
 
-  // Paid membership — one-time payment for the term via Stripe Checkout.
   if (!isStripeConfigured()) {
     return NextResponse.json(
       { error: "Online payments aren't configured." },

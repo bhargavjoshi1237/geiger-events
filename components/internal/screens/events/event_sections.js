@@ -1,10 +1,3 @@
-// Right-hand editor navigation + section registry for the event editor.
-//
-// Split out of event_detail.jsx so the editor shell stays lean: this file owns
-// the per-event topic list (NAV_GROUPS) and the title → component map (SECTIONS).
-// Each section component lives in its own file; add a topic by importing its
-// component, adding a NAV_GROUPS entry, and mapping it here by `key`.
-
 import {
   LayoutDashboard,
   BellRing,
@@ -127,8 +120,6 @@ import {
   DoorKioskSection,
 } from "./checkin_section";
 
-// Per-event topics, grouped the way the original sidebar grouped them. `key`
-// must match a SECTIONS entry; `ownHeader` sections render their own title row.
 export const NAV_GROUPS = [
   {
     group: null,
@@ -265,7 +256,6 @@ export const NAV_GROUPS = [
         label: "Location & Time",
         icon: MapPin,
         desc: "Where and when your event happens — venue, doors, and start/end times.",
-        // Renders its own header so the location-mode tabs can sit beside the title.
         ownHeader: true,
       },
       {
@@ -273,7 +263,6 @@ export const NAV_GROUPS = [
         label: "Map & Directions",
         icon: MapIcon,
         desc: "Help attendees arrive — a pinned map, getting-there notes, and directions.",
-        // Renders its own header so the Re-detect action can sit beside the title.
         ownHeader: true,
       },
       {
@@ -603,7 +592,6 @@ export const NAV_GROUPS = [
   },
 ];
 
-// title key → section component. Unmapped keys fall back to Overview.
 export const SECTIONS = {
   overview: OverviewSection,
   alerts: AlertsSection,

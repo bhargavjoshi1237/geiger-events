@@ -97,7 +97,13 @@ function CreateVenueDialog({ open, onOpenChange, onCreate }) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+          className="grid gap-4"
+        >
           <Field label="Venue name" htmlFor="venue-name">
             <Input
               id="venue-name"
@@ -129,7 +135,7 @@ function CreateVenueDialog({ open, onOpenChange, onCreate }) {
               />
             </Field>
           </div>
-        </div>
+        </form>
 
         <DialogFooter>
           <Button
@@ -159,7 +165,6 @@ export function VenuesScreen() {
   const [type, setType] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  // The open venue lives in the URL (?venue=<id>) so a refresh stays on it.
   const { venueId, openVenue, closeVenue } = useWorkspaceUrl();
   const { projectId } = useProject();
   const [userId, setUserId] = useState(null);

@@ -80,7 +80,6 @@ export function NotesScreen() {
     };
   }, [projectId]);
 
-  // One entry per contact, carrying all their notes (newest first).
   const people = useMemo(() => {
     const map = new Map();
     for (const n of notes) {
@@ -156,8 +155,6 @@ export function NotesScreen() {
     setOpenContact(c);
   };
 
-  // Persist a drawer edit, mirror it into the local contact, then re-read the
-  // feed so note changes surface immediately.
   const handlePatch = (id, patch) => {
     setOpenContact((c) => (c && c.id === id ? { ...c, ...patch } : c));
     setContactsById((prev) =>
@@ -170,7 +167,6 @@ export function NotesScreen() {
     });
   };
 
-  // Delete a single note from a contact and reflect it in the open sheet.
   const handleDeleteNote = (contactId, noteId) => {
     const contact = contactsById[contactId];
     const current = contact?.notes || openPerson?.notes || [];
@@ -186,7 +182,6 @@ export function NotesScreen() {
     toast.success("Note deleted.");
   };
 
-  // Clear every note on a contact.
   const handleDeleteAllNotes = (person) => {
     const contact = contactsById[person.contactId];
     handlePatch(person.contactId, {
@@ -293,20 +288,19 @@ export function NotesScreen() {
             }
             action={
               search.trim() ? (
-                <button
-                  type="button"
-                  className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                <Button
+                  variant="outline"
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
                   onClick={() => setSearch("")}
                 >
                   Clear search
-                </button>
+                </Button>
               ) : null
             }
           />
         </div>
       )}
 
-      {/* Per-contact notes sheet — lists every note left on that contact. */}
       <Sheet open={!!openPerson} onOpenChange={(o) => !o && setOpenPerson(null)}>
         <SheetContent className="w-full gap-0 p-0 sm:max-w-md">
           {openPerson ? (

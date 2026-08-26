@@ -1,16 +1,9 @@
-// Lookups, filter options, config defaults, and formatters for the Campaigns
-// area. Config only — never row data. The data layer returns raw jsonb bags;
-// screens merge these defaults so every field is present. Mirrors the Events /
-// Check-in constants conventions so the areas read alike.
-
 import {
   Mail,
   MessageSquare,
   MessageCircle,
   BellRing,
 } from "lucide-react";
-
-// --- Formatters --------------------------------------------------------------
 
 export const formatDate = (iso) => {
   if (!iso) return "";
@@ -35,8 +28,6 @@ export const formatDateTime = (iso) => {
   });
 };
 
-// --- Channel lookup ----------------------------------------------------------
-
 export const CHANNEL_MAP = {
   email: { label: "Email", icon: Mail, variant: "info", dotClass: "bg-sky-400" },
   sms: { label: "SMS", icon: MessageSquare, variant: "success", dotClass: "bg-emerald-400" },
@@ -56,8 +47,6 @@ export const CHANNEL_FILTER_OPTIONS = [
   ...CHANNEL_OPTIONS,
 ];
 
-// --- Type lookup -------------------------------------------------------------
-
 export const TYPE_MAP = {
   newsletter: { label: "Newsletter", variant: "neutral" },
   invite: { label: "Invite", variant: "purple" },
@@ -74,14 +63,12 @@ export const TYPE_OPTIONS = [
   { value: "announcement", label: "Announcement" },
 ];
 
-// --- Status lookup -----------------------------------------------------------
-
 export const CAMPAIGN_STATUS_MAP = {
-  draft: { label: "Draft", variant: "neutral", dotClass: "bg-[#737373]" },
+  draft: { label: "Draft", variant: "neutral", dotClass: "bg-zinc-400" },
   scheduled: { label: "Scheduled", variant: "warning", dotClass: "bg-amber-400" },
   sending: { label: "Sending", variant: "info", dotClass: "bg-sky-400" },
   sent: { label: "Sent", variant: "success", dotClass: "bg-emerald-400" },
-  paused: { label: "Paused", variant: "outline", dotClass: "bg-[#525252]" },
+  paused: { label: "Paused", variant: "outline", dotClass: "bg-zinc-600" },
 };
 
 export const STATUS_FILTER_OPTIONS = [
@@ -92,21 +79,18 @@ export const STATUS_FILTER_OPTIONS = [
   { value: "paused", label: "Paused" },
 ];
 
-// --- Per-campaign content defaults (channel-aware) ---------------------------
-
 export const defaultContent = (channel = "email") => {
   const base = { templateId: "", sequenceId: "" };
   if (channel === "email")
     return { ...base, subject: "", previewText: "", body: "" };
   if (channel === "push") return { ...base, pushTitle: "", body: "" };
-  // sms | whatsapp
   return { ...base, body: "" };
 };
 
 export const defaultAb = () => ({
   enabled: false,
-  metric: "opens", // opens | clicks
-  split: 50, // % that gets variant A; the rest gets B
+  metric: "opens",
+  split: 50,
   variantB: { subject: "", body: "" },
   winner: "",
 });
@@ -120,8 +104,6 @@ export const defaultMetrics = () => ({
   unsubscribed: 0,
 });
 
-// --- Settings-slice defaults (events.campaign_settings.config) ----------------
-
 export const defaultDeliverability = () => ({
   fromName: "",
   fromEmail: "",
@@ -133,13 +115,13 @@ export const defaultDeliverability = () => ({
   footerAddress: "",
   unsubscribeText: "Unsubscribe from these emails",
   smsSenderId: "",
-  dailyCap: 0, // 0 = no cap
+  dailyCap: 0,
 });
 
 export const defaultPersonalization = () => ({
   greeting: "Hi {{first_name}},",
   fallbackName: "there",
-  tone: "friendly", // friendly | formal | playful
+  tone: "friendly",
   includeUnsubscribe: true,
   timezoneAware: true,
 });
@@ -149,7 +131,6 @@ export const SETTINGS_DEFAULTS = {
   personalization: defaultPersonalization,
 };
 
-// Merge a stored slice over its defaults. `feature` is a config key.
 export const withSettingsDefaults = (config, feature) => ({
   ...(SETTINGS_DEFAULTS[feature]?.() || {}),
   ...(config?.[feature] || {}),
@@ -166,8 +147,6 @@ export const AB_METRIC_OPTIONS = [
   { value: "clicks", label: "Click rate" },
 ];
 
-// --- Personalization merge tags ---------------------------------------------
-
 export const MERGE_TAGS = [
   { tag: "{{first_name}}", label: "First name" },
   { tag: "{{last_name}}", label: "Last name" },
@@ -180,17 +159,15 @@ export const MERGE_TAGS = [
   { tag: "{{organizer}}", label: "Organizer" },
 ];
 
-// --- Reusable-asset config defaults ------------------------------------------
-
 export const defaultTemplateConfig = () => ({
   subject: "",
   previewText: "",
   body: "",
-  category: "general", // general | invite | reminder | receipt | announcement
+  category: "general",
 });
 
 export const defaultSequenceConfig = () => ({
-  trigger: "registration", // registration | rsvp | manual | date
+  trigger: "registration",
   steps: [
     { id: "s1", channel: "email", delayDays: 0, subject: "", body: "" },
   ],
@@ -210,10 +187,6 @@ export const SEQUENCE_TRIGGER_OPTIONS = [
   { value: "date", label: "Relative to event date" },
   { value: "manual", label: "Manual enrolment" },
 ];
-
-// --- Channel lens presets (title -> preset onto CampaignsScreen) --------------
-// Each lens filters the hub and pre-sets the create dialog. `lockChannel` hides
-// the channel picker; `banner` shows the folded-context note.
 
 export const LENS = {
   Newsletters: {

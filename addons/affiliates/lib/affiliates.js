@@ -4,15 +4,6 @@ import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/events";
 import { getUser } from "@/lib/supabase/user";
 
-// Data access for events.affiliates — the project-wide affiliate person.
-//
-// One identity per project: one portal login, one payout destination, one
-// lifetime earnings view. Per-event participation lives in affiliate_enrolments
-// (see ./programs.js), never here.
-//
-// DB is snake_case, the UI is camelCase; map at this boundary. Pure: validate,
-// console.error on failure, return null/false/[] — never throw, never toast.
-
 const TABLE = "affiliates";
 
 export function normalizeAffiliate(row) {
@@ -103,8 +94,6 @@ export async function getAffiliate(id) {
   }
 }
 
-// Invite one affiliate. Recruitment is invite-only in this design, so a created
-// affiliate always starts `invited` with the invite timestamp stamped.
 export async function createAffiliate(projectId, input) {
   if (!projectId || !isSupabaseConfigured()) return null;
   try {
@@ -116,7 +105,6 @@ export async function createAffiliate(projectId, input) {
       invited_at: input.invitedAt || new Date().toISOString(),
       created_by: user?.id ?? null,
     };
-    if (input.id) payload.id = input.id; // honour the optimistic UUID
     const { data, error } = await sb
       .from(TABLE)
       .insert(payload)
@@ -173,9 +161,6 @@ export async function softDeleteAffiliate(id) {
   }
 }
 
-// Per-affiliate rollups for the roster: lifetime earned (everything not
-// reversed), still pending, and already paid. One grouped read rather than a
-// query per row.
 export async function listAffiliateTotals(projectId) {
   if (!projectId || !isSupabaseConfigured()) return null;
   try {

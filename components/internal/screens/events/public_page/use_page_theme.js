@@ -59,7 +59,6 @@ export function usePageTheme({ design, live, themeOverride }) {
   ).filter((b) => b.visible);
 
   const hero = themed ? resolveHero(theme) : "classic";
-  // Standard mode has no design editor, so it stays on the classic arrangement.
   const layout = themed ? resolveLayout(theme) : "classic";
   const sidebarLeft = themed && resolveSidebar(theme) === "left";
   const primaryBtnStyle = themed ? themeButtonStyle(theme, accent) : accentStyle;

@@ -12,15 +12,6 @@ import { boothToken, getEventExpo, holdBooths, releaseBooths } from "@/lib/supab
 
 import { HallMapView } from "./hall_map_view";
 
-// Exhibitor-facing booth selection — the booth mirror of seat_picker. Loads the
-// event's hall through the anon RPC, holds every selected booth with a TTL, and
-// reports the selection upward for checkout.
-//
-// Pricing follows the event's expo config:
-//   tier   — the booth's mapped ticket sets the price
-//   direct — the booth's own price applies, and one nominated ticket carries
-//            the order line
-
 function Countdown({ expiresAt, onExpire }) {
   const [left, setLeft] = useState(0);
 
@@ -75,7 +66,6 @@ export function BoothPicker({ event, expo, tickets = [], maxBooths = 0, onChange
     };
   }, [event?.id, reloadToken]);
 
-  // Drop this session's holds when the picker unmounts.
   useEffect(() => {
     return () => {
       if (event?.id && token) releaseBooths(event.id, token);
@@ -94,8 +84,6 @@ export function BoothPicker({ event, expo, tickets = [], maxBooths = 0, onChange
     return map;
   }, [data]);
 
-  // In direct mode the stall carries its own price; in tier mode it inherits
-  // the mapped ticket's. A booth with neither isn't sellable.
   const priceForBooth = useMemo(() => {
     return (booth) => {
       if (!booth) return null;
@@ -124,7 +112,6 @@ export function BoothPicker({ event, expo, tickets = [], maxBooths = 0, onChange
   const boothState = (booth) => {
     if (selected.includes(booth.id)) return "selected";
     if (taken.has(booth.id)) return "sold";
-    // An unpriced booth can't be bought, so it reads as unavailable.
     if (priceForBooth(booth) === null) return "sold";
     return "available";
   };
@@ -141,8 +128,6 @@ export function BoothPicker({ event, expo, tickets = [], maxBooths = 0, onChange
     }`;
   };
 
-  // Report the selection up. Every booth in one purchase must share a ticket
-  // line, so the first selection's ticket wins.
   const report = (ids) => {
     const booths = ids.map((id) => boothsById.get(id)).filter(Boolean);
     const total = booths.reduce((sum, b) => sum + (priceForBooth(b) || 0), 0);
@@ -150,8 +135,6 @@ export function BoothPicker({ event, expo, tickets = [], maxBooths = 0, onChange
       booths,
       boothIds: ids,
       ticketId: ticketForBooth(booths[0]) ?? null,
-      // In direct mode the per-booth prices differ, so the caller gets the mean
-      // for the order line and the exact total alongside it.
       price: booths.length ? total / booths.length : 0,
       total,
       token,
@@ -170,7 +153,6 @@ export function BoothPicker({ event, expo, tickets = [], maxBooths = 0, onChange
     }
 
     if (result.rejected.length) {
-      // Someone else got there first — mark them taken so the floor tells the truth.
       setTaken((prev) => new Set([...prev, ...result.rejected]));
       toast.error(
         result.rejected.length === 1
@@ -190,7 +172,6 @@ export function BoothPicker({ event, expo, tickets = [], maxBooths = 0, onChange
       ? selected.filter((id) => id !== booth.id)
       : [...selected, booth.id];
 
-    // Mixing tickets in one order would need two order lines; keep it to one.
     if (!isSelected && pricing === "tier" && selected.length) {
       const current = ticketForBooth(boothsById.get(selected[0]));
       if (current && ticketForBooth(booth) !== current) {

@@ -8,9 +8,6 @@ import { Shell, EventMetaLine, StickyBuyBar } from "./shared";
 
 const STACK_WIDTH = "36rem";
 
-// Card stack — one narrow column where every section is a full-width card, with
-// the purchase bar in thumb reach. Built at phone proportions and simply
-// centred on a desktop, which is how the invite and RSVP apps present an event.
 export function StackLayout({ ctx }) {
   const {
     event,

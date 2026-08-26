@@ -18,11 +18,6 @@ import {
   disclaimerPlacements,
 } from "./public_page/disclaimer";
 
-// Free-text disclaimer the organizer can place on the public page, in checkout,
-// or both. Persists as `disclaimer` — { enabled, text, placements } — one
-// metadata key. Older events saved a single `position`; disclaimerPlacements
-// reads either shape, so they keep working and upgrade on the next save.
-
 const EMPTY_DISCLAIMER = {
   enabled: false,
   text: "",
@@ -40,8 +35,6 @@ export function PageDisclaimerSection({ event, headerItem }) {
 
   const placements = disclaimerPlacements(cfg);
   const toggle = (slot) =>
-    // Always write the array shape, so a legacy `position` stops being the
-    // source of truth the moment the organizer touches placement.
     setCfg({
       ...cfg,
       placements: placements.includes(slot)

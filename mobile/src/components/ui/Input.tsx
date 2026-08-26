@@ -14,10 +14,7 @@ type InputProps = TextInputProps & {
   leftIcon?: React.ComponentProps<typeof Feather>["name"];
 };
 
-// Forwards every TextInputProps; the focus ring animates the frame's borderColor.
 export function Input({ leftIcon, ...props }: InputProps) {
-  // Focus handlers defined before useAnimatedStyle so the React Compiler keeps
-  // the shared value's mutable range open.
   const borderColorRef = useSharedValue<string>(colors.border);
   const handleFocus = (e: FocusEvent) => {
     borderColorRef.value = withTiming(colors.borderStrong, { duration: timing.fast });

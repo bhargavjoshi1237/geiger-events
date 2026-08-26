@@ -30,10 +30,10 @@ import {
 import { PASS_ROLES, PASS_ROLE_MAP } from "@/lib/passes/roles";
 
 import { PanelSection, PanelRow, PanelDivider } from "./panel";
+import { ConfirmDialog } from "./confirm_dialog";
 import { ImageField } from "./image_field";
 import { ColorField, NumberField, SelectField, SliderField, TextField } from "./controls";
 
-// Border controls, shared by the card and by a section.
 function BorderControls({ border, onChange }) {
   const b = border || defaultCardBorder();
   return (
@@ -67,8 +67,6 @@ function BorderControls({ border, onChange }) {
   );
 }
 
-// Figma-style artwork adjustments. Applied as real SVG filter primitives, so a
-// tweaked photo exports to PNG exactly as previewed.
 function AdjustControls({ el, patch }) {
   const a = { ...defaultAdjust(), ...(el.adjust || {}) };
   const set = (sub) => patch({ adjust: { ...a, ...sub } });
@@ -141,8 +139,6 @@ function AdjustControls({ el, patch }) {
   );
 }
 
-// The finishes a real card comes back from the printer with. Card-level, so the
-// treatment carries across both faces the way a laminate or foil does.
 function EffectControls({ effects, onChange }) {
   const e = { ...defaultEffects(), ...(effects || {}) };
   const set = (sub) => onChange({ effects: { ...e, ...sub } });
@@ -258,8 +254,6 @@ function EffectControls({ effects, onChange }) {
     </>
   );
 }
-
-// --- per-kind property forms --------------------------------------------------
 
 function TextElementForm({ el, patch }) {
   return (
@@ -482,8 +476,6 @@ function BoxElementForm({ el, patch, onUpload }) {
   );
 }
 
-// --- the rail -----------------------------------------------------------------
-
 export function Inspector({
   template,
   element,
@@ -498,6 +490,7 @@ export function Inspector({
   onUpload,
 }) {
   const [tierDraft, setTierDraft] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
   const patch = (p) => onChange(p);
   const patchIn = (key, sub) => onChange({ [key]: { ...(template[key] || {}), ...sub } });
 
@@ -511,8 +504,6 @@ export function Inspector({
   const artwork = element && (element.kind === "image" || element.kind === "box");
   const backUsed = hasBackContent(template);
 
-  // Each face carries its own card colour, so a dark back over a light front is
-  // one control rather than two designs.
   const setCardBg = (bg) =>
     side === "back" ? patch({ back: { ...(template.back || {}), bg } }) : patch({ bg });
 
@@ -543,22 +534,19 @@ export function Inspector({
     (t) => !tiers.some((x) => x.toLowerCase() === t.toLowerCase()),
   );
 
-  // Every role in the catalog, plus anything an event turned up that isn't in
-  // it, so the list is the same on every event rather than whoever showed up.
   const roleChoices = [
     ...PASS_ROLES.map((r) => r.value),
     ...availableRoles.filter((r) => !PASS_ROLE_MAP[r]),
   ];
 
-  // Applying a font to every text element at once — a per-element override still
-  // wins afterwards, this is just the quick way to restyle a whole design.
   const applyFontToAll = (font) =>
     onLayoutChange({
       elements: (layout.elements || []).map((el) => (el.kind === "text" ? { ...el, font } : el)),
     });
 
   return (
-    <Tabs defaultValue="design" className="flex h-full min-h-0 flex-col gap-0">
+    <>
+      <Tabs defaultValue="design" className="flex h-full min-h-0 flex-col gap-0">
       <div className="shrink-0 border-b border-border p-2">
         <TabsList className="w-full">
           <TabsTrigger value="design">Design</TabsTrigger>
@@ -662,7 +650,7 @@ export function Inspector({
                 <Button
                   variant="outline"
                   className="w-full border-border bg-transparent text-red-400 hover:bg-red-500/10 hover:text-red-400"
-                  onClick={() => onElementDelete(element.id)}
+                  onClick={() => setPendingDelete(element)}
                 >
                   <Trash2 className="h-4 w-4" /> Remove from card
                 </Button>
@@ -788,7 +776,6 @@ export function Inspector({
                       style={{ background: PASS_ROLE_MAP[role]?.accent || "#6366f1" }}
                     />
                     {role}
-                    {/* A dot-less role is one nobody on this event holds yet. */}
                     {present ? null : (
                       <span className="text-[10px] text-text-tertiary">—</span>
                     )}
@@ -812,6 +799,7 @@ export function Inspector({
                   <button
                     key={tier}
                     type="button"
+                    aria-label={`Remove ${tier}`}
                     onClick={() => toggleTier(tier)}
                     className="flex items-center gap-1 rounded-md border border-primary bg-primary/10 px-2 py-1 text-xs text-foreground"
                   >
@@ -965,6 +953,22 @@ export function Inspector({
         </TabsContent>
       </div>
     </Tabs>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title="Remove from card"
+        description={
+          pendingDelete
+            ? `Remove ${elementLabel(pendingDelete)} from the card? It can be re-added from "Add to card".`
+            : ""
+        }
+        confirmLabel="Remove"
+        onConfirm={() => {
+          if (pendingDelete) onElementDelete(pendingDelete.id);
+        }}
+      />
+    </>
   );
 }
 

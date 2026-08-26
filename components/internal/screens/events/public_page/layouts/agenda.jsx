@@ -5,10 +5,6 @@ import { cn } from "@/lib/utils";
 import { CoverImage } from "../hero";
 import { Shell, EventMetaLine, OVER_COVER } from "./shared";
 
-// Agenda first — the schedule is promoted out of the section order and becomes
-// the spine of the page; the hero shrinks to a strip above it and everything
-// else follows underneath. The shape multi-day and multi-track programmes use,
-// where what's on is the reason people opened the page.
 export function AgendaLayout({ ctx }) {
   const {
     event,

@@ -12,10 +12,6 @@ import {
 } from "@/lib/events/slots";
 import { purchasableUnitPrice } from "@/lib/events/purchasables";
 
-// Buyer-facing checkout pieces for slot booking + conditional purchasables.
-// Rendered inside the TicketCheckout dialog (event_public_page.jsx): the slot
-// picker sits in the details step, the purchasables list is the second slide.
-
 function fmtSlotTime(slot) {
   const d = parseSlotDate(slot.start);
   if (!d) return bandLabel(slot.band);
@@ -30,7 +26,6 @@ function fmtSlotTime(slot) {
     : start;
 }
 
-// Radio list of bookable slots. Sold-out slots without a waitlist are disabled.
 export function SlotPicker({ slots, slotsSold, ticketId, qty, selectedId, onSelect, accent, label }) {
   if (!slots?.length) return null;
   return (
@@ -141,7 +136,6 @@ function QuantityControl({ value, onChange, max, accent }) {
   );
 }
 
-// The animated second step: the conditional purchasables the buyer can add.
 export function TicketAddonsStep({ purchasables, selections, onToggle, onQty, accent }) {
   if (!purchasables?.length) {
     return (

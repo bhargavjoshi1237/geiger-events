@@ -29,9 +29,7 @@ import {
   createCheckin,
 } from "@/lib/supabase/checkin";
 
-const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUpperCase();
-
-export function NameSearchLookupScreen() {
+const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUpperCase();export function NameSearchLookupScreen() {
   const { projectId } = useProject();
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState("");
@@ -40,6 +38,7 @@ export function NameSearchLookupScreen() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingList, setLoadingList] = useState(false);
   const [search, setSearch] = useState("");
+  const [admittingId, setAdmittingId] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -94,7 +93,8 @@ export function NameSearchLookupScreen() {
   }, [attendees, search]);
 
   const admit = (reg) => {
-    if (checkedIn.has(reg.id)) return;
+    if (checkedIn.has(reg.id) || admittingId) return;
+    setAdmittingId(reg.id);
     setCheckedIn((prev) => new Set(prev).add(reg.id));
     toast.success(`Checked in ${reg.name || "attendee"}.`);
     createCheckin({
@@ -108,6 +108,7 @@ export function NameSearchLookupScreen() {
       checkedInBy: "Name search",
       status: "in",
     }).then((res) => {
+      setAdmittingId(null);
       if (res === null) {
         toast.error("Couldn't record the check-in.");
         setCheckedIn((prev) => {
@@ -191,9 +192,15 @@ export function NameSearchLookupScreen() {
                 ) : (
                   <Button
                     className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                    disabled={admittingId === a.id}
                     onClick={() => admit(a)}
                   >
-                    <UserCheck className="h-4 w-4" /> Check in
+                    {admittingId === a.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserCheck className="h-4 w-4" />
+                    )}
+                    Check in
                   </Button>
                 )}
               </div>

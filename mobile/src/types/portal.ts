@@ -1,5 +1,3 @@
-// View models returned by the portal API (../app/api/portal/*). Field names are
-// mirrored verbatim from the server-side resolvers — never re-map them.
 
 export type Member = {
   id: string;
@@ -8,7 +6,6 @@ export type Member = {
   metadata: Record<string, unknown>;
 };
 
-// Per-order refund status folded in by /api/portal/data (lib/portal/refunds.js).
 export type RefundInfo = {
   id: string;
   status: string;
@@ -17,7 +14,6 @@ export type RefundInfo = {
   createdAt: string | null;
 };
 
-// mapOrder in lib/portal/reads.js, plus the `refund` field /api/portal/data adds.
 export type Order = {
   id: string;
   orderCode: string;
@@ -51,12 +47,10 @@ export type Order = {
   refund: RefundInfo | null;
 };
 
-// ticketsFromOrders in lib/portal/reads.js + the entitlements the data route adds.
 export type Ticket = Order & {
   entitlements: Entitlement[];
 };
 
-// One line of issue_entitlements_for_order (listMemberEntitlements).
 export type Entitlement = {
   allocationId: string;
   itemId: string;
@@ -72,7 +66,6 @@ export type Entitlement = {
   blockedReason: string;
 };
 
-// listMemberMemberships in lib/portal/reads.js.
 export type Membership = {
   id: string;
   planName: string;
@@ -87,7 +80,6 @@ export type Membership = {
   expiresAt: string | null;
 };
 
-// includedSummary in lib/memberships/entitlements.js.
 export type IncludedSummary = {
   key: string;
   label: string;
@@ -96,7 +88,6 @@ export type IncludedSummary = {
   extras: string[];
 };
 
-// planConfig + held in lib/portal/memberships.js (listBuyableMembershipPlans).
 export type Plan = {
   id: string;
   projectId: string | null;
@@ -110,7 +101,6 @@ export type Plan = {
   held: boolean;
 };
 
-// listMemberWatchlist in lib/portal/watch.js.
 export type WatchItem = {
   id: string;
   kind: "recording" | "simulive" | string;
@@ -129,7 +119,6 @@ export type WatchItem = {
   expiresAt: string | null;
 };
 
-// listMemberRooms in lib/portal/live.js.
 export type LiveRoom = {
   id: string;
   kind: "room" | "webinar" | "breakout" | string;
@@ -149,7 +138,6 @@ export type LiveRoom = {
   liveNow: number;
 };
 
-// getRoundState in lib/portal/live.js — only the config the attendee may see.
 export type RoundState = {
   id: string;
   config: {
@@ -158,7 +146,6 @@ export type RoundState = {
   };
 };
 
-// mapThread in lib/portal/support.js.
 export type Thread = {
   id: string;
   subject: string;
@@ -171,7 +158,6 @@ export type Thread = {
   preview: string;
 };
 
-// Messages of a thread (getMemberThread).
 export type ThreadMessage = {
   id: string;
   sender: string;
@@ -179,12 +165,10 @@ export type ThreadMessage = {
   createdAt: string | null;
 };
 
-// The thread detail returned by GET /api/portal/threads/<id> (marks it read).
 export type ThreadDetail = Thread & {
   messages: ThreadMessage[];
 };
 
-// listMemberNotifications in lib/portal/notifications.js.
 export type NotificationItem = {
   id: string;
   title: string;
@@ -194,7 +178,6 @@ export type NotificationItem = {
   unread: boolean;
 };
 
-// mapChannel in lib/portal/chat.js.
 export type Channel = {
   id: string;
   eventId: string | null;
@@ -210,7 +193,6 @@ export type Channel = {
   messageCount: number;
 };
 
-// mapMessage in lib/portal/chat.js.
 export type ChatMessage = {
   id: string;
   channelId: string;
@@ -226,14 +208,12 @@ export type ChatMessage = {
   createdAt: string | null;
 };
 
-// The channel detail returned by GET /api/portal/chat/channels/<id>.
 export type ChannelDetail = Channel & {
   muted: boolean;
   canPost: boolean;
   messages: ChatMessage[];
 };
 
-// A poll payload on a poll chat message (metadata.poll in lib/chat/poll.js).
 export type PollData = {
   question: string;
   options: { id: string; label: string }[];
@@ -242,7 +222,6 @@ export type PollData = {
   closed: boolean;
 };
 
-// The combined payload of GET /api/portal/data.
 export type PortalData = {
   orders: Order[];
   memberships: Membership[];

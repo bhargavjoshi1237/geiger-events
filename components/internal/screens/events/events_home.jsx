@@ -24,6 +24,7 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import {
   EVENTS,
   EVENT_STATUS_MAP,
@@ -33,13 +34,14 @@ import {
 } from "./sample_data";
 
 const QUICK_ACTIONS = [
-  { label: "New event", hint: "Start from scratch", icon: CalendarPlus },
-  { label: "From template", hint: "Reuse a proven setup", icon: LayoutTemplate },
-  { label: "Clone an event", hint: "Duplicate & reschedule", icon: Copy },
-  { label: "Set up recurring", hint: "Weekly / monthly cadence", icon: Repeat },
+  { label: "New event", hint: "Start from scratch", icon: CalendarPlus, tab: "All Events" },
+  { label: "From template", hint: "Reuse a proven setup", icon: LayoutTemplate, tab: "Templates" },
+  { label: "Clone an event", hint: "Duplicate & reschedule", icon: Copy, tab: "All Events" },
+  { label: "Set up recurring", hint: "Weekly / monthly cadence", icon: Repeat, tab: "Event Series" },
 ];
 
 export function EventsHomeScreen() {
+  const { setTab } = useWorkspaceUrl();
   const upcoming = EVENTS.filter((e) => e.status !== "Ended").slice(0, 5);
   const drafts = EVENTS.filter((e) => e.status === "Draft");
 
@@ -92,7 +94,10 @@ export function EventsHomeScreen() {
         title="Events"
         description="Your event command center — create, organize, and keep momentum across everything you're running."
         actions={
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => setTab("All Events")}
+          >
             <CalendarPlus className="h-4 w-4" /> Create event
           </Button>
         }
@@ -107,6 +112,7 @@ export function EventsHomeScreen() {
             <button
               key={action.label}
               type="button"
+              onClick={() => setTab(action.tab)}
               className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:bg-surface-card"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
@@ -132,6 +138,7 @@ export function EventsHomeScreen() {
             variant="outline"
             size="sm"
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={() => setTab("All Events")}
           >
             View all
           </Button>

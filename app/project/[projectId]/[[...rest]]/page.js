@@ -9,20 +9,13 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject, pickDefaultProjectId } from "@/context/project-context";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 
-// The active screen only. The chrome and the providers live in the layout above
-// (app/project/[projectId]/layout.js) because this page is remounted on every
-// tab change — the tab is the [[...rest]] path segment.
-
-// Gated on the path's project resolving to one the user can reach.
 function ScreenArea({ activeItem, Screen }) {
   const router = useRouter();
   const { project, projects, loading } = useProject();
 
-  // No reachable projects → login. A stale/invalid id in the path → a valid one.
   useEffect(() => {
     if (loading) return;
     if (projects.length === 0) {
-      // Workspace intent: /login must not hijack a member cookie to /members.
       router.replace("/login?workspace=1");
       return;
     }

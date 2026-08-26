@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +42,6 @@ const itemHoverStyle =
 export function ProfileDropdown({ children }) {
   const [user, setUser] = useState(null);
   const { theme, setTheme } = useTheme();
-  // Tolerate rendering outside a ProjectProvider (e.g. the public landing header).
   const project = useOptionalProject()?.project ?? null;
 
   useEffect(() => {
@@ -63,7 +63,6 @@ export function ProfileDropdown({ children }) {
     .toUpperCase()
     .slice(0, 2);
 
-  // Suite-level destinations (outside this app's /events basePath).
   const orgBase = project?.organization_id
     ? `/org/${project.organization_id}`
     : "/org";
@@ -88,11 +87,12 @@ export function ProfileDropdown({ children }) {
           <Button
             variant="ghost"
             size="icon-sm"
+            aria-label="Account menu"
             className="p-0 rounded-full border border-border hover:border-border-strong overflow-hidden ml-1 transition-colors"
           >
             <Avatar className="size-full">
               {pfpUrl && <AvatarImage src={pfpUrl} alt={displayName} />}
-              <AvatarFallback className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white text-[10px] font-semibold border-0">
+              <AvatarFallback className="bg-surface-card text-muted-foreground text-[10px] font-semibold border-0">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -110,7 +110,7 @@ export function ProfileDropdown({ children }) {
             <div className="flex items-center gap-3">
               <Avatar className="size-10 border border-border">
                 {pfpUrl && <AvatarImage src={pfpUrl} alt={displayName} />}
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white text-xs font-semibold border-0">
+                <AvatarFallback className="bg-surface-card text-muted-foreground text-xs font-semibold border-0">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -131,24 +131,24 @@ export function ProfileDropdown({ children }) {
         <div className="p-1.5">
           <DropdownMenuGroup>
             <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <a href={profileHref}>
+              <Link href={profileHref}>
                 <CircleUserRound className="size-4 text-muted-foreground" />
                 <span>Profile</span>
-              </a>
+              </Link>
             </DropdownMenuItem>
 
             <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <a href={`${orgBase}/`}>
+              <Link href={`${orgBase}/`}>
                 <UsersRound className="size-4 text-muted-foreground" />
                 <span>Organization Settings</span>
-              </a>
+              </Link>
             </DropdownMenuItem>
 
             <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <a href="/billing">
+              <Link href="/billing">
                 <Wallet className="size-4 text-muted-foreground" />
                 <span>Billing &amp; Plans</span>
-              </a>
+              </Link>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
@@ -156,31 +156,23 @@ export function ProfileDropdown({ children }) {
 
           <DropdownMenuGroup>
             <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <a href={`${orgBase}/settings`}>
+              <Link href={`${orgBase}/settings`}>
                 <Settings className="size-4 text-muted-foreground" />
                 <span>Settings</span>
-              </a>
+              </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle} mb-1`}>
-              <a href={`${orgBase}/security`}>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <Link href={`${orgBase}/security`}>
                 <ShieldCheck className="size-4 text-muted-foreground" />
                 <span>Security</span>
-              </a>
+              </Link>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
-          <DropdownMenuSeparator className="bg-surface-hover my-2" />
+          <DropdownMenuSeparator className="bg-surface-hover my-1" />
 
           <DropdownMenuGroup>
-            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle} mt-1`}>
-              <a href="/doc">
-                <BookMarked className="size-4 text-muted-foreground" />
-                <span>Documentation</span>
-                <ExternalLink className="size-3 ml-auto text-text-secondary" />
-              </a>
-            </DropdownMenuItem>
-
             <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
               <a href="mailto:feedback@geiger.studio">
                 <MessageCircle className="size-4 text-muted-foreground" />
@@ -192,6 +184,14 @@ export function ProfileDropdown({ children }) {
               <a href="mailto:help@geiger.studio">
                 <LifeBuoy className="size-4 text-muted-foreground" />
                 <span>Help &amp; Support</span>
+              </a>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle} mb-1`}>
+              <a href="/doc">
+                <BookMarked className="size-4 text-muted-foreground" />
+                <span>Documentation</span>
+                <ExternalLink className="size-3 ml-auto text-text-secondary" />
               </a>
             </DropdownMenuItem>
 
@@ -230,16 +230,6 @@ export function ProfileDropdown({ children }) {
               <Moon className="size-3.5" />
             </ToggleGroupItem>
           </ToggleGroup>
-        </div>
-
-        <div className="px-4 py-2.5 border-t border-border">
-          <div className="flex items-center justify-between text-[11px] text-text-secondary">
-            <span>Events v1.0.0</span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              Online
-            </span>
-          </div>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

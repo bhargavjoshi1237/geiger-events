@@ -10,10 +10,6 @@ import { Shell, EventMetaLine } from "./shared";
 
 const MOSAIC_MAX = 4;
 
-// The mosaic takes four stills off the gallery — a video contributes its poster
-// frame, a video file has none and is skipped. `rest` is true when anything was
-// left over, which is the only case where the full gallery strip still earns
-// its place further down the page.
 function mosaic(event) {
   const shots = (Array.isArray(event.gallery) ? event.gallery : [])
     .map(galleryItem)
@@ -23,10 +19,6 @@ function mosaic(event) {
   return { photos: shots.slice(0, MOSAIC_MAX), rest: total > MOSAIC_MAX };
 }
 
-// Gallery wall — the photographs are the hero. The cover anchors a mosaic that
-// runs the full width of the page and the title sits under it, which is how a
-// venue, a festival recap or an exhibition opens. Falls back to a plain cover
-// band when there's only one image.
 export function GalleryLayout({ ctx }) {
   const {
     event,
@@ -43,7 +35,7 @@ export function GalleryLayout({ ctx }) {
     coverStyle,
   } = ctx;
 
-  const { photos, rest } = useMemo(() => mosaic(event), [event.gallery]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { photos, rest } = useMemo(() => mosaic(event), [event.gallery]);
 
   return (
     <div className="relative z-10">
@@ -67,7 +59,6 @@ export function GalleryLayout({ ctx }) {
             key={src}
             className="relative hidden aspect-[4/3] overflow-hidden sm:block"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt="" className="h-full w-full object-cover" />
           </div>
         ))}

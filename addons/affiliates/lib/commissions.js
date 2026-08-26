@@ -4,14 +4,6 @@ import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/events";
 import { getUser } from "@/lib/supabase/user";
 
-// Data access for the commission ledger (events.affiliate_commissions) and
-// payout batches (events.affiliate_payouts), plus the attribution and clawback
-// RPCs.
-//
-// Clearance is MANUAL by design: nothing here auto-approves. A commission is
-// created `pending` by attribution and only an organiser moves it on.
-// Pure: validate, console.error on failure, return null/false/[].
-
 const COMMISSIONS = "affiliate_commissions";
 const PAYOUTS = "affiliate_payouts";
 
@@ -75,8 +67,6 @@ export async function listCommissions(projectId, { state } = {}) {
   }
 }
 
-// Approve pending rows. Manual approval is the whole clearance model here, so
-// this is the only path out of `pending` other than a reversal.
 export async function approveCommissions(ids) {
   if (!ids?.length || !isSupabaseConfigured()) return false;
   try {
@@ -102,8 +92,6 @@ export async function approveCommissions(ids) {
   }
 }
 
-// Reverse by commission id (the organiser's manual clawback). The refund-driven
-// path goes through reverseCommissionForOrder instead.
 export async function reverseCommissions(ids, reason = "reversed") {
   if (!ids?.length || !isSupabaseConfigured()) return false;
   try {
@@ -128,11 +116,6 @@ export async function reverseCommissions(ids, reason = "reversed") {
   }
 }
 
-// --- RPCs --------------------------------------------------------------------
-
-// Attribute an order to an affiliate. Safe to call more than once: the RPC is
-// idempotent on order_id, so a retry returns the existing commission rather
-// than paying twice. Returns { ok, commissionId, amount, reason }.
 export async function attributeOrder(orderId, { ref, code } = {}) {
   if (!orderId || !isSupabaseConfigured()) return null;
   try {
@@ -160,8 +143,6 @@ export async function attributeOrder(orderId, { ref, code } = {}) {
   }
 }
 
-// Clawback driven by a refund. Leaves already-paid rows alone — money that has
-// left is an accounting problem, not a state flip.
 export async function reverseCommissionForOrder(orderId, reason = "refunded") {
   if (!orderId || !isSupabaseConfigured()) return false;
   try {
@@ -180,8 +161,6 @@ export async function reverseCommissionForOrder(orderId, reason = "refunded") {
     return false;
   }
 }
-
-// --- Payouts -----------------------------------------------------------------
 
 export function normalizePayout(row) {
   if (!row) return null;
@@ -225,11 +204,6 @@ export async function listPayouts(projectId) {
   }
 }
 
-// Settle every approved commission for one affiliate into a payout batch.
-//
-// Two steps rather than one RPC: create the batch, then stamp its id and `paid`
-// onto the rows it covers. If the second step fails the batch is left in draft
-// with no rows attached — visibly incomplete, which is the safe way to fail.
 export async function createPayoutBatch(projectId, affiliateId, input = {}) {
   if (!projectId || !affiliateId || !isSupabaseConfigured()) return null;
   try {
@@ -279,7 +253,6 @@ export async function createPayoutBatch(projectId, affiliateId, input = {}) {
       );
     if (markError) {
       console.error("[affiliates.payouts.mark]", markError.message);
-      // The batch exists but covers nothing — surfaced as a draft with no rows.
       return normalizePayout(payout);
     }
     return normalizePayout(payout);

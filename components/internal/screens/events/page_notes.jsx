@@ -22,11 +22,6 @@ import {
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { SECTION_NOTE_TARGETS } from "./public_page/section_note";
 
-// Per-section notes shown as an "i" beside the section's heading on the public
-// page. Each note targets one known section (content block or sidebar card).
-// Persists as `sectionNotes` — [{ id, target, text, enabled }] — one metadata
-// key; the public side reads it through getSectionNote.
-
 let noteCounter = 0;
 const newNote = () => {
   noteCounter += 1;

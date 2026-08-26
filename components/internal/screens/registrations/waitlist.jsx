@@ -42,8 +42,6 @@ const PAGE_EVENTS = 60;
 const PAGE_ROWS = 100;
 const DEFAULT_RULES = { autoPromote: false, claimWindowHours: 24, notify: true };
 
-// Sort options for the master list of events with a waitlist — mirrors the
-// filter/sort toolbar the other list screens use.
 const SORT_OPTIONS = [
   { value: "waiting-desc", label: "Most waiting" },
   { value: "waiting-asc", label: "Fewest waiting" },
@@ -155,7 +153,7 @@ export function WaitlistScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [projectId]);
 
   const eventsById = useMemo(() => {
     const m = {};
@@ -187,10 +185,15 @@ export function WaitlistScreen() {
       .sort((a, b) => b.queue.length - a.queue.length);
   }, [regs, eventsById]);
 
-  const handlePromote = async (eventId, count) => {
+  const handlePromote = async (eventId, count, targetId) => {
     const group = groups.find((g) => g.event.id === eventId);
     if (!group || !group.queue.length) return;
-    const toPromote = group.queue.slice(0, count);
+    if (targetId && group.open <= 0) return;
+    const target = targetId
+      ? group.queue.find((p) => p.id === targetId)
+      : null;
+    const toPromote = target ? [target] : group.queue.slice(0, count);
+    if (!toPromote.length) return;
     const promotedIds = new Set(toPromote.map((p) => p.id));
     setRegs((prev) => {
       let pos = 0;
@@ -203,11 +206,11 @@ export function WaitlistScreen() {
       });
     });
     toast.success(
-      count === 1
+      toPromote.length === 1
         ? `Promoted ${toPromote[0].name} from the waitlist.`
-        : `Promoted ${count} from the waitlist.`,
+        : `Promoted ${toPromote.length} from the waitlist.`,
     );
-    const res = await promoteWaitlist(eventId, count);
+    const res = await promoteWaitlist(eventId, toPromote.length);
     if (res === false) toast.error("Couldn't promote on the server.");
   };
 
@@ -219,9 +222,6 @@ export function WaitlistScreen() {
 
   const openGroup = groups.find((g) => g.event.id === openEventId) || null;
 
-  // ----------------------------------------------------------------------- //
-  // Per-event queue
-  // ----------------------------------------------------------------------- //
   if (openGroup) {
     const matches = openGroup.queue.filter((r) =>
       detailSearch
@@ -339,7 +339,7 @@ export function WaitlistScreen() {
                     size="sm"
                     disabled={!canPromote}
                     className="text-muted-foreground hover:bg-surface-active hover:text-foreground disabled:opacity-40"
-                    onClick={() => handlePromote(openGroup.event.id, 1)}
+                    onClick={() => handlePromote(openGroup.event.id, 1, r.id)}
                   >
                     <ArrowUp className="h-4 w-4" /> Promote
                   </Button>
@@ -381,9 +381,6 @@ export function WaitlistScreen() {
     );
   }
 
-  // ----------------------------------------------------------------------- //
-  // Master list of events with a waitlist
-  // ----------------------------------------------------------------------- //
   const listMatches = groups.filter((g) =>
     listSearch
       ? g.event.name.toLowerCase().includes(listSearch.toLowerCase())

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, Mail, Tag } from "lucide-react";
+import { CreditCard, Mail, Tag, Loader2 } from "lucide-react";
 
 import {
   EditorSectionHeader,
@@ -20,20 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useEventConfig } from "@/lib/events/use-event-config";
-
-// Per-event Stripe payment settings. Stored under metadata.payments (like
-// tickets/offerings) via useEventConfig. The public checkout
-// (event_public_page.jsx → /api/checkout) reads `enabled`/`currency` before
-// creating a Stripe Checkout Session for a priced ticket; free ($0) tickets
-// never touch Stripe and always go straight through the existing buy_ticket
-// RPC regardless of this setting.
-//
-//   payments = {
-//     enabled: bool,               // accept card payments for this event
-//     currency: "usd" | "eur" | "gbp",
-//     statementDescriptor: string, // shown on the buyer's card statement (<=22 chars)
-//     supportEmail: string,        // shown on the Stripe receipt / for disputes
-//   }
 
 const DEFAULT_PAYMENTS = {
   enabled: true,
@@ -68,6 +54,18 @@ export function PaymentsSection({ event, headerItem }) {
         description={
           headerItem?.desc ||
           "Configure how buyers pay for tickets to this event."
+        }
+        action={
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={saving || descriptorTooLong}
+            onClick={() =>
+              savePayments(payments, { successMsg: "Payment settings saved." })
+            }
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {saving ? "Saving…" : "Save"}
+          </Button>
         }
       />
 
@@ -143,18 +141,6 @@ export function PaymentsSection({ event, headerItem }) {
           </div>
         ) : null}
       </SectionCard>
-
-      <div className="flex justify-end">
-        <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-          disabled={saving || descriptorTooLong}
-          onClick={() =>
-            savePayments(payments, { successMsg: "Payment settings saved." })
-          }
-        >
-          Save Changes
-        </Button>
-      </div>
     </div>
   );
 }

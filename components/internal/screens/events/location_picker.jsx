@@ -27,11 +27,10 @@ const MODES = [
   { id: "coords", label: "Coordinates", icon: Crosshair },
 ];
 
-// The input-method switch. Lives separately from the picker body so it can be
-// hoisted up beside the section title.
 export function LocationModeTabs({ mode, onModeChange, className }) {
   return (
     <div
+      role="tablist"
       className={cn(
         "inline-flex rounded-lg border border-border bg-surface-subtle p-1",
         className,
@@ -45,6 +44,7 @@ export function LocationModeTabs({ mode, onModeChange, className }) {
             key={m.id}
             type="button"
             onClick={() => onModeChange(m.id)}
+            aria-pressed={active}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               active
@@ -61,23 +61,17 @@ export function LocationModeTabs({ mode, onModeChange, className }) {
   );
 }
 
-// --- Interactive map ---------------------------------------------------------
-// Created once; the marker is moved imperatively when `coords` changes, so a
-// click or drag never tears down and rebuilds the whole map.
 function PickerMap({ coords, onPick }) {
   const elRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const LRef = useRef(null);
-  // Flips true once the (async) map build finishes, so the marker effect
-  // re-runs and drops the pin even when coords were already set at mount.
   const [ready, setReady] = useState(false);
   const onPickRef = useRef(onPick);
   useEffect(() => {
     onPickRef.current = onPick;
   });
 
-  // Build the map a single time.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -107,12 +101,9 @@ function PickerMap({ coords, onPick }) {
         markerRef.current = null;
       }
     };
-    // Build once — `coords` only seeds the initial view.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Move the marker (and recentre) whenever coords change — or once the map is
-  // ready, so a pre-set location shows its pin without waiting for a coord edit.
   useEffect(() => {
     const L = LRef.current;
     const map = mapRef.current;
@@ -138,22 +129,17 @@ function PickerMap({ coords, onPick }) {
         onPickRef.current?.({ lat: ll.lat, lng: ll.lng });
       });
       markerRef.current = marker;
-      // First placement — fly in from wherever the map was (world → venue).
       map.flyTo(target, Math.max(map.getZoom(), 15), { duration: 1.1 });
     } else {
       markerRef.current.setLatLng(target);
-      // Big jump (search / coords) flies + zooms in; a small pin-drag just pans.
       const far = map.distance(map.getCenter(), coords) > 500;
       if (far) map.flyTo(target, Math.max(map.getZoom(), 15), { duration: 1.1 });
       else map.panTo(target);
     }
-    // Primitive deps — we react to the lat/lng values, not the object identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, coords?.lat, coords?.lng]);
 
   return (
-    // `isolate` keeps Leaflet's z-200..1000 panes inside this box instead of
-    // letting them compete at the document root and paint over a dialog.
     <div className="relative isolate h-full min-h-72 overflow-hidden rounded-xl border border-border bg-surface-card">
       <div
         ref={elRef}
@@ -171,7 +157,6 @@ function PickerMap({ coords, onPick }) {
   );
 }
 
-// --- Address search ----------------------------------------------------------
 function AddressSearch({ address, onPick, onAddressChange }) {
   const [query, setQuery] = useState(address || "");
   const [results, setResults] = useState([]);
@@ -180,14 +165,12 @@ function AddressSearch({ address, onPick, onAddressChange }) {
   const timer = useRef(null);
   const boxRef = useRef(null);
 
-  // Re-sync the field when the address is set elsewhere (pin drop / coords).
   const [seed, setSeed] = useState(address);
   if (address !== seed) {
     setSeed(address);
     setQuery(address || "");
   }
 
-  // Close the dropdown on an outside click.
   useEffect(() => {
     const onDocClick = (e) => {
       if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
@@ -290,12 +273,10 @@ function AddressSearch({ address, onPick, onAddressChange }) {
   );
 }
 
-// --- Manual coordinates ------------------------------------------------------
 function CoordsInput({ coords, onChange }) {
   const [lat, setLat] = useState(coords ? String(coords.lat) : "");
   const [lng, setLng] = useState(coords ? String(coords.lng) : "");
 
-  // Reseed only on an external change (not echoes of what we just typed).
   const incoming = coords ? `${coords.lat},${coords.lng}` : "";
   const [seedKey, setSeedKey] = useState(incoming);
   if (incoming !== seedKey && incoming !== `${parseFloat(lat)},${parseFloat(lng)}`) {
@@ -322,10 +303,14 @@ function CoordsInput({ coords, onChange }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-text-secondary">
+        <label
+          htmlFor="coords-lat"
+          className="text-xs font-medium text-text-secondary"
+        >
           Latitude
         </label>
         <Input
+          id="coords-lat"
           type="number"
           inputMode="decimal"
           value={lat}
@@ -338,17 +323,20 @@ function CoordsInput({ coords, onChange }) {
         />
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-text-secondary">
+        <label
+          htmlFor="coords-lng"
+          className="text-xs font-medium text-text-secondary"
+        >
           Longitude
         </label>
         <Input
+          id="coords-lng"
           type="number"
           inputMode="decimal"
           value={lng}
           placeholder="-0.1278"
           className="tabular-nums"
           onChange={(e) => {
-            
             setLng(e.target.value);
             apply(lat, e.target.value);
           }}
@@ -358,7 +346,6 @@ function CoordsInput({ coords, onChange }) {
   );
 }
 
-// --- Selected location panel -------------------------------------------------
 function SelectedLocationPanel({ address, coords }) {
   const [copied, setCopied] = useState(false);
 
@@ -397,7 +384,7 @@ function SelectedLocationPanel({ address, coords }) {
                 className="shrink-0 text-text-secondary transition-colors hover:text-foreground ml-auto mr-4"
               >
                 {copied ? (
-                  <Check className="h-3.5 w-3.5 text-zinc-400" />
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
                 ) : (
                   <Copy className="h-3.5 w-3.5" />
                 )}
@@ -420,10 +407,6 @@ function SelectedLocationPanel({ address, coords }) {
   );
 }
 
-// --- Picker ------------------------------------------------------------------
-// `mode` is controlled by the parent (the tabs are hoisted next to the section
-// title via `LocationModeTabs`). `onChange` receives a partial patch:
-// `{ address?, coords? }`.
 export function LocationPicker({
   mode = "search",
   address = "",
@@ -432,7 +415,6 @@ export function LocationPicker({
 }) {
   const emit = (patch) => onChange?.(patch);
 
-  // A pin drop / map click sets the coords, then backfills the address.
   const handlePick = async (c) => {
     emit({ coords: c });
     const label = await reverseGeocode(c.lat, c.lng);
@@ -441,7 +423,6 @@ export function LocationPicker({
 
   return (
     <div className="space-y-4">
-      {/* Mode body — full width; the address search needs the room. */}
       {mode === "search" ? (
         <AddressSearch
           address={address}
@@ -463,7 +444,6 @@ export function LocationPicker({
         <CoordsInput coords={coords} onChange={(c) => emit({ coords: c })} />
       ) : null}
 
-      {/* Map (70%) alongside a details panel (30%). */}
       <div className="grid gap-4 lg:grid-cols-[7fr_3fr]">
         <PickerMap coords={coords} onPick={handlePick} />
         <SelectedLocationPanel address={address} coords={coords} />

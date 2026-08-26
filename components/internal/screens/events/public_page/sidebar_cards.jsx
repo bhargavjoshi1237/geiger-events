@@ -37,8 +37,6 @@ import { formatDate } from "../sample_data";
 import { MONTHS, tierAccentDot } from "./constants";
 import { SectionNoteBadge } from "./section_note";
 
-// Feature-highlight chips for the selection-mode buttons, keyed by the ids
-// persisted in event.ticketSelection.features.
 const SELECTION_FEATURES = {
   plan: { icon: Armchair, label: "Selection based on plan" },
   insurance: { icon: ShieldCheck, label: "Cancellation insurance" },
@@ -162,22 +160,15 @@ export function RegisterCard({
       }
     : undefined;
 
-  // Extra organizer CTAs stacked under the built-in button, plus its optional
-  // relabel. These stay enabled when the event is sold out — a waitlist or an
-  // enquiry link is most useful exactly then.
   const extraCtas = activeCtas(event);
   const primaryLabel = normalizeCtas(event?.ctas).primaryLabel.trim();
 
-  // Selection modes (seating plan vs by price). Null when the organizer hasn't
-  // enabled them — the card then falls back to its single register button.
   const selection = ticketSelectionActive(event);
   const featureChips = selection
     ? (Array.isArray(selection.features) ? selection.features : [])
         .map((id) => SELECTION_FEATURES[id])
         .filter(Boolean)
     : [];
-  // Numbered footnotes under the buttons: seat assignment always (when a seat
-  // route shows), sold-out only when the event is sold out.
   const footnotes = selection
     ? [
         selection.mode !== "price" && selection.autoAssignNote.trim()

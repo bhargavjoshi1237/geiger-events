@@ -9,7 +9,6 @@ type FieldProps = {
   children: React.ReactNode;
 };
 
-// Label above the control, optional hint below. Port of the web Field.
 export function Field({ label, hint, children }: FieldProps) {
   return (
     <View style={styles.field}>

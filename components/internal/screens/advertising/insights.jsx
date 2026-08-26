@@ -25,10 +25,6 @@ import {
 
 const num = (r, key) => Number(r.config?.[key]) || 0;
 
-// Read-only performance dashboard aggregated from the campaign records. All
-// figures are computed from stored data with useMemo — a live platform sync would
-// simply keep those campaign numbers fresh. `demo` seeds bundled sample campaigns
-// and skips the fetch so it can run as a live playground on the public landing.
 export function InsightsScreen({ demo = false }) {
   const [campaigns, setCampaigns] = useState(demo ? DEMO_CAMPAIGNS : []);
   const [loading, setLoading] = useState(!demo);
@@ -66,7 +62,6 @@ export function InsightsScreen({ demo = false }) {
     { label: "Conversions", value: compactNumber(totals.conversions), footer: "Goal completions" },
   ];
 
-  // Per-platform rollup — only platforms that have at least one campaign.
   const perPlatform = useMemo(() => {
     return AD_PLATFORMS.map((p) => {
       const rows = campaigns.filter((r) => r.config?.platform === p.value);
@@ -100,15 +95,18 @@ export function InsightsScreen({ demo = false }) {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading insights…
         </div>
       ) : campaigns.length === 0 ? (
-        <EmptyState
-          icon={BarChart3}
-          title="No campaign data yet"
-          description="Create campaigns in Ad Campaigns and their spend, clicks, and conversions roll up here."
-        />
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={BarChart3}
+            title="No campaign data yet"
+            description="Create campaigns in Ad Campaigns and their spend, clicks, and conversions roll up here."
+          />
+        </div>
       ) : (
         <>
           <StatsBar stats={stats} />

@@ -63,18 +63,13 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listEvents } from "@/lib/supabase/events";
 import { conferenceApi } from "@/lib/supabase/conference";
 import { getUser } from "@/lib/supabase/user";
+import { agendaTracks } from "@/lib/agenda/sessions";
 import { formatDate, EVENT_STATUS_MAP } from "@/components/internal/screens/events/sample_data";
 import { SESSION_STATUS_MAP } from "./constants";
-import { AgendaGrid } from "./agenda_grid";
-
-// The Agenda Builder is a two-level screen: pick an event, then build its
-// schedule. Sessions are conference_records (module "session") linked to an
-// event through config.eventId, so they share the Conference store while reading
-// as a per-event running order here. Mutations are optimistic + persisted.
+import { AgendaGrid, trackStyle } from "./agenda_grid";
 
 const STATUS_VALUES = Object.keys(SESSION_STATUS_MAP);
 
-// Event-list (level 1) filters + sort.
 const EVENT_STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "On sale", label: "On sale" },
@@ -94,13 +89,11 @@ const EVENT_SORT_OPTIONS = [
   { value: "sessions", label: "Sort: Sessions" },
 ];
 
-// Session (level 2) status filter.
 const SESSION_STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All Statuses" },
   ...STATUS_VALUES.map((s) => ({ value: s, label: s })),
 ];
 
-// Half-hour slots ("HH:mm" value, 12-hour label) for the time selects.
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const h = Math.floor(i / 2);
   const min = i % 2 === 0 ? "00" : "30";
@@ -124,10 +117,6 @@ const EMPTY_SESSION = {
   description: "",
 };
 
-// --- Session dialog ----------------------------------------------------------
-
-// Text input with a leading icon — the polished field style used across the
-// session dialog.
 function IconInput({ icon: Icon, className, ...props }) {
   return (
     <div className="relative">
@@ -137,7 +126,6 @@ function IconInput({ icon: Icon, className, ...props }) {
   );
 }
 
-// Small uppercase group heading between dialog sections.
 function GroupLabel({ children }) {
   return (
     <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
@@ -146,7 +134,6 @@ function GroupLabel({ children }) {
   );
 }
 
-// Human duration between two "HH:mm" values (null when unset or non-positive).
 function durationLabel(start, end) {
   if (!start || !end) return null;
   const [sh, sm] = start.split(":").map(Number);
@@ -158,9 +145,6 @@ function durationLabel(start, end) {
   return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`;
 }
 
-// `initial` seeds the form for both an edit and a prefilled create (dropping a
-// new session onto a grid slot), so `isEdit` — not the presence of a draft —
-// decides the wording.
 function SessionDialog({ open, onOpenChange, initial, isEdit, onSave }) {
   const [draft, setDraft] = useState(EMPTY_SESSION);
   const [prevOpen, setPrevOpen] = useState(open);
@@ -205,7 +189,6 @@ function SessionDialog({ open, onOpenChange, initial, isEdit, onSave }) {
           }}
         >
           <div className="max-h-[65vh] overflow-y-auto">
-            {/* Session */}
             <div className="space-y-4 p-5">
               <Field label="Session title" htmlFor="ses-title">
                 <IconInput
@@ -230,7 +213,6 @@ function SessionDialog({ open, onOpenChange, initial, isEdit, onSave }) {
               </Field>
             </div>
 
-            {/* Schedule */}
             <div className="space-y-4 border-t border-border bg-surface-subtle/30 p-5">
               <div className="flex items-center justify-between">
                 <GroupLabel>Schedule</GroupLabel>
@@ -282,7 +264,6 @@ function SessionDialog({ open, onOpenChange, initial, isEdit, onSave }) {
               </div>
             </div>
 
-            {/* Placement */}
             <div className="space-y-4 border-t border-border p-5">
               <GroupLabel>Placement</GroupLabel>
               <div className="grid grid-cols-2 gap-4">
@@ -313,7 +294,6 @@ function SessionDialog({ open, onOpenChange, initial, isEdit, onSave }) {
               </Field>
             </div>
 
-            {/* Description */}
             <div className="space-y-3 border-t border-border bg-surface-subtle/30 p-5">
               <Field
                 label={
@@ -361,20 +341,19 @@ function SessionDialog({ open, onOpenChange, initial, isEdit, onSave }) {
   );
 }
 
-// --- Per-event builder -------------------------------------------------------
-
 function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }) {
   const [addOpen, setAddOpen] = useState(false);
-  // Prefill for the add dialog when a session is started from a grid slot.
   const [addDraft, setAddDraft] = useState(null);
-  const [editing, setEditing] = useState(null); // { id, session } | null
+  const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [trackFilter, setTrackFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  // Grid is the default: an agenda is two-dimensional, and only the grid shows
-  // parallel tracks colliding. The list stays for long, single-track running
-  // orders where a timeline is mostly whitespace.
   const [view, setView] = useState("grid");
+
+  const trackIndex = useMemo(() => {
+    const map = new Map(agendaTracks(sessions).map((t, i) => [t, i]));
+    return (name) => map.get(name) ?? 0;
+  }, [sessions]);
 
   const trackOptions = useMemo(() => {
     const tracks = [
@@ -402,7 +381,6 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
     setStatusFilter("all");
   };
 
-  // Group by day (first-seen order; unscheduled last), sessions sorted by start.
   const groups = useMemo(() => {
     const byDay = new Map();
     for (const s of visible) {
@@ -445,8 +423,6 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
     [sessions],
   );
 
-  // Dragging a block on the grid only moves it in time and track — every other
-  // field has to be resent because onUpdate rewrites the whole config bag.
   const handleReschedule = (session, patch) =>
     onUpdate(session.id, { ...sessionToDraft(session), ...patch });
 
@@ -511,10 +487,10 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
                   type="button"
                   onClick={() => setView(value)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium transition-colors",
+                    "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium transition-colors",
                     view === value
-                      ? "bg-surface-hover text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "border-primary bg-primary/15 text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <Icon className="h-4 w-4" /> {label}
@@ -607,7 +583,12 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
                         {s.config.track ? (
                           <span className="inline-flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+                            <span
+                              className={cn(
+                                "h-1.5 w-1.5 rounded-full",
+                                trackStyle(trackIndex(s.config.track.trim())).bar,
+                              )}
+                            />
                             {s.config.track}
                           </span>
                         ) : null}
@@ -717,12 +698,9 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
   );
 }
 
-// Flatten a session record to the dialog's flat draft shape.
 function sessionToDraft(s) {
   return { ...EMPTY_SESSION, ...s.config, name: s.name, status: s.status };
 }
-
-// --- Event picker (level 1) --------------------------------------------------
 
 export function AgendaBuilderScreen() {
   const { projectId } = useProject();
@@ -786,7 +764,6 @@ export function AgendaBuilderScreen() {
       if (sortBy === "name") return a.name.localeCompare(b.name);
       if (sortBy === "sessions")
         return (sessionCounts[b.id] || 0) - (sessionCounts[a.id] || 0);
-      // date: soonest first, undated last.
       return (a.date || "9999-99-99").localeCompare(b.date || "9999-99-99");
     });
   }, [events, search, statusFilter, agendaFilter, sortBy, sessionCounts]);
@@ -799,7 +776,6 @@ export function AgendaBuilderScreen() {
     setAgendaFilter("all");
   };
 
-  // --- Session mutations (optimistic + persisted) ---
   const handleCreate = (draft) => {
     const { name, status, ...rest } = draft;
     const record = {
@@ -913,7 +889,7 @@ export function AgendaBuilderScreen() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading Events…
+          Loading events…
         </div>
       ) : filteredEvents.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

@@ -5,10 +5,9 @@ import { Loader2, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
 
-// Upload-or-paste image control. `onUpload(file)` returns a public URL (or null
-// on failure) — the screen owns the toast, this only reports busy state.
 export function ImageField({ label, value, onChange, onUpload, className }) {
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -24,19 +23,16 @@ export function ImageField({ label, value, onChange, onUpload, className }) {
   };
 
   return (
-    <div className={cn("space-y-2", className)}>
-      {label ? <p className="text-sm font-medium text-muted-foreground">{label}</p> : null}
-
+    <Field label={label} className={cn("space-y-2", className)}>
       {value ? (
         <div className="relative overflow-hidden rounded-md border border-border bg-surface-card">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="" className="h-20 w-full object-contain" />
           <Button
-            size="icon"
+            size="icon-sm"
             variant="ghost"
             aria-label="Remove image"
             onClick={() => onChange("")}
-            className="absolute right-1 top-1 h-6 w-6 bg-surface-subtle/80 text-muted-foreground hover:text-foreground"
+            className="absolute right-1 top-1 bg-surface-subtle/80 text-muted-foreground hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -62,7 +58,7 @@ export function ImageField({ label, value, onChange, onUpload, className }) {
           Upload
         </Button>
       </div>
-    </div>
+    </Field>
   );
 }
 

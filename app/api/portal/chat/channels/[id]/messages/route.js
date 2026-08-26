@@ -19,7 +19,6 @@ const ERR_MSG = {
   failed: "Couldn't send your message.",
 };
 
-// POST { body, replyTo? } -> post a message to the channel as this member.
 export async function POST(request, { params }) {
   const member = await getSessionMember();
   if (!member) {

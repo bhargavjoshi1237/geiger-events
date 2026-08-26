@@ -19,11 +19,6 @@ import { Button } from "@/components/ui/button";
 import { conferenceApi } from "@/lib/supabase/conference";
 import { toEmbed } from "@/lib/video-embed";
 
-// Public replay page at /r/<id>. Renders an organiser's external recording link
-// to anyone with the URL — Geiger never hosts the video, it just fetches the row
-// (a scoped anon RLS read that only exposes recordings with config.public = true;
-// see zzz_conference_recordings_public.sql) and embeds the link client-side.
-
 function Player({ url }) {
   const embed = toEmbed(url);
   if (embed.type === "none") {
@@ -62,7 +57,6 @@ export default function PublicRecordingPage() {
     let alive = true;
     conferenceApi.get(id).then((row) => {
       if (!alive) return;
-      // Only surface recordings explicitly shared as public.
       setRecording(row && row.module === "recording" && row.config?.public ? row : null);
       setLoading(false);
     });
@@ -110,8 +104,8 @@ export default function PublicRecordingPage() {
           variant="outline"
           className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
         >
-          <Link href="/home">
-            <ArrowLeft className="h-4 w-4" /> Back to dashboard
+          <Link href="/">
+            <ArrowLeft className="h-4 w-4" /> Back to home
           </Link>
         </Button>
       </div>

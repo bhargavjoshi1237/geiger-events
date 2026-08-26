@@ -29,7 +29,15 @@
       "*": "deny",
       "npx eslint*": "allow",
       "npm run lint*": "allow",
-      "node *": "allow"
+      "node *": "allow",
+      "git clone https://github.com/bhargavjoshi1237/geiger-events.git*": "allow",
+      "git clone https://github.com/bhargavjoshi1237/geiger-content.git*": "allow",
+      "Remove-Item -Recurse -Force C:\\Pro\\geiger-content*": "allow",
+      "Copy-Item C:\\Pro\\geiger-events\\.env C:\\Pro\\geiger-content\\*": "allow",
+      "npm install*": "allow",
+      "Get-Content C:\\Pro\\geiger-content\\*": "allow",
+      "Test-Path C:\\Pro\\geiger-content*": "allow",
+      "Start-Process cmd*": "allow"
     }
   }
 }

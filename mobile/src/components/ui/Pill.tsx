@@ -18,7 +18,6 @@ const TONES: Record<PillTone, string> = {
   neutral: colors.mutedForeground,
 };
 
-// Status chip: a coloured dot + tinted label on a 15% tint at 30% border.
 export function Pill({ label, tone }: PillProps) {
   const tint = TONES[tone];
   return (

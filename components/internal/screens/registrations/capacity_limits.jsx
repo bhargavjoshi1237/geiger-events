@@ -31,7 +31,6 @@ import { useProject } from "@/context/project-context";
 import { EVENT_TYPE_MAP_LITE, formatDate } from "./constants";
 import { countRegs, PipelineBar } from "./pipeline";
 
-// Sort orders for the capacity list — the right-hand toolbar filter.
 const SORT_OPTIONS = [
   { value: "fill-desc", label: "Fullest first" },
   { value: "fill-asc", label: "Emptiest first" },
@@ -43,12 +42,23 @@ const SORT_OPTIONS = [
 function AdjustDialog({ row, open, onOpenChange, onSave }) {
   const [capacity, setCapacity] = useState(row?.capacity ?? 0);
   const [buffer, setBuffer] = useState(row?.buffer ?? 0);
+  const [saving, setSaving] = useState(false);
   const [seed, setSeed] = useState(row?.id);
   if (row?.id !== seed) {
     setSeed(row?.id);
     setCapacity(row?.capacity ?? 0);
     setBuffer(row?.buffer ?? 0);
   }
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await Promise.resolve(onSave(row.id, Number(capacity) || 0, Number(buffer) || 0));
+    } finally {
+      setSaving(false);
+      onOpenChange(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -81,11 +91,10 @@ function AdjustDialog({ row, open, onOpenChange, onSave }) {
           </Button>
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => {
-              onSave(row.id, Number(capacity) || 0, Number(buffer) || 0);
-              onOpenChange(false);
-            }}
+            disabled={saving}
+            onClick={save}
           >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Save
           </Button>
         </DialogFooter>
@@ -94,8 +103,6 @@ function AdjustDialog({ row, open, onOpenChange, onSave }) {
   );
 }
 
-// One event's capacity as a clickable card — same shell as the RSVP event card,
-// wired to open the adjust dialog and show fill against the effective cap.
 function CapacityCard({ row, onAdjust }) {
   const { counts, effective, fill, over, buffer } = row;
   return (
@@ -171,7 +178,7 @@ export function CapacityLimitsScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [projectId]);
 
   const countsByEvent = useMemo(() => {
     const by = {};
@@ -190,11 +197,6 @@ export function CapacityLimitsScreen() {
         const counts = countsByEvent[e.id] || countRegs([]);
         const buffer = Number(e.capacityBuffer) || 0;
         const effective = (e.capacity || 0) + buffer;
-        // Fill = confirmed registration seats vs the effective cap. Paid buyers
-        // are included here: checkout files a parity registration alongside the
-        // order, so `seats` already unifies free RSVPs and paid tickets. (The
-        // events.sold column is the paid-only tally; it and `seats` track the
-        // same people and aren't summed.)
         const fill = effective ? Math.round((counts.seats / effective) * 100) : 0;
         return {
           ...e,

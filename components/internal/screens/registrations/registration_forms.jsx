@@ -99,9 +99,6 @@ const BUILDER_TABS = [
   { key: "confirmation", label: "Confirmation" },
 ];
 
-// ---------------------------------------------------------------------------
-// Builder — a single form, tabbed (Fields / Access / Confirmation).
-// ---------------------------------------------------------------------------
 function FormBuilder({ form, onBack, onSave, onStatusChange }) {
   const [fields, setFields] = useState(form.fields || []);
   const [settings, setSettings] = useState({
@@ -149,8 +146,6 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
     else toast.error("Couldn't save the form.");
   };
 
-  // Fields that can drive a conditional "show when" rule (everything above the
-  // current field is eligible — keeps the dependency acyclic).
   const fieldOptions = (currentId) =>
     fields.filter((f) => f.id !== currentId);
 
@@ -165,7 +160,6 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
         <ArrowLeft className="h-4 w-4" /> All forms
       </Button>
 
-      {/* Form header — same shell as the registration detail screen. */}
       <div className="space-y-4 border-b border-border pb-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 space-y-1">
@@ -202,7 +196,6 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
         </div>
       </div>
 
-      {/* Fields / Access / Confirmation switch — copied from the RSVP screen. */}
       <div className="flex w-fit flex-wrap items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
         {BUILDER_TABS.map((t) => (
           <button
@@ -221,7 +214,6 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
         ))}
       </div>
 
-      {/* Fields + conditional logic (Conditional Questions, Group). */}
       {tab === "fields" ? (
         <div className="space-y-4">
           <SectionCard
@@ -405,7 +397,6 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
         </div>
       ) : null}
 
-      {/* Access — token-gated, member-only, group, autofill, deadlines. */}
       {tab === "access" ? (
         <div className="space-y-4">
           <SectionCard title="Who can register" description="Gate who's allowed to use this form.">
@@ -458,7 +449,6 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
         </div>
       ) : null}
 
-      {/* Confirmation page. */}
       {tab === "confirmation" ? (
         <div className="space-y-4">
           <SectionCard
@@ -501,9 +491,6 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Create-form dialog
-// ---------------------------------------------------------------------------
 function CreateFormDialog({ open, onOpenChange, onCreate }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -567,9 +554,6 @@ function CreateFormDialog({ open, onOpenChange, onCreate }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// List + routing into the builder
-// ---------------------------------------------------------------------------
 export function RegistrationFormsScreen() {
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -592,7 +576,7 @@ export function RegistrationFormsScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [projectId]);
 
   const openForm = useMemo(
     () => forms.find((f) => f.id === openId) || null,
@@ -761,7 +745,7 @@ export function RegistrationFormsScreen() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-40 border-border bg-surface-card shadow-xl"
+              className="w-40 border-border bg-surface-subtle"
             >
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
@@ -775,7 +759,7 @@ export function RegistrationFormsScreen() {
               >
                 <Copy className="h-4 w-4" /> Duplicate
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-strong" />
+              <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
                 onClick={() => setDeleteTarget(f)}

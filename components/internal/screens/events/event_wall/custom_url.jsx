@@ -11,8 +11,6 @@ import { useProject } from "@/context/project-context";
 import { updateWall } from "@/lib/supabase/event_wall";
 import { slugify } from "../sample_data";
 
-// The wall's public link is /w/<slug> — a real column (not metadata) since
-// the public route looks the wall up by it (getWallBySlug).
 export function WallCustomUrlSection({ wall }) {
   const { projectId } = useProject();
   const [slug, setSlug] = useState(wall?.slug || "events");

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  Copy,
   Loader2,
   Monitor,
   MoreHorizontal,
@@ -62,8 +63,6 @@ import { withDefaults } from "./constants";
 
 const genCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
-// staff = /checkin + /door routes; kiosk = the /kiosk route — separate code
-// spaces (see checkin_validate_code's p_type) so one can't unlock the other.
 const ROLE_TYPES = [
   { value: "staff", label: "Staff", icon: Users },
   { value: "kiosk", label: "Kiosk", icon: Monitor },
@@ -90,7 +89,6 @@ function permSummary(p) {
   ].join(" · ");
 }
 
-// A toggleable chip row for assigning gates / zones from the global lists.
 function ChipPicker({ options, selected, onToggle, emptyHint }) {
   if (!options.length) {
     return <p className="text-xs text-text-tertiary">{emptyHint}</p>;
@@ -146,6 +144,15 @@ function RoleEditPage({ role, gates, zones, onBack, onSave }) {
       accessCode: code,
     });
     setSaving(false);
+  };
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success("Code copied.");
+    } catch {
+      toast.error("Couldn't copy — select and copy manually.");
+    }
   };
 
   return (
@@ -247,6 +254,13 @@ function RoleEditPage({ role, gates, zones, onBack, onSave }) {
             >
               <RefreshCw className="h-4 w-4" /> Regenerate
             </Button>
+            <Button
+              variant="outline"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={copyCode}
+            >
+              <Copy className="h-4 w-4" /> Copy code
+            </Button>
           </div>
         </SectionCard>
       </div>
@@ -254,8 +268,6 @@ function RoleEditPage({ role, gates, zones, onBack, onSave }) {
   );
 }
 
-// One type's list — filtered rows, three states, row actions. Rendered once
-// per tab so Staff and Kiosk each get their own loading/empty/filtered-empty.
 function RoleList({ type, icon: Icon, roles, loading, search, onOpen, onDelete, onCreate }) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -305,7 +317,11 @@ function RoleList({ type, icon: Icon, roles, loading, search, onOpen, onDelete, 
           role="button"
           tabIndex={0}
           onClick={() => onOpen(role.id)}
-          onKeyDown={(e) => e.key === "Enter" && onOpen(role.id)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            e.preventDefault();
+            onOpen(role.id);
+          }}
           className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
@@ -479,7 +495,6 @@ export function StaffScanningRolesScreen() {
         {ROLE_TYPES.map((t) => (
           <TabsContent key={t.value} value={t.value} className="space-y-4">
             <Toolbar>
-              <span />
               <SearchInput
                 value={search}
                 onChange={setSearch}
