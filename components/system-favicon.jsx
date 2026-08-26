@@ -2,8 +2,13 @@
 
 import { useEffect } from "react";
 
-const DARK_FAVICON = "/favicon.ico";
-const LIGHT_FAVICON = "/faviconL.ico";
+// basePath ("/events" in production) rewrites <Link>, the router and static
+// imports, but not a URL we hand straight to the DOM. Without the prefix these
+// leave the app entirely and come back as the suite shell's HTML, so every page
+// in production quietly runs on the wrong favicon.
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const DARK_FAVICON = `${BASE}/favicon.ico`;
+const LIGHT_FAVICON = `${BASE}/faviconL.ico`;
 
 export function SystemFavicon() {
   useEffect(() => {

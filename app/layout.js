@@ -9,6 +9,7 @@ import {
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SystemFavicon } from "@/components/system-favicon";
+import { AssetRecovery } from "@/components/asset-recovery";
 import { Toaster } from "@/components/ui/sonner";
 import { BannerProvider } from "@/context/banner-context";
 import { GlobalBanner } from "@/components/internal/banner/global_banner";
@@ -61,6 +62,9 @@ export default function RootLayout({ children }) {
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${poppins.variable} ${playfair.variable} ${merriweather.variable} antialiased`}
       >
+        {/* First in the body so its inline script is running before the async
+            chunks in <head> have had time to fail. */}
+        <AssetRecovery />
         <SystemFavicon />
         <ThemeProvider
           attribute="class"
