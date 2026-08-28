@@ -13,6 +13,7 @@ import { EventMap, NearbyList, WeatherCard, nearbyGroups, flattenPlaces, GETTING
 import { geocodeAddress } from "@/lib/map/geo";
 import { getVenue } from "@/lib/supabase/venues";
 import { formatScheduleTime } from "@/lib/events/schedule_items";
+import { videoEmbed } from "@/lib/events/gallery";
 import { ClipContent } from "@/components/internal/shared/web_clip/clip_content";
 import { isClipFilled } from "@/lib/clip/model";
 function SectionTitle({ icon: Icon, children }) {
@@ -458,25 +459,41 @@ function ImageBlock({ props }) {
         </figcaption>) : null}
     </figure>);
 }
-function VideoBlock({ props }) {
+// Empty/unsupported state — also what an editor sees before pasting a URL.
+function VideoPlaceholder({ url }) {
     return (<div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-card">
       <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-surface-subtle text-muted-foreground">
         <Play className="h-6 w-6"/>
       </div>
-      {props.url ? (<span className="absolute bottom-3 left-3 max-w-[80%] truncate rounded bg-black/50 px-2 py-1 text-xs text-muted-foreground">
-          {props.url}
+      {url ? (<span className="absolute bottom-3 left-3 max-w-[80%] truncate rounded bg-black/50 px-2 py-1 text-xs text-muted-foreground">
+          {url}
         </span>) : null}
     </div>);
 }
-function EmbedBlock({ props }) {
-    return (<div className="flex min-h-[120px] flex-col justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card p-5 text-text-secondary">
-      <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <CodeIcon className="h-4 w-4"/> Embedded content
-      </span>
-      <code className="block truncate text-xs">
-        {props.code || "<!-- paste embed code -->"}
-      </code>
+function VideoBlock({ props }) {
+    const video = videoEmbed(props.url);
+    if (!video)
+        return <VideoPlaceholder url={props.url}/>;
+    if (video.kind === "file") {
+        return (<video src={video.embedUrl} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl border border-border bg-black"/>);
+    }
+    return (<div className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-black">
+      <iframe src={video.embedUrl} title={video.title} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen className="h-full w-full border-0"/>
     </div>);
+}
+function EmbedBlock({ props }) {
+    const code = String(props.code || "").trim();
+    if (!code) {
+        return (<div className="flex min-h-[120px] flex-col justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card p-5 text-text-secondary">
+        <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <CodeIcon className="h-4 w-4"/> Embedded content
+        </span>
+        <code className="block truncate text-xs">{"<!-- paste embed code -->"}</code>
+      </div>);
+    }
+    // Organizer-authored markup, same trust model as a schedule HTML item.
+    // <script> injected this way never executes, so embeds work and scripts don't.
+    return (<div className="ev-raw-html" dangerouslySetInnerHTML={{ __html: code }}/>);
 }
 function CtaBlock({ props, accent }) {
     return (<div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface-subtle p-8 text-center">
