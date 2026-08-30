@@ -24,10 +24,10 @@ import {
   EmptyState,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Switch } from "@geiger/ui/switch";
+import { Checkbox } from "@geiger/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -44,7 +44,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
@@ -65,14 +65,14 @@ const TRIGGERS = {
     clause: (r) => `${offsetLabel(r)} before the event starts`,
   },
   before_reg_close: {
-    label: "Before registration closes",
+    label: "Before Registration Closes",
     category: "Time-based",
     icon: CalendarClock,
     param: "offset",
     milestone: "registration closes",
     direction: "before",
     defaults: { offsetValue: 5, offsetUnit: "Days" },
-    clause: (r) => `${offsetLabel(r)} before registration closes`,
+    clause: (r) => `${offsetLabel(r)} Before Registration Closes`,
   },
   before_sales_open: {
     label: "Before tickets go on sale",
@@ -273,7 +273,7 @@ export function AlertsSection({ event, headerItem }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setAddOpen(true)}
           >
-            <Plus className="h-4 w-4" /> Add alert
+            <Plus className="h-4 w-4" /> Add Alert
           </Button>
         }
       />
@@ -341,7 +341,7 @@ export function AlertsSection({ event, headerItem }) {
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => setAddOpen(true)}
             >
-              <Plus className="h-4 w-4" /> Create your first alert
+              <Plus className="h-4 w-4" /> Create Alert
             </Button>
           }
         />

@@ -20,20 +20,20 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { listVenues } from "@/lib/supabase/venues";
 import { venueFullAddress } from "@/components/internal/screens/venues/constants";
 import { useEventConfig } from "@/lib/events/use-event-config";
-import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
+import { EventDatePicker, EventTimeField } from "./date_time_fields";
 import {
   EventMap,
   NearbyList,
@@ -273,13 +273,13 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
             />
           </Field>
           <Field label="Starts">
-            <EventTimeSelect
+            <EventTimeField
               value={event?.time}
               onChange={(time) => patch({ time })}
             />
           </Field>
           <Field label="Doors open">
-            <EventTimeSelect
+            <EventTimeField
               value={loc.doorsOpen || ""}
               onChange={(time) => setLocField("doorsOpen")(time)}
             />
@@ -296,7 +296,7 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
                   )
                 }
               />
-              <EventTimeSelect
+              <EventTimeField
                 value={(loc.ends || "").split("T")[1] || ""}
                 onChange={(time) =>
                   setLocField("ends")(

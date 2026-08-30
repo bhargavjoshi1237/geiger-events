@@ -25,9 +25,9 @@ import {
   StatsBar,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import { useProject } from "@/context/project-context";
 import { getWall } from "@/lib/supabase/event_wall";
 import {
@@ -438,7 +438,7 @@ export function OrganiserProfileScreen() {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Search followers…"
+              placeholder="Search followers…"
             />
           </Toolbar>
 

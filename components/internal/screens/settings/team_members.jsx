@@ -10,7 +10,7 @@ import {
   StatsBar,
   SectionCard,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useTeam } from "./team/use_team";
 import MembersTab from "./team/members_tab";

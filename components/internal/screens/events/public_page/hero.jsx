@@ -2,8 +2,8 @@
 
 import { Clock, MapPin, ChevronRight } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@geiger/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@geiger/ui/avatar";
 import { FollowButton } from "@/components/internal/screens/discovery/public_follow";
 import { cn } from "@/lib/utils";
 

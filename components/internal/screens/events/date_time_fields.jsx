@@ -2,23 +2,18 @@
 
 import React from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { DatePicker as Calendar } from "@geiger/ui/date-picker";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/popover";
 import { cn } from "@/lib/utils";
+import { isClockTime } from "@/lib/events/schedule_items";
 
 export const toDateValue = (date) => {
   if (!date) return "";
@@ -34,15 +29,6 @@ export const parseDateValue = (value) => {
   if (!y || !m || !d) return undefined;
   return new Date(y, m - 1, d);
 };
-
-export const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor(i / 2);
-  const min = i % 2 === 0 ? "00" : "30";
-  const value = `${String(h).padStart(2, "0")}:${min}`;
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  const label = `${hour12}:${min} ${h < 12 ? "AM" : "PM"}`;
-  return { value, label };
-});
 
 export function EventDatePicker({
   value,
@@ -78,24 +64,26 @@ export function EventDatePicker({
   );
 }
 
-export function EventTimeSelect({
-  value,
-  onChange,
-  placeholder = "Select time",
-}) {
+// A time input only accepts HH:MM, but callers split times out of ISO-ish
+// strings that can carry seconds. Trim to what the control can render, and drop
+// anything that isn't a clock time (older records held free-text labels).
+const toTimeInputValue = (value) => {
+  const raw = String(value || "").trim();
+  const clock = raw.slice(0, 5);
+  return isClockTime(clock) ? clock : "";
+};
+
+// Native time control: any minute, keyboard-first, and it follows the platform's
+// own 12/24h convention. The picker glyph it draws on the right already follows
+// the theme's color-scheme, so there's no leading icon here — one clock is enough.
+export function EventTimeField({ value, onChange, className, ...props }) {
   return (
-    <Select value={value || ""} onValueChange={onChange}>
-      <SelectTrigger className="w-full">
-        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent className="max-h-64">
-        {TIME_OPTIONS.map((t) => (
-          <SelectItem key={t.value} value={t.value}>
-            {t.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <Input
+      type="time"
+      value={toTimeInputValue(value)}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn("w-full", className)}
+      {...props}
+    />
   );
 }

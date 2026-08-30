@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   CalendarDays,
   Loader2,
-  MoreHorizontal,
   PackageCheck,
   Plus,
   Store,
@@ -24,9 +23,10 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Checkbox } from "@geiger/ui/checkbox";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -34,21 +34,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
@@ -841,65 +834,41 @@ export function EventAllocationsScreen() {
       align: "right",
       className: "text-right",
       render: (a) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Allocation actions"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-48 border-border bg-surface-card shadow-xl"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => setIssueTarget({ allocation: a, mode: "issue" })}
-              >
-                <PackageCheck className="h-4 w-4" /> Issue stock
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                disabled={!Number(a.issuedQty)}
-                onClick={() => setIssueTarget({ allocation: a, mode: "return" })}
-              >
-                <Undo2 className="h-4 w-4" /> Return stock
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-strong" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => setSellTarget(a)}
-              >
-                <Store className="h-4 w-4" />
-                {a.config?.sale?.published ? "Add-on settings" : "Sell as add-on"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-strong" />
-              {ALLOCATION_STATUS_OPTIONS.filter((s) => s.value !== a.status).map(
-                (s) => (
-                  <DropdownMenuItem
-                    key={s.value}
-                    className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                    onClick={() => handleStatus(a, s.value)}
-                  >
-                    Mark {s.label.toLowerCase()}
-                  </DropdownMenuItem>
-                ),
-              )}
-              <DropdownMenuSeparator className="bg-surface-strong" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setDeleteTarget(a)}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Allocation actions"
+          items={[
+            {
+              icon: PackageCheck,
+              label: "Issue stock",
+              onSelect: () => setIssueTarget({ allocation: a, mode: "issue" }),
+            },
+            {
+              icon: Undo2,
+              label: "Return stock",
+              disabled: !Number(a.issuedQty),
+              onSelect: () => setIssueTarget({ allocation: a, mode: "return" }),
+            },
+            { separator: true },
+            {
+              icon: Store,
+              label: a.config?.sale?.published ? "Add-on settings" : "Sell as add-on",
+              onSelect: () => setSellTarget(a),
+            },
+            { separator: true },
+            ...ALLOCATION_STATUS_OPTIONS.filter((s) => s.value !== a.status).map((s) => ({
+              key: s.value,
+              label: `Mark ${s.label.toLowerCase()}`,
+              onSelect: () => handleStatus(a, s.value),
+            })),
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Remove",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(a),
+            },
+          ]}
+        />
       ),
     },
   ];

@@ -9,7 +9,7 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { GuidelineListEditor } from "@/components/internal/shared/guideline_editor";
 import { useEventConfig } from "@/lib/events/use-event-config";
 

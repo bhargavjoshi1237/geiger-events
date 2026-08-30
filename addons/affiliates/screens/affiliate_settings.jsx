@@ -12,15 +12,15 @@ import {
   SettingRow,
   SettingsList,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 import { useAddons } from "@/context/addons-context";
 import { getAddon } from "@/addons";

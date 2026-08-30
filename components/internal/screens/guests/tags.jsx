@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   Loader2,
   Merge,
-  MoreHorizontal,
   Pencil,
   Plus,
   Tag as TagIcon,
@@ -22,8 +21,9 @@ import {
   StatsBar,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -31,28 +31,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@geiger/ui/sheet";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
@@ -318,56 +311,39 @@ export function TagsScreen() {
       header: "",
       align: "right",
       render: (t) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-text-secondary hover:text-foreground"
-                aria-label="Tag actions"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="border-border bg-surface-subtle text-foreground"
-            >
-              <DropdownMenuItem
-                className="focus:bg-surface-hover"
-                onClick={() =>
-                  setEditing({
-                    id: t.id,
-                    _name: t.name,
-                    name: t.name,
-                    color: t.color,
-                    description: t.description,
-                  })
-                }
-              >
-                <Pencil className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="focus:bg-surface-hover"
-                disabled={tags.length < 2}
-                onClick={() => {
-                  setMerging(t);
-                  setMergeInto("");
-                }}
-              >
-                <Merge className="h-4 w-4" /> Merge into…
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                onClick={() => setDeleteTarget(t)}
-              >
-                <Trash2 className="h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label={`Actions for ${t.name}`}
+          items={[
+            {
+              icon: Pencil,
+              label: "Edit",
+              onSelect: () =>
+                setEditing({
+                  id: t.id,
+                  _name: t.name,
+                  name: t.name,
+                  color: t.color,
+                  description: t.description,
+                }),
+            },
+            {
+              icon: Merge,
+              label: "Merge into…",
+              disabled: tags.length < 2,
+              onSelect: () => {
+                setMerging(t);
+                setMergeInto("");
+              },
+            },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(t),
+            },
+          ]}
+        />
       ),
     },
   ];

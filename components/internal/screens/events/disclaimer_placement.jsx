@@ -3,7 +3,7 @@
 import React from "react";
 import { CreditCard, MonitorSmartphone } from "lucide-react";
 
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "@geiger/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { DISCLAIMER_POSITIONS } from "./public_page/disclaimer";
 

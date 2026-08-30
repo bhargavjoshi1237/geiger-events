@@ -2,19 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  BadgeDollarSign,
-  Copy,
-  MoreHorizontal,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { BadgeDollarSign, Copy, Plus, Trash2 } from "lucide-react";
 
 import {
   MainScreenWrapper,
   SecondaryScreenWrapper,
 } from "@/components/internal/shared/screen_wrappers";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
 import {
   DataTable,
   EmptyState,
@@ -29,15 +23,16 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -45,14 +40,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
@@ -257,35 +245,30 @@ function ProgramDetail({ program, events, onBack, onChange, onDeleted }) {
 
   return (
     <SecondaryScreenWrapper>
-      <ScreenHeader
+      <EditorHeader
+        back={{ label: "Back", onClick: onBack }}
         title={program.name}
-        description={
+        meta={
           event
             ? `Affiliate program for ${event.name}. Independent of every other event's program.`
             : "Affiliate program."
         }
         actions={
-          <div className="flex items-center gap-2">
-            <Select
-              value={program.status}
-              onValueChange={(status) => patchProgram({ status })}
-            >
-              <SelectTrigger className="h-9 w-[140px] border-border bg-surface-card">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-border bg-surface-subtle">
-                {STATUS_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="ghost" onClick={onBack}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-          </div>
+          <Select
+            value={program.status}
+            onValueChange={(status) => patchProgram({ status })}
+          >
+            <SelectTrigger className="h-9 w-[140px] border-border bg-surface-card">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-border bg-surface-subtle">
+              {STATUS_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         }
       />
 
@@ -866,45 +849,28 @@ export function ProgramsScreen() {
       header: "",
       align: "right",
       render: (row) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                aria-label={`Actions for ${row.name}`}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="border-border bg-surface-subtle"
-            >
-              <DropdownMenuItem onClick={() => openRecord(row.id)}>
-                Open program
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                onClick={async () => {
-                  const snapshot = programs;
-                  setPrograms((prev) => prev.filter((p) => p.id !== row.id));
-                  const ok = await softDeleteProgram(row.id);
-                  if (ok) toast.success("Program deleted");
-                  else {
-                    setPrograms(snapshot);
-                    toast.error("Couldn't delete that program.");
-                  }
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label={`Actions for ${row.name}`}
+          items={[
+            { label: "Open program", onSelect: () => openRecord(row.id) },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: async () => {
+                const snapshot = programs;
+                setPrograms((prev) => prev.filter((p) => p.id !== row.id));
+                const ok = await softDeleteProgram(row.id);
+                if (ok) toast.success("Program deleted");
+                else {
+                  setPrograms(snapshot);
+                  toast.error("Couldn't delete that program.");
+                }
+              },
+            },
+          ]}
+        />
       ),
     },
   ];

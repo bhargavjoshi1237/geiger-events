@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   HandHeart,
   Loader2,
-  MoreHorizontal,
   PackageCheck,
   Plus,
   ShieldAlert,
@@ -23,8 +22,9 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -32,20 +32,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
@@ -482,29 +476,17 @@ export function IssuingDeskScreen() {
       header: "",
       align: "right",
       render: (r) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                aria-label="Hand-out actions"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 border-border bg-surface-subtle">
-              <DropdownMenuItem
-                disabled={r.status !== "issued"}
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => setUndoTarget(r)}
-              >
-                <Undo2 className="h-4 w-4" /> Undo hand-out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Hand-out actions"
+          items={[
+            {
+              icon: Undo2,
+              label: "Undo hand-out",
+              disabled: r.status !== "issued",
+              onSelect: () => setUndoTarget(r),
+            },
+          ]}
+        />
       ),
     },
   ];

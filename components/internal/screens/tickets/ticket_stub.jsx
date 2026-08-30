@@ -16,6 +16,7 @@ export function TicketStub({
   qty,
   typeName,
   visibilityLabel,
+  codes,
   onEdit,
   menu,
 }) {
@@ -31,7 +32,7 @@ export function TicketStub({
       ? { label: visibilityLabel }
       : typeName
         ? null
-        : { label: "No rules applied", muted: true },
+        : { label: "No Rules Applied", muted: true },
   ].filter(Boolean);
 
   return (
@@ -84,6 +85,7 @@ export function TicketStub({
             </React.Fragment>
           ))}
         </div>
+        {codes ? <div className="mt-1.5 text-text-secondary">{codes}</div> : null}
       </div>
 
       {/* Perforation with notch cut-outs punched to the canvas colour */}

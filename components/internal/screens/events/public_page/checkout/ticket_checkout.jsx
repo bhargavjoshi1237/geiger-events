@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { CalendarDays, MapPin } from "lucide-react";
 
 import { cn } from "@/lib/utils";

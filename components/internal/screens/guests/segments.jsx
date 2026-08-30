@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   ListChecks,
   Loader2,
-  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
@@ -20,9 +19,10 @@ import {
   ScreenHeader,
   StatsBar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -30,28 +30,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/sheet";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
@@ -399,36 +392,15 @@ function SegmentCard({ segment, count, onView, onEdit, onDelete }) {
         </div>
       </button>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="shrink-0 text-text-secondary hover:text-foreground"
-            aria-label="Segment actions"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="border-border bg-surface-subtle text-foreground"
-          >
-            <DropdownMenuItem className="cursor-pointer gap-2 focus:bg-surface-hover" onClick={onView}>
-              <Users className="h-4 w-4" /> View members
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer gap-2 focus:bg-surface-hover" onClick={onEdit}>
-              <Pencil className="h-4 w-4" /> Edit rules
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-border" />
-            <DropdownMenuItem
-              className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-400"
-              onClick={onDelete}
-            >
-            <Trash2 className="h-4 w-4" /> Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <ActionMenu
+        label="Segment actions"
+        items={[
+          { icon: Users, label: "View members", onSelect: onView },
+          { icon: Pencil, label: "Edit rules", onSelect: onEdit },
+          { separator: true },
+          { icon: Trash2, label: "Delete", variant: "destructive", onSelect: onDelete },
+        ]}
+      />
     </div>
   );
 }

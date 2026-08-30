@@ -11,14 +11,14 @@ import {
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
 import { LanyardBadge } from "@/components/internal/shared/lanyard/lanyard_badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useEventConfig } from "@/lib/events/use-event-config";

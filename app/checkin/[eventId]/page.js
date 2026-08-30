@@ -4,15 +4,16 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { CheckCircle2, AlertTriangle, XCircle, Search, UserCheck, Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { IconInput } from "@/components/internal/shared/icon_input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { getEvent } from "@/lib/supabase/events";
 import { searchCheckin, admitCheckin, checkinStats } from "@/lib/supabase/checkin";
 import { AccessGate } from "@/components/checkin_routes/access_gate";
@@ -188,15 +189,14 @@ function Scanner({ eventId, code, role, exit, event }) {
           }}
           className="flex gap-2"
         >
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, email, or ticket #"
-              className="h-11 bg-surface-card pl-9"
-            />
-          </div>
+          <IconInput
+            icon={Search}
+            wrapperClassName="flex-1"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, email, or ticket #"
+            className="h-11 bg-surface-card"
+          />
           <Button type="submit" disabled={searching} className="h-11 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90">
             {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
           </Button>

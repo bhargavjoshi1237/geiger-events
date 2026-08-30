@@ -15,7 +15,7 @@ import {
   VideoOff,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { conferenceApi } from "@/lib/supabase/conference";
 import { toEmbed } from "@/lib/video-embed";
 

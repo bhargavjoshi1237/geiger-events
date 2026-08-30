@@ -18,8 +18,8 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Badge } from "@geiger/ui/badge";
+import { Switch } from "@geiger/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   EMAIL_GROUPS,

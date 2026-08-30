@@ -15,11 +15,11 @@ import {
 } from "lucide-react";
 
 import { EditorSectionHeader, Field } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { Switch } from "@geiger/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -27,18 +27,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { TIME_BANDS, bandLabel, bandFromTime, EMPTY_SLOT } from "@/lib/events/slots";
-import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
+import { EventDatePicker, EventTimeField } from "./date_time_fields";
 
 const DEFAULT_BOOKING = { enabled: false, required: true, mode: "single", label: "Choose your time" };
 
@@ -169,7 +169,7 @@ function SlotDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
                   value={startDate}
                   onChange={(date) => setStart(joinDateTime(date, startTime))}
                 />
-                <EventTimeSelect
+                <EventTimeField
                   value={startTime}
                   onChange={(time) => setStart(joinDateTime(startDate, time))}
                 />
@@ -181,7 +181,7 @@ function SlotDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
                   value={endDate}
                   onChange={(date) => set("end")(joinDateTime(date, endTime))}
                 />
-                <EventTimeSelect
+                <EventTimeField
                   value={endTime}
                   onChange={(time) => set("end")(joinDateTime(endDate, time))}
                   placeholder="No end time"

@@ -20,7 +20,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { toEmbed } from "@/lib/video-embed";
 import { usePresenceHeartbeat } from "@/lib/hooks/use-presence-heartbeat";
 import { fmtDate } from "./portal_kit";

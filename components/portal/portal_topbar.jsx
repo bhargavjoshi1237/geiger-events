@@ -5,10 +5,10 @@ import Image from "next/image";
 import { useTheme } from "next-themes";
 import { Bell, LogOut, Sun, Moon, CircleUserRound, LifeBuoy } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Button } from "@geiger/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@geiger/ui/avatar";
+import { SidebarTrigger } from "@geiger/ui/sidebar";
+import { ToggleGroup, ToggleGroupItem } from "@geiger/ui/toggle-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +17,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import { initials } from "./portal_kit";
 
 const surfaceStyle = {

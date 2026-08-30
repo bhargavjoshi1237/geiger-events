@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Clock, MapPin, Ticket } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 
 import { formatDate } from "../../sample_data";

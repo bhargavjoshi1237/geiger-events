@@ -6,9 +6,9 @@ import { ArrowLeft, Loader2, MessageSquarePlus, Send, MessagesSquare } from "luc
 
 import { EmptyState, Field, ScreenHeader } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import { Card, fmtDateTime } from "./portal_kit";
 
 import { portalFetch, portalPostJson } from "@/lib/portal/portal_fetch";

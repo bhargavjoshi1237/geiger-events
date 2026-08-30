@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Button } from "@geiger/ui/button";
+import { SidebarTrigger } from "@geiger/ui/sidebar";
 import { NotificationsDropdown } from "../dialogue/notifications_dropdown";
 import { ProfileDropdown } from "../dialogue/profile_dropdown";
 import { SupabaseActivityLine } from "../supabase_activity_line";

@@ -14,7 +14,7 @@ import {
   Type,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +22,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { FIELD_CATALOG, elementLabel, newElement, sideLayout } from "@/lib/passes/layout";
 

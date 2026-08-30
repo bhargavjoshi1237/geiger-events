@@ -1,9 +1,9 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Clock, MapPin, Users, HelpCircle, Sparkles, Check, Train, Car, Image as ImgIcon, Play, Code as CodeIcon, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Quote, } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, } from "@/components/ui/dialog";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, } from "@/components/ui/accordion";
+import { Button } from "@geiger/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, } from "@geiger/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, } from "@geiger/ui/accordion";
 import { cn } from "@/lib/utils";
 import { parseRichText } from "@/lib/events/richtext";
 import { resolveGuestDisplay, GUEST_GRID_COLUMNS, GUEST_SHAPE_CLASS, GUEST_FIT_CLASS, } from "@/lib/events/guests";

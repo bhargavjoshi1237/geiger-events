@@ -6,7 +6,6 @@ import {
   Copy,
   Loader2,
   MonitorPlay,
-  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
@@ -23,6 +22,7 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import {
+  ActionMenu,
   Button,
   Dialog,
   DialogContent,
@@ -30,11 +30,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Input,
   Select,
   SelectContent,
@@ -483,50 +478,25 @@ export function DisplayBoardsScreen() {
                 <span className="hidden w-20 shrink-0 text-right text-xs font-medium text-text-secondary sm:block">
                   {slideCount} slide{slideCount === 1 ? "" : "s"}
                 </span>
-                <div onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Board actions"
-                        className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="w-48 border-border bg-surface-card shadow-xl"
-                    >
-                      <DropdownMenuItem
-                        className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                        onClick={() => openRecord(board.id)}
-                      >
-                        <Pencil className="h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                        onClick={() => handleDuplicate(board)}
-                      >
-                        <Copy className="h-4 w-4" /> Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                        onClick={() => copyUrl(board)}
-                      >
-                        <MonitorPlay className="h-4 w-4" /> Copy live URL
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-surface-strong" />
-                      <DropdownMenuItem
-                        className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                        onClick={() => setDeleteTarget(board)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-300" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                <ActionMenu
+                  label="Board actions"
+                  items={[
+                    { icon: Pencil, label: "Edit", onSelect: () => openRecord(board.id) },
+                    { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(board) },
+                    {
+                      icon: MonitorPlay,
+                      label: "Copy live URL",
+                      onSelect: () => copyUrl(board),
+                    },
+                    { separator: true },
+                    {
+                      icon: Trash2,
+                      label: "Delete",
+                      variant: "destructive",
+                      onSelect: () => setDeleteTarget(board),
+                    },
+                  ]}
+                />
               </div>
             );
           })}

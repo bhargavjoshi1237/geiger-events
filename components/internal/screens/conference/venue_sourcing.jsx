@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 import { ScreenHeader, SearchInput, Toolbar } from "@/components/internal/shared/screen_kit";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@geiger/ui/scroll-area";
 import { Button, Tabs, TabsList, TabsTrigger, cn } from "@geiger/ui";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { RecordsScreen } from "@/components/internal/shared/records/records_kit";

@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 import { EditorSectionHeader } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -29,9 +29,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { FieldList } from "./builder/field_editor";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@geiger/ui/scroll-area";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { cn } from "@/lib/utils";
 

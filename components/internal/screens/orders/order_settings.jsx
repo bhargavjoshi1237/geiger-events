@@ -9,15 +9,15 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 
 import { SettingsScreen } from "../tickets/settings_kit";
 import {

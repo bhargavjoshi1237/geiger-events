@@ -10,17 +10,17 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@geiger/ui/avatar";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { updateEventMeta } from "@/lib/supabase/events";
 import {
@@ -28,7 +28,7 @@ import {
   removeEventImage,
   pathFromPublicUrl,
 } from "@/lib/supabase/storage";
-import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
+import { EventDatePicker, EventTimeField } from "./date_time_fields";
 import { initials } from "./sample_data";
 
 export function BasicsSection({ event, headerItem, onPatch }) {
@@ -124,7 +124,7 @@ export function BasicsSection({ event, headerItem, onPatch }) {
               ) : (
                 <UploadCloud className="h-4 w-4" />
               )}
-              {organizerAvatar ? "Change photo" : "Add photo"}
+              {organizerAvatar ? "Change Photo" : "Add Photo"}
             </Button>
             {organizerAvatar ? (
               <Button
@@ -176,7 +176,7 @@ export function BasicsSection({ event, headerItem, onPatch }) {
             />
           </Field>
           <Field label="Start time">
-            <EventTimeSelect
+            <EventTimeField
               value={event?.time}
               onChange={(time) => patch({ time })}
             />

@@ -8,7 +8,8 @@ import {
   visiblePurchasables,
   purchasablesUnitTotal,
 } from "@/lib/events/purchasables";
-import { discountBase, discountAmountFor } from "@/lib/supabase/discounts";
+import { discountBase } from "@/lib/supabase/discounts";
+import { discountAmountFor, ticketDiscountIds } from "@/lib/events/discount_rules";
 import { earlybirdEnabled, earlybirdReduction } from "@/lib/events/earlybird";
 import { donationEnabled, donationConfig } from "@/lib/events/donation";
 import {
@@ -93,18 +94,24 @@ export function derivePricing({
   const addonUnit = offeringsUnit + purUnit + slotDelta;
   const subtotal = (effPrice + addonUnit) * qty;
 
+  // A code is offered on a ticket only when that ticket lists at least one
+  // coupon — codes are attached per ticket, never to the event as a whole.
+  const ticketCouponIds = ticketDiscountIds(ticket);
   const discountEnabled =
     !isBundle &&
     event.discountSettings?.enabled !== false &&
-    Array.isArray(event.attached?.discount) &&
-    event.attached.discount.length > 0;
+    ticketCouponIds.length > 0;
   const discountAppliesTo = event.discountSettings?.appliesTo || "order";
-  const discountAmount = appliedDiscount
-    ? discountAmountFor(
-        appliedDiscount,
-        discountBase({ price: effPrice, qty, addonUnit }, discountAppliesTo),
-      )
-    : 0;
+  // A code left over from a previous ticket must not keep discounting: it only
+  // counts while it is applied AND this ticket actually accepts codes.
+  const discountAmount =
+    appliedDiscount && discountEnabled
+      ? discountAmountFor(appliedDiscount, {
+          base: discountBase({ price: effPrice, qty, addonUnit }, discountAppliesTo),
+          qty,
+          maxDiscount: appliedDiscount.maxDiscount ?? null,
+        })
+      : 0;
 
   const groupOn = !isBundle && groupPurchaseEnabled(event) && groupAllowsTicket(event, ticketId);
   const gCfg = groupConfig(event);
@@ -138,6 +145,8 @@ export function derivePricing({
     visiblePurs,
     addonUnit,
     discountEnabled,
+    ticketCouponIds,
+    discountAppliesTo,
     discountAmount,
     gCfg,
     isGroup,

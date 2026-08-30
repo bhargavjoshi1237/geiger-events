@@ -4,17 +4,17 @@ import React from "react";
 import { Timer } from "lucide-react";
 
 import { EditorSectionHeader, Field, SectionCard } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useEventConfig } from "@/lib/events/use-event-config";
-import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
+import { EventDatePicker, EventTimeField } from "./date_time_fields";
 import {
   EMPTY_EARLYBIRD,
   normalizeEarlybird,
@@ -130,7 +130,7 @@ export function EventEarlybirdSection({ event, headerItem }) {
                 value={startDate}
                 onChange={(date) => commit({ startAt: joinDateTime(date, startTime) })}
               />
-              <EventTimeSelect
+              <EventTimeField
                 value={startTime}
                 onChange={(time) => commit({ startAt: joinDateTime(startDate, time) })}
               />
@@ -142,7 +142,7 @@ export function EventEarlybirdSection({ event, headerItem }) {
                 value={endDate}
                 onChange={(date) => commit({ endAt: joinDateTime(date, endTime) })}
               />
-              <EventTimeSelect
+              <EventTimeField
                 value={endTime}
                 onChange={(time) => commit({ endAt: joinDateTime(endDate, time) })}
               />

@@ -10,15 +10,15 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { IconInput } from "@/components/internal/shared/icon_input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useEventConfig } from "@/lib/events/use-event-config";
 
 const DEFAULT_PAYMENTS = {
@@ -103,35 +103,31 @@ export function PaymentsSection({ event, headerItem }) {
               label="Support email"
               hint="Shown on receipts if a buyer needs help."
             >
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-                <Input
-                  type="email"
-                  className="pl-9"
-                  value={payments.supportEmail || ""}
-                  onChange={(e) => setField("supportEmail")(e.target.value)}
-                  placeholder="support@yourorg.com"
-                />
-              </div>
+              <IconInput
+                icon={Mail}
+                type="email"
+                value={payments.supportEmail || ""}
+                onChange={(e) => setField("supportEmail")(e.target.value)}
+                placeholder="support@yourorg.com"
+              />
             </Field>
             <Field
               label="Statement descriptor"
               hint="Up to 22 characters, shown on the buyer's card statement."
               className="sm:col-span-2"
             >
-              <div className="relative">
-                <Tag className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-                <Input
-                  className="max-w-xs pl-9"
-                  maxLength={22}
-                  value={descriptor}
-                  onChange={(e) => {
-                    setDescTouched(true);
-                    setField("statementDescriptor")(e.target.value);
-                  }}
-                  placeholder={event?.name?.slice(0, 22) || "Your event name"}
-                />
-              </div>
+              <IconInput
+                icon={Tag}
+                wrapperClassName="max-w-xs"
+                className="w-full"
+                maxLength={22}
+                value={descriptor}
+                onChange={(e) => {
+                  setDescTouched(true);
+                  setField("statementDescriptor")(e.target.value);
+                }}
+                placeholder={event?.name?.slice(0, 22) || "Your event name"}
+              />
               {descTouched && descriptorTooLong ? (
                 <p className="mt-1 text-xs text-red-400">
                   Keep it to 22 characters or fewer.

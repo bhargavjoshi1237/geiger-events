@@ -3,11 +3,7 @@ import { NextResponse } from "next/server";
 import { getEvent } from "@/lib/supabase/events";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
 import { checkoutBranding } from "@/lib/stripe/branding";
-import {
-  validateEventDiscount,
-  discountBase,
-  discountAmountFor,
-} from "@/lib/supabase/discounts";
+import { validateEventDiscount, discountBase } from "@/lib/supabase/discounts";
 import { earlybirdReduction } from "@/lib/events/earlybird";
 import { groupDiscountAmount } from "@/lib/events/group";
 
@@ -137,13 +133,19 @@ export async function POST(request) {
   let discountAmount = 0;
   let appliedCode = null;
   if (discountCode && !bundleId) {
-    const dres = await validateEventDiscount(eventId, discountCode);
+    const appliesTo = event.discountSettings?.appliesTo || "order";
+    const base = discountBase({ price: effUnit, qty, addonUnit: addons }, appliesTo);
+    // Resolve against the ticket being bought, passing the base so the RPC
+    // returns the final amount with the coupon's cap already applied. Taking
+    // that number (rather than recomputing here) is what keeps the Stripe
+    // charge identical to what buy_ticket records.
+    const dres = await validateEventDiscount(eventId, discountCode, {
+      ticketId,
+      qty,
+      base,
+    });
     if (dres.ok) {
-      const appliesTo = event.discountSettings?.appliesTo || "order";
-      discountAmount = discountAmountFor(
-        dres,
-        discountBase({ price: effUnit, qty, addonUnit: addons }, appliesTo),
-      );
+      discountAmount = dres.amount;
       if (discountAmount > 0) appliedCode = dres.code;
     }
   }

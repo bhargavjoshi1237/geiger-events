@@ -19,7 +19,7 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@geiger/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +27,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
 import {
   Select,
@@ -35,10 +35,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+} from "@geiger/ui/select";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import { EmptyState, Field, StatusPill } from "@/components/internal/shared/screen_kit";
 import { ItemImageCard, ItemThumb } from "./item_image";
 

@@ -11,14 +11,15 @@ import {
   Video,
 } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
+import { IconInput } from "@/components/internal/shared/icon_input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import {
   ACCESS_MODES,
@@ -123,15 +124,13 @@ function EventPicker({ events, loading, selected, onToggle }) {
 
   return (
     <div className="space-y-2">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search events…"
-          className="h-9 pl-8"
-        />
-      </div>
+      <IconInput
+        icon={Search}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search events…"
+        className="h-9"
+      />
       <div className="scrollbar-subtle max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
         {filtered.length ? (
           filtered.map((event) => {

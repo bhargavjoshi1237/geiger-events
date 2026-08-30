@@ -2,17 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Loader2,
-  MoreHorizontal,
-  Pencil,
-  Copy,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Loader2, Pencil, Copy, Plus, Trash2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import {
+  EditorHeader,
+  EditorShell,
+} from "@/components/internal/shared/editor_shell";
 import {
   DataTable,
   EmptyState,
@@ -20,10 +16,10 @@ import {
   ScreenHeader,
   SearchInput,
   StatsBar,
-  StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import {
+  ActionMenu,
   Button,
   Dialog,
   DialogContent,
@@ -31,15 +27,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  cn,
 } from "@geiger/ui";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { useWorkspaceUrl, DEFAULT_SECTION } from "@/lib/hooks/use-workspace-url";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import { FieldControl, FieldSection, readField, fieldPatch } from "./record_fields";
@@ -176,7 +166,6 @@ function CreateRecordDialog({ mod, projectId, open, onOpenChange, onCreate }) {
 }
 
 export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
-  const { section: rawSection, setSection } = useWorkspaceUrl();
   const [form, setForm] = useState(record);
   const [seedId, setSeedId] = useState(record?.id);
   const [saving, setSaving] = useState(false);
@@ -190,15 +179,6 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
   const heroOwnsTitle = Boolean(Hero) && mod.detail.heroOwnsTitle !== false;
   const TitleBadges = mod.detail.titleBadges || null;
   const nav = useMemo(() => (isRich ? mod.detail.nav : []), [isRich, mod]);
-  const active = isRich
-    ? nav.some((i) => i.key === rawSection)
-      ? rawSection
-      : nav[0].key
-    : DEFAULT_SECTION;
-  const activeItem = useMemo(
-    () => (isRich ? nav.find((i) => i.key === active) || nav[0] : null),
-    [isRich, nav, active],
-  );
 
   const isDirty = useMemo(() => {
     try {
@@ -227,98 +207,44 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
     }
   };
 
-  return (
-    <MainScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            {mod.title}
-          </button>
-          {!heroOwnsTitle ? (
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                {form.name || `Untitled ${mod.singular.toLowerCase()}`}
-              </h1>
-              {mod.statusMap ? (
-                <StatusPill status={form.status} map={mod.statusMap} />
-              ) : null}
-              {TitleBadges ? <TitleBadges record={form} /> : null}
-            </div>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
-            onClick={() => onDelete?.(record)}
-          >
-            <Trash2 className="h-4 w-4" /> Delete
-          </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={!isDirty || saving}
-            onClick={save}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Save Changes
-          </Button>
-        </div>
-      </div>
+  const header = {
+    back: { label: mod.title, onClick: onBack },
+    title: heroOwnsTitle
+      ? null
+      : form.name || `Untitled ${mod.singular.toLowerCase()}`,
+    status: heroOwnsTitle ? null : form.status,
+    statusMap: mod.statusMap,
+    badges:
+      !heroOwnsTitle && TitleBadges ? <TitleBadges record={form} /> : null,
+    actions: (
+      <>
+        <Button
+          variant="outline"
+          className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
+          onClick={() => onDelete?.(record)}
+        >
+          <Trash2 className="h-4 w-4" /> Delete
+        </Button>
+        <Button
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={!isDirty || saving}
+          onClick={save}
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Save Changes
+        </Button>
+      </>
+    ),
+  };
 
-      {Hero ? <Hero record={form} commit={commit} /> : null}
+  const hero = Hero ? <Hero record={form} commit={commit} /> : null;
 
-      {isRich ? (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px]">
-          <div className="order-2 min-w-0 lg:order-1">
-            <div className="mb-5">
-              <h2 className="text-lg font-semibold capitalize text-white">
-                {activeItem.label}
-              </h2>
-              <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
-            </div>
-            {activeItem.render ? (
-              activeItem.render({ record: form, patch, commit })
-            ) : (
-              <FieldSection fields={activeItem.fields} values={form} onPatch={patch} bare />
-            )}
-          </div>
-
-          <aside className="order-1 lg:order-2">
-            <nav className="space-y-0.5 lg:sticky lg:top-0">
-              {nav.map((item) => {
-                const Icon = item.icon;
-                const isActive = active === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setSection(item.key)}
-                    className={cn(
-                      "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                      isActive
-                        ? "bg-surface-card font-medium text-white"
-                        : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "h-4 w-4 shrink-0",
-                        isActive ? "text-white" : "text-text-secondary",
-                      )}
-                    />
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </aside>
-        </div>
-      ) : (
+  // Flat records have no sections to navigate — just the header and panels.
+  if (!isRich) {
+    return (
+      <MainScreenWrapper>
+        <EditorHeader {...header} />
+        {hero}
         <div className="w-full max-w-3xl space-y-10 pt-2">
           {mod.detail.panels.map((panel) => (
             <FieldSection
@@ -332,8 +258,25 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
             />
           ))}
         </div>
-      )}
-    </MainScreenWrapper>
+      </MainScreenWrapper>
+    );
+  }
+
+  return (
+    <EditorShell
+      {...header}
+      nav={nav}
+      beforeBody={hero}
+      defaultSection={nav[0]?.key}
+    >
+      {({ activeItem: item }) =>
+        item.render ? (
+          item.render({ record: form, patch, commit })
+        ) : (
+          <FieldSection fields={item.fields} values={form} onPatch={patch} bare />
+        )
+      }
+    </EditorShell>
   );
 }
 
@@ -502,44 +445,20 @@ export function RecordsScreen({ mod, api }) {
       align: "right",
       className: "text-right",
       render: (r) => (
-        <div onClick={(ev) => ev.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Actions for ${r.name}`}
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => openRecord(r.id)}
-              >
-                <Pencil className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => handleDuplicate(r)}
-              >
-                <Copy className="h-4 w-4" /> Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-strong" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setDeleteTarget(r)}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label={`Actions for ${r.name}`}
+          items={[
+            { icon: Pencil, label: "Edit", onSelect: () => openRecord(r.id) },
+            { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(r) },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(r),
+            },
+          ]}
+        />
       ),
     },
   ];

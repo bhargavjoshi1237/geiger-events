@@ -2,7 +2,15 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Armchair, Loader2, LucideFlag, LucidePencil, LucideTrash, MoreHorizontal, Pen, Plus } from "lucide-react";
+import {
+  Armchair,
+  Loader2,
+  LucideFlag,
+  LucidePencil,
+  LucideTrash,
+  Pen,
+  Plus,
+} from "lucide-react";
 
 import {
   EmptyState,
@@ -11,6 +19,7 @@ import {
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
 import {
+  ActionMenu,
   Button,
   Dialog,
   DialogContent,
@@ -18,11 +27,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Input,
   Select,
   SelectContent,
@@ -265,37 +269,29 @@ export function SeatMapsSection({ venue }) {
                 </span>
               </button>
               <StatusPill status={map.status} map={SEAT_MAP_STATUS_MAP} />
-              <div onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                      aria-label={`Actions for ${map.name}`}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="border-border bg-surface-subtle">
-                    <DropdownMenuItem onClick={() => setOpenId(map.id)}>
-                      <LucidePencil className="h-4 w-4" /> Open Editor
-                    </DropdownMenuItem>
-                    {STATUS_OPTIONS.filter((s) => s !== map.status).map((s) => (
-                      <DropdownMenuItem key={s} onClick={() => handleStatus(map, s)}>
-                        <LucideFlag className="h-4 w-4" /> Mark {s.toLowerCase()}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                      onClick={() => handleDelete(map)}
-                    >
-                      <LucideTrash className="h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <ActionMenu
+                label={`Actions for ${map.name}`}
+                items={[
+                  {
+                    icon: LucidePencil,
+                    label: "Open Editor",
+                    onSelect: () => setOpenId(map.id),
+                  },
+                  ...STATUS_OPTIONS.filter((s) => s !== map.status).map((s) => ({
+                    key: s,
+                    icon: LucideFlag,
+                    label: `Mark ${s.toLowerCase()}`,
+                    onSelect: () => handleStatus(map, s),
+                  })),
+                  { separator: true },
+                  {
+                    icon: LucideTrash,
+                    label: "Delete",
+                    variant: "destructive",
+                    onSelect: () => handleDelete(map),
+                  },
+                ]}
+              />
             </li>
           ))}
         </ul>

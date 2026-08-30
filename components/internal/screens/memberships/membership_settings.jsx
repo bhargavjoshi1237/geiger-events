@@ -4,7 +4,7 @@ import React from "react";
 import { BadgeCheck, DoorOpen, RefreshCw, StickyNote } from "lucide-react";
 
 import { Field, SettingsList, SettingRow } from "@/components/internal/shared/screen_kit";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@geiger/ui/textarea";
 
 import { SettingsScreen } from "../tickets/settings_kit";
 import { defaultMembershipConfig } from "../tickets/constants";

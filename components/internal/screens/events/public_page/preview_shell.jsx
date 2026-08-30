@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { ArrowLeft, Eye } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 
 import { defaultPageDesign } from "../page_design";
 import { EventPublicPageContent } from "./page_content";

@@ -13,8 +13,8 @@ import {
   Check,
 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { SegmentedTabs } from "@/components/internal/shared/screen_kit";
+import { Input } from "@geiger/ui/input";
 import { MapZoomControls } from "./event_map";
 import { searchAddresses, reverseGeocode } from "@/lib/map/geo";
 
@@ -22,42 +22,19 @@ const DEFAULT_CENTER = { lat: 25, lng: 5 };
 const TILE = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 const MODES = [
-  { id: "search", label: "Search", icon: Search },
-  { id: "pin", label: "Drop a pin", icon: MapPinned },
-  { id: "coords", label: "Coordinates", icon: Crosshair },
+  { value: "search", label: "Search", icon: Search },
+  { value: "pin", label: "Drop a pin", icon: MapPinned },
+  { value: "coords", label: "Coordinates", icon: Crosshair },
 ];
 
 export function LocationModeTabs({ mode, onModeChange, className }) {
   return (
-    <div
-      role="tablist"
-      className={cn(
-        "inline-flex rounded-lg border border-border bg-surface-subtle p-1",
-        className,
-      )}
-    >
-      {MODES.map((m) => {
-        const Icon = m.icon;
-        const active = mode === m.id;
-        return (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => onModeChange(m.id)}
-            aria-pressed={active}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              active
-                ? "bg-surface-card text-white shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {m.label}
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedTabs
+      tabs={MODES}
+      value={mode}
+      onChange={onModeChange}
+      className={className}
+    />
   );
 }
 

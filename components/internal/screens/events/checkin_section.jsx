@@ -10,16 +10,16 @@ import {
   SettingRow,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Switch } from "@geiger/ui/switch";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getCheckinSettings } from "@/lib/supabase/checkin";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { newId } from "./sample_data";
-import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
+import { EventDatePicker, EventTimeField } from "./date_time_fields";
 import { withDefaults } from "../checkin/constants";
 
 function useCheckinGlobals() {
@@ -347,7 +347,7 @@ export function SessionsSection({ event, headerItem }) {
                         />
                       </div>
                       <div className="w-36">
-                        <EventTimeSelect
+                        <EventTimeField
                           value={sessionTime}
                           onChange={(time) => setTime(s.id, joinDateTime(sessionDate, time))}
                         />

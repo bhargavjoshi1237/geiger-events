@@ -9,8 +9,8 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { EventDatePicker } from "./date_time_fields";
 

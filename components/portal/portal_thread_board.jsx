@@ -14,7 +14,7 @@ import {
 
 import { EmptyState, ScreenHeader, SearchInput } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { ChatThread } from "@/components/chat/chat_kit";
 import { cn } from "@/lib/utils";
 import { subscribeMemberChannel, normalizePortalMessage } from "@/lib/portal/chat_realtime";

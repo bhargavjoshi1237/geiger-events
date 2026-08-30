@@ -10,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import { BINDING_GROUPS, tokenFor } from "@/lib/events/bindings";
 
 export function BindingPicker({ onInsert, align = "end" }) {

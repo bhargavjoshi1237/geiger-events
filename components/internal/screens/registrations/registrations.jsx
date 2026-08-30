@@ -18,12 +18,12 @@ import {
   EmptyState,
   ScreenHeader,
   SearchInput,
+  SegmentedTabs,
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import {
@@ -37,10 +37,11 @@ import {
   REGISTRATION_STATUS_MAP,
   SOURCE_MAP,
   EVENT_TYPE_MAP_LITE,
+  dateParts,
   formatDate,
   formatDateTime,
 } from "./constants";
-import { countRegs, PipelineBar } from "./pipeline";
+import { countRegs, PipelineBar, PipelineChips } from "./pipeline";
 import {
   RegistrationDrawer,
   AddRegistrantDialog,
@@ -52,56 +53,98 @@ import { downloadCsv } from "./csv";
 const PAGE_EVENTS = 60;
 const PAGE_PEOPLE = 100;
 
+const VIEW_TABS = [
+  { value: "events", label: "By Event", icon: Inbox },
+  { value: "people", label: "All People", icon: Users },
+];
+
 function initials(name) {
   const parts = (name || "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
   return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
 }
 
+// The row's left anchor. A stacked date reads differently on every row, which a
+// repeated calendar glyph never did; the icon is only the no-date fallback.
+function DateBlock({ iso }) {
+  const parts = dateParts(iso);
+  if (!parts) {
+    return (
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-tertiary">
+        <CalendarDays className="h-4 w-4" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center gap-px rounded-lg bg-surface-card">
+      <span className="text-[9px] font-semibold uppercase leading-none tracking-wider text-text-secondary">
+        {parts.month}
+      </span>
+      <span className="text-sm font-semibold leading-none text-foreground tabular-nums">
+        {parts.day}
+      </span>
+    </div>
+  );
+}
+
+// One event as a list row: identity on the left, where it stands on the right.
+// The status breakdown replaces the old full-width bar — most events sit near
+// 0% capacity, so the bar spent a whole row saying nothing.
 function EventCard({ event, counts, onOpen }) {
-  const cap = event.capacity || 0;
+  const cap = Number(event.capacity) || 0;
+  const over = cap > 0 && counts.seats > cap;
   const full = cap > 0 && counts.seats >= cap;
   const pct = cap > 0 ? Math.min(100, Math.round((counts.seats / cap) * 100)) : null;
+  const parts = dateParts(event.date);
+  const offYear = parts && parts.year !== new Date().getFullYear() ? parts.year : null;
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="group flex w-full items-center gap-4 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+      title={`${event.name} — ${formatDate(event.date)}`}
+      className="group flex w-full items-center gap-3.5 rounded-xl border border-border bg-surface-subtle px-4 py-3 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-text-secondary transition-colors group-hover:text-foreground">
-        <CalendarDays className="h-5 w-5" />
-      </div>
-      <div className="w-px self-stretch bg-border" />
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate font-medium text-foreground">{event.name}</span>
-              <Badge variant={EVENT_TYPE_MAP_LITE[event.type] || "neutral"}>
-                {event.type}
-              </Badge>
-              {full ? (
-                <span className="text-[11px] font-medium uppercase tracking-wide text-red-400">
-                  Full
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-0.5 text-xs text-text-secondary">{formatDate(event.date)}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <div className="text-right">
-              <span className="text-sm font-semibold text-foreground tabular-nums">
-                {counts.seats}
-                <span className="font-normal text-text-secondary">/{cap || "∞"}</span>
-              </span>
-              {pct !== null ? (
-                <p className="text-[11px] text-text-tertiary tabular-nums">{pct}% full</p>
-              ) : null}
-            </div>
-            <ChevronRight className="h-4 w-4 text-text-tertiary transition-colors group-hover:text-foreground" />
-          </div>
+      <DateBlock iso={event.date} />
+
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate font-medium text-foreground">{event.name}</span>
+          <Badge variant={EVENT_TYPE_MAP_LITE[event.type] || "neutral"}>
+            {event.type}
+          </Badge>
+          {full ? (
+            <Badge variant={over ? "danger" : "warning"}>
+              {over ? "Over capacity" : "Full"}
+            </Badge>
+          ) : null}
         </div>
-        <PipelineBar counts={counts} capacity={cap} />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {offYear ? (
+            <span className="text-xs text-text-tertiary tabular-nums">{offYear}</span>
+          ) : null}
+          <PipelineChips counts={counts} className="gap-x-3" />
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-3">
+        <div className="flex w-32 flex-col items-end gap-1.5">
+          <span className="text-sm font-semibold text-foreground tabular-nums">
+            {counts.seats}
+            <span className="font-normal text-text-secondary">/{cap || "∞"}</span>
+            <span className="ml-1 text-xs font-normal text-text-tertiary">seats</span>
+          </span>
+          {cap > 0 ? (
+            <div className="flex w-full items-center gap-2">
+              <PipelineBar counts={counts} capacity={cap} size="sm" className="flex-1" />
+              <span className="w-7 shrink-0 text-right text-[11px] text-text-tertiary tabular-nums">
+                {pct}%
+              </span>
+            </div>
+          ) : (
+            <span className="text-[11px] text-text-tertiary">No limit</span>
+          )}
+        </div>
+        <ChevronRight className="h-4 w-4 text-text-tertiary transition-colors group-hover:text-foreground" />
       </div>
     </button>
   );
@@ -357,34 +400,14 @@ export function RegistrationsScreen() {
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => setCreateOpen(true)}
             >
-              <UserPlus className="h-4 w-4" /> Add registrant
+              <UserPlus className="h-4 w-4" /> Add Registrant
             </Button>
           </div>
         }
       />
 
       <Toolbar>
-        <div className="flex h-10 w-fit shrink-0 items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
-          {[
-            { key: "events", label: "By event", icon: Inbox },
-            { key: "people", label: "All people", icon: Users },
-          ].map((v) => (
-            <button
-              key={v.key}
-              type="button"
-              onClick={() => setView(v.key)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                view === v.key
-                  ? "bg-surface-hover text-foreground"
-                  : "text-text-secondary hover:text-foreground",
-              )}
-            >
-              <v.icon className="h-3.5 w-3.5" />
-              {v.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs tabs={VIEW_TABS} value={view} onChange={setView} />
 
         <SearchInput
           value={search}
@@ -451,7 +474,7 @@ export function RegistrationsScreen() {
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={() => setCreateOpen(true)}
                   >
-                    <UserPlus className="h-4 w-4" /> Add registrant
+                    <UserPlus className="h-4 w-4" /> Add Registrant
                   </Button>
                 )
               }

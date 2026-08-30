@@ -3,12 +3,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   Copy,
   HandHeart,
   Link2,
   Loader2,
-  MoreHorizontal,
   Pencil,
   Plus,
   RefreshCw,
@@ -19,6 +17,7 @@ import {
   MainScreenWrapper,
   SecondaryScreenWrapper,
 } from "@/components/internal/shared/screen_wrappers";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
 import {
   EmptyState,
   Field,
@@ -29,9 +28,10 @@ import {
   SettingRow,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Badge } from "@geiger/ui/badge";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -39,21 +39,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
@@ -149,16 +142,10 @@ function RoleEditPage({ role, events, allocations, onBack, onSave }) {
 
   return (
     <SecondaryScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back
-          </button>
-          <div className="flex items-center gap-2">
+      <EditorHeader
+        back={{ label: "Back", onClick: onBack }}
+        title={
+          <>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -168,17 +155,19 @@ function RoleEditPage({ role, events, allocations, onBack, onSave }) {
             <Badge variant="neutral" className="shrink-0">
               Issuing
             </Badge>
-          </div>
-        </div>
-        <Button
-          className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
-          disabled={saving}
-          onClick={save}
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {saving ? "Saving…" : "Save"}
-        </Button>
-      </div>
+          </>
+        }
+        actions={
+          <Button
+            className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={saving}
+            onClick={save}
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        }
+      />
 
       <div className="mt-6 space-y-6">
         <SectionCard
@@ -503,38 +492,19 @@ export function IssuingStaffScreen() {
                   {permSummary({ ...defaultPermissions(), ...role.permissions })}
                 </p>
               </div>
-              <div onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                      aria-label="Role actions"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-40 border-border bg-surface-card shadow-xl"
-                  >
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                      onClick={() => setOpenId(role.id)}
-                    >
-                      <Pencil className="h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-surface-strong" />
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                      onClick={() => setDeleteTarget(role)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-300" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <ActionMenu
+                label="Role actions"
+                items={[
+                  { icon: Pencil, label: "Edit", onSelect: () => setOpenId(role.id) },
+                  { separator: true },
+                  {
+                    icon: Trash2,
+                    label: "Delete",
+                    variant: "destructive",
+                    onSelect: () => setDeleteTarget(role),
+                  },
+                ]}
+              />
             </div>
           ))}
         </div>

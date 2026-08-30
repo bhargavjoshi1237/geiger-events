@@ -3,7 +3,7 @@
 import React, { Suspense } from "react";
 import { AppSidebar } from "@/components/internal/sidebar/sidebar";
 import { Topbar } from "@/components/internal/topbar/topbar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@geiger/ui/sidebar";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { ProjectProvider } from "@/context/project-context";
 import { AddonsProvider } from "@/context/addons-context";

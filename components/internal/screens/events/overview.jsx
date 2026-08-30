@@ -22,11 +22,11 @@ import {
   StatGrid,
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Checkbox } from "@geiger/ui/checkbox";
+import { ScrollArea } from "@geiger/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -34,14 +34,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { getEventNotes, saveEventNotes } from "@/lib/supabase/notes";
 import { EventDatePicker } from "./date_time_fields";
@@ -150,7 +150,7 @@ function AddNoteDialog({ open, onOpenChange, onAdd }) {
             className="bg-primary capitalize text-primary-foreground hover:bg-primary/90"
             onClick={submit}
           >
-            Add item
+            Add Item
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -219,7 +219,7 @@ function PreLaunchNotes({ eventId, className }) {
           onClick={() => setAddOpen(true)}
           className="bg-primary capitalize text-primary-foreground hover:bg-primary/90"
         >
-          <Plus className="h-4 w-4" /> Add item
+          <Plus className="h-4 w-4" /> Add Item
         </Button>
       }
     >

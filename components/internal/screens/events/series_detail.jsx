@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from "react";
 import {
-  ArrowLeft,
   LayoutDashboard,
   CalendarDays,
   SlidersHorizontal,
@@ -16,7 +15,7 @@ import {
   CalendarPlus,
 } from "lucide-react";
 
-import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorShell } from "@/components/internal/shared/editor_shell";
 import {
   SectionCard,
   StatGrid,
@@ -27,10 +26,10 @@ import {
   SettingRow,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -38,14 +37,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import {
   EVENT_STATUS_MAP,
@@ -64,11 +63,36 @@ const FORMAT_OPTIONS = [
 ];
 
 const TABS = [
-  { key: "overview", label: "Overview", icon: LayoutDashboard },
-  { key: "events", label: "Events", icon: CalendarDays },
-  { key: "defaults", label: "Shared Defaults", icon: SlidersHorizontal },
-  { key: "cadence", label: "Cadence", icon: Repeat },
-  { key: "publishing", label: "Publishing", icon: Send },
+  {
+    key: "overview",
+    label: "Overview",
+    icon: LayoutDashboard,
+    desc: "How the series is performing across every event in the run.",
+  },
+  {
+    key: "events",
+    label: "Events",
+    icon: CalendarDays,
+    desc: "The events in this series and the order they run in.",
+  },
+  {
+    key: "defaults",
+    label: "Shared Defaults",
+    icon: SlidersHorizontal,
+    desc: "Settings every event in the series inherits.",
+  },
+  {
+    key: "cadence",
+    label: "Cadence",
+    icon: Repeat,
+    desc: "How often the series repeats and when the next event lands.",
+  },
+  {
+    key: "publishing",
+    label: "Publishing",
+    icon: Send,
+    desc: "How the series appears publicly and when events go live.",
+  },
 ];
 
 const todayISO = () => {
@@ -104,7 +128,6 @@ export function SeriesDetailScreen({
   onCreateEventInSeries,
   onOpenEvent,
 }) {
-  const [active, setActive] = useState("overview");
   const [addOpen, setAddOpen] = useState(false);
 
   const members = useMemo(() => {
@@ -135,32 +158,25 @@ export function SeriesDetailScreen({
   };
 
   return (
-    <MainScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Event Series
-          </button>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-              {series.name}
-            </h1>
-            <StatusPill status={series.status} map={EVENT_STATUS_MAP} />
-          </div>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
-            {series.cadence} · {members.length} event
-            {members.length === 1 ? "" : "s"}
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_220px]">
-        <div className="order-2 min-w-0 lg:order-1">
+    <EditorShell
+      back={{ label: "Event Series", onClick: onBack }}
+      title={series.name}
+      status={series.status}
+      statusMap={EVENT_STATUS_MAP}
+      meta={`${series.cadence} · ${members.length} event${members.length === 1 ? "" : "s"}`}
+      nav={TABS}
+      defaultSection="overview"
+      after={
+        <AddEventsDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          available={available}
+          onAttach={(id) => onSetEventSeries(id, series.id)}
+        />
+      }
+    >
+      {({ active }) => (
+        <>
           {active === "overview" && (
             <OverviewTab
               series={series}
@@ -202,46 +218,9 @@ export function SeriesDetailScreen({
               onMergeSettings={onMergeSettings}
             />
           )}
-        </div>
-
-        <aside className="order-1 lg:order-2">
-          <nav className="space-y-0.5 lg:sticky lg:top-0">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = active === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActive(tab.key)}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                    isActive
-                      ? "bg-surface-card font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 shrink-0",
-                      isActive ? "text-foreground" : "text-text-secondary",
-                    )}
-                  />
-                  <span className="truncate">{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
-      </div>
-
-      <AddEventsDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        available={available}
-        onAttach={(id) => onSetEventSeries(id, series.id)}
-      />
-    </MainScreenWrapper>
+        </>
+      )}
+    </EditorShell>
   );
 }
 

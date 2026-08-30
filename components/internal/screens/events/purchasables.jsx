@@ -12,14 +12,23 @@ import {
   Hash,
   ToggleLeft,
   Filter,
+  Clock,
+  CalendarDays,
+  Ticket,
+  Timer,
+  Link2,
+  Ban,
+  Users,
+  Check,
 } from "lucide-react";
 
 import { EditorSectionHeader, Field } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { Switch } from "@geiger/ui/switch";
+import { Checkbox } from "@geiger/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -27,14 +36,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { TIME_BANDS, bandLabel, EMPTY_SLOT } from "@/lib/events/slots";
@@ -71,14 +80,98 @@ function Chip({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
         active
           ? "border-primary bg-primary/15 text-foreground"
           : "border-border bg-surface-card text-muted-foreground hover:bg-surface-active",
       )}
     >
+      {active ? <Check className="h-3 w-3 text-primary" /> : null}
       {children}
     </button>
+  );
+}
+
+/**
+ * Prominent rule separating whole blocks in the dialog. Bleeds past the
+ * DialogContent `p-6` so it reaches both edges instead of floating inset.
+ */
+function SectionRule() {
+  return (
+    <hr className="-mx-6 w-[calc(100%+3rem)] border-0 border-t-2 border-border" />
+  );
+}
+
+/** Lighter rule used between individual rows; spans the full content width. */
+function RowRule() {
+  return <hr className="w-full border-0 border-t border-border/70" />;
+}
+
+function SwitchRow({ id, title, description, checked, onCheckedChange }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-3.5">
+      <label htmlFor={id} className="min-w-0 cursor-pointer select-none">
+        <span className="block text-sm font-medium text-foreground">{title}</span>
+        {description ? (
+          <span className="mt-0.5 block text-xs text-text-secondary">{description}</span>
+        ) : null}
+      </label>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        className="mt-0.5 shrink-0"
+      />
+    </div>
+  );
+}
+
+/**
+ * A single opt-in rule: checkbox enables it, its controls collapse open beneath.
+ */
+function ConditionCard({ id, icon: Icon, title, hint, checked, onCheckedChange, children }) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border transition-colors",
+        checked
+          ? "border-primary/40 bg-primary/[0.04]"
+          : "border-border bg-surface-card/60 hover:bg-surface-active/40",
+      )}
+    >
+      <div className="flex items-start gap-3 p-3">
+        <Checkbox
+          id={id}
+          checked={checked}
+          onCheckedChange={(v) => onCheckedChange(v === true)}
+          className="mt-0.5"
+        />
+        <div className="min-w-0 flex-1">
+          <label
+            htmlFor={id}
+            className="block cursor-pointer select-none text-sm font-medium text-foreground"
+          >
+            {title}
+          </label>
+          {hint ? <p className="mt-0.5 text-xs text-text-secondary">{hint}</p> : null}
+        </div>
+        {Icon ? (
+          <span
+            className={cn(
+              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition-colors",
+              checked
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border bg-surface-subtle text-text-tertiary",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </span>
+        ) : null}
+      </div>
+      {checked ? (
+        <div className="border-t border-dashed border-border px-3 pb-3 pt-3">{children}</div>
+      ) : null}
+    </div>
   );
 }
 
@@ -100,6 +193,8 @@ function PurchasableDialog({ open, onOpenChange, tickets, slots, siblings, initi
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
   const setCond = (key, value) =>
     setDraft((d) => ({ ...d, showIf: { ...d.showIf, [key]: value } }));
+  const patchCond = (patch) =>
+    setDraft((d) => ({ ...d, showIf: { ...d.showIf, ...patch } }));
 
   const allowMultiple = draft.pickType === "quantity";
   const setAllowMultiple = (on) =>
@@ -119,6 +214,27 @@ function PurchasableDialog({ open, onOpenChange, tickets, slots, siblings, initi
       const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
       return { ...d, showIf: { ...d.showIf, tickets: next.length ? next : "all" } };
     });
+
+  // Which condition rules are switched on (drives the checkbox rows).
+  const bandsOn = (draft.showIf.bands || []).length > 0;
+  const slotIdsOn = (draft.showIf.slotIds || []).length > 0;
+  const ticketsOn =
+    !ticketsAll && Array.isArray(draft.showIf.tickets) && draft.showIf.tickets.length > 0;
+  const qtyOn = draft.showIf.minQty != null || draft.showIf.maxQty != null;
+  const cutoffOn = draft.showIf.cutoffHours != null;
+  const requiresOn = Boolean(draft.showIf.requiresPurchasableId);
+  const excludesOn = Boolean(draft.showIf.excludesPurchasableId);
+
+  const activeCount = [
+    bandsOn,
+    slotIdsOn,
+    ticketsOn,
+    qtyOn,
+    cutoffOn,
+    requiresOn,
+    excludesOn,
+    Boolean(draft.showIf.membersOnly),
+  ].filter(Boolean).length;
 
   const submit = () => {
     if (!draft.name.trim()) {
@@ -196,36 +312,44 @@ function PurchasableDialog({ open, onOpenChange, tickets, slots, siblings, initi
             />
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Price" htmlFor="pur-price">
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-text-secondary">$</span>
-                <Input
-                  id="pur-price"
-                  type="number"
-                  min={0}
-                  inputMode="decimal"
-                  value={draft.price}
-                  onChange={(e) => set("price")(e.target.value)}
-                  className="tabular-nums"
-                  placeholder="0"
-                />
-              </div>
-            </Field>
-          </div>
+          <Field label="Price" htmlFor="pur-price" hint="Leave at 0 for a free add-on">
+            <div className="relative w-full">
+              <span
+                className="pointer-events-none absolute top-1/2 -translate-y-1/2 text-sm text-text-secondary"
+                style={{ left: "var(--input-box-padding-x, 0.75rem)" }}
+              >
+                $
+              </span>
+              {/* @geiger/ui's Input pins padding-x with !important, so a pl-*
+                  utility is silently dropped and the $ lands on the text. The
+                  [data-lead] rule in globals.css reserves the gutter instead —
+                  same trick icon_input.jsx uses for leading icons. */}
+              <Input
+                id="pur-price"
+                type="number"
+                min={0}
+                inputMode="decimal"
+                value={draft.price}
+                onChange={(e) => set("price")(e.target.value)}
+                data-lead=""
+                className="w-full tabular-nums"
+                placeholder="0"
+              />
+            </div>
+          </Field>
 
-          <div className="grid gap-3 rounded-xl border border-border bg-surface-card p-3">
-            <div className="space-y-3">
-              <label className="flex items-center justify-between text-sm text-muted-foreground">
-                <span className="flex flex-col">
-                  Allow buying multiple
-                  <span className="text-xs text-text-tertiary">
-                    Buyers get a quantity stepper for this item.
-                  </span>
-                </span>
-                <Switch checked={allowMultiple} onCheckedChange={setAllowMultiple} />
-              </label>
-              {allowMultiple ? (
+          <SectionRule />
+
+          <div>
+            <SwitchRow
+              id="pur-multiple"
+              title="Allow buying multiple"
+              description="Buyers get a quantity stepper for this item."
+              checked={allowMultiple}
+              onCheckedChange={setAllowMultiple}
+            />
+            {allowMultiple ? (
+              <div className="pb-1">
                 <Field label="Max quantity per item" hint="Blank = no limit">
                   <Input
                     type="number"
@@ -237,28 +361,47 @@ function PurchasableDialog({ open, onOpenChange, tickets, slots, siblings, initi
                     placeholder="—"
                   />
                 </Field>
-              ) : null}
-            </div>
-            <label className="flex items-center justify-between text-sm text-muted-foreground">
-              Required to check out
-              <Switch checked={draft.required} onCheckedChange={(v) => set("required")(v)} />
-            </label>
-            <label className="flex items-center justify-between text-sm text-muted-foreground">
-              Available
-              <Switch checked={draft.enabled} onCheckedChange={(v) => set("enabled")(v)} />
-            </label>
+              </div>
+            ) : null}
+            <RowRule />
+            <SwitchRow
+              id="pur-required"
+              title="Required to check out"
+              description="Buyers cannot finish checkout without picking it."
+              checked={draft.required}
+              onCheckedChange={(v) => set("required")(v)}
+            />
+            <RowRule />
+            <SwitchRow
+              id="pur-available"
+              title="Available"
+              description="Turn off to hide this add-on without deleting it."
+              checked={draft.enabled}
+              onCheckedChange={(v) => set("enabled")(v)}
+            />
           </div>
 
-          <div className="space-y-4 rounded-xl border border-border bg-surface-subtle p-4">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Filter className="h-4 w-4 text-muted-foreground" /> Conditions
-              </span>
+          <SectionRule />
+
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Filter className="h-4 w-4 text-muted-foreground" /> Conditions
+                </p>
+                <p className="mt-0.5 text-xs text-text-secondary">
+                  {activeCount
+                    ? `${activeCount} rule${activeCount > 1 ? "s" : ""} on — shown when ${
+                        draft.showIf.match === "any" ? "any rule" : "every rule"
+                      } passes.`
+                    : "No rules on — this add-on is shown to everyone."}
+                </p>
+              </div>
               <Select
                 value={draft.showIf.match}
                 onValueChange={(v) => setCond("match", v)}
               >
-                <SelectTrigger className="h-8 w-32 text-xs">
+                <SelectTrigger className="h-8 w-32 shrink-0 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -267,143 +410,208 @@ function PurchasableDialog({ open, onOpenChange, tickets, slots, siblings, initi
                 </SelectContent>
               </Select>
             </div>
-            <p className="-mt-1 text-xs text-text-secondary">
-              Leave everything blank to always show this. Otherwise it appears
-              only when the selected rules {draft.showIf.match === "any" ? "— any of them —" : ""} pass.
-            </p>
 
-            <Field label="Time band">
-              <div className="flex flex-wrap gap-2">
-                {TIME_BANDS.map((b) => (
-                  <Chip
-                    key={b.value}
-                    active={draft.showIf.bands?.includes(b.value)}
-                    onClick={() => toggleInArray("bands", b.value)}
-                  >
-                    {b.label}
-                  </Chip>
-                ))}
-              </div>
-            </Field>
-
-            {slots.length ? (
-              <Field label="Specific slots">
+            <div className="space-y-2">
+              <ConditionCard
+                id="cnd-band"
+                icon={Clock}
+                title="Time band"
+                hint="Only offer it during these parts of the day."
+                checked={bandsOn}
+                onCheckedChange={(on) => patchCond({ bands: on ? [TIME_BANDS[0].value] : [] })}
+              >
                 <div className="flex flex-wrap gap-2">
-                  {slots.map((s) => (
+                  {TIME_BANDS.map((b) => (
                     <Chip
-                      key={s.id}
-                      active={draft.showIf.slotIds?.includes(s.id)}
-                      onClick={() => toggleInArray("slotIds", s.id)}
+                      key={b.value}
+                      active={draft.showIf.bands?.includes(b.value)}
+                      onClick={() => toggleInArray("bands", b.value)}
                     >
-                      {s.label}
+                      {b.label}
                     </Chip>
                   ))}
                 </div>
-              </Field>
-            ) : null}
+              </ConditionCard>
 
-            <Field label="Ticket types">
-              <div className="flex flex-wrap gap-2">
-                <Chip active={ticketsAll} onClick={() => setCond("tickets", "all")}>
-                  All tickets
-                </Chip>
-                {tickets.map((t) => (
-                  <Chip
-                    key={t.id}
-                    active={!ticketsAll && Array.isArray(draft.showIf.tickets) && draft.showIf.tickets.includes(t.id)}
-                    onClick={() => toggleTicket(t.id)}
+              {slots.length ? (
+                <ConditionCard
+                  id="cnd-slots"
+                  icon={CalendarDays}
+                  title="Specific slots"
+                  hint="Only offer it for these slots."
+                  checked={slotIdsOn}
+                  onCheckedChange={(on) =>
+                    patchCond({ slotIds: on && slots.length ? [slots[0].id] : [] })
+                  }
+                >
+                  <div className="flex flex-wrap gap-2">
+                    {slots.map((s) => (
+                      <Chip
+                        key={s.id}
+                        active={draft.showIf.slotIds?.includes(s.id)}
+                        onClick={() => toggleInArray("slotIds", s.id)}
+                      >
+                        {s.label}
+                      </Chip>
+                    ))}
+                  </div>
+                </ConditionCard>
+              ) : null}
+
+              {tickets.length ? (
+                <ConditionCard
+                  id="cnd-tickets"
+                  icon={Ticket}
+                  title="Ticket types"
+                  hint="Only offer it to buyers holding these tickets."
+                  checked={ticketsOn}
+                  onCheckedChange={(on) =>
+                    patchCond({ tickets: on && tickets.length ? [tickets[0].id] : "all" })
+                  }
+                >
+                  <div className="flex flex-wrap gap-2">
+                    {tickets.map((t) => (
+                      <Chip
+                        key={t.id}
+                        active={
+                          !ticketsAll &&
+                          Array.isArray(draft.showIf.tickets) &&
+                          draft.showIf.tickets.includes(t.id)
+                        }
+                        onClick={() => toggleTicket(t.id)}
+                      >
+                        {t.name}
+                      </Chip>
+                    ))}
+                  </div>
+                </ConditionCard>
+              ) : null}
+
+              <ConditionCard
+                id="cnd-qty"
+                icon={Hash}
+                title="Tickets in cart"
+                hint="Show it only between a minimum and maximum cart size."
+                checked={qtyOn}
+                onCheckedChange={(on) =>
+                  patchCond({ minQty: on ? "" : null, maxQty: on ? "" : null })
+                }
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Minimum" hint="Blank = no minimum">
+                    <Input
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      value={draft.showIf.minQty ?? ""}
+                      onChange={(e) => setCond("minQty", e.target.value)}
+                      className="tabular-nums"
+                      placeholder="—"
+                    />
+                  </Field>
+                  <Field label="Maximum" hint="Blank = no maximum">
+                    <Input
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      value={draft.showIf.maxQty ?? ""}
+                      onChange={(e) => setCond("maxQty", e.target.value)}
+                      className="tabular-nums"
+                      placeholder="—"
+                    />
+                  </Field>
+                </div>
+              </ConditionCard>
+
+              <ConditionCard
+                id="cnd-cutoff"
+                icon={Timer}
+                title="Cut-off before the slot"
+                hint="Hide it once the slot is closer than this many hours."
+                checked={cutoffOn}
+                onCheckedChange={(on) => patchCond({ cutoffHours: on ? 24 : null })}
+              >
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={draft.showIf.cutoffHours ?? ""}
+                    onChange={(e) => setCond("cutoffHours", e.target.value)}
+                    className="tabular-nums"
+                    placeholder="24"
+                  />
+                  <span className="shrink-0 text-xs text-text-secondary">hours before</span>
+                </div>
+              </ConditionCard>
+
+              {siblings.length ? (
+                <>
+                  <ConditionCard
+                    id="cnd-requires"
+                    icon={Link2}
+                    title="Requires another add-on"
+                    hint="Only show it once that add-on is in the cart."
+                    checked={requiresOn}
+                    onCheckedChange={(on) =>
+                      patchCond({ requiresPurchasableId: on ? siblings[0].id : null })
+                    }
                   >
-                    {t.name}
-                  </Chip>
-                ))}
-              </div>
-            </Field>
+                    <Select
+                      value={draft.showIf.requiresPurchasableId || "none"}
+                      onValueChange={(v) => setCond("requiresPurchasableId", v === "none" ? null : v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Pick an add-on" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {siblings.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </ConditionCard>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Min tickets" hint="In cart">
-                <Input
-                  type="number"
-                  min={1}
-                  inputMode="numeric"
-                  value={draft.showIf.minQty ?? ""}
-                  onChange={(e) => setCond("minQty", e.target.value)}
-                  className="tabular-nums"
-                  placeholder="—"
-                />
-              </Field>
-              <Field label="Max tickets" hint="In cart">
-                <Input
-                  type="number"
-                  min={1}
-                  inputMode="numeric"
-                  value={draft.showIf.maxQty ?? ""}
-                  onChange={(e) => setCond("maxQty", e.target.value)}
-                  className="tabular-nums"
-                  placeholder="—"
-                />
-              </Field>
+                  <ConditionCard
+                    id="cnd-excludes"
+                    icon={Ban}
+                    title="Excludes another add-on"
+                    hint="Hide it whenever that add-on is in the cart."
+                    checked={excludesOn}
+                    onCheckedChange={(on) =>
+                      patchCond({ excludesPurchasableId: on ? siblings[0].id : null })
+                    }
+                  >
+                    <Select
+                      value={draft.showIf.excludesPurchasableId || "none"}
+                      onValueChange={(v) => setCond("excludesPurchasableId", v === "none" ? null : v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Pick an add-on" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {siblings.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </ConditionCard>
+                </>
+              ) : null}
+
+              <ConditionCard
+                id="cnd-members"
+                icon={Users}
+                title="Members only"
+                hint="Only signed-in members see this add-on."
+                checked={Boolean(draft.showIf.membersOnly)}
+                onCheckedChange={(on) => patchCond({ membersOnly: on })}
+              />
             </div>
-
-            <Field label="Hide within N hours of the slot" hint="Optional cutoff">
-              <Input
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={draft.showIf.cutoffHours ?? ""}
-                onChange={(e) => setCond("cutoffHours", e.target.value)}
-                className="tabular-nums"
-                placeholder="e.g. 24"
-              />
-            </Field>
-
-            {siblings.length ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Requires add-on">
-                  <Select
-                    value={draft.showIf.requiresPurchasableId || "none"}
-                    onValueChange={(v) => setCond("requiresPurchasableId", v === "none" ? null : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {siblings.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Excludes add-on">
-                  <Select
-                    value={draft.showIf.excludesPurchasableId || "none"}
-                    onValueChange={(v) => setCond("excludesPurchasableId", v === "none" ? null : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {siblings.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
-            ) : null}
-
-            <label className="flex items-center justify-between rounded-md border border-border bg-surface-card px-3 py-2 text-sm text-muted-foreground">
-              Members only
-              <Switch
-                checked={draft.showIf.membersOnly}
-                onCheckedChange={(v) => setCond("membersOnly", v)}
-              />
-            </label>
           </div>
         </div>
 
@@ -499,7 +707,7 @@ export function PurchasablesSection({ event, headerItem }) {
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
-                    <PickIcon className="h-4 w-4" />
+                    <ShoppingBag className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-foreground">{p.name}</p>

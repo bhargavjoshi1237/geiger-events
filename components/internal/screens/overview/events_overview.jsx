@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@geiger/ui/button";
+import { Card, CardContent } from "@geiger/ui/card";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -25,7 +25,7 @@ import {
   DropdownMenuContent,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import {
   CartesianGrid,
   Label,
@@ -47,7 +47,7 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart";
+} from "@geiger/ui/chart";
 import {
   Table,
   TableBody,
@@ -55,9 +55,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@geiger/ui/table";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   EmptyState,
   RollingNumber,
@@ -292,7 +291,7 @@ function WidgetHeader({ title, subtitle, action }) {
   );
 }
 
-function RegistrationsTrendWidget({ demo, events = [], orders = [], registrations = [] }) {
+function RegistrationsTrendWidget({ demo, pending, events = [], orders = [], registrations = [] }) {
   const [metric, setMetric] = useState("rsvps");
   const [eventScope, setEventScope] = useState([]);
   const selected =
@@ -330,7 +329,9 @@ function RegistrationsTrendWidget({ demo, events = [], orders = [], registration
     </div>
   );
 
-  if (!demo && !hasLiveData) {
+  // While the fetch is in flight the series is all zeros, so the line sits flat
+  // on the baseline and animates up when the real numbers land.
+  if (!demo && !pending && !hasLiveData) {
     return (
       <WidgetShell contentClassName="flex flex-col">
         <WidgetHeader
@@ -409,7 +410,7 @@ function RegistrationsTrendWidget({ demo, events = [], orders = [], registration
   );
 }
 
-function TicketMixWidget({ demo, events = [], orders = [] }) {
+function TicketMixWidget({ demo, pending, events = [], orders = [] }) {
   const [eventScope, setEventScope] = useState([]);
   const mix = useMemo(() => {
     if (demo) return DEMO_TICKET_MIX;
@@ -440,6 +441,24 @@ function TicketMixWidget({ demo, events = [], orders = [] }) {
     }),
     {},
   );
+
+  // A donut has no zero shape to draw, so while the fetch is in flight it holds
+  // an empty ring on the same geometry the chart will occupy.
+  if (pending && !mix.length) {
+    return (
+      <WidgetShell contentClassName="flex flex-col">
+        <WidgetHeader title="Ticket Type Mix" subtitle="Distribution across ticket types." />
+        <div className="relative mt-4 flex min-h-0 w-full flex-1 items-center justify-center">
+          <div className="h-[156px] w-[156px] rounded-full border-[34px] border-border" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
+            <span className="text-3xl font-bold leading-none text-foreground">0</span>
+            <span className="mt-1 text-xs font-medium text-muted-foreground">0% share</span>
+          </div>
+        </div>
+        <p className="mt-2 text-center text-xs text-text-secondary">0 of 0 tickets sold</p>
+      </WidgetShell>
+    );
+  }
 
   if (!mix.length) {
     return (
@@ -679,7 +698,7 @@ const TOP_EVENTS_SORT_OPTIONS = [
   { value: "sellthrough", label: "Sell-through" },
 ];
 
-function TopEventsTable({ demo, events = [] }) {
+function TopEventsTable({ demo, pending, events = [] }) {
   const [sortBy, setSortBy] = useState("revenue");
   const [eventScope, setEventScope] = useState([]);
   const router = useRouter();
@@ -731,7 +750,9 @@ function TopEventsTable({ demo, events = [] }) {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border bg-surface-card">
-        {sorted.length === 0 ? (
+        {/* Mid-fetch the table keeps its header and no rows, rather than
+            declaring the project has no events. */}
+        {sorted.length === 0 && !pending ? (
           <EmptyState
             icon={CalendarDays}
             title="No events yet"
@@ -879,139 +900,6 @@ function GeneralStatsCard({ items }) {
         })}
       </div>
     </WidgetShell>
-  );
-}
-
-function SkeletonWidget({ className, shape = "line" }) {
-  return (
-    <Card className={cn("bg-surface-subtle border-border rounded-xl py-0 gap-0 overflow-hidden h-full", className)}>
-      <CardContent className="flex h-full flex-col p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-3 w-56" />
-          </div>
-          <Skeleton className="h-9 w-20 shrink-0 rounded-md" />
-        </div>
-        <div className="mt-4 flex flex-1 items-center justify-center">
-          {shape === "circle" ? (
-            <Skeleton className="h-[190px] w-[190px] rounded-full" />
-          ) : (
-            <Skeleton className="h-full w-full rounded-lg" />
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function OverviewSkeleton() {
-  return (
-    <>
-      <div className="mt-2">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div className="space-y-2">
-            <Skeleton className="h-7 w-52" />
-            <Skeleton className="h-4 w-80 max-w-full" />
-          </div>
-          <div className="flex w-full gap-6 md:w-auto">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex flex-1 flex-col items-center gap-1.5 md:flex-none">
-                <Skeleton className="h-3 w-14" />
-                <Skeleton className="h-6 w-12" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <Card className="gap-0 overflow-hidden rounded-xl border-border bg-surface-subtle py-0">
-        <CardContent className="p-0">
-          <div className="grid grid-cols-2 md:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "space-y-2 p-4",
-                  i % 2 !== 0 && "border-l border-border",
-                  i >= 2 && "border-t border-border",
-                  "md:border-t-0 md:border-l md:border-border",
-                  i === 0 && "md:border-l-0",
-                )}
-              >
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-6 w-16" />
-                <Skeleton className="h-3 w-24" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SkeletonWidget className="lg:col-span-2 h-[360px]" />
-        <SkeletonWidget className="h-[360px]" shape="circle" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SkeletonWidget className="h-[300px]" shape="circle" />
-        <SkeletonWidget className="h-[300px]" shape="circle" />
-        <SkeletonWidget className="h-[300px]" shape="circle" />
-      </div>
-
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-5 w-52" />
-            <Skeleton className="h-3.5 w-64" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-9 w-24 rounded-md" />
-            <Skeleton className="h-9 w-28 rounded-md" />
-          </div>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-surface-card">
-          <div className="divide-y divide-border">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 p-4">
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-3 w-1/5" />
-                </div>
-                <Skeleton className="h-5 w-16 shrink-0 rounded-md" />
-                <Skeleton className="hidden h-1.5 w-[140px] shrink-0 rounded-full sm:block" />
-                <Skeleton className="h-4 w-14 shrink-0" />
-                <Skeleton className="hidden h-4 w-20 shrink-0 sm:block" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <Card className="bg-surface-subtle border-border rounded-xl py-0 gap-0 overflow-hidden">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-3.5 w-56" />
-            </div>
-            <Skeleton className="h-5 w-16 shrink-0 rounded-md" />
-          </div>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3.5 rounded-xl p-3.5">
-                <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-                <Skeleton className="h-5 w-6 shrink-0" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </>
   );
 }
 
@@ -1227,13 +1115,12 @@ export function EventsOverviewScreen({ demo = false }) {
   const statsData = demo ? DEMO_STATS : liveStats;
   const attentionItems = demo ? DEMO_ATTENTION_ITEMS : liveAttentionItems;
 
-  if (live && (projectLoading || loading)) {
-    return (
-      <MainScreenWrapper>
-        <OverviewSkeleton />
-      </MainScreenWrapper>
-    );
-  }
+  // No skeleton: the page lays out immediately with every figure at zero and
+  // fills in once the fetch lands. Widgets that would otherwise state "nothing
+  // here" get told the data is still in flight so they don't jump to a verdict.
+  // With no project there is nothing to wait for, so those empty states are the
+  // honest answer rather than a permanent hold on zeros.
+  const pending = live && (projectLoading || (Boolean(projectId) && loading));
 
   return (
     <MainScreenWrapper>
@@ -1283,10 +1170,10 @@ export function EventsOverviewScreen({ demo = false }) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 h-[360px]">
-          <RegistrationsTrendWidget demo={demo} events={events} orders={orders} registrations={registrations} />
+          <RegistrationsTrendWidget demo={demo} pending={pending} events={events} orders={orders} registrations={registrations} />
         </div>
         <div className="h-[360px]">
-          <TicketMixWidget demo={demo} events={events} orders={orders} />
+          <TicketMixWidget demo={demo} pending={pending} events={events} orders={orders} />
         </div>
       </div>
 
@@ -1325,7 +1212,7 @@ export function EventsOverviewScreen({ demo = false }) {
         </div>
       </div>
 
-      <TopEventsTable demo={demo} events={events} />
+      <TopEventsTable demo={demo} pending={pending} events={events} />
 
       <GeneralStatsCard items={attentionItems} />
     </MainScreenWrapper>

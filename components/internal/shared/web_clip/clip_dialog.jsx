@@ -12,19 +12,18 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { IconInput } from "@/components/internal/shared/icon_input";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { cn } from "@/lib/utils";
 import { extractClip } from "@/lib/clip/extract";
 import { removeClipAssets } from "@/lib/clip/assets";
-import { clipHostLabel, removedSummary } from "@/lib/clip/model";
 import { CLIP_PAGE_PATH } from "@/lib/clip/rewrite";
 import { normalizeUrl } from "@/lib/net/url_safety";
 import { ElementPicker } from "./element_picker";
@@ -134,7 +133,6 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
   };
 
   const hint = loadState ? LOAD_HINTS[loadState.status] : null;
-  const removed = clip ? removedSummary(clip) : "";
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
@@ -160,54 +158,44 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
                   setStep("pick");
                 }}
                 aria-label="Back"
-                className="shrink-0 text-text-secondary hover:bg-surface-active hover:text-foreground"
+                className="shrink-0 text-muted-foreground hover:bg-surface-active hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             ) : null}
 
-            <div className="relative flex-1">
-              <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-              <Input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && load()}
-                placeholder="stripe.com/pricing"
-                spellCheck={false}
-                autoFocus={step === "url"}
-                className="pl-9"
-              />
-            </div>
+            <IconInput
+              icon={Globe}
+              wrapperClassName="flex-1"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && load()}
+              placeholder="stripe.com/pricing"
+              spellCheck={false}
+              autoFocus={step === "url"}
+            />
 
             <Button
               onClick={load}
               disabled={!url.trim()}
+              size={step === "url" ? "default" : "icon"}
+              title={step === "url" ? "Load page" : "Reload page"}
+              aria-label={step === "url" ? "Load page" : "Reload page"}
               className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {step === "pick" ? (
-                <RefreshCw className="h-4 w-4" />
-              ) : null}
-              {step === "url" ? "Load page" : "Reload"}
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={close}
-              className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            >
-              Cancel
+              {step === "url" ? "Load" : <RefreshCw className="h-4 w-4" />}
             </Button>
           </div>
         </DialogHeader>
 
         {step === "url" ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-            <Globe className="h-8 w-8 text-text-tertiary" />
+            <Globe className="h-8 w-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
               Paste the address of any public page. You&apos;ll be able to hover
               its parts, pick the one you want, and bring it across.
             </p>
-            <p className="flex items-center gap-1.5 text-xs text-text-tertiary">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <ShieldCheck className="h-3.5 w-3.5" />
               Scripts, forms, and embedded frames are always removed.
             </p>
@@ -237,7 +225,7 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
             />
 
             <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 py-3">
-              <p className="text-xs text-text-tertiary">
+              <p className="text-xs text-muted-foreground">
                 Nothing on the page can run — you&apos;re picking from a static
                 copy.
               </p>
@@ -251,7 +239,7 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
                 ) : (
                   <Check className="h-4 w-4" />
                 )}
-                {busy || "Use this element"}
+                {busy || "Use This Element"}
               </Button>
             </div>
           </>
@@ -259,61 +247,47 @@ export function WebClipDialog({ open, onOpenChange, onClip }) {
 
         {step === "review" && clip ? (
           <>
-            <div className="min-h-0 flex-1 overflow-auto bg-surface-subtle p-6">
-              <div className="mx-auto max-w-3xl space-y-2">
-                <ClipPruner
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+              <aside className="flex max-h-[45%] shrink-0 flex-col overflow-y-auto border-b border-border px-4 py-4 lg:max-h-none lg:w-[19rem] lg:border-b-0 lg:border-r">
+                <ClipAppearance
+                  compact
                   clip={clip}
-                  onChange={(next) => setClip((c) => ({ ...c, ...next }))}
+                  onChange={(next) => setClip(next)}
                 />
+              </aside>
+
+              <div className="min-h-0 flex-1 overflow-auto bg-surface-subtle p-6">
+                <div className="mx-auto max-w-3xl">
+                  <ClipPruner
+                    clip={clip}
+                    onChange={(next) => setClip((c) => ({ ...c, ...next }))}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="shrink-0 space-y-2 border-t border-border px-4 py-3">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
-                <span className="font-mono">{clip.source.selector}</span>
-                <span className="text-text-tertiary">
-                  {Math.round((clip.html.length + clip.css.length) / 1024)} KB
-                </span>
-                {removed ? (
-                  <span className="flex items-center gap-1 text-text-tertiary">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Removed {removed}
-                  </span>
-                ) : null}
-                <span className="text-text-tertiary">
-                  Images load from {clipHostLabel(clip) || "the original site"}
-                </span>
-              </div>
-
-              <ClipAppearance
-                compact
-                clip={clip}
-                onChange={(next) => setClip(next)}
-              />
-
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-text-tertiary">
-                  This is exactly how it will appear on your page.
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      discardUnused();
-                      setClip(null);
-                      setStep("pick");
-                    }}
-                    className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                  >
-                    Pick something else
-                  </Button>
-                  <Button
-                    onClick={confirm}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Check className="h-4 w-4" /> Use this clip
-                  </Button>
-                </div>
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 py-3">
+              <p className="text-xs text-muted-foreground">
+                This is exactly how it will appear on your page.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    discardUnused();
+                    setClip(null);
+                    setStep("pick");
+                  }}
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                >
+                  Pick Something Else
+                </Button>
+                <Button
+                  onClick={confirm}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Check className="h-4 w-4" /> Use This Clip
+                </Button>
               </div>
             </div>
           </>

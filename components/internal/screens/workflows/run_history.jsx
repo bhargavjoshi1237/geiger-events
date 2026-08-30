@@ -20,7 +20,7 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@geiger/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -28,7 +28,7 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@geiger/ui/sheet";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 
 import { listWorkflowRuns } from "@/lib/supabase/workflow_runs";

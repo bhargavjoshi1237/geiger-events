@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   ArrowUp,
   ChevronRight,
   Clock,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
 import {
   EmptyState,
   Field,
@@ -21,8 +21,8 @@ import {
   SettingRow,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { listEvents, updateEventMeta } from "@/lib/supabase/events";
 import { listRegistrations, promoteWaitlist } from "@/lib/supabase/registrations";
 import { useProject } from "@/context/project-context";
@@ -235,32 +235,45 @@ export function WaitlistScreen() {
 
     return (
       <MainScreenWrapper>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 w-fit gap-1.5 text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          onClick={() => {
-            setOpenEventId(null);
-            setDetailSearch("");
-            setDetailLimit(PAGE_ROWS);
+        <EditorHeader
+          back={{
+            label: "All Events",
+            onClick: () => {
+              setOpenEventId(null);
+              setDetailSearch("");
+              setDetailLimit(PAGE_ROWS);
+            },
           }}
-        >
-          <ArrowLeft className="h-4 w-4" /> All Events
-        </Button>
-
-        <div className="space-y-3 border-b border-border pb-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                {openGroup.event.name}
-              </h1>
-              {openGroup.event.waitlistRules?.autoPromote ? (
-                <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                  Auto-promote on
-                </span>
-              ) : null}
+          title={openGroup.event.name}
+          badges={
+            openGroup.event.waitlistRules?.autoPromote ? (
+              <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                Auto-promote on
+              </span>
+            ) : null
+          }
+          meta={
+            <div className="flex items-center gap-3">
+              <PipelineBar
+                counts={openGroup.counts}
+                capacity={openGroup.cap}
+                className="flex-1"
+                size="lg"
+              />
+              <span className="shrink-0 text-xs text-text-secondary tabular-nums">
+                {openGroup.counts.seats}/{openGroup.cap || "∞"} ·{" "}
+                {canPromote ? (
+                  <span className="text-emerald-400">{openGroup.open} open</span>
+                ) : (
+                  <span className="text-red-400">full</span>
+                )}
+                {" · "}
+                {openGroup.queue.length} waiting
+              </span>
             </div>
-            <div className="flex shrink-0 gap-2">
+          }
+          actions={
+            <>
               <Button
                 variant="outline"
                 className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
@@ -275,27 +288,9 @@ export function WaitlistScreen() {
               >
                 <ArrowUp className="h-4 w-4" /> Promote next
               </Button>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <PipelineBar
-              counts={openGroup.counts}
-              capacity={openGroup.cap}
-              className="flex-1"
-              size="lg"
-            />
-            <span className="shrink-0 text-xs text-text-secondary tabular-nums">
-              {openGroup.counts.seats}/{openGroup.cap || "∞"} ·{" "}
-              {canPromote ? (
-                <span className="text-emerald-400">{openGroup.open} open</span>
-              ) : (
-                <span className="text-red-400">full</span>
-              )}
-              {" · "}
-              {openGroup.queue.length} waiting
-            </span>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         <Toolbar>
           <span className="text-sm text-text-tertiary">

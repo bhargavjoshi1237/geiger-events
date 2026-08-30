@@ -2,7 +2,7 @@
 
 import { AlertCircle } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 
 export function ErrorStep({ checkout, accentStyle, onClose }) {
   const { errorMsg, setStep } = checkout;

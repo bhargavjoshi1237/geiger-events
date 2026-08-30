@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
 import { Field, SettingsList, SettingRow } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Checkbox } from "@geiger/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -15,14 +15,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { PERIOD_MODE_MAP, PERIOD_MODE_OPTIONS } from "@/lib/inventory/entitlements";
 import { itemLabel, qty } from "./constants";
 import { ItemThumb } from "./item_image";

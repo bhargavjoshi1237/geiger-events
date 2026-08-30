@@ -5,13 +5,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import { Bell, Download, Loader2, MessageSquare } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { getUser } from "@/lib/supabase/user";
 import { formatDistanceToNow } from "date-fns";
 import { SegmentedTabs } from "@geiger/ui";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { EmptyState } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
 

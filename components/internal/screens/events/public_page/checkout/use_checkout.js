@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { validateEventDiscount } from "@/lib/supabase/discounts";
+import { validateEventDiscount, discountBase } from "@/lib/supabase/discounts";
 import { buyTicket } from "@/lib/supabase/orders";
 import { holdSeats, releaseSeats } from "@/lib/supabase/seating";
 import { holdBooths } from "@/lib/supabase/expo";
@@ -32,6 +32,28 @@ import {
   buildTicketAnswers,
 } from "./order_payload";
 import { validateCheckoutDetails } from "./validate";
+
+// Buyer-facing text for each rejection reason the discount RPC can return.
+// Codes are scoped per ticket now, so "not_allowed" means this ticket rather
+// than this event.
+function discountReasonMessage(reason) {
+  switch (reason) {
+    case "limit":
+      return "This code has reached its limit.";
+    case "not_allowed":
+      return "This code doesn't work on this ticket.";
+    case "pending":
+      return "This code isn't active yet.";
+    case "expired":
+      return "This code has expired.";
+    case "min_qty":
+      return "This code needs a larger quantity.";
+    case "max_qty":
+      return "This code can't be used on this many tickets.";
+    default:
+      return "That code isn't valid.";
+  }
+}
 
 export function useCheckout({
   open,
@@ -188,6 +210,8 @@ export function useCheckout({
     visiblePurs,
     addonUnit,
     discountEnabled,
+    ticketCouponIds,
+    discountAppliesTo,
     discountAmount,
     gCfg,
     isGroup,
@@ -602,32 +626,85 @@ export function useCheckout({
   const setPurchasableQty = (id, value) =>
     setPurSelections((s) => ({ ...s, [id]: Math.max(0, Number(value) || 0) }));
 
+  // A code is resolved against the ticket in the basket: scoping lives on the
+  // ticket, and quantity/time rules are evaluated server-side from qty + now.
+  const resolveDiscount = useCallback(
+    (code) => {
+      if (!live)
+        return Promise.resolve({
+          ok: true,
+          id: "preview",
+          code: code.toUpperCase(),
+          discountType: "percent",
+          value: 10,
+          applyPer: "order",
+          maxDiscount: null,
+        });
+      return validateEventDiscount(event.id, code, {
+        ticketId,
+        qty,
+        base: discountBase(
+          { price: effPrice, qty, addonUnit },
+          discountAppliesTo,
+        ),
+      });
+    },
+    [live, event.id, ticketId, qty, effPrice, addonUnit, discountAppliesTo],
+  );
+
   const applyDiscount = async () => {
     const code = discountInput.trim();
     if (!code) return;
     setDiscountBusy(true);
-    const res = live
-      ? await validateEventDiscount(event.id, code)
-      : { ok: true, id: "preview", code: code.toUpperCase(), discountType: "percent", value: 10 };
+    const res = await resolveDiscount(code);
     setDiscountBusy(false);
     if (res.ok) {
       setAppliedDiscount(res);
       toast.success(`Code ${res.code} applied.`);
     } else {
       setAppliedDiscount(null);
-      toast.error(
-        res.reason === "limit"
-          ? "This code has reached its limit."
-          : res.reason === "not_allowed"
-            ? "This event doesn't accept that code."
-            : "That code isn't valid.",
-      );
+      toast.error(discountReasonMessage(res.reason));
     }
   };
   const removeDiscount = () => {
     setAppliedDiscount(null);
     setDiscountInput("");
   };
+
+  // Re-resolve an applied code whenever the basket changes. Quantity tiers and
+  // time windows are evaluated server-side, so nudging the quantity from 2 to 4
+  // can change WHICH rule wins — and a code valid on one ticket may not be on
+  // another. Short debounce so dragging the quantity stepper isn't chatty.
+  const appliedCode = appliedDiscount?.code || "";
+  const couponCount = ticketCouponIds.length;
+  useEffect(() => {
+    if (!appliedCode || !live) return undefined;
+    let alive = true;
+    const t = setTimeout(async () => {
+      // Ticket accepts no codes at all — drop the held code.
+      if (!couponCount) {
+        if (!alive) return;
+        setAppliedDiscount(null);
+        setDiscountInput("");
+        return;
+      }
+      const res = await resolveDiscount(appliedCode);
+      if (!alive) return;
+      if (res.ok) {
+        setAppliedDiscount(res);
+      } else {
+        setAppliedDiscount(null);
+        setDiscountInput("");
+        toast.error(discountReasonMessage(res.reason));
+      }
+    }, 250);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+    // resolveDiscount captures ticketId/qty/base; re-running on those is the point.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedCode, live, couponCount, resolveDiscount, ticketId, qty]);
 
   const headerLabel =
     step === "done"

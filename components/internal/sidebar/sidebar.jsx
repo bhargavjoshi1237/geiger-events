@@ -11,12 +11,12 @@ import {
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@geiger/ui/sidebar";
 import { PanelLeft } from "lucide-react";
 import { SidebarOption } from "./sidebar_option";
 import { MobileSidebarHeader } from "./mobile_sidebar_header";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@geiger/ui/button";
+import { Skeleton } from "@geiger/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useNavLoading, useVisibleNav } from "@/lib/hooks/use-visible-nav";
 

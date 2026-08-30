@@ -10,10 +10,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+} from "@geiger/ui/dropdown-menu";
+import { ToggleGroup, ToggleGroupItem } from "@geiger/ui/toggle-group";
 import { useTheme } from "next-themes";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@geiger/ui/avatar";
 import {
   CircleUserRound,
   Settings,
@@ -31,7 +31,7 @@ import {
 import { getUser, invalidateUserCache } from "@/lib/supabase/user";
 import { createClient } from "@/lib/supabase/client";
 import { useOptionalProject } from "@/context/project-context";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 
 const itemBaseStyle =
   "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm cursor-default transition-colors outline-none";

@@ -275,7 +275,7 @@ export const STRUCTURE_COMPONENTS = [
         key: "items",
         label: "Items",
         type: "items",
-        addLabel: "Add item",
+        addLabel: "Add Item",
         itemFields: [
           { key: "icon", label: "Icon", type: "select", options: ICON_OPTIONS },
           { key: "title", label: "Title", type: "text", bindable: true },

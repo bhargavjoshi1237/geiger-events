@@ -3,9 +3,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
+  BadgeCheckIcon,
+  BanIcon,
   Loader2,
-  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
@@ -16,17 +16,29 @@ import {
   SecondaryScreenWrapper,
 } from "@/components/internal/shared/screen_wrappers";
 import {
+  EditorHeader,
+  EditorShell,
+} from "@/components/internal/shared/editor_shell";
+import {
+  DataTable,
   EmptyState,
   Field,
   InlineTitleInput,
   ScreenHeader,
   SearchInput,
+  StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+import {
+  ListPagination,
+  usePagination,
+} from "@/components/internal/shared/pagination";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Switch } from "@geiger/ui/switch";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -34,23 +46,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
-import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { newId } from "@/components/internal/screens/events/sample_data";
 import { getUser } from "@/lib/supabase/user";
@@ -70,6 +73,17 @@ const TICKETING_DATA = {
 
 const kindLabel = (kinds, value) =>
   kinds.find((k) => k.value === value)?.label || value;
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All Statuses" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
+
+const RECORD_STATUS_MAP = {
+  active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
+  inactive: { label: "Inactive", variant: "neutral", dotClass: "bg-[#737373]" },
+};
 
 function CreateRecordDialog({ open, onOpenChange, singular, kinds, onCreate }) {
   const [name, setName] = useState("");
@@ -170,7 +184,6 @@ function RecordEditPage({
   const [active, setActive] = useState(record.active);
   const [config, setConfig] = useState(record.config || {});
   const [saving, setSaving] = useState(false);
-  const { section, setSection } = useWorkspaceUrl();
 
   const save = async () => {
     if (!name.trim()) {
@@ -194,135 +207,25 @@ function RecordEditPage({
     setActive,
   };
 
-  if (sections?.length) {
-    const activeItem = sections.find((s) => s.key === section) || sections[0];
-    const Body = activeItem.render;
-    return (
-      <MainScreenWrapper>
-        <EditHeader
-          singular={singular}
-          kinds={kinds}
-          record={record}
-          name={name}
-          setName={setName}
-          active={active}
-          setActive={setActive}
-          hideHeaderActive={hideHeaderActive}
-          saving={saving}
-          onBack={onBack}
-          onSave={save}
-        />
-
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px]">
-          <div className="order-2 min-w-0 lg:order-1">
-            <div className="mb-5">
-              <h2 className="text-lg font-semibold text-foreground">{activeItem.label}</h2>
-              {activeItem.desc ? (
-                <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
-              ) : null}
-            </div>
-            <Body {...formProps} />
-          </div>
-
-          <aside className="order-1 lg:order-2">
-            <nav className="space-y-0.5 lg:sticky lg:top-0">
-              {sections.map((item) => {
-                const Icon = item.icon;
-                const isActive = item.key === activeItem.key;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setSection(item.key)}
-                    className={cn(
-                      "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                      isActive
-                        ? "bg-surface-card font-medium text-foreground"
-                        : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
-                    )}
-                  >
-                    {Icon ? (
-                      <Icon
-                        className={cn(
-                          "h-4 w-4 shrink-0",
-                          isActive ? "text-foreground" : "text-text-secondary",
-                        )}
-                      />
-                    ) : null}
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </aside>
-        </div>
-      </MainScreenWrapper>
-    );
-  }
-
-  return (
-    <SecondaryScreenWrapper>
-      <EditHeader
-        singular={singular}
-        kinds={kinds}
-        record={record}
-        name={name}
-        setName={setName}
-        active={active}
-        setActive={setActive}
-        hideHeaderActive={hideHeaderActive}
-        saving={saving}
-        onBack={onBack}
-        onSave={save}
+  const header = {
+    back: { label: "Back", onClick: onBack },
+    title: (
+      <InlineTitleInput
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        aria-label={`${singular} name`}
+        placeholder={`Untitled ${singular.toLowerCase()}`}
+        className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
       />
-
-      <div className="mt-6">
-        <EditForm {...formProps} />
-      </div>
-    </SecondaryScreenWrapper>
-  );
-}
-
-function EditHeader({
-  singular,
-  kinds,
-  record,
-  name,
-  setName,
-  active,
-  setActive,
-  hideHeaderActive,
-  saving,
-  onBack,
-  onSave,
-}) {
-  return (
-    <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-      <div className="min-w-0 flex-1">
-        <button
-          type="button"
-          onClick={onBack}
-          className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back
-        </button>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <InlineTitleInput
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            aria-label={`${singular} name`}
-            placeholder={`Untitled ${singular.toLowerCase()}`}
-            className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
-          />
-          {kinds.length > 1 ? (
-            <Badge variant="neutral">{kindLabel(kinds, record.kind)}</Badge>
-          ) : null}
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-3">
+    ),
+    badges:
+      kinds.length > 1 ? (
+        <Badge variant="neutral">{kindLabel(kinds, record.kind)}</Badge>
+      ) : null,
+    actions: (
+      <>
         {hideHeaderActive ? null : (
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <label className="flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border bg-transparent px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-active hover:text-foreground">
             {active ? "Active" : "Inactive"}
             <Switch checked={active} onCheckedChange={setActive} />
           </label>
@@ -330,13 +233,34 @@ function EditHeader({
         <Button
           className="bg-primary text-primary-foreground hover:bg-primary/90"
           disabled={saving}
-          onClick={onSave}
+          onClick={save}
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {saving ? "Saving…" : "Save"}
         </Button>
+      </>
+    ),
+  };
+
+  if (sections?.length) {
+    return (
+      <EditorShell {...header} nav={sections} defaultSection={sections[0].key}>
+        {({ activeItem }) => {
+          const Body = activeItem.render;
+          return <Body {...formProps} />;
+        }}
+      </EditorShell>
+    );
+  }
+
+  return (
+    <SecondaryScreenWrapper>
+      <EditorHeader {...header} />
+
+      <div className="mt-6">
+        <EditForm {...formProps} />
       </div>
-    </div>
+    </SecondaryScreenWrapper>
   );
 }
 
@@ -353,12 +277,13 @@ export function RecordsScreen({
   headerExtra,
   data,
   hideHeaderActive = false,
-  summaryRight = false,
 }) {
   const api = data || TICKETING_DATA;
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [kind, setKind] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [openId, setOpenId] = useState(null);
@@ -379,12 +304,24 @@ export function RecordsScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, module]);
 
+  // The type filter only exists for modules with more than one kind.
+  const kindOptions = useMemo(
+    () => [
+      { value: "all", label: "All Types" },
+      ...kinds.map((k) => ({ value: k.value, label: k.label })),
+    ],
+    [kinds],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return records.filter((r) =>
-      q ? (r.name || "").toLowerCase().includes(q) : true,
-    );
-  }, [records, search]);
+    return records.filter((r) => {
+      if (status !== "all" && !!r.active !== (status === "active")) return false;
+      if (kind !== "all" && r.kind !== kind) return false;
+      if (q && !(r.name || "").toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [records, search, status, kind]);
 
   const handleCreate = (name, kind) => {
     const defaults = kinds.find((k) => k.value === kind)?.defaultConfig || {};
@@ -441,6 +378,75 @@ export function RecordsScreen({
     });
   };
 
+  const pager = usePagination(filtered, {
+    resetKey: `${search}|${status}|${kind}`,
+  });
+
+  // Mirrors the All Events table: identity first, then the module's own
+  // summary, status, and the row menu pinned right.
+  const columns = [
+    {
+      key: "name",
+      header: "Name",
+      render: (r) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+            <Icon className="h-4 w-4" />
+          </div>
+          <span className="font-medium text-foreground">{r.name}</span>
+        </div>
+      ),
+    },
+    kinds.length > 1 && {
+      key: "kind",
+      header: "Type",
+      render: (r) => <Badge variant="neutral">{kindLabel(kinds, r.kind)}</Badge>,
+    },
+    summarize && {
+      key: "summary",
+      header: "Details",
+      render: (r) => (
+        <span className="text-sm text-text-secondary">{summarize(r)}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (r) => (
+        <StatusPill
+          status={r.active ? "active" : "inactive"}
+          map={RECORD_STATUS_MAP}
+        />
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "text-right",
+      render: (r) => (
+        <ActionMenu
+          label={`Actions for ${r.name}`}
+          items={[
+            { icon: Pencil, label: "Edit", onSelect: () => setOpenId(r.id) },
+            {
+              icon: r.active ? BanIcon : BadgeCheckIcon,
+              label: r.active ? "Deactivate" : "Activate",
+              onSelect: () => handleToggleActive(r),
+            },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(r),
+            },
+          ]}
+        />
+      ),
+    },
+  ].filter(Boolean);
+
   const openRecord = records.find((r) => r.id === openId) || null;
   if (openRecord) {
     return (
@@ -473,7 +479,23 @@ export function RecordsScreen({
       />
 
       <Toolbar>
-        {headerExtra}
+        <div className="flex items-center gap-2">
+          {headerExtra}
+          <FilterDropdown
+            value={status}
+            onValueChange={setStatus}
+            options={STATUS_FILTER_OPTIONS}
+            height="h-9"
+          />
+          {kinds.length > 1 ? (
+            <FilterDropdown
+              value={kind}
+              onValueChange={setKind}
+              options={kindOptions}
+              height="h-9"
+            />
+          ) : null}
+        </div>
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -486,109 +508,38 @@ export function RecordsScreen({
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading…
         </div>
-      ) : filtered.length ? (
-        <div className="grid gap-3">
-          {filtered.map((record) => (
-            <div
-              key={record.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setOpenId(record.id)}
-              onKeyDown={(e) => e.key === "Enter" && setOpenId(record.id)}
-              className={cn(
-                "group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover",
-                record.active ? "" : "opacity-60",
-              )}
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-foreground">
-                    {record.name}
-                  </span>
-                  {kinds.length > 1 ? (
-                    <Badge variant="neutral">
-                      {kindLabel(kinds, record.kind)}
-                    </Badge>
-                  ) : null}
-                  {!record.active ? (
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
-                      Inactive
-                    </span>
-                  ) : null}
-                </div>
-                {summarize && !summaryRight ? (
-                  <p className="mt-0.5 truncate text-xs text-text-secondary">
-                    {summarize(record)}
-                  </p>
-                ) : null}
-              </div>
-              {summarize && summaryRight ? (
-                <p className="hidden shrink-0 whitespace-nowrap text-xs text-text-secondary sm:block">
-                  {summarize(record)}
-                </p>
-              ) : null}
-              <div onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-44 border-border bg-surface-card shadow-xl"
-                  >
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                      onClick={() => setOpenId(record.id)}
-                    >
-                      <Pencil className="h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                      onClick={() => handleToggleActive(record)}
-                    >
-                      {record.active ? "Deactivate" : "Activate"}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-surface-strong" />
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                      onClick={() => setDeleteTarget(record)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-300" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="rounded-xl border border-border bg-surface-subtle">
-          <EmptyState
-            icon={Icon}
-            title={records.length ? "No matches" : `No ${title.toLowerCase()} yet`}
-            description={
-              records.length
-                ? "Try a different search."
-                : `Create a reusable ${singular} here, then attach it to any event from its edit page.`
-            }
-            action={
-              <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => setCreateOpen(true)}
-              >
-                <Plus className="h-4 w-4" /> New {singular}
-              </Button>
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(r) => r.id}
+            onRowClick={(r) => setOpenId(r.id)}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={Icon}
+                  title={
+                    records.length ? "No matches" : `No ${title.toLowerCase()} yet`
+                  }
+                  description={
+                    records.length
+                      ? "Try clearing the search or filters."
+                      : `Create a reusable ${singular} here, then attach it to any event from its edit page.`
+                  }
+                  action={
+                    <Button
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => setCreateOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" /> New {singular}
+                    </Button>
+                  }
+                />
+              </div>
             }
           />
+          <ListPagination {...pager} itemLabel={title.toLowerCase()} />
         </div>
       )}
 

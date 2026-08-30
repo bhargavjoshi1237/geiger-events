@@ -10,16 +10,16 @@ import {
   ScreenHeader,
   StatsBar,
 } from "@/components/internal/shared/screen_kit";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Switch } from "@geiger/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
 import { INSTALLED_ADDONS } from "@/addons";

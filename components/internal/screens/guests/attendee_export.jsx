@@ -11,16 +11,16 @@ import {
   Field,
   ScreenHeader,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Checkbox } from "@geiger/ui/checkbox";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { listAttendeeRows } from "@/lib/supabase/attendees";
 import { downloadCsv } from "@/components/internal/screens/registrations/csv";

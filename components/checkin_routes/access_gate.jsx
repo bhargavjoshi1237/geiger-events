@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { Loader2, Lock, ScanLine } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import { validateCheckinCode } from "@/lib/supabase/checkin";
 
 const codeKey = (eventId) => `checkin:code:${eventId}`;

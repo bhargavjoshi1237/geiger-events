@@ -16,16 +16,22 @@ export function DiscountStub({
   discountType,
   value,
   usageLimit,
+  rules,
   active = true,
   attached = false,
+  scopeLabel,
   onToggle,
   control,
 }) {
   const isFlat = discountType === "flat";
   const amount = Number(value) || 0;
+  const ruleCount = Array.isArray(rules) ? rules.length : 0;
 
   const metaItems = [
     { label: Number(usageLimit) > 0 ? `${usageLimit} uses` : "Unlimited uses" },
+    ruleCount
+      ? { label: `${ruleCount} rule${ruleCount > 1 ? "s" : ""}` }
+      : null,
     active ? null : { label: "Inactive", muted: true },
   ].filter(Boolean);
 
@@ -76,7 +82,7 @@ export function DiscountStub({
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-text-secondary">
             <span className={attached ? "text-text-secondary" : "text-text-tertiary"}>
-              {attached ? "Works on this event" : "Not attached"}
+              {scopeLabel || (attached ? "Works on this event" : "Not attached")}
             </span>
             {metaItems.map((item) => (
               <React.Fragment key={item.label}>

@@ -15,8 +15,8 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@geiger/ui/button";
+import { Checkbox } from "@geiger/ui/checkbox";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 import { useProject } from "@/context/project-context";
 import {

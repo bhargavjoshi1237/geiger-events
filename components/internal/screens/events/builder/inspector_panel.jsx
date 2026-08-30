@@ -3,7 +3,7 @@
 import React from "react";
 import { RotateCcw, MousePointerSquareDashed } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import {
   BACKGROUND_TYPES,
   BASE_BREAKPOINT,

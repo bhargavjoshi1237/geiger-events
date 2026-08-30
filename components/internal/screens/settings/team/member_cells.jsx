@@ -2,15 +2,15 @@
 
 import { ChevronDown } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@geiger/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@geiger/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import { initialsOf } from "../constants";
 
 // The small cells the members table is built from.

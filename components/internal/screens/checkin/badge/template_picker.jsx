@@ -3,8 +3,8 @@
 import React from "react";
 import { Check, ChevronDown, Copy, Layers, Plus, Star, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { stockSize } from "@/lib/passes/stock";
 import { BADGE_TEMPLATES } from "../constants";
@@ -143,7 +143,6 @@ export function TemplatePicker({
         </DropdownMenuItem>
         <DropdownMenuItem
           variant="destructive"
-          className="text-red-400 focus:bg-red-500/10"
           disabled={templates.length === 1}
           onClick={() => setDeletePending(true)}
         >

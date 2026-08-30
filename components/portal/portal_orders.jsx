@@ -20,13 +20,13 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { TicketStubRow, money, fmtDate } from "./portal_kit";
 import { RefundPanel, REFUND_STATUS } from "./portal_tickets";
 

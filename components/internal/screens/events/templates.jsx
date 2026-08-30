@@ -3,21 +3,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  Users,
-  Music,
-  GraduationCap,
-  Video,
-  Mic,
-  PartyPopper,
   Sparkles,
   Plus,
   ArrowUpRight,
-  MoreHorizontal,
+  Check,
   Pencil,
   Copy,
   Trash2,
   LayoutTemplate,
   Loader2,
+  X,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
@@ -28,10 +23,10 @@ import {
   SearchInput,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -39,27 +34,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
+import { IconPicker, LucideIcon } from "@geiger/ui/icon-picker";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   EVENT_TEMPLATES,
   TEMPLATE_CATEGORY_MAP,
-  TEMPLATE_CATEGORY_OPTIONS,
-  TEMPLATE_ICON_OPTIONS,
   newId,
 } from "./sample_data";
 import {
@@ -75,15 +64,8 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
 import { useDefaultOrganizer } from "@/lib/events/use-default-organizer";
 
-const TEMPLATE_ICONS = {
-  Users,
-  Music,
-  GraduationCap,
-  Video,
-  Mic,
-  PartyPopper,
-  Sparkles,
-};
+// Sentinel value for the "add a category" row inside the category Select.
+const NEW_CATEGORY = "__new_category__";
 
 const FORMAT_OPTIONS = [
   { value: "In-person", label: "In-person" },
@@ -119,19 +101,43 @@ function templateToDraft(t) {
   };
 }
 
-function TemplateDialog({ open, onOpenChange, onSubmit, initial, mode }) {
+function TemplateDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  initial,
+  mode,
+  categories,
+}) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  // null while picking from the list; a string once the user is typing a new one.
+  const [newCategory, setNewCategory] = useState(null);
 
   const [seedKey, setSeedKey] = useState("");
   const key = `${mode}:${initial?.id || "new"}`;
   if (open && key !== seedKey) {
     setSeedKey(key);
     setDraft(initial ? templateToDraft(initial) : EMPTY_DRAFT);
+    setNewCategory(null);
   } else if (!open && seedKey !== "") {
     setSeedKey("");
   }
 
   const set = (k) => (value) => setDraft((d) => ({ ...d, [k]: value }));
+
+  // A category the user just invented isn't on any template yet, so fold the
+  // current draft value in to keep the Select able to show it.
+  const categoryChoices = useMemo(() => {
+    const all = new Set(categories);
+    if (draft.category) all.add(draft.category);
+    return [...all];
+  }, [categories, draft.category]);
+
+  const commitCategory = () => {
+    const name = newCategory.trim();
+    if (name) set("category")(name);
+    setNewCategory(null);
+  };
 
   const submit = () => {
     if (!draft.name.trim()) {
@@ -179,32 +185,76 @@ function TemplateDialog({ open, onOpenChange, onSubmit, initial, mode }) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Category">
-              <Select value={draft.category} onValueChange={set("category")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TEMPLATE_CATEGORY_OPTIONS.slice(1).map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
+              {newCategory === null ? (
+                <Select
+                  value={draft.category}
+                  onValueChange={(value) =>
+                    value === NEW_CATEGORY
+                      ? setNewCategory("")
+                      : set("category")(value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoryChoices.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                    <SelectSeparator />
+                    <SelectItem value={NEW_CATEGORY}>
+                      <Plus className="h-4 w-4" /> Add category…
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Input
+                    autoFocus
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        commitCategory();
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        setNewCategory(null);
+                      }
+                    }}
+                    placeholder="e.g. Workshop"
+                    aria-label="New category name"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Add category"
+                    className="shrink-0 text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    onClick={commitCategory}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Cancel new category"
+                    className="shrink-0 text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    onClick={() => setNewCategory(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </Field>
-            <Field label="Icon">
-              <Select value={draft.icon} onValueChange={set("icon")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TEMPLATE_ICON_OPTIONS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Field label="Icon" htmlFor="tmpl-icon">
+              <IconPicker
+                id="tmpl-icon"
+                value={draft.icon}
+                onValueChange={set("icon")}
+                placeholder="Pick an icon"
+              />
             </Field>
           </div>
 
@@ -319,6 +369,21 @@ export function TemplatesScreen() {
       return true;
     });
   }, [templates, search, category]);
+
+  // The built-in categories plus any the user has added on a template.
+  const categories = useMemo(() => {
+    const all = new Set(Object.keys(TEMPLATE_CATEGORY_MAP));
+    templates.forEach((t) => t.category && all.add(t.category));
+    return [...all];
+  }, [templates]);
+
+  const categoryOptions = useMemo(
+    () => [
+      { value: "all", label: "All categories" },
+      ...categories.map((c) => ({ value: c, label: c })),
+    ],
+    [categories],
+  );
 
   const persistCreate = (template) => {
     if (!usingDb) return;
@@ -445,7 +510,7 @@ export function TemplatesScreen() {
         <FilterDropdown
           value={category}
           onValueChange={setCategory}
-          options={TEMPLATE_CATEGORY_OPTIONS}
+          options={categoryOptions}
           height="h-9"
         />
         <SearchInput
@@ -487,7 +552,6 @@ export function TemplatesScreen() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((t) => {
-            const Icon = TEMPLATE_ICONS[t.icon] || Sparkles;
             const cat = TEMPLATE_CATEGORY_MAP[t.category];
             return (
               <div
@@ -496,51 +560,30 @@ export function TemplatesScreen() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
-                    <Icon className="h-5 w-5" />
+                    <LucideIcon
+                      name={t.icon}
+                      fallback={Sparkles}
+                      className="h-5 w-5"
+                    />
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Badge variant={cat?.variant || "neutral"}>
                       {cat?.label || t.category}
                     </Badge>
-                    <div onClick={(ev) => ev.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                            aria-label={`Actions for ${t.name}`}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="border-border bg-surface-subtle text-foreground"
-                        >
-                          <DropdownMenuItem
-                            className="focus:bg-surface-hover"
-                            onClick={() => openEdit(t)}
-                          >
-                            <Pencil className="h-4 w-4" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="focus:bg-surface-hover"
-                            onClick={() => handleDuplicate(t)}
-                          >
-                            <Copy className="h-4 w-4" /> Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-surface-hover" />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                            onClick={() => setDeleteTarget(t)}
-                          >
-                            <Trash2 className="h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    <ActionMenu
+                      label={`Actions for ${t.name}`}
+                      items={[
+                        { icon: Pencil, label: "Edit", onSelect: () => openEdit(t) },
+                        { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(t) },
+                        { separator: true },
+                        {
+                          icon: Trash2,
+                          label: "Delete",
+                          variant: "destructive",
+                          onSelect: () => setDeleteTarget(t),
+                        },
+                      ]}
+                    />
                   </div>
                 </div>
                 <h3 className="mt-4 text-base font-semibold text-foreground">
@@ -574,6 +617,7 @@ export function TemplatesScreen() {
         onSubmit={editing ? handleUpdate : handleCreate}
         initial={editing}
         mode={editing ? "edit" : "create"}
+        categories={categories}
       />
 
       <Dialog

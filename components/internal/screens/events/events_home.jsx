@@ -22,8 +22,8 @@ import {
   StatGrid,
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import {
   EVENTS,

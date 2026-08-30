@@ -11,7 +11,7 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getEventChannel, ensureEventChat, updateChannel } from "@/lib/supabase/chat";
 

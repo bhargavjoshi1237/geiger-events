@@ -4,10 +4,10 @@ import React, { useCallback, useRef, useState } from "react";
 import { AlertTriangle, ArrowDown, ArrowUp, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import { Field } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Switch } from "@geiger/ui/switch";
+import { Textarea } from "@geiger/ui/textarea";
 import { hasTokens } from "@/lib/events/bindings";
 import { cn } from "@/lib/utils";
 import { Segmented } from "../theme_controls";

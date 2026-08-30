@@ -9,7 +9,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { listEvents } from "@/lib/supabase/events";
 import { AudienceBuilder } from "./audience_builder";
 import { normalizeSpec, describeSpec } from "@/lib/audience/resolve";

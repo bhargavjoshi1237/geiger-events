@@ -23,14 +23,14 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { ChatThread } from "@/components/chat/chat_kit";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";

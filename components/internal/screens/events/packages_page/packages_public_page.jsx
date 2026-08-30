@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "../sample_data";
 import { usePageTheme } from "../public_page/use_page_theme";

@@ -9,8 +9,8 @@ import {
   Field,
   SectionCard,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import {

@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Plus,
-  MoreHorizontal,
   Crown,
   ShieldCheck,
   Users,
@@ -26,10 +25,11 @@ import {
   Toolbar,
   SearchInput,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@geiger/ui/avatar";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -37,21 +37,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   EVENT_TEAM_ROLES,
@@ -388,53 +381,28 @@ export function CoHostsAdminsSection({ event, headerItem }) {
       align: "right",
       className: "text-right",
       render: (m) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Member actions"
-              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="border-border bg-surface-subtle text-foreground"
-          >
-            <DropdownMenuItem
-              className="focus:bg-surface-hover"
-              onClick={() => openEdit(m)}
-            >
-              <Pencil className="h-4 w-4" /> Edit details
-            </DropdownMenuItem>
-            {m.role === "Owner" ? null : (
-              <>
-                <DropdownMenuSeparator className="bg-surface-hover" />
-                {EVENT_TEAM_ROLES.filter(
+        <ActionMenu
+          label="Member actions"
+          items={[
+            { icon: Pencil, label: "Edit details", onSelect: () => openEdit(m) },
+            { separator: true },
+            ...(m.role === "Owner"
+              ? []
+              : EVENT_TEAM_ROLES.filter(
                   (r) => r.value !== "Owner" && r.value !== m.role,
-                ).map((r) => (
-                  <DropdownMenuItem
-                    key={r.value}
-                    className="focus:bg-surface-hover"
-                    onClick={() => changeRole(m.id, r.value)}
-                  >
-                    Make {r.value}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator className="bg-surface-hover" />
-                <DropdownMenuItem
-                  variant="destructive"
-                  className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                  onClick={() => setRemoveTarget(m)}
-                >
-                  Remove from event
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                ).map((r) => ({
+                  key: r.value,
+                  label: `Make ${r.value}`,
+                  onSelect: () => changeRole(m.id, r.value),
+                }))),
+            { separator: true },
+            m.role !== "Owner" && {
+              label: "Remove from event",
+              variant: "destructive",
+              onSelect: () => setRemoveTarget(m),
+            },
+          ]}
+        />
       ),
     },
   ];

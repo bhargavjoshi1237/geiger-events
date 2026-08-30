@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 
 import { BoothPicker } from "../../booth_picker";
 

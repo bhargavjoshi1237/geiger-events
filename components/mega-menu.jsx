@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Zap, Layers, Cpu, ContainerIcon, CalendarDays, Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Sheet,
   SheetClose,
@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet";
+} from "@geiger/ui/sheet";
 
 export function MegaMenu({ dashboardHref = "/home" }) {
   const products = [

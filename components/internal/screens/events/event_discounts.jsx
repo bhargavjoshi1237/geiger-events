@@ -7,21 +7,22 @@ import {
   EditorSectionHeader,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@geiger/ui/button";
+import { Switch } from "@geiger/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listRecords } from "@/lib/supabase/ticketing";
 import { DiscountStub } from "@/components/internal/screens/tickets/discount_stub";
+import { ticketDiscountIds } from "@/lib/events/discount_rules";
 
 const DEFAULT_SETTINGS = { enabled: true, appliesTo: "order" };
 
@@ -61,13 +62,32 @@ export function EventDiscountsSection({ event, headerItem }) {
     saveAttached({ ...attached, discount: next });
   };
 
+  // Codes redeem per TICKET, so the useful thing to surface here is how many of
+  // this event's tickets actually accept each one. `selected` only curates the
+  // picker on the Tickets tab — it no longer decides redemption.
+  const tickets = Array.isArray(event?.tickets) ? event.tickets : [];
+  const onTicketCount = new Map();
+  for (const t of tickets) {
+    for (const id of ticketDiscountIds(t)) {
+      onTicketCount.set(id, (onTicketCount.get(id) || 0) + 1);
+    }
+  }
+
+  const scopeLabelFor = (id) => {
+    const n = onTicketCount.get(String(id)) || 0;
+    if (!n) return "Not on any ticket";
+    return n === tickets.length
+      ? `On all ${tickets.length} ticket${tickets.length > 1 ? "s" : ""}`
+      : `On ${n} of ${tickets.length} tickets`;
+  };
+
   return (
     <div className="space-y-6">
       <EditorSectionHeader
         title={headerItem?.label || "Discounts"}
         description={
           headerItem?.desc ||
-          "Let buyers redeem discount codes at checkout. Only the codes you attach here work on this event — create codes under Tickets → Discounts & Codes."
+          "Let buyers redeem discount codes at checkout. Codes are switched on per TICKET — add them from the Tickets tab, and a code only ever works on the tickets you put it on."
         }
         action={
           <Button
@@ -123,14 +143,21 @@ export function EventDiscountsSection({ event, headerItem }) {
 
       {enabled ? (
         <div className="space-y-3">
-          <p className="text-sm font-medium text-foreground">
-            Codes for this event
-            {selected.length ? (
-              <span className="ml-2 text-xs font-normal text-text-secondary">
-                {selected.length} attached
-              </span>
-            ) : null}
-          </p>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Codes for this event
+              {selected.length ? (
+                <span className="ml-2 text-xs font-normal text-text-secondary">
+                  {selected.length} in the ticket picker
+                </span>
+              ) : null}
+            </p>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Switching a code on here makes it appear in each ticket&apos;s
+              discount picker. A buyer can only redeem it on tickets that have
+              it ticked.
+            </p>
+          </div>
 
           {loading ? (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-10 text-sm text-text-secondary">
@@ -145,8 +172,10 @@ export function EventDiscountsSection({ event, headerItem }) {
                   discountType={r.config?.discountType}
                   value={r.config?.value}
                   usageLimit={r.config?.usageLimit}
+                  rules={r.config?.rules}
                   active={r.active}
                   attached={selected.includes(r.id)}
+                  scopeLabel={scopeLabelFor(r.id)}
                   onToggle={() => toggleCoupon(r.id)}
                   control={
                     <Switch

@@ -9,7 +9,6 @@ import {
   CircleDot,
   Layers,
   ListChecks,
-  MoreHorizontal,
   Pencil,
   Plus,
   Ticket,
@@ -24,9 +23,10 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -34,21 +34,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { useProject } from "@/context/project-context";
@@ -57,6 +57,7 @@ import { listRecords } from "@/lib/supabase/ticketing";
 import { getDietaryConfig } from "@/lib/supabase/dietary";
 
 import { TicketStub } from "./ticket_stub";
+import { DiscountCodeChips, DiscountCodePicker } from "./discount_code_picker";
 import { TIER_COLOR_OPTIONS } from "./constants";
 
 // Accent dot class for a tier color token (falls back to the first option).
@@ -83,8 +84,9 @@ function visibilityLabel(type) {
   return v.charAt(0).toUpperCase() + v.slice(1);
 }
 
-// Dialog for creating/editing a single event ticket's identity + applied type.
-function TicketEditDialog({ ticket, types, groups, onClose, onSave }) {
+// Dialog for creating/editing a single event ticket's identity, applied type,
+// and the discount codes that may be redeemed against it.
+function TicketEditDialog({ ticket, types, groups, coupons, onClose, onSave }) {
   const [draft, setDraft] = useState(() => ({ ...ticket }));
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const type = draft.ticketTypeId
@@ -104,6 +106,7 @@ function TicketEditDialog({ ticket, types, groups, onClose, onSave }) {
       description: draft.description || "",
       ticketTypeId: draft.ticketTypeId || null,
       groupId: draft.groupId || null,
+      discountIds: (draft.discountIds || []).map(String),
     });
   };
 
@@ -203,8 +206,21 @@ function TicketEditDialog({ ticket, types, groups, onClose, onSave }) {
                 </SelectContent>
               </Select>
               <p className="mt-2 text-xs text-text-secondary">
-                {draft.ticketTypeId ? typeSummary(type) : "No rules applied"}
+                {draft.ticketTypeId ? typeSummary(type) : "No Rules Applied"}
               </p>
+            </div>
+          </Field>
+
+          <Field
+            label="Discount codes"
+            hint="Only the codes you tick work on this ticket — a code never spills onto a ticket it is not on."
+          >
+            <div className="py-1.5">
+              <DiscountCodePicker
+                coupons={orderedCoupons}
+                value={draft.discountIds || []}
+                onChange={(ids) => set({ discountIds: ids })}
+              />
             </div>
           </Field>
         </div>
@@ -310,47 +326,21 @@ function AttachInquiryCard({ event }) {
 // to the ticket's own group so reordering stays within the visible section.
 function TicketMenu({ pos, section, onEdit, onMoveUp, onMoveDown, onDelete }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Ticket actions"
-          className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40 border-border bg-surface-card shadow-xl">
-        <DropdownMenuItem
-          className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-          onClick={onEdit}
-        >
-          <Pencil className="h-4 w-4" /> Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-          disabled={pos === 0}
-          onClick={onMoveUp}
-        >
-          <ArrowUp className="h-4 w-4" /> Move up
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-          disabled={pos === section.length - 1}
-          onClick={onMoveDown}
-        >
-          <ArrowDown className="h-4 w-4" /> Move down
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="bg-surface-strong" />
-        <DropdownMenuItem
-          className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-          onClick={onDelete}
-        >
-          <Trash2 className="h-4 w-4 text-red-300" /> Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ActionMenu
+      label="Ticket actions"
+      items={[
+        { icon: Pencil, label: "Edit", onSelect: onEdit },
+        { icon: ArrowUp, label: "Move up", disabled: pos === 0, onSelect: onMoveUp },
+        {
+          icon: ArrowDown,
+          label: "Move down",
+          disabled: pos === section.length - 1,
+          onSelect: onMoveDown,
+        },
+        { separator: true },
+        { icon: Trash2, label: "Delete", variant: "destructive", onSelect: onDelete },
+      ]}
+    />
   );
 }
 
@@ -361,6 +351,7 @@ export function EventTicketsSection({ event, headerItem }) {
   const [groups, , saveGroups] = useEventConfig(event, "ticketGroups", []);
   const [types, setTypes] = useState([]);
   const [tiers, setTiers] = useState([]);
+  const [coupons, setCoupons] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
@@ -370,6 +361,10 @@ export function EventTicketsSection({ event, headerItem }) {
     });
     listRecords(projectId, "tier").then((rows) => {
       if (alive) setTiers(rows ?? []);
+    });
+    // Coupons are picked per ticket; only coupon-kind records are redeemable.
+    listRecords(projectId, "discount").then((rows) => {
+      if (alive) setCoupons((rows ?? []).filter((r) => r.kind === "coupon"));
     });
     return () => {
       alive = false;
@@ -383,6 +378,22 @@ export function EventTicketsSection({ event, headerItem }) {
     for (const t of types) m.set(t.id, t);
     return m;
   }, [types]);
+
+  // Coupons the organiser has switched on for this event (Tickets → Discounts
+  // tab) float to the top of each ticket's picker; the rest of the project's
+  // codes stay reachable below them.
+  const attachedDiscountKey = Array.isArray(event?.attached?.discount)
+    ? event.attached.discount.join(",")
+    : "";
+  const orderedCoupons = useMemo(() => {
+    const ids = attachedDiscountKey ? attachedDiscountKey.split(",") : [];
+    if (!ids.length) return coupons;
+    const rank = (c) => {
+      const i = ids.indexOf(String(c.id));
+      return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    return [...coupons].sort((a, b) => rank(a) - rank(b));
+  }, [coupons, attachedDiscountKey]);
 
   const editingTicket = editingId
     ? list.find((t) => t.id === editingId) || null
@@ -424,7 +435,16 @@ export function EventTicketsSection({ event, headerItem }) {
     const id = crypto.randomUUID();
     save([
       ...list,
-      { id, name: "General Admission", price: 0, qty: 0, description: "", ticketTypeId: null, groupId },
+      {
+        id,
+        name: "General Admission",
+        price: 0,
+        qty: 0,
+        description: "",
+        ticketTypeId: null,
+        groupId,
+        discountIds: [],
+      },
     ]);
     setEditingId(id);
   };
@@ -482,6 +502,13 @@ export function EventTicketsSection({ event, headerItem }) {
           description={t.description}
           typeName={type?.name || null}
           visibilityLabel={type ? visibilityLabel(type) : null}
+          codes={
+            <DiscountCodeChips
+              coupons={orderedCoupons}
+              value={t.discountIds}
+              className="text-[11px]"
+            />
+          }
           onEdit={() => setEditingId(t.id)}
           menu={
             <TicketMenu
@@ -659,6 +686,7 @@ export function EventTicketsSection({ event, headerItem }) {
           ticket={editingTicket}
           types={types}
           groups={orderedGroups}
+          coupons={orderedCoupons}
           onClose={() => setEditingId(null)}
           onSave={saveEdit}
         />

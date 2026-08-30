@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Accessibility,
-  ArrowLeft,
   Check,
   CheckCheck,
   ChevronRight,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
 import {
   EmptyState,
   Field,
@@ -21,8 +21,8 @@ import {
   SearchInput,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +30,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+} from "@geiger/ui/dialog";
+import { Badge } from "@geiger/ui/badge";
 import { listEvents } from "@/lib/supabase/events";
 import {
   listRegistrations,
@@ -272,49 +272,36 @@ export function ApprovalGatesScreen() {
 
     return (
       <MainScreenWrapper>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 w-fit gap-1.5 text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          onClick={() => {
-            setOpenEventId(null);
-            setDetailSearch("");
-            setDetailLimit(PAGE_CARDS);
+        <EditorHeader
+          back={{
+            label: "All Events",
+            onClick: () => {
+              setOpenEventId(null);
+              setDetailSearch("");
+              setDetailLimit(PAGE_CARDS);
+            },
           }}
-        >
-          <ArrowLeft className="h-4 w-4" /> All Events
-        </Button>
-
-        <div className="flex flex-col gap-3 border-b border-border pb-5 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                {openGroup.name}
-              </h1>
-              <PendingPill count={openGroup.list.length} />
-            </div>
-            {openGroup.date ? (
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                {formatDate(openGroup.date)}
-              </p>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Button
-              variant="outline"
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              onClick={() => setDeclineTarget({ group: openGroup.list })}
-            >
-              <X className="h-4 w-4" /> Decline all
-            </Button>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => setApproveTarget({ group: openGroup.list })}
-            >
-              <CheckCheck className="h-4 w-4" /> Approve all
-            </Button>
-          </div>
-        </div>
+          title={openGroup.name}
+          badges={<PendingPill count={openGroup.list.length} />}
+          meta={openGroup.date ? formatDate(openGroup.date) : null}
+          actions={
+            <>
+              <Button
+                variant="outline"
+                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                onClick={() => setDeclineTarget({ group: openGroup.list })}
+              >
+                <X className="h-4 w-4" /> Decline all
+              </Button>
+              <Button
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => setApproveTarget({ group: openGroup.list })}
+              >
+                <CheckCheck className="h-4 w-4" /> Approve all
+              </Button>
+            </>
+          }
+        />
 
         <Toolbar>
           <span className="text-sm text-text-tertiary">
@@ -444,37 +431,38 @@ export function ApprovalGatesScreen() {
           <div className="overflow-hidden rounded-xl border border-border bg-surface-subtle">
             <div className="divide-y divide-border">
               {listShown.map((g) => (
-                <button
+                <div
                   key={g.eventId}
-                  type="button"
-                  onClick={() => {
-                    setOpenEventId(g.eventId);
-                    setDetailSearch("");
-                    setDetailLimit(PAGE_CARDS);
-                  }}
-                  className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-surface-hover"
+                  className="flex w-full items-center gap-3 pr-5 transition-colors hover:bg-surface-hover"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-foreground">{g.name}</p>
-                    {g.date ? (
-                      <p className="truncate text-xs text-text-secondary">
-                        {formatDate(g.date)}
-                      </p>
-                    ) : null}
-                  </div>
-                  <PendingPill count={g.list.length} />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenEventId(g.eventId);
+                      setDetailSearch("");
+                      setDetailLimit(PAGE_CARDS);
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 text-left"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-foreground">{g.name}</p>
+                      {g.date ? (
+                        <p className="truncate text-xs text-text-secondary">
+                          {formatDate(g.date)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <PendingPill count={g.list.length} />
+                  </button>
                   <Button
                     size="sm"
                     className="hidden shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 sm:inline-flex"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setApproveTarget({ group: g.list });
-                    }}
+                    onClick={() => setApproveTarget({ group: g.list })}
                   >
                     <CheckCheck className="h-4 w-4" /> Approve all
                   </Button>
                   <ChevronRight className="h-4 w-4 shrink-0 text-text-tertiary" />
-                </button>
+                </div>
               ))}
             </div>
           </div>

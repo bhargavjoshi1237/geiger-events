@@ -18,6 +18,31 @@ export function resolveLayout(layout) {
   };
 }
 
+export const CTA_STYLES = [
+  { key: "solid", label: "Solid" },
+  { key: "outline", label: "Outline" },
+];
+
+export const DEFAULT_CTA = { label: "", url: "", style: "solid" };
+
+// The hero call-to-action sits under the Follow button. It only renders when it
+// has both a label and a destination, so a half-filled draft never ships.
+export function resolveCta(cta) {
+  const c = cta && typeof cta === "object" ? cta : {};
+  return {
+    label: (c.label || "").trim(),
+    url: (c.url || "").trim(),
+    style: c.style === "outline" ? "outline" : "solid",
+  };
+}
+
+export function ctaHref(cta) {
+  const url = resolveCta(cta).url;
+  if (!url) return "";
+  if (/^(https?:|mailto:|tel:|\/)/i.test(url)) return url;
+  return `https://${url}`;
+}
+
 export function cardPriceLabel(event) {
   const prices = Array.isArray(event?.tickets)
     ? event.tickets.map((t) => Number(t.price) || 0)

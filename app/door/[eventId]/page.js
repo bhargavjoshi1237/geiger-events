@@ -4,8 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { CheckCircle2, Loader2, Minus, Plus, Ticket } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
 import { getEvent } from "@/lib/supabase/events";

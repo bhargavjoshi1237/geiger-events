@@ -296,20 +296,9 @@ export const TEMPLATE_CATEGORY_MAP = {
   Social: { label: "Social", variant: "neutral" },
 };
 
-export const TEMPLATE_CATEGORY_OPTIONS = [
-  { value: "all", label: "All categories" },
-  ...Object.keys(TEMPLATE_CATEGORY_MAP).map((c) => ({ value: c, label: c })),
-];
-
-export const TEMPLATE_ICON_OPTIONS = [
-  { value: "Users", label: "Community" },
-  { value: "Music", label: "Music" },
-  { value: "GraduationCap", label: "Education" },
-  { value: "Video", label: "Online" },
-  { value: "Mic", label: "Speaker" },
-  { value: "PartyPopper", label: "Social" },
-  { value: "Sparkles", label: "General" },
-];
+// Categories and icons are free text: the screen derives its category list from
+// TEMPLATE_CATEGORY_MAP plus whatever templates already use, and `icon` is any
+// lucide name chosen with the shared IconPicker.
 
 export const EVENT_TEMPLATES = [
   {

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImagePlus, Loader2, Trash2, UploadCloud, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 import { getUser } from "@/lib/supabase/user";
 import {

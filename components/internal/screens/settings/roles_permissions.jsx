@@ -14,7 +14,6 @@ import {
   Search,
   Info,
   Loader2,
-  MoreHorizontal,
   SlidersHorizontal,
 } from "lucide-react";
 import { expandPatterns, matchesAny } from "@geiger/rbac";
@@ -29,11 +28,12 @@ import {
   Toolbar,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { Switch } from "@geiger/ui/switch";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Table,
   TableBody,
@@ -41,7 +41,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@geiger/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -49,28 +49,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@geiger/ui/sheet";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { cn } from "@/lib/utils";
 import { ALL_PERMISSION_KEYS } from "@/lib/rbac";
@@ -680,65 +673,37 @@ function RolesTab({
       render: (r) => {
         const owner = isOwnerRole(r);
         return (
-          <div onClick={(e) => e.stopPropagation()} className="flex justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Role actions"
-                  className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-48 border-border bg-surface-subtle shadow-xl"
-              >
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 focus:bg-surface-hover"
-                  onClick={() => onOpen(r)}
-                >
-                  <SlidersHorizontal className="h-4 w-4" /> Edit permissions
-                </DropdownMenuItem>
-                {canManage && !owner ? (
-                  <DropdownMenuItem
-                    className="cursor-pointer gap-2 focus:bg-surface-hover"
-                    onClick={() => onEdit(r)}
-                  >
-                    <Pencil className="h-4 w-4" /> Rename
-                  </DropdownMenuItem>
-                ) : null}
-                {canManage ? (
-                  <DropdownMenuItem
-                    className="cursor-pointer gap-2 focus:bg-surface-hover"
-                    onClick={() => onDuplicate(r)}
-                  >
-                    <Copy className="h-4 w-4" /> Duplicate
-                  </DropdownMenuItem>
-                ) : null}
-                {counts[r.id] ? (
-                  <DropdownMenuItem
-                    className="cursor-pointer gap-2 focus:bg-surface-hover"
-                    onClick={() => onViewMembers(r)}
-                  >
-                    <Users className="h-4 w-4" /> View in Team
-                  </DropdownMenuItem>
-                ) : null}
-                {canManage && !owner && !r.isSystem ? (
-                  <>
-                    <DropdownMenuSeparator className="bg-surface-strong" />
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-300"
-                      onClick={() => onDelete(r)}
-                    >
-                      <Trash2 className="h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  </>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex justify-end">
+            <ActionMenu
+              label="Role actions"
+              items={[
+                {
+                  icon: SlidersHorizontal,
+                  label: "Edit permissions",
+                  onSelect: () => onOpen(r),
+                },
+                canManage && !owner && {
+                  icon: Pencil,
+                  label: "Rename",
+                  onSelect: () => onEdit(r),
+                },
+                canManage && { icon: Copy, label: "Duplicate", onSelect: () => onDuplicate(r) },
+                counts[r.id] && {
+                  icon: Users,
+                  label: "View in Team",
+                  onSelect: () => onViewMembers(r),
+                },
+                { separator: true },
+                canManage &&
+                  !owner &&
+                  !r.isSystem && {
+                    icon: Trash2,
+                    label: "Delete",
+                    variant: "destructive",
+                    onSelect: () => onDelete(r),
+                  },
+              ]}
+            />
           </div>
         );
       },

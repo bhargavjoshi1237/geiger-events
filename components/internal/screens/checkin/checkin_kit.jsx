@@ -11,14 +11,14 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { getCheckinSettings, updateCheckinSettings } from "@/lib/supabase/checkin";
 import { withDefaults } from "./constants";

@@ -6,7 +6,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@geiger/ui/popover";
 
 export const SECTION_NOTE_TARGETS = {
   about: "About this event",

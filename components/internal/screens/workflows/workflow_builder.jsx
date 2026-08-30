@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   LayoutList,
   Loader2,
   Network,
@@ -15,14 +14,15 @@ import {
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
 import {
   EditorSectionHeader,
   Field,
-  StatusPill,
+  SegmentedTabs,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
 import {
   Select,
@@ -30,7 +30,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +38,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { cn } from "@/lib/utils";
 
 import { WORKFLOW_STATUS_MAP, TRIGGER_CATALOG, catalogEntry } from "./constants";
@@ -76,27 +76,13 @@ const SETTINGS_NAV = [
   },
 ];
 
+const VIEW_TABS = [
+  { value: "list", label: "List", icon: LayoutList },
+  { value: "canvas", label: "Canvas", icon: Network },
+];
+
 function ViewToggle({ view, onChange }) {
-  const item = (value, Icon, label) => (
-    <button
-      type="button"
-      onClick={() => onChange(value)}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-sm font-medium transition-colors",
-        view === value
-          ? "border-primary bg-primary/15 text-foreground"
-          : "border-transparent text-muted-foreground hover:text-foreground",
-      )}
-    >
-      <Icon className="h-4 w-4" /> {label}
-    </button>
-  );
-  return (
-    <div className="inline-flex h-9 items-center rounded-lg border border-border bg-surface-subtle p-1">
-      {item("list", LayoutList, "List")}
-      {item("canvas", Network, "Canvas")}
-    </div>
-  );
+  return <SegmentedTabs tabs={VIEW_TABS} value={view} onChange={onChange} />;
 }
 
 export function WorkflowBuilderScreen({
@@ -165,54 +151,43 @@ export function WorkflowBuilderScreen({
 
   return (
     <MainScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            All workflows
-          </button>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-              {form.name}
-            </h1>
-            <StatusPill status={form.status} map={WORKFLOW_STATUS_MAP} />
-          </div>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
-            When {catalogEntry(form.trigger)?.label || "—"} ·{" "}
-            {Math.max(0, (form.steps?.length || 1) - 1)} step
-            {Math.max(0, (form.steps?.length || 1) - 1) === 1 ? "" : "s"}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={toggleStatus}
-          >
-            {isActive ? (
-              <>
-                <Pause className="h-4 w-4" /> Pause
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4" /> Activate
-              </>
-            )}
-          </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={save}
-            disabled={saving}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </div>
+      <EditorHeader
+        back={{ label: "All workflows", onClick: onBack }}
+        title={form.name}
+        status={form.status}
+        statusMap={WORKFLOW_STATUS_MAP}
+        meta={`When ${catalogEntry(form.trigger)?.label || "—"} · ${Math.max(
+          0,
+          (form.steps?.length || 1) - 1,
+        )} step${Math.max(0, (form.steps?.length || 1) - 1) === 1 ? "" : "s"}`}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={toggleStatus}
+            >
+              {isActive ? (
+                <>
+                  <Pause className="h-4 w-4" /> Pause
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" /> Activate
+                </>
+              )}
+            </Button>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={save}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </>
+        }
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <div className="flex items-center justify-between gap-3">

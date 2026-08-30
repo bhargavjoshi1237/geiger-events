@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ChevronRight, Loader2, Lock } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 
 import { TicketAddonsStep } from "../../ticket_addons_step";
 import { AddonsTotals } from "./order_totals";

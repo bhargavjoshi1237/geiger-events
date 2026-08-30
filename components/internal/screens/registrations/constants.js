@@ -127,6 +127,19 @@ export function formatDate(iso) {
   return `${months[m - 1]} ${d}, ${y}`;
 }
 
+// "2026-06-18" -> { month: "Jun", day: 18, year: 2026 } for stacked date blocks.
+// Null when there's no usable date, so callers can fall back to an icon.
+export function dateParts(iso) {
+  if (!iso) return null;
+  const [y, m, d] = String(iso).split("T")[0].split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  return { month: months[m - 1], day: d, year: y };
+}
+
 // A relative-ish timestamp for list rows ("Jun 18, 2026") from an ISO datetime.
 export function formatDateTime(iso) {
   if (!iso) return "—";

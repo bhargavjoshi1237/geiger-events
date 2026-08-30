@@ -9,7 +9,7 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { useProject } from "@/context/project-context";
 import { listRegistrations } from "@/lib/supabase/registrations";
 import { downloadCsv } from "@/components/internal/screens/registrations/csv";

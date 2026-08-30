@@ -15,7 +15,7 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { useProject } from "@/context/project-context";
 import { listAttendeeRows } from "@/lib/supabase/attendees";
 import { downloadCsv } from "@/components/internal/screens/registrations/csv";

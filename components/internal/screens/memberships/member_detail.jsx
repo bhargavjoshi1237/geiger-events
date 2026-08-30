@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   BadgeCheck,
   CircleUser,
   Gift,
@@ -11,17 +10,17 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorShell } from "@/components/internal/shared/editor_shell";
 import { Field, StatusPill } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -29,9 +28,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
-import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+} from "@geiger/ui/dialog";
 import {
   ENTITLEMENT_ITEMS,
   durationLabel,
@@ -206,7 +203,6 @@ const SECTIONS = [
 ];
 
 export function MemberDetail({ member, plans, onBack, onSave, onDelete }) {
-  const { section, setSection } = useWorkspaceUrl();
   const [draft, setDraft] = useState(member);
   const [saving, setSaving] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
@@ -238,32 +234,17 @@ export function MemberDetail({ member, plans, onBack, onSave, onDelete }) {
     setSaving(false);
   };
 
-  const activeItem = SECTIONS.find((s) => s.key === section) || SECTIONS[0];
-  const Body = activeItem.render;
-
   return (
-    <MainScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Members
-          </button>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-              {draft.name || draft.email || "Member"}
-            </h1>
-            <StatusPill status={draft.status} map={MEMBER_STATUS_MAP} />
-          </div>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
-            {[draft.email, `since ${formatDate(draft.startedAt)}`].filter(Boolean).join(" · ")}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
+    <EditorShell
+      back={{ label: "Members", onClick: onBack }}
+      title={draft.name || draft.email || "Member"}
+      status={draft.status}
+      statusMap={MEMBER_STATUS_MAP}
+      meta={[draft.email, `since ${formatDate(draft.startedAt)}`]
+        .filter(Boolean)
+        .join(" · ")}
+      actions={
+        <>
           <Button
             variant="outline"
             className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
@@ -279,78 +260,45 @@ export function MemberDetail({ member, plans, onBack, onSave, onDelete }) {
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {saving ? "Saving…" : "Save changes"}
           </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px]">
-        <div className="order-2 min-w-0 lg:order-1">
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-foreground">{activeItem.label}</h2>
-            <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
-          </div>
-          <Body draft={draft} set={set} plans={plans} />
-        </div>
-
-        <aside className="order-1 lg:order-2">
-          <nav className="space-y-0.5 lg:sticky lg:top-0">
-            {SECTIONS.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.key === activeItem.key;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setSection(item.key)}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                    isActive
-                      ? "bg-surface-card font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 shrink-0",
-                      isActive ? "text-foreground" : "text-text-secondary",
-                    )}
-                  />
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
-      </div>
-
-      <Dialog open={removeOpen} onOpenChange={setRemoveOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Remove member</DialogTitle>
-            <DialogDescription>
-              Remove{" "}
-              <span className="font-medium text-foreground">
-                {member.name || member.email || "this member"}
-              </span>{" "}
-              from your members list? This can&apos;t be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setRemoveOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
-              onClick={() => {
-                setRemoveOpen(false);
-                onDelete(member);
-              }}
-            >
-              <Trash2 className="h-4 w-4" /> Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </MainScreenWrapper>
+        </>
+      }
+      nav={SECTIONS}
+      after={
+        <Dialog open={removeOpen} onOpenChange={setRemoveOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Remove member</DialogTitle>
+              <DialogDescription>
+                Remove{" "}
+                <span className="font-medium text-foreground">
+                  {member.name || member.email || "this member"}
+                </span>{" "}
+                from your members list? This can&apos;t be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setRemoveOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-red-500/90 text-white hover:bg-red-500"
+                onClick={() => {
+                  setRemoveOpen(false);
+                  onDelete(member);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Remove
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      }
+    >
+      {({ activeItem }) => {
+        const Body = activeItem.render;
+        return <Body draft={draft} set={set} plans={plans} />;
+      }}
+    </EditorShell>
   );
 }
 

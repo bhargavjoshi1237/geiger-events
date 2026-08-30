@@ -28,14 +28,14 @@ import {
   Unlock,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import { stockSize } from "@/lib/passes/stock";
 import { hasBackContent } from "@/lib/passes/layout";
 import { cn } from "@/lib/utils";

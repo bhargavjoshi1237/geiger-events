@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   AlignLeft,
-  ArrowLeft,
   CalendarClock,
   CalendarDays,
   CalendarRange,
@@ -14,7 +13,6 @@ import {
   Loader2,
   MapPin,
   Mic,
-  MoreHorizontal,
   Pencil,
   Plus,
   Timer,
@@ -23,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
 import {
   EmptyState,
   Field,
@@ -31,8 +30,10 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
+  SegmentedTabs,
 } from "@/components/internal/shared/screen_kit";
 import {
+  ActionMenu,
   Button,
   Dialog,
   DialogContent,
@@ -40,12 +41,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Input,
   Textarea,
   Select,
   SelectContent,
@@ -58,6 +53,9 @@ import {
   cn,
 } from "@geiger/ui";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { IconInput } from "@/components/internal/shared/icon_input";
+import { EventTimeField } from "@/components/internal/screens/events/date_time_fields";
+import { formatScheduleTime } from "@/lib/events/schedule_items";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listEvents } from "@/lib/supabase/events";
@@ -69,6 +67,11 @@ import { SESSION_STATUS_MAP } from "./constants";
 import { AgendaGrid, trackStyle } from "./agenda_grid";
 
 const STATUS_VALUES = Object.keys(SESSION_STATUS_MAP);
+
+const VIEW_TABS = [
+  { value: "grid", label: "Grid", icon: CalendarRange },
+  { value: "list", label: "List", icon: LayoutList },
+];
 
 const EVENT_STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All Statuses" },
@@ -94,16 +97,7 @@ const SESSION_STATUS_FILTER_OPTIONS = [
   ...STATUS_VALUES.map((s) => ({ value: s, label: s })),
 ];
 
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor(i / 2);
-  const min = i % 2 === 0 ? "00" : "30";
-  const value = `${String(h).padStart(2, "0")}:${min}`;
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  const label = `${hour12}:${min} ${h < 12 ? "AM" : "PM"}`;
-  return { value, label };
-});
-
-const timeLabel = (v) => TIME_OPTIONS.find((t) => t.value === v)?.label || v;
+const timeLabel = (v) => formatScheduleTime(v);
 
 const EMPTY_SESSION = {
   name: "",
@@ -116,15 +110,6 @@ const EMPTY_SESSION = {
   speaker: "",
   description: "",
 };
-
-function IconInput({ icon: Icon, className, ...props }) {
-  return (
-    <div className="relative">
-      <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-      <Input className={cn("pl-9", className)} {...props} />
-    </div>
-  );
-}
 
 function GroupLabel({ children }) {
   return (
@@ -232,34 +217,13 @@ function SessionDialog({ open, onOpenChange, initial, isEdit, onSave }) {
               </Field>
               <div className="flex gap-4">
                 <Field label="Start time" className="flex-1">
-                  <Select value={draft.startTime} onValueChange={set("startTime")}>
-                    <SelectTrigger className="w-full">
-                      <Clock className="mr-2 size-4 text-muted-foreground" />
-                      <SelectValue placeholder="Start" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64">
-                      {TIME_OPTIONS.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <EventTimeField
+                    value={draft.startTime}
+                    onChange={set("startTime")}
+                  />
                 </Field>
                 <Field label="End time" className="flex-1">
-                  <Select value={draft.endTime} onValueChange={set("endTime")}>
-                    <SelectTrigger className="w-full">
-                      <Clock className="mr-2 size-4 text-muted-foreground" />
-                      <SelectValue placeholder="End" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64">
-                      {TIME_OPTIONS.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <EventTimeField value={draft.endTime} onChange={set("endTime")} />
                 </Field>
               </div>
             </div>
@@ -428,32 +392,23 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
 
   return (
     <MainScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
+      <EditorHeader
+        back={{ label: "Agenda Builder", onClick: onBack }}
+        title={event.name}
+        meta={
+          [event.date ? formatDate(event.date) : null, event.venue, event.city]
+            .filter(Boolean)
+            .join(" · ") || "Build the running order for this event."
+        }
+        actions={
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => setAddOpen(true)}
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Agenda Builder
-          </button>
-          <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-            {event.name}
-          </h1>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
-            {[event.date ? formatDate(event.date) : null, event.venue, event.city]
-              .filter(Boolean)
-              .join(" · ") || "Build the running order for this event."}
-          </p>
-        </div>
-        <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => setAddOpen(true)}
-        >
-          <Plus className="h-4 w-4" /> Add session
-        </Button>
-      </div>
+            <Plus className="h-4 w-4" /> Add session
+          </Button>
+        }
+      />
 
       <StatsBar stats={stats} />
 
@@ -477,26 +432,7 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
             <span className="text-xs text-text-tertiary">
               {visible.length} of {sessions.length} session{sessions.length === 1 ? "" : "s"}
             </span>
-            <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
-              {[
-                { value: "grid", icon: CalendarRange, label: "Grid" },
-                { value: "list", icon: LayoutList, label: "List" },
-              ].map(({ value, icon: Icon, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setView(value)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium transition-colors",
-                    view === value
-                      ? "border-primary bg-primary/15 text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4" /> {label}
-                </button>
-              ))}
-            </div>
+            <SegmentedTabs tabs={VIEW_TABS} value={view} onChange={setView} />
           </div>
         </Toolbar>
       ) : null}
@@ -609,37 +545,23 @@ function AgendaBuilder({ event, sessions, onBack, onCreate, onUpdate, onDelete }
                         </p>
                       ) : null}
                     </div>
-                    <div onClick={(ev) => ev.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-40 border-border bg-surface-card shadow-xl"
-                        >
-                          <DropdownMenuItem
-                            className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                            onClick={() => setEditing({ id: s.id, session: sessionToDraft(s) })}
-                          >
-                            <Pencil className="h-4 w-4" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-surface-strong" />
-                          <DropdownMenuItem
-                            className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                            onClick={() => setDeleteTarget(s)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-300" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    <ActionMenu
+                      label={`Actions for ${s.title || "session"}`}
+                      items={[
+                        {
+                          icon: Pencil,
+                          label: "Edit",
+                          onSelect: () => setEditing({ id: s.id, session: sessionToDraft(s) }),
+                        },
+                        { separator: true },
+                        {
+                          icon: Trash2,
+                          label: "Delete",
+                          variant: "destructive",
+                          onSelect: () => setDeleteTarget(s),
+                        },
+                      ]}
+                    />
                   </div>
                 ))}
               </div>

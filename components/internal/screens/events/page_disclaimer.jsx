@@ -9,8 +9,8 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Textarea } from "@geiger/ui/textarea";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { DisclaimerPlacementPicker } from "./disclaimer_placement";
 import {

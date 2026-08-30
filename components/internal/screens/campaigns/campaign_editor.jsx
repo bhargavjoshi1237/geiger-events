@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   CalendarClock,
   Loader2,
   Send,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { SecondaryScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
 import {
   Field,
   InlineTitleInput,
@@ -20,17 +20,17 @@ import {
   SettingRow,
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import {
   AB_METRIC_OPTIONS,
@@ -187,25 +187,19 @@ export function CampaignEditor({
 
   return (
     <SecondaryScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back
-          </button>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <InlineTitleInput
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              aria-label="Campaign name"
-              placeholder="Untitled campaign"
-              className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
-            />
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+      <EditorHeader
+        back={{ label: "Back", onClick: onBack }}
+        title={
+          <InlineTitleInput
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-label="Campaign name"
+            placeholder="Untitled campaign"
+            className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
+          />
+        }
+        badges={
+          <>
             <StatusPill status={status} map={CAMPAIGN_STATUS_MAP} />
             <Badge variant={channelMeta.variant}>
               <channelMeta.icon className="h-3 w-3" /> {channelMeta.label}
@@ -218,10 +212,10 @@ export function CampaignEditor({
                 Sent {formatDateTime(campaign.sentAt)}
               </span>
             ) : null}
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">{primaryAction()}</div>
-      </div>
+          </>
+        }
+        actions={primaryAction()}
+      />
 
       <div className="mt-6 space-y-6">
         <SectionCard

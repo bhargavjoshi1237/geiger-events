@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   BASE_BREAKPOINT,
   BREAKPOINTS,

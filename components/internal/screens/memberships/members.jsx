@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   Users,
   Loader2,
-  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
@@ -20,8 +19,9 @@ import {
   EmptyState,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -29,21 +29,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { newId } from "@/components/internal/screens/events/sample_data";
@@ -284,7 +277,7 @@ export function MembersScreen() {
         <SearchInput
           value={search}
           onChange={setSearch}
-          placeholder="Search members…"
+          placeholder="Search members…"
         />
       </Toolbar>
 
@@ -321,47 +314,25 @@ export function MembersScreen() {
                   {formatDate(m.startedAt)}
                 </p>
               </div>
-              <div onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-44 border-border bg-surface-subtle"
-                  >
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                      onClick={() => openRecord(m.id)}
-                    >
-                      <Pencil className="h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-border" />
-                    {STATUSES.filter((s) => s !== m.status).map((s) => (
-                      <DropdownMenuItem
-                        key={s}
-                        className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                        onClick={() => setStatus(m, s)}
-                      >
-                        Mark {s.toLowerCase()}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator className="bg-border" />
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                      onClick={() => setRemoveTarget(m)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-300" /> Remove
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <ActionMenu
+                label="Member actions"
+                items={[
+                  { icon: Pencil, label: "Edit", onSelect: () => openRecord(m.id) },
+                  { separator: true },
+                  ...STATUSES.filter((s) => s !== m.status).map((s) => ({
+                    key: s,
+                    label: `Mark ${s.toLowerCase()}`,
+                    onSelect: () => setStatus(m, s),
+                  })),
+                  { separator: true },
+                  {
+                    icon: Trash2,
+                    label: "Remove",
+                    variant: "destructive",
+                    onSelect: () => setRemoveTarget(m),
+                  },
+                ]}
+              />
             </div>
           ))}
         </div>

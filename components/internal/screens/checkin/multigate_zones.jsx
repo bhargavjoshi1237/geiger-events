@@ -4,8 +4,8 @@ import React, { useState } from "react";
 import { Map, Plus, X } from "lucide-react";
 
 import { SectionCard } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import { newId } from "@/components/internal/screens/events/sample_data";
 import { CheckinSettingsScreen } from "./checkin_kit";
 

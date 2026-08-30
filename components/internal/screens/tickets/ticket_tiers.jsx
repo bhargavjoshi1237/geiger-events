@@ -1,18 +1,17 @@
 "use client";
 
 import React from "react";
-import { Layers } from "lucide-react";
+import { AlignLeft, Layers } from "lucide-react";
 
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 
 import { RecordsScreen } from "./records_kit";
@@ -34,12 +33,17 @@ function summarize(r) {
   return [`Rank ${c.rank ?? 1}`, desc || "no description"].join(" · ");
 }
 
-function TierEditForm({ config, setConfig }) {
+// --- Edit sections ----------------------------------------------------------
+// records_kit renders each as an element, never calls it. The shell draws the
+// section heading from `label` + `desc`, so a section only groups its own fields.
+
+function TierSection({ config, setConfig }) {
   const set = (patch) => setConfig({ ...config, ...patch });
+
   return (
     <SectionCard
-      title="Tier"
-      description="A level events group their tickets into — General, VIP, Platinum."
+      title="Ordering & Accent"
+      description="Where this tier sits in the list, and the colour that marks it."
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <Num
@@ -48,6 +52,7 @@ function TierEditForm({ config, setConfig }) {
           value={config.rank ?? 1}
           onChange={(v) => set({ rank: v })}
           min={1}
+          fullWidth
         />
         <Field label="Accent">
           <Select
@@ -72,26 +77,53 @@ function TierEditForm({ config, setConfig }) {
           </Select>
         </Field>
       </div>
-      <div className="mt-4">
-        <Field
-          label="Description"
-          hint="What this tier includes — shown beside its tickets."
-        >
-          <Textarea
-            rows={2}
-            value={config.description || ""}
-            onChange={(e) => set({ description: e.target.value })}
-            placeholder="e.g. Front-row seating and early entry."
-          />
-        </Field>
-      </div>
-      <div className="mt-4 flex items-center gap-2 text-xs text-text-secondary">
-        <span className={cn("h-2.5 w-2.5 rounded-full", colorDot(config.color))} />
-        Preview accent
+      {/* The swatch tracks the accent picker, so it grows inside this card. */}
+      <div className="mt-4 flex items-center gap-2 border-t border-border pt-4 text-xs text-text-secondary">
+        <span
+          className={cn("h-2.5 w-2.5 rounded-full", colorDot(config.color))}
+        />
+        Preview Accent
       </div>
     </SectionCard>
   );
 }
+
+function DetailsSection({ config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+
+  return (
+    <SectionCard title="What Buyers See">
+      <Field
+        label="Description"
+        hint="Shown beside this tier's tickets on the event page."
+      >
+        <Textarea
+          rows={2}
+          value={config.description || ""}
+          onChange={(e) => set({ description: e.target.value })}
+          placeholder="e.g. Front-row seating and early entry."
+        />
+      </Field>
+    </SectionCard>
+  );
+}
+
+const SECTIONS = [
+  {
+    key: "tier",
+    label: "Tier",
+    icon: Layers,
+    desc: "A reusable level events group their tickets into — General, VIP, Platinum.",
+    render: TierSection,
+  },
+  {
+    key: "details",
+    label: "Details",
+    icon: AlignLeft,
+    desc: "What this tier includes and where buyers read it.",
+    render: DetailsSection,
+  },
+];
 
 export function TicketTiersScreen() {
   return (
@@ -103,7 +135,7 @@ export function TicketTiersScreen() {
       icon={Layers}
       kinds={KINDS}
       summarize={summarize}
-      EditForm={TierEditForm}
+      sections={SECTIONS}
     />
   );
 }

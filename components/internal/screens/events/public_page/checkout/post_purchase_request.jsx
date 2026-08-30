@@ -4,8 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Textarea } from "@geiger/ui/textarea";
 import { submitDietaryRequest } from "@/lib/supabase/dietary";
 
 export function PostPurchaseRequest({ event, name, email, prompt, accentStyle, live }) {

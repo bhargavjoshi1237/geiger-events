@@ -10,12 +10,12 @@ import {
   SidebarMenu,
   SidebarRail,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@geiger/ui/sidebar";
 import { PanelLeft } from "lucide-react";
 import { SidebarOption } from "../sidebar_option";
 import { MobileSidebarHeader } from "./mobile_sidebar_header";
 import { projectNav, settingsNav } from "./sidebar_data";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 
 export function ProjectSidebar({ activeTab = "Overview", onTabChange = () => {} }) {
   const { toggleSidebar, state } = useSidebar();

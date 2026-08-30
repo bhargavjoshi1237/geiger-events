@@ -2,7 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, MoreHorizontal, StickyNote, Trash2, User2 } from "lucide-react";
+import {
+  Loader2,
+  StickyNote,
+  Trash2,
+  User2,
+} from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -18,8 +23,9 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
+} from "@geiger/ui/sheet";
+import { Button } from "@geiger/ui/button";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -27,13 +33,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { listAllNotes, listContacts, updateContact } from "@/lib/supabase/contacts";
@@ -249,29 +249,17 @@ export function NotesScreen() {
                 <span className="text-xs text-text-tertiary">
                   {formatDate(p.latestAt)}
                 </span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Note actions"
-                      className="h-8 w-8 shrink-0 text-text-secondary hover:text-foreground"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="border-border bg-surface-subtle text-foreground"
-                  >
-                    <DropdownMenuItem
-                      className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                      onClick={() => setDeleteAllTarget(p)}
-                    >
-                      <Trash2 className="h-4 w-4" /> Delete all notes
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <ActionMenu
+                  label="Note actions"
+                  items={[
+                    {
+                      icon: Trash2,
+                      label: "Delete all notes",
+                      variant: "destructive",
+                      onSelect: () => setDeleteAllTarget(p),
+                    },
+                  ]}
+                />
               </div>
             </div>
           ))}

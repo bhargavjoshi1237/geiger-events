@@ -29,10 +29,10 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { Switch } from "@geiger/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -40,14 +40,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,7 +55,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import { ChatThread } from "@/components/chat/chat_kit";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
@@ -846,7 +846,8 @@ export function QaThreadsScreen() {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-400"
+                      variant="destructive"
+                      className="cursor-pointer gap-2"
                       onClick={() => setDeleteOpen(true)}
                     >
                       <Trash2 className="h-4 w-4" /> Delete thread

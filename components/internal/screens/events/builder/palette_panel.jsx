@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search, Rows3 } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import { COLUMN_PRESETS } from "@/lib/events/page_tree";
 import { cn } from "@/lib/utils";
 import {

@@ -5,7 +5,7 @@ import { BadgeCheck, Check, CalendarClock, Loader2, Sparkles } from "lucide-reac
 
 import { EmptyState, StatusPill, ScreenHeader } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { Card, money, fmtDate, useCountdown, SectionTitle } from "./portal_kit";
 
 const MEMBER_STATUS = {

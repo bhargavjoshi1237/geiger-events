@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner";
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowUp,
   Copy,
   Download,
@@ -18,7 +17,8 @@ import {
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { Field, StatusPill } from "@/components/internal/shared/screen_kit";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
+import { Field, SegmentedTabs } from "@/components/internal/shared/screen_kit";
 import {
   Button,
   DropdownMenu,
@@ -54,27 +54,13 @@ const newSlideId = () => `slide_${crypto.randomUUID()}`;
 const SAVE_DEBOUNCE_MS = 700;
 
 // Header view toggle (List <=> Canvas), matching the workflow builder's.
+const VIEW_TABS = [
+  { value: "canvas", label: "Canvas", icon: Network },
+  { value: "list", label: "List", icon: LayoutList },
+];
+
 function ViewToggle({ view, onChange }) {
-  const item = (value, Icon, label) => (
-    <button
-      type="button"
-      onClick={() => onChange(value)}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors",
-        view === value
-          ? "bg-surface-hover text-foreground"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      <Icon className="h-4 w-4" /> {label}
-    </button>
-  );
-  return (
-    <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
-      {item("canvas", Network, "Canvas")}
-      {item("list", LayoutList, "List")}
-    </div>
-  );
+  return <SegmentedTabs tabs={VIEW_TABS} value={view} onChange={onChange} />;
 }
 
 // Ordered slide list — the same queue as the canvas, for boards long enough that
@@ -196,31 +182,60 @@ export function BoardBuilder({ board, event, sessions, onBack, onPersist, onDele
   // `configRef` tracks the latest value for callbacks that need to read it
   // without re-binding — every mutation funnels through commit(), so the ref is
   // only ever written from an event handler, never during render.
+  //
+  // `saveTimer` is nulled the moment a save fires or is cancelled: it doubles as
+  // the "a write is still owed" flag the flushes below read, and a stale id
+  // there would make every re-render flush again.
   const saveTimer = useRef(null);
   const configRef = useRef(config);
-  const commit = useCallback(
-    (next) => {
-      configRef.current = next;
-      setConfig(next);
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        onPersist(next);
-      }, SAVE_DEBOUNCE_MS);
-    },
-    [onPersist],
-  );
+  // The parent rebuilds onPersist every render; holding it in a ref keeps commit()
+  // and the flushes stable so they don't re-fire on unrelated re-renders.
+  const onPersistRef = useRef(onPersist);
+  useEffect(() => {
+    onPersistRef.current = onPersist;
+  }, [onPersist]);
+
+  const flush = useCallback(() => {
+    if (!saveTimer.current) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    onPersistRef.current(configRef.current);
+  }, []);
+
+  // `immediate` is for discrete actions (publishing) where the user is told the
+  // change took effect and may leave the screen before a debounce would fire.
+  const commit = useCallback((next, { immediate = false } = {}) => {
+    configRef.current = next;
+    setConfig(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (immediate) {
+      saveTimer.current = null;
+      onPersistRef.current(next);
+      return;
+    }
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null;
+      onPersistRef.current(next);
+    }, SAVE_DEBOUNCE_MS);
+  }, []);
 
   // Flush a pending save when the builder unmounts, so leaving the screen never
   // drops the last edit.
-  useEffect(
-    () => () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        onPersist(configRef.current);
-      }
-    },
-    [onPersist],
-  );
+  useEffect(() => flush, [flush]);
+
+  // Unmount cleanup never runs on a tab close or hard navigation, so flush on
+  // the way out too — a debounced edit would otherwise be lost silently.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [flush]);
 
   const setSlides = useCallback(
     (nextSlides, nextGraph) =>
@@ -276,7 +291,7 @@ export function BoardBuilder({ board, event, sessions, onBack, onPersist, onDele
   };
 
   const togglePublished = (value) => {
-    commit({ ...configRef.current, published: value });
+    commit({ ...configRef.current, published: value }, { immediate: true });
     toast.success(value ? "Board published." : "Board unpublished.");
   };
 
@@ -322,66 +337,52 @@ export function BoardBuilder({ board, event, sessions, onBack, onPersist, onDele
 
   return (
     <MainScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Display Boards
-          </button>
-          <div className="flex items-center gap-3">
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-              {board.name}
-            </h1>
-            <StatusPill
-              status={published ? "Published" : "Draft"}
-              map={BOARD_STATUS_MAP}
-            />
-          </div>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
-            {event?.name || "No event"} · {slides.length} slide
-            {slides.length === 1 ? "" : "s"} ·{" "}
-            {loopSeconds ? `${loopSeconds}s loop` : "empty loop"}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={copyLiveUrl}
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          >
-            <Copy className="h-4 w-4" /> Copy live URL
-          </Button>
-          <Button
-            variant="outline"
-            disabled={exporting}
-            onClick={runExport}
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          >
-            {exporting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            {exporting ? `Recording ${Math.round(progress * 100)}%` : "Download video"}
-          </Button>
-          {published ? (
+      <EditorHeader
+        back={{ label: "Display Boards", onClick: onBack }}
+        title={board.name}
+        status={published ? "Published" : "Draft"}
+        statusMap={BOARD_STATUS_MAP}
+        meta={`${event?.name || "No event"} · ${slides.length} slide${
+          slides.length === 1 ? "" : "s"
+        } · ${loopSeconds ? `${loopSeconds}s loop` : "empty loop"}`}
+        actions={
+          <>
             <Button
               variant="outline"
-              asChild
+              onClick={copyLiveUrl}
               className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             >
-              <a href={liveUrl} target="_blank" rel="noreferrer">
-                <ExternalLink className="h-4 w-4" /> Open board
-              </a>
+              <Copy className="h-4 w-4" /> Copy live URL
             </Button>
-          ) : null}
-        </div>
-      </div>
+            <Button
+              variant="outline"
+              disabled={exporting}
+              onClick={runExport}
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              {exporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {exporting
+                ? `Recording ${Math.round(progress * 100)}%`
+                : "Download video"}
+            </Button>
+            {published ? (
+              <Button
+                variant="outline"
+                asChild
+                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              >
+                <a href={liveUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-4 w-4" /> Open board
+                </a>
+              </Button>
+            ) : null}
+          </>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-6">
@@ -476,11 +477,11 @@ export function BoardBuilder({ board, event, sessions, onBack, onPersist, onDele
             </Field>
 
             <Button
-              variant="ghost"
+              variant="destructive"
               onClick={() => onDelete(board)}
-              className="w-full justify-start text-red-300 hover:bg-red-500/10 hover:text-red-300"
+              className="w-full justify-start"
             >
-              <Trash2 className="h-4 w-4" /> Delete this board
+              <Trash2 className="h-4 w-4" /> Delete This Board
             </Button>
           </div>
 

@@ -6,7 +6,6 @@ import {
   Plus,
   Layers,
   Loader2,
-  MoreHorizontal,
   Settings2,
   Trash2,
 } from "lucide-react";
@@ -22,10 +21,11 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -33,21 +33,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   EVENTS,
@@ -461,39 +454,19 @@ export function EventSeriesScreen() {
       align: "right",
       className: "text-right",
       render: (s) => (
-        <div onClick={(ev) => ev.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                aria-label={`Actions for ${s.name}`}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="border-border bg-surface-subtle text-foreground"
-            >
-              <DropdownMenuItem
-                className="focus:bg-surface-hover"
-                onClick={() => setSelectedId(s.id)}
-              >
-                <Settings2 className="h-4 w-4" /> Manage
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-hover" />
-              <DropdownMenuItem
-                variant="destructive"
-                className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                onClick={() => setDeleteTarget(s)}
-              >
-                <Trash2 className="h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label={`Actions for ${s.name}`}
+          items={[
+            { icon: Settings2, label: "Manage", onSelect: () => setSelectedId(s.id) },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(s),
+            },
+          ]}
+        />
       ),
     },
   ];

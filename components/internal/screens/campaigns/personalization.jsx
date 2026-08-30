@@ -10,14 +10,14 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { CampaignSettingsScreen } from "./campaigns_kit";
 import { MERGE_TAGS, TONE_OPTIONS } from "./constants";
 

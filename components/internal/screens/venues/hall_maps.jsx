@@ -2,7 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, MoreHorizontal, Plus, Store } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Store,
+} from "lucide-react";
 
 import {
   EmptyState,
@@ -11,6 +15,7 @@ import {
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
 import {
+  ActionMenu,
   Button,
   Dialog,
   DialogContent,
@@ -18,11 +23,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Input,
   Select,
   SelectContent,
@@ -264,37 +264,23 @@ export function HallMapsSection({ venue }) {
                 </span>
               </button>
               <StatusPill status={map.status} map={HALL_STATUS_MAP} />
-              <div onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                      aria-label={`Actions for ${map.name}`}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="border-border bg-surface-subtle">
-                    <DropdownMenuItem onClick={() => setOpenId(map.id)}>
-                      Open editor
-                    </DropdownMenuItem>
-                    {STATUS_OPTIONS.filter((s) => s !== map.status).map((s) => (
-                      <DropdownMenuItem key={s} onClick={() => handleStatus(map, s)}>
-                        Mark {s.toLowerCase()}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                      onClick={() => handleDelete(map)}
-                    >
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <ActionMenu
+                label={`Actions for ${map.name}`}
+                items={[
+                  { label: "Open editor", onSelect: () => setOpenId(map.id) },
+                  ...STATUS_OPTIONS.filter((s) => s !== map.status).map((s) => ({
+                    key: s,
+                    label: `Mark ${s.toLowerCase()}`,
+                    onSelect: () => handleStatus(map, s),
+                  })),
+                  { separator: true },
+                  {
+                    label: "Delete",
+                    variant: "destructive",
+                    onSelect: () => handleDelete(map),
+                  },
+                ]}
+              />
             </li>
           ))}
         </ul>

@@ -14,15 +14,15 @@ import {
   Users,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { getVenue } from "@/lib/supabase/venues";
 import {
   AMENITY_LABEL,

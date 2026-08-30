@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@geiger/ui/sidebar";
 import { portalFetch } from "@/lib/portal/portal_fetch";
 import PortalTopbar from "./portal_topbar";
 import PortalSidebar from "./portal_sidebar";

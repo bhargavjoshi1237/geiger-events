@@ -2,8 +2,8 @@
 
 import { CheckCircle2, ChevronRight, Loader2, Lock } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 
 import { SlotPicker } from "../../ticket_addons_step";
 import { QtyStepper } from "./qty_stepper";

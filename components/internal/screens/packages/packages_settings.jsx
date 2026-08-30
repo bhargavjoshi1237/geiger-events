@@ -11,7 +11,7 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@geiger/ui/switch";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 import { useAddons } from "@/context/addons-context";
 import { PACKAGES_ADDON_ID } from "@/lib/events/packages";

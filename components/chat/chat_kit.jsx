@@ -9,7 +9,6 @@ import {
   Lightbulb,
   Flame,
   Loader2,
-  MoreHorizontal,
   Send,
   SmilePlus,
   Trash2,
@@ -21,23 +20,18 @@ import {
   CheckSquare,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@geiger/ui/button";
+import { Textarea } from "@geiger/ui/textarea";
+import { Input } from "@geiger/ui/input";
+import { Switch } from "@geiger/ui/switch";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import { pollVoterCount } from "@/lib/chat/poll";
 import { cn } from "@/lib/utils";
 
@@ -427,25 +421,20 @@ function MessageRow({ msg, meKey, showAuthor, onReact, onDelete, onVote }) {
                 </>
               ) : null}
               {onDelete ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Message actions"
-                      className="flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-surface-hover hover:text-foreground"
-                    >
-                      <MoreHorizontal className="h-3.5 w-3.5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align={mine ? "end" : "start"} className="w-36">
-                    <DropdownMenuItem
-                      className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                      onClick={() => onDelete(msg)}
-                    >
-                      <Trash2 className="h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <ActionMenu
+                  label="Message actions"
+                  align={mine ? "end" : "start"}
+                  triggerClassName="size-6 rounded-full"
+                  contentClassName="w-36"
+                  items={[
+                    {
+                      icon: Trash2,
+                      label: "Delete",
+                      variant: "destructive",
+                      onSelect: () => onDelete(msg),
+                    },
+                  ]}
+                />
               ) : null}
             </div>
           ) : null}

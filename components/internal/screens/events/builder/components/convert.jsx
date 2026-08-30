@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Timer, Table2, Ticket, Mail, Flame, Check } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
 
 function money(amount, currency = "USD") {

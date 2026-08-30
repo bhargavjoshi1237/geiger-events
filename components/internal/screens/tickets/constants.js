@@ -203,6 +203,44 @@ export const defaultGroupPurchaseConfig = () => ({
   requireApproval: false,
 });
 
+// --- Discount coupon rules (ticketing_records, module "discount", kind "coupon")
+
+// The engine lives in lib/events/discount_rules.js so the public checkout, the
+// Stripe builder and the SQL resolver can all share it. Re-exported here so the
+// Tickets area keeps a single place to look up config factories.
+export {
+  EMPTY_DISCOUNT_RULE,
+  defaultCouponConfig,
+  ruleConditionLabel,
+  ruleValueLabel,
+} from "@/lib/events/discount_rules";
+
+// A coupon is scoped to tickets, never to the event as a whole: it only
+// redeems against a ticket whose metadata.tickets[].discountIds lists its id.
+export const APPLY_PER_OPTIONS = [
+  { value: "order", label: "Once per order" },
+  { value: "ticket", label: "Per ticket" },
+];
+
+export const DISCOUNT_RULE_PRESETS = [
+  {
+    label: "Buy 3 or more",
+    rule: { label: "Buy 3+", minQty: 3, discountType: "percent", value: 15 },
+  },
+  {
+    label: "Buy 5 or more",
+    rule: { label: "Buy 5+", minQty: 5, discountType: "percent", value: 25 },
+  },
+  {
+    label: "Last 7 days before the event",
+    rule: { label: "Final week", discountType: "percent", value: 20 },
+  },
+  {
+    label: "Big spender (10+)",
+    rule: { label: "10+ tickets", minQty: 10, discountType: "percent", value: 30 },
+  },
+];
+
 // Memberships (module "membership") — master enable + join settings.
 export const defaultMembershipConfig = () => ({
   enabled: false,

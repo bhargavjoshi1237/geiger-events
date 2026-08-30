@@ -13,14 +13,14 @@ import {
   StatsBar,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listLeadsByProject } from "@/lib/supabase/checkin";

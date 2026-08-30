@@ -6,7 +6,6 @@ import {
   Workflow as WorkflowIcon,
   Copy,
   Loader2,
-  MoreHorizontal,
   Pause,
   Pencil,
   Play,
@@ -25,9 +24,10 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -35,21 +35,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 
 import {
@@ -399,58 +392,25 @@ export function AllWorkflowsScreen() {
       align: "right",
       className: "text-right",
       render: (w) => (
-        <div onClick={(ev) => ev.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                aria-label="Workflow actions"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => openWorkflow(w.id)}
-              >
-                <Pencil className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => handleToggleStatus(w)}
-              >
-                {w.status === "Active" ? (
-                  <>
-                    <Pause className="h-4 w-4" /> Pause
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4" /> Activate
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => handleDuplicate(w)}
-              >
-                <Copy className="h-4 w-4" /> Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-strong" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setDeleteTarget(w)}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Workflow actions"
+          items={[
+            { icon: Pencil, label: "Edit", onSelect: () => openWorkflow(w.id) },
+            {
+              icon: w.status === "Active" ? Pause : Play,
+              label: w.status === "Active" ? "Pause" : "Activate",
+              onSelect: () => handleToggleStatus(w),
+            },
+            { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(w) },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(w),
+            },
+          ]}
+        />
       ),
     },
   ];

@@ -2,17 +2,17 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Merge, Sparkles } from "lucide-react";
+import { Loader2, Merge, Sparkles } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
 import {
   EmptyState,
-  ScreenHeader,
   StatsBar,
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { listContacts, mergeContacts } from "@/lib/supabase/contacts";
@@ -121,18 +121,10 @@ export function DedupeMergeScreen({ onBack } = {}) {
 
   return (
     <MainScreenWrapper>
-      {onBack ? (
-        <Button
-          variant="ghost"
-          className="-ml-2 w-fit text-muted-foreground hover:text-foreground"
-          onClick={onBack}
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to contacts
-        </Button>
-      ) : null}
-      <ScreenHeader
+      <EditorHeader
+        back={onBack ? { label: "Back to contacts", onClick: onBack } : null}
         title="Find duplicates"
-        description="Find duplicate contacts and fold them into a single record — tags, notes, consent, and history are preserved."
+        meta="Find duplicate contacts and fold them into a single record — tags, notes, consent, and history are preserved."
       />
 
       <StatsBar stats={stats} columns={3} />

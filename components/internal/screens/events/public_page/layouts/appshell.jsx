@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Ticket } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 
 import { formatDate } from "../../sample_data";

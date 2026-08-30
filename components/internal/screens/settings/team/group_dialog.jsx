@@ -3,8 +3,8 @@
 import { useState } from "react";
 
 import { Field } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 
 export default function GroupDialog({ open, onOpenChange, onSubmit }) {
   // Keyed by `open` in the parent, so it mounts fresh (form resets) each open.

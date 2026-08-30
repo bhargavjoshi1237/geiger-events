@@ -6,7 +6,6 @@ import {
   Building2,
   Copy,
   Loader2,
-  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
@@ -23,9 +22,10 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -33,21 +33,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { newId } from "@/components/internal/screens/events/sample_data";
 import {
@@ -335,43 +328,20 @@ export function VenuesScreen() {
       align: "right",
       className: "text-right",
       render: (v) => (
-        <div onClick={(ev) => ev.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => openVenue(v.id)}
-              >
-                <Pencil className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => handleDuplicate(v)}
-              >
-                <Copy className="h-4 w-4" /> Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-surface-strong" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setDeleteTarget(v)}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label={`Actions for ${v.name}`}
+          items={[
+            { icon: Pencil, label: "Edit", onSelect: () => openVenue(v.id) },
+            { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(v) },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(v),
+            },
+          ]}
+        />
       ),
     },
   ];

@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { CalendarPlus, LucideGamepadDirectional, LucideMousePointer2, MapPin, Ticket } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { buildEventICS, directionsUrl, downloadICS } from "@/lib/portal/calendar";
 
 // ---- formatters -----------------------------------------------------------

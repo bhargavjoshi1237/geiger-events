@@ -14,8 +14,10 @@ import {
   Package,
   CalendarClock,
   ShoppingBag,
-  Percent,
-  CreditCard,
+  Receipt,
+  ShieldAlert,
+  Coins,
+  TrendingUp,
   ClipboardList,
   MailCheck,
   SlidersHorizontal,
@@ -104,7 +106,13 @@ import { EventCtasSection } from "./event_ctas";
 import { EventPackagesSection } from "./event_packages";
 import { EventPackagesPageSection } from "./packages_page_editor";
 import { PACKAGES_ADDON_ID } from "@/lib/events/packages";
-import { TicketAttachmentsSection } from "../tickets/event_attachments";
+import {
+  EventCurrenciesSection,
+  EventInvoicesSection,
+  EventOrdersSection,
+  EventPricingSection,
+  EventResaleSection,
+} from "../tickets/event_policies";
 import { EventTicketsSection } from "../tickets/event_tickets";
 import { TicketRulesSection } from "../tickets/event_ticket_rules";
 import { EventMembershipsSection } from "./event_memberships";
@@ -347,27 +355,6 @@ export const NAV_GROUPS = [
         ownHeader: true,
       },
       {
-        key: "discounts",
-        label: "Discounts",
-        icon: Percent,
-        desc: "Let buyers redeem discount codes at checkout — only the codes you attach here work on this event.",
-        ownHeader: true,
-      },
-      {
-        key: "payments",
-        label: "Payments",
-        icon: CreditCard,
-        desc: "Configure how buyers pay for tickets to this event.",
-        ownHeader: true,
-      },
-      {
-        key: "ticketlinks",
-        label: "Ticketing",
-        icon: Link2,
-        desc: "Attach reusable coupons, methods, and policies (managed under the Tickets sidebar) to this event.",
-        ownHeader: true,
-      },
-      {
         key: "ticketrules",
         label: "Ticket Rules",
         icon: SlidersHorizontal,
@@ -415,18 +402,73 @@ export const NAV_GROUPS = [
         showIf: (e) => !!e.ticketRules?.groupPurchase,
       },
       {
-        key: "bundles",
-        label: "Bundles",
-        icon: Package,
-        desc: "Sell several tickets together as one purchase.",
-        ownHeader: true,
-        showIf: (e) => !!e.ticketRules?.bundles,
-      },
-      {
         key: "memberships",
         label: "Memberships",
         icon: BadgeCheck,
         desc: "Enable membership plans for this event — members get the plan's discount here.",
+        ownHeader: true,
+      },
+    ],
+  },
+  // Extracted out of Tickets and kept ungrouped on purpose: each of these is a
+  // top-level entry in its own right, and bucketing them back under a heading
+  // recreated the oversized Tickets list they were pulled out of.
+  {
+    group: null,
+    items: [
+      {
+        key: "orders",
+        label: "Orders & Attendees",
+        icon: ShoppingBag,
+        desc: "Who bought tickets, what they paid, and the order policy governing refunds and transfers.",
+        ownHeader: true,
+      },
+    ],
+  },
+  {
+    group: null,
+    items: [
+      {
+        key: "invoices",
+        label: "Invoices & Receipts",
+        icon: Receipt,
+        desc: "The invoice profile behind this event's tax documents and what prints on every receipt.",
+        ownHeader: true,
+      },
+    ],
+  },
+  {
+    group: null,
+    items: [
+      {
+        key: "resale",
+        label: "Anti-scalping & Resale",
+        icon: ShieldAlert,
+        desc: "Rules that curb scalping — name locks, ID checks, transfer policy, and resale caps.",
+        ownHeader: true,
+      },
+    ],
+  },
+  {
+    group: null,
+    items: [
+      {
+        key: "currency",
+        label: "Multi-currency",
+        icon: Coins,
+        desc: "Currencies buyers can pay in, with their conversion rates and settlement accounts.",
+        ownHeader: true,
+      },
+    ],
+  },
+  {
+    group: null,
+    items: [
+      {
+        key: "pricing",
+        label: "Dynamic Pricing",
+        icon: TrendingUp,
+        desc: "Demand-based rules that move the ticket price as the event sells through.",
         ownHeader: true,
       },
     ],
@@ -629,7 +671,11 @@ export const SECTIONS = {
   group: EventGroupSection,
   bundles: EventBundlesSection,
   payments: PaymentsSection,
-  ticketlinks: TicketAttachmentsSection,
+  orders: EventOrdersSection,
+  invoices: EventInvoicesSection,
+  resale: EventResaleSection,
+  currency: EventCurrenciesSection,
+  pricing: EventPricingSection,
   ticketrules: TicketRulesSection,
   memberships: EventMembershipsSection,
   communication: EventCommunicationSection,

@@ -9,16 +9,16 @@ import {
   Field,
   SectionCard,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Switch } from "@geiger/ui/switch";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { SECTION_NOTE_TARGETS } from "./public_page/section_note";
 

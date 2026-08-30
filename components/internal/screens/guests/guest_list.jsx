@@ -15,8 +15,8 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listGuests, createContact, updateContact } from "@/lib/supabase/contacts";

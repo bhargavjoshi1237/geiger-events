@@ -8,7 +8,6 @@ import {
   Download,
   Loader2,
   Merge,
-  MoreHorizontal,
   Pencil,
   ShieldBan,
   ShieldCheck,
@@ -29,9 +28,10 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -39,21 +39,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listRegistrations } from "@/lib/supabase/registrations";
@@ -433,52 +433,24 @@ export function ContactBookScreen() {
       header: "",
       align: "right",
       render: (c) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-text-secondary hover:text-foreground"
-                aria-label="Contact actions"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="border-border bg-surface-subtle text-foreground"
-            >
-              <DropdownMenuItem
-                className="focus:bg-surface-hover"
-                onClick={() => setOpenId(c.id)}
-              >
-                <Pencil className="h-4 w-4" /> Open
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="focus:bg-surface-hover"
-                onClick={() => handlePatch(c.id, { blocked: !c.blocked })}
-              >
-                {c.blocked ? (
-                  <>
-                    <ShieldCheck className="h-4 w-4" /> Unblock
-                  </>
-                ) : (
-                  <>
-                    <ShieldBan className="h-4 w-4" /> Block
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                onClick={() => setDeleteTarget(c)}
-              >
-                <Trash2 className="h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Contact actions"
+          items={[
+            { icon: Pencil, label: "Open", onSelect: () => setOpenId(c.id) },
+            {
+              icon: c.blocked ? ShieldCheck : ShieldBan,
+              label: c.blocked ? "Unblock" : "Block",
+              onSelect: () => handlePatch(c.id, { blocked: !c.blocked }),
+            },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(c),
+            },
+          ]}
+        />
       ),
     },
   ];

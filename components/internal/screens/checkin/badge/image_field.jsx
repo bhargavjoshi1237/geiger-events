@@ -3,8 +3,8 @@
 import React, { useRef, useState } from "react";
 import { Loader2, Upload, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import { Field } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
 

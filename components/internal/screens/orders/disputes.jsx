@@ -2,7 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, MoreHorizontal, Plus, Scale, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Scale,
+  Trash2,
+} from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -15,8 +20,9 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -24,21 +30,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
@@ -313,40 +312,23 @@ export function DisputesScreen() {
       align: "right",
       className: "text-right",
       render: (d) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-subtle"
-            >
-              {DISPUTE_STATUSES.filter((s) => s !== d.status).map((s) => (
-                <DropdownMenuItem
-                  key={s}
-                  className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                  onClick={() => setStatusFor(d, s)}
-                >
-                  Mark {s.toLowerCase()}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setRemoveTarget(d)}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Dispute actions"
+          items={[
+            ...DISPUTE_STATUSES.filter((s) => s !== d.status).map((s) => ({
+              key: s,
+              label: `Mark ${s.toLowerCase()}`,
+              onSelect: () => setStatusFor(d, s),
+            })),
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Remove",
+              variant: "destructive",
+              onSelect: () => setRemoveTarget(d),
+            },
+          ]}
+        />
       ),
     },
   ];

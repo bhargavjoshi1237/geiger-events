@@ -12,22 +12,34 @@ import {
   Upload,
 } from "lucide-react";
 
-import { Field, SectionCard, SettingsList, SettingRow } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Field,
+  EditorSectionHeader,
+  SectionCard,
+  SettingsList,
+  SettingRow,
+} from "@/components/internal/shared/screen_kit";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { useWallConfig } from "@/lib/events/use-wall-config";
 import { updateWall } from "@/lib/supabase/event_wall";
-import { uploadWallFont, uploadWallImage } from "@/lib/supabase/storage";
+import {
+  pathFromPublicUrl,
+  removeEventImage,
+  uploadWallFont,
+  uploadWallImage,
+  uploadWallVideo,
+} from "@/lib/supabase/storage";
+import { coverKind } from "@/lib/events/gallery";
 import { Segmented, ColorField } from "../theme_controls";
-import { FooterEditor, DEFAULT_FOOTER } from "../page_footer";
+import { DEFAULT_FOOTER } from "../page_footer";
 import { ImportBrandDialog } from "../brand_import";
 import { WALL_VIEWS, DEFAULT_LAYOUT } from "./wall_layout";
 import {
   resolveTheme,
   DEFAULT_THEME,
-  THEME_PRESETS,
   FONT_SCALES,
   HEADING_WEIGHTS,
   RADIUS_OPTIONS,
@@ -64,15 +76,19 @@ export function WallDesignSection({ wall, onWallChange }) {
     "layout",
     DEFAULT_LAYOUT,
   );
+  // Footer is edited in its own section, but a brand import can bring one along
+  // with the theme — so Design still holds the value long enough to save it.
   const [footer, setFooter, saveFooter] = useWallConfig(
     wall,
     "footer",
     DEFAULT_FOOTER,
   );
   const [logoUrl, setLogoUrl] = useState(wall?.logoUrl || "");
+  const [headerBgUrl, setHeaderBgUrl] = useState(wall?.headerBgUrl || "");
   const [tagline, setTagline] = useState(wall?.tagline || "");
   const [importOpen, setImportOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
 
   const resolved = resolveTheme({ theme });
   const patch = (next) => setTheme({ ...resolved, ...next });
@@ -80,7 +96,6 @@ export function WallDesignSection({ wall, onWallChange }) {
   const setFont = (next) => patch({ font: { ...resolved.font, ...next } });
   const onBase = (base) =>
     patch({ base, colors: { ...resolved.colors, ...BASE_PALETTES[base] } });
-  const applyPreset = (preset) => setTheme(preset.theme);
 
   const setLayoutKey = (next) => setLayout({ ...layout, ...next });
   const setCardMeta = (key, v) =>
@@ -107,13 +122,51 @@ export function WallDesignSection({ wall, onWallChange }) {
     setLogoUrl(uploaded.url);
   };
 
+  // Same shape as the logo, but a wide frame rather than a mark: an image is
+  // compressed, a video is stored as-is, and old files are cleaned out of the
+  // bucket on replace/remove. A pasted link works too — the kind is read back
+  // off the URL, not tracked separately.
+  const pickHeaderBg = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const kind = file.type.startsWith("video/")
+      ? "video"
+      : file.type.startsWith("image/")
+        ? "image"
+        : null;
+    if (!kind) {
+      toast.error("Please choose an image or a video file.");
+      return;
+    }
+    setUploadingBg(true);
+    const uploaded =
+      kind === "video"
+        ? await uploadWallVideo(projectId, file)
+        : await uploadWallImage(projectId, file);
+    setUploadingBg(false);
+    if (!uploaded?.url) {
+      toast.error("Couldn't upload that file.");
+      return;
+    }
+    const oldPath = pathFromPublicUrl(headerBgUrl);
+    setHeaderBgUrl(uploaded.url);
+    if (oldPath) removeEventImage(oldPath);
+  };
+
+  const clearHeaderBg = () => {
+    const path = pathFromPublicUrl(headerBgUrl);
+    setHeaderBgUrl("");
+    if (path) removeEventImage(path);
+  };
+
   const onSave = async () => {
     await saveLayout(layout);
     await saveFooter(footer);
     if ((await saveTheme(theme)) === false) return;
-    const row = await updateWall(projectId, { logoUrl, tagline });
+    const row = await updateWall(projectId, { logoUrl, tagline, headerBgUrl });
     if (!row) {
-      toast.error("Couldn't save the logo and tagline.");
+      toast.error("Couldn't save the branding.");
       return;
     }
     onWallChange?.(row);
@@ -125,23 +178,24 @@ export function WallDesignSection({ wall, onWallChange }) {
   const designs = resolved.importedLogos || [];
 
   return (
-    <div className="space-y-6">
-      <SectionCard
-        title="Brand & logo"
-        description="Read an existing website and re-skin this page with its colors, type, and shape — or set the mark by hand."
-        action={
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setImportOpen(true)}
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          >
-            <Sparkles className="h-4 w-4" />
-            {source.url ? "Re-import" : "Import from a site"}
-          </Button>
-        }
-      >
-        <div className="space-y-5">
+    <div className="space-y-8">
+      <section>
+        <EditorSectionHeader
+          title="Brand & logo"
+          description="Read an existing website and re-skin this page with its colors, type, and shape — or set the mark by hand."
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              <Sparkles className="h-4 w-4" />
+              {source.url ? "Re-import" : "Import from a site"}
+            </Button>
+          }
+        />
+        <div className="mt-4 grid gap-4">
           {source.url ? (
             <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2.5 text-sm text-muted-foreground">
               <Globe className="h-4 w-4 shrink-0" />
@@ -260,29 +314,7 @@ export function WallDesignSection({ wall, onWallChange }) {
             </div>
           ) : null}
         </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Brand presets"
-        description="Start from a look, then fine-tune everything below."
-      >
-        <div className="flex flex-wrap gap-2">
-          {THEME_PRESETS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => applyPreset(p)}
-              className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-border-strong hover:bg-surface-active hover:text-foreground"
-            >
-              <span
-                className="h-3.5 w-3.5 rounded-full border border-border"
-                style={{ backgroundColor: p.theme.colors.brand }}
-              />
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </SectionCard>
+      </section>
 
       <SectionCard
         title="Brand colors"
@@ -468,6 +500,82 @@ export function WallDesignSection({ wall, onWallChange }) {
             />
           </Field>
           <Field
+            label="Header background"
+            hint="An image, or a muted video that loops behind your page header. Paste a link (any .mp4, .webm, .mov) or upload a file — a scrim keeps the text readable."
+          >
+            <div className="flex items-center gap-2">
+              <div className="relative h-11 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-card">
+                {headerBgUrl ? (
+                  coverKind(headerBgUrl) === "video" ? (
+                    <video
+                      src={headerBgUrl}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={headerBgUrl}
+                      alt="Header background"
+                      className="h-full w-full object-cover"
+                    />
+                  )
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <ImageOff className="h-4 w-4 text-text-tertiary" />
+                  </div>
+                )}
+                {headerBgUrl && coverKind(headerBgUrl) === "video" ? (
+                  <span className="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 text-[9px] font-medium uppercase tracking-wide text-white">
+                    Video
+                  </span>
+                ) : null}
+              </div>
+              <Input
+                value={headerBgUrl}
+                onChange={(e) => setHeaderBgUrl(e.target.value)}
+                placeholder="Paste an image or video URL"
+                className="h-8 flex-1 font-mono text-xs"
+              />
+              <div className="flex shrink-0 gap-1.5">
+                <Button
+                  size="icon-xs"
+                  variant="outline"
+                  asChild
+                  aria-label={headerBgUrl ? "Replace background" : "Upload background"}
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                >
+                  <label className="cursor-pointer">
+                    {uploadingBg ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Upload className="h-3 w-3" />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={pickHeaderBg}
+                    />
+                  </label>
+                </Button>
+                {headerBgUrl ? (
+                  <Button
+                    size="icon-xs"
+                    variant="outline"
+                    aria-label="Remove background"
+                    onClick={clearHeaderBg}
+                    className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </Field>
+          <Field
             label="Banner image URL"
             hint="The wide image above your name. Falls back to your organiser profile banner."
           >
@@ -503,13 +611,6 @@ export function WallDesignSection({ wall, onWallChange }) {
             </Field>
           ) : null}
         </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Footer"
-        description="Links, socials, and a closing line at the bottom of the wall."
-      >
-        <FooterEditor value={footer} onChange={setFooter} />
       </SectionCard>
 
       <div className="flex justify-end">

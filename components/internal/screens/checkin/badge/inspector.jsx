@@ -4,8 +4,8 @@ import React, { useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { Switch, Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
 import { PAGE_PRESETS, STOCK_PRESETS, sheetGrid, stockSize } from "@/lib/passes/stock";
 import { qrErrorCorrection } from "@/lib/passes/qr";
@@ -944,7 +944,7 @@ export function Inspector({
               }
             />
             <p className="text-xs text-text-tertiary">
-              {grid.cols} across × {grid.rows} down — {grid.perPage} per page.
+              {grid.cols} across × {grid.rows} down — {grid.perPage} Per Page.
               {backUsed && sheet.printBacks !== false
                 ? " Back sheets are column-mirrored for a long-edge duplex flip."
                 : ""}

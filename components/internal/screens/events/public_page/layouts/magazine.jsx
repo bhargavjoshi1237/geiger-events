@@ -2,7 +2,7 @@
 
 import { Fragment } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@geiger/ui/badge";
 import { cn } from "@/lib/utils";
 
 import { CoverImage } from "../hero";

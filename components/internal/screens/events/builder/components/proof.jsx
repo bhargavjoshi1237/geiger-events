@@ -13,7 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import { entryUrl } from "@/lib/events/gallery";
 import { cn } from "@/lib/utils";
 import { RichText } from "../../page_blocks";

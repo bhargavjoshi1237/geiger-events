@@ -14,7 +14,7 @@ import {
   WifiOff,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { findEventById } from "@/components/internal/screens/events/sample_data";
 import {
   EventPublicPageContent,

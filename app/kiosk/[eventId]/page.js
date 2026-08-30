@@ -12,8 +12,9 @@ import {
   Search,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { IconInput } from "@/components/internal/shared/icon_input";
 import { Field } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
 import { getEvent } from "@/lib/supabase/events";
@@ -117,10 +118,7 @@ function CheckinAction({ eventId, code, role, onDone, onBack }) {
       <QrScanner onDecode={onScan} paused={paused} />
       {msg ? <p className={AMBER_ALERT}>{msg}</p> : null}
       <form onSubmit={(e) => { e.preventDefault(); run(); }} className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name or ticket #" className="h-11 bg-surface-card pl-9" />
-        </div>
+        <IconInput icon={Search} wrapperClassName="flex-1" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name or ticket #" className="h-11 bg-surface-card" />
         <Button type="submit" disabled={searching} className="h-11 bg-primary text-primary-foreground hover:bg-primary/90">
           {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Find"}
         </Button>

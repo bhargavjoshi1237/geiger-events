@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   Building2,
   Loader2,
-  MoreHorizontal,
   PackageCheck,
   Plus,
   Receipt,
@@ -24,10 +23,16 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import {
+  ActionMenu,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@geiger/ui";
 import {
   Dialog,
   DialogContent,
@@ -35,21 +40,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
@@ -820,57 +818,34 @@ export function SuppliersPurchaseOrdersScreen() {
       align: "right",
       className: "text-right",
       render: (po) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Purchase order actions"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-48 border-border bg-surface-card shadow-xl"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                disabled={po.status === "Received" || po.status === "Cancelled"}
-                onClick={() => setReceiving(po)}
-              >
-                <PackageCheck className="h-4 w-4" /> Receive stock
-              </DropdownMenuItem>
-              {po.status === "Draft" ? (
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                  onClick={() => handleStatus(po, "Ordered")}
-                >
-                  <Receipt className="h-4 w-4" /> Mark ordered
-                </DropdownMenuItem>
-              ) : null}
-              {po.status !== "Cancelled" && po.status !== "Received" ? (
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                  onClick={() =>
-                    setConfirmTarget({ kind: "cancel-po", po })
-                  }
-                >
-                  Cancel order
-                </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuSeparator className="bg-surface-strong" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setConfirmTarget({ kind: "delete-po", po })}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Purchase order actions"
+          items={[
+            {
+              icon: PackageCheck,
+              label: "Receive stock",
+              disabled: po.status === "Received" || po.status === "Cancelled",
+              onSelect: () => setReceiving(po),
+            },
+            po.status === "Draft" && {
+              icon: Receipt,
+              label: "Mark ordered",
+              onSelect: () => handleStatus(po, "Ordered"),
+            },
+            po.status !== "Cancelled" &&
+              po.status !== "Received" && {
+                label: "Cancel order",
+                onSelect: () => setConfirmTarget({ kind: "cancel-po", po }),
+              },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Remove",
+              variant: "destructive",
+              onSelect: () => setConfirmTarget({ kind: "delete-po", po }),
+            },
+          ]}
+        />
       ),
     },
   ];
@@ -923,31 +898,17 @@ export function SuppliersPurchaseOrdersScreen() {
       align: "right",
       className: "text-right",
       render: (s) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Supplier actions"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-card shadow-xl"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setConfirmTarget({ kind: "delete-supplier", po: s })}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Supplier actions"
+          items={[
+            {
+              icon: Trash2,
+              label: "Remove",
+              variant: "destructive",
+              onSelect: () => setConfirmTarget({ kind: "delete-supplier", po: s }),
+            },
+          ]}
+        />
       ),
     },
   ];

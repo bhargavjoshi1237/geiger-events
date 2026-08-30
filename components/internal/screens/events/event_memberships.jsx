@@ -4,8 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { BadgeCheck, Loader2, Plus } from "lucide-react";
 
 import { EditorSectionHeader } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@geiger/ui/button";
+import { Switch } from "@geiger/ui/switch";
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { useProject } from "@/context/project-context";

@@ -3,7 +3,7 @@
 import React from "react";
 import { LayoutTemplate, Image as ImageIcon, AlignCenter, PanelTop } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 import { isVideoFileUrl } from "@/lib/events/gallery";
 

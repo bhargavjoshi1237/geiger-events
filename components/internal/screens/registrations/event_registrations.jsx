@@ -3,12 +3,11 @@
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
+  ArrowDown,
   ArrowUp,
   Check,
   Download,
   Loader2,
-  MoreHorizontal,
   Trash2,
   UserPlus,
   X,
@@ -18,21 +17,16 @@ import {
   DataTable,
   EmptyState,
   SearchInput,
+  SegmentedTabs,
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Checkbox } from "@geiger/ui/checkbox";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   REGISTRATION_STATUS_MAP,
   SOURCE_MAP,
@@ -72,13 +66,23 @@ export function EventRegistrationsDetail({
 
   const counts = useMemo(() => countRegs(regs), [regs]);
 
+  // The count rides inside the label node so the shared rail keeps its plain
+  // label + icon API; `text` stays a string for the empty state's copy.
   const tabs = [
-    { key: "all", label: "All", count: regs.length },
-    { key: "Pending", label: "Pending", count: counts.Pending },
-    { key: "Confirmed", label: "Confirmed", count: counts.Confirmed },
-    { key: "Waitlisted", label: "Waitlist", count: counts.Waitlisted },
-    { key: "Checked-in", label: "Checked in", count: counts["Checked-in"] },
-  ];
+    { value: "all", text: "All", count: regs.length },
+    { value: "Pending", text: "Pending", count: counts.Pending },
+    { value: "Confirmed", text: "Confirmed", count: counts.Confirmed },
+    { value: "Waitlisted", text: "Waitlist", count: counts.Waitlisted },
+    { value: "Checked-in", text: "Checked in", count: counts["Checked-in"] },
+  ].map((t) => ({
+    ...t,
+    label: (
+      <>
+        {t.text}
+        <span className="text-xs tabular-nums text-text-tertiary">{t.count}</span>
+      </>
+    ),
+  }));
 
   const filtered = useMemo(() => {
     return regs.filter((r) => {
@@ -248,51 +252,29 @@ export function EventRegistrationsDetail({
               <ArrowUp className="h-4 w-4" /> Promote
             </Button>
           ) : null}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-subtle"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => setOpenId(r.id)}
-              >
-                View details
-              </DropdownMenuItem>
-              {r.status === "Confirmed" ? (
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                  onClick={() => onStatusChange(r, "Checked-in")}
-                >
-                  <Check className="h-4 w-4" /> Check in
-                </DropdownMenuItem>
-              ) : null}
-              {r.status !== "Waitlisted" ? (
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                  onClick={() => onStatusChange(r, "Waitlisted")}
-                >
-                  <ArrowUp className="h-4 w-4 rotate-180" /> Move to waitlist
-                </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setDeleteTarget(r)}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ActionMenu
+            label="Registration actions"
+            items={[
+              { label: "View details", onSelect: () => setOpenId(r.id) },
+              r.status === "Confirmed" && {
+                icon: Check,
+                label: "Check in",
+                onSelect: () => onStatusChange(r, "Checked-in"),
+              },
+              r.status !== "Waitlisted" && {
+                icon: ArrowDown,
+                label: "Move to waitlist",
+                onSelect: () => onStatusChange(r, "Waitlisted"),
+              },
+              { separator: true },
+              {
+                icon: Trash2,
+                label: "Remove",
+                variant: "destructive",
+                onSelect: () => setDeleteTarget(r),
+              },
+            ]}
+          />
         </div>
       ),
     },
@@ -303,30 +285,31 @@ export function EventRegistrationsDetail({
 
   return (
     <MainScreenWrapper>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-2 w-fit gap-1.5 text-muted-foreground hover:bg-surface-active hover:text-foreground"
-        onClick={onBack}
-      >
-        <ArrowLeft className="h-4 w-4" /> All Events
-      </Button>
-
-      <div className="space-y-4 border-b border-border pb-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                {event.name}
-              </h1>
-              <Badge variant={typeVariant}>{event.type}</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
+      <EditorHeader
+        back={{ label: "All Events", onClick: onBack }}
+        title={event.name}
+        badges={<Badge variant={typeVariant}>{event.type}</Badge>}
+        meta={
+          <div className="space-y-2.5">
+            <p>
               {formatDate(event.date)}
               {event.venue ? ` · ${event.venue}` : ""}
             </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-foreground tabular-nums">
+                {counts.seats}
+                <span className="text-text-secondary">
+                  {" "}
+                  / {cap || "∞"} seats filled
+                </span>
+              </span>
+              <PipelineChips counts={counts} />
+            </div>
+            <PipelineBar counts={counts} capacity={cap} size="lg" />
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+        }
+        actions={
+          <>
             <Button
               variant="outline"
               className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
@@ -338,54 +321,21 @@ export function EventRegistrationsDetail({
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => setAddOpen(true)}
             >
-              <UserPlus className="h-4 w-4" /> Add registrant
+              <UserPlus className="h-4 w-4" /> Add Registrant
             </Button>
-          </div>
-        </div>
-
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-foreground tabular-nums">
-              {counts.seats}
-              <span className="text-text-secondary">
-                {" "}/ {cap || "∞"} seats filled
-              </span>
-            </span>
-            <PipelineChips counts={counts} />
-          </div>
-          <PipelineBar counts={counts} capacity={cap} size="lg" />
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-fit flex-wrap items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => {
-              setTab(t.key);
-              setLimit(PAGE_ROWS);
-            }}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              tab === t.key
-                ? "bg-surface-hover text-foreground"
-                : "text-text-secondary hover:text-foreground",
-            )}
-          >
-            {t.label}
-            <span
-              className={cn(
-                "text-xs tabular-nums",
-                tab === t.key ? "text-text-secondary" : "text-text-tertiary",
-              )}
-            >
-              {t.count}
-            </span>
-          </button>
-        ))}
-        </div>
+        <SegmentedTabs
+          tabs={tabs}
+          value={tab}
+          onChange={(next) => {
+            setTab(next);
+            setLimit(PAGE_ROWS);
+          }}
+        />
         <SearchInput
           value={search}
           onChange={(v) => {
@@ -449,7 +399,7 @@ export function EventRegistrationsDetail({
               title={
                 tab === "all"
                   ? "No registrations yet"
-                  : `No ${tabs.find((t) => t.key === tab)?.label.toLowerCase()} Registrations`
+                  : `No ${tabs.find((t) => t.value === tab)?.text.toLowerCase()} Registrations`
               }
               description={
                 tab === "all"
@@ -462,7 +412,7 @@ export function EventRegistrationsDetail({
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={() => setAddOpen(true)}
                   >
-                    <UserPlus className="h-4 w-4" /> Add registrant
+                    <UserPlus className="h-4 w-4" /> Add Registrant
                   </Button>
                 ) : null
               }

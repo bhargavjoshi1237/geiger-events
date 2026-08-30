@@ -19,9 +19,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
 import { accessCodesEnabled } from "@/lib/events/access_codes";
 import { ticketSelectionActive } from "@/lib/events/ticket_selection";

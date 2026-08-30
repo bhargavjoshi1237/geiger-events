@@ -9,7 +9,7 @@ import {
   SettingRow,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import { CheckinSettingsScreen } from "./checkin_kit";
 
 const FIELD_LABELS = {

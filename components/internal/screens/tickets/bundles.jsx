@@ -1,19 +1,26 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Package, Plus, Trash2 } from "lucide-react";
+import {
+  AlignLeft,
+  CircleDollarSign,
+  Layers,
+  Package,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { listRecords } from "@/lib/supabase/ticketing";
 
@@ -36,7 +43,11 @@ function summarize(r) {
   return `${count} ${noun} · ${price}`;
 }
 
-function BundleEditForm({ config, setConfig }) {
+// --- Edit sections ----------------------------------------------------------
+// records_kit renders each as an element, so the items section can fetch the
+// project's tickets with its own hooks.
+
+function BundleItemsSection({ config, setConfig }) {
   const { projectId } = useProject();
   const [tickets, setTickets] = useState([]);
   const set = (patch) => setConfig({ ...config, ...patch });
@@ -69,17 +80,13 @@ function BundleEditForm({ config, setConfig }) {
 
   return (
     <div className="space-y-4">
-      <SectionCard
-        title="Bundle items"
-        description="The tickets sold together in this bundle. Manage the tickets themselves under Tickets → Ticket Types."
-      >
-        {items.length ? (
-          <div className="space-y-3">
-            {items.map((it, idx) => {
-              const available = tickets.filter(
-                (t) => t.id === it.ticketTypeId || !usedIds.has(t.id),
-              );
-              return (
+      {items.length ? (
+        <div className="space-y-3">
+          {items.map((it, idx) => {
+            const available = tickets.filter(
+              (t) => t.id === it.ticketTypeId || !usedIds.has(t.id),
+            );
+            return (
               <div
                 key={idx}
                 className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface-card p-3"
@@ -101,7 +108,9 @@ function BundleEditForm({ config, setConfig }) {
                         ))
                       ) : (
                         <SelectItem value="none" disabled>
-                          {tickets.length ? "All tickets added" : "No tickets yet"}
+                          {tickets.length
+                            ? "All tickets added"
+                            : "No tickets yet"}
                         </SelectItem>
                       )}
                     </SelectContent>
@@ -124,77 +133,112 @@ function BundleEditForm({ config, setConfig }) {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-text-secondary">
-            No items yet — add the tickets this bundle includes.
-          </p>
-        )}
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={addItem}
-          className="mt-3 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-        >
-          <Plus className="h-4 w-4" /> Add item
-        </Button>
-      </SectionCard>
-
-      <SectionCard
-        bare
-        title="Pricing"
-        description="Charge one bundle price, or the sum of the included tickets."
-        action={
-          <Segmented
-            className="w-fit"
-            value={config.pricingMode || "fixed"}
-            onChange={(v) => set({ pricingMode: v })}
-            options={[
-              { value: "fixed", label: "Fixed price" },
-              { value: "sum", label: "Sum of items" },
-            ]}
-          />
-        }
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-text-secondary">
+          No items yet — add the tickets this bundle includes.
+        </p>
+      )}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={addItem}
+        className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
       >
-        {config.pricingMode !== "sum" ? (
-          <div>
-            <Field label="Bundle price">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm text-text-secondary">$</span>
-                <Input
-                  type="number"
-                  min={0}
-                  inputMode="decimal"
-                  value={config.price ?? 0}
-                  onChange={(e) => set({ price: Number(e.target.value) || 0 })}
-                  className="w-full tabular-nums"
-                  placeholder="0"
-                />
-              </div>
-            </Field>
-          </div>
-        ) : null}
-      </SectionCard>
-
-      <SectionCard bare title="Details">
-        <Field
-          label="Description"
-          hint="Shown to buyers under the bundle name."
-        >
-          <Textarea
-            rows={2}
-            value={config.description || ""}
-            onChange={(e) => set({ description: e.target.value })}
-            placeholder="e.g. Weekend pass — entry to all three days plus the after-party."
-          />
-        </Field>
-      </SectionCard>
+        <Plus className="h-4 w-4" /> Add Item
+      </Button>
+      <p className="text-xs text-text-secondary">
+        Manage the tickets themselves under Tickets → Ticket Types.
+      </p>
     </div>
   );
 }
+
+function BundlePricingSection({ config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+
+  return (
+    <div className="space-y-4">
+      <Field
+        label="Pricing mode"
+        hint="Charge one bundle price, or the sum of the included tickets."
+      >
+        <Segmented
+          className="w-fit"
+          value={config.pricingMode || "fixed"}
+          onChange={(v) => set({ pricingMode: v })}
+          options={[
+            { value: "fixed", label: "Fixed price" },
+            { value: "sum", label: "Sum of items" },
+          ]}
+        />
+      </Field>
+      {config.pricingMode !== "sum" ? (
+        <Field label="Bundle price">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-text-secondary">$</span>
+            <Input
+              type="number"
+              min={0}
+              inputMode="decimal"
+              value={config.price ?? 0}
+              onChange={(e) => set({ price: Number(e.target.value) || 0 })}
+              className="max-w-[10rem] tabular-nums"
+              placeholder="0"
+            />
+          </div>
+        </Field>
+      ) : null}
+    </div>
+  );
+}
+
+function BundleDetailsSection({ config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+
+  return (
+    <SectionCard bare>
+      <Field
+        label="Description"
+        hint="Shown to buyers under the bundle name."
+      >
+        <Textarea
+          rows={3}
+          value={config.description || ""}
+          onChange={(e) => set({ description: e.target.value })}
+          placeholder="e.g. Weekend pass — entry to all three days plus the after-party."
+        />
+      </Field>
+    </SectionCard>
+  );
+}
+
+const SECTIONS = [
+  {
+    key: "items",
+    label: "Bundle items",
+    icon: Layers,
+    desc: "The tickets sold together in this bundle.",
+    render: BundleItemsSection,
+  },
+  {
+    key: "pricing",
+    label: "Pricing",
+    icon: CircleDollarSign,
+    desc: "Charge one bundle price, or the sum of the included tickets.",
+    render: BundlePricingSection,
+  },
+  {
+    key: "details",
+    label: "Details",
+    icon: AlignLeft,
+    desc: "The description buyers see under the bundle name.",
+    render: BundleDetailsSection,
+  },
+];
 
 export function BundlesScreen() {
   return (
@@ -206,7 +250,7 @@ export function BundlesScreen() {
       icon={Package}
       kinds={KINDS}
       summarize={summarize}
-      EditForm={BundleEditForm}
+      sections={SECTIONS}
     />
   );
 }

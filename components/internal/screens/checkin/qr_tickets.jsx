@@ -9,7 +9,7 @@ import {
   SettingRow,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import { CheckinSettingsScreen, RowSelect } from "./checkin_kit";
 import { QR_SIZE_OPTIONS, QR_EC_OPTIONS, QR_ENCODE_OPTIONS } from "./constants";
 

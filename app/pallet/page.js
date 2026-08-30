@@ -1,8 +1,8 @@
 import React from 'react';
 import { AppWindow, Layers, Settings, Type } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Label } from "@geiger/ui/label";
 
 export default function Pallet() {
   const surfaceColors = [

@@ -17,7 +17,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -27,9 +27,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import { listOrders } from "@/lib/supabase/orders";
 import { listGuests } from "@/lib/supabase/contacts";
 import { listSegments } from "@/lib/supabase/segments";

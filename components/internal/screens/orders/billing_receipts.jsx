@@ -2,7 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Eye, FileText, Loader2, MoreHorizontal, Receipt } from "lucide-react";
+import {
+  Eye,
+  FileText,
+  Loader2,
+  Receipt,
+} from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -13,14 +18,7 @@ import {
   StatsBar,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listProjectOrders } from "@/lib/supabase/orders";
@@ -145,43 +143,15 @@ export function BillingReceiptsScreen() {
       align: "right",
       className: "text-right",
       render: (o) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-subtle"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => setOpenId(o.id)}
-              >
-                <Eye className="h-4 w-4" /> View order
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => sendReceipt(o)}
-              >
-                <Receipt className="h-4 w-4" /> Resend receipt
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => generateInvoice(o)}
-              >
-                <FileText className="h-4 w-4" /> Generate invoice
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Receipt actions"
+          items={[
+            { icon: Eye, label: "View order", onSelect: () => setOpenId(o.id) },
+            { icon: Receipt, label: "Resend receipt", onSelect: () => sendReceipt(o) },
+            { separator: true },
+            { icon: FileText, label: "Generate invoice", onSelect: () => generateInvoice(o) },
+          ]}
+        />
       ),
     },
   ];

@@ -21,7 +21,7 @@ import {
   DialogTitle,
   cn,
 } from "@geiger/ui";
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import { advertisingApi } from "@/lib/supabase/advertising";

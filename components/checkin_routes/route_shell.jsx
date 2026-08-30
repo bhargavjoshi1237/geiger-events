@@ -3,7 +3,7 @@
 import React from "react";
 import { LogOut, Activity } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 
 export function RouteShell({ title, subtitle, count, badge, onExit, children, className }) {

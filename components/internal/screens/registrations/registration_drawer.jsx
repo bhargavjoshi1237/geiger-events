@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import { Check, Trash2, Users, X } from "lucide-react";
 
 import { Field } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -15,21 +15,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@geiger/ui/sheet";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { SOURCE_MAP, formatDateTime, initials } from "./constants";
 
 export const STATUS_VALUES = [
@@ -285,7 +285,7 @@ export function AddRegistrantDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl bg-background">
         <DialogHeader>
-          <DialogTitle>Add registrant</DialogTitle>
+          <DialogTitle>Add Registrant</DialogTitle>
           <DialogDescription>
             {fixedEvent
               ? `Add someone to ${fixedEvent.name} — comps, VIPs, or phone signups.`
@@ -393,7 +393,7 @@ export function AddRegistrantDialog({
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={submit}
           >
-            Add registrant
+            Add Registrant
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -10,8 +10,8 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Badge } from "@geiger/ui/badge";
 import { CampaignSettingsScreen } from "./campaigns_kit";
 
 function AuthPill({ ok }) {

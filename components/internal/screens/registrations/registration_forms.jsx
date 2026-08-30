@@ -3,19 +3,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Copy,
   FileText,
   GripVertical,
+  ListChecks,
   Loader2,
-  MoreHorizontal,
   Plus,
+  ShieldCheck,
   Trash2,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorShell } from "@/components/internal/shared/editor_shell";
 import {
   DataTable,
   EmptyState,
@@ -29,11 +31,11 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { Switch } from "@geiger/ui/switch";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -41,21 +43,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   listForms,
@@ -93,10 +88,25 @@ function shortId() {
   return `f_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const BUILDER_TABS = [
-  { key: "fields", label: "Fields" },
-  { key: "access", label: "Access" },
-  { key: "confirmation", label: "Confirmation" },
+const BUILDER_NAV = [
+  {
+    key: "fields",
+    label: "Fields",
+    icon: ListChecks,
+    desc: "The questions this form asks, in the order they're answered.",
+  },
+  {
+    key: "access",
+    label: "Access",
+    icon: ShieldCheck,
+    desc: "Who can use this form and when it's open.",
+  },
+  {
+    key: "confirmation",
+    label: "Confirmation",
+    icon: CheckCircle2,
+    desc: "The message and follow-up actions shown after a successful sign-up.",
+  },
 ];
 
 function FormBuilder({ form, onBack, onSave, onStatusChange }) {
@@ -107,7 +117,6 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
     confirmation: { ...DEFAULT_CONFIRMATION, ...(form.settings?.confirmation || {}) },
   });
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState("fields");
 
   const setSetting = (key) => (value) =>
     setSettings((s) => ({ ...s, [key]: value }));
@@ -117,6 +126,71 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
       confirmation: { ...s.confirmation, [key]: value },
     }));
 
+  const save = async () => {
+    setSaving(true);
+    const ok = await onSave({ fields, settings });
+    setSaving(false);
+    if (ok !== false) toast.success("Form saved.");
+    else toast.error("Couldn't save the form.");
+  };
+
+  return (
+    <EditorShell
+      back={{ label: "All forms", onClick: onBack }}
+      title={form.name}
+      status={form.status}
+      statusMap={FORM_STATUS_MAP}
+      meta={
+        form.description ||
+        "Build the fields, access rules, and confirmation for this form."
+      }
+      actions={
+        <>
+          <Button
+            variant="outline"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={() =>
+              onStatusChange(form.status === "Published" ? "Draft" : "Published")
+            }
+          >
+            {form.status === "Published" ? "Unpublish" : "Publish"}
+          </Button>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={saving}
+            onClick={save}
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {saving ? "Saving…" : "Save form"}
+          </Button>
+        </>
+      }
+      nav={BUILDER_NAV}
+      defaultSection="fields"
+    >
+      {({ active: tab }) => (
+        <>
+          {tab === "fields" ? (
+            <FieldsSection fields={fields} setFields={setFields} />
+          ) : null}
+
+          {tab === "access" ? (
+            <AccessSection settings={settings} setSetting={setSetting} />
+          ) : null}
+
+          {tab === "confirmation" ? (
+            <ConfirmationSection
+              settings={settings}
+              setConfirmation={setConfirmation}
+            />
+          ) : null}
+        </>
+      )}
+    </EditorShell>
+  );
+}
+
+function FieldsSection({ fields, setFields }) {
   const addField = () =>
     setFields((f) => [
       ...f,
@@ -126,8 +200,7 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
   const updateField = (id, patch) =>
     setFields((f) => f.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
-  const removeField = (id) =>
-    setFields((f) => f.filter((x) => x.id !== id));
+  const removeField = (id) => setFields((f) => f.filter((x) => x.id !== id));
 
   const moveField = (index, dir) =>
     setFields((f) => {
@@ -138,356 +211,294 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
       return next;
     });
 
-  const save = async () => {
-    setSaving(true);
-    const ok = await onSave({ fields, settings });
-    setSaving(false);
-    if (ok !== false) toast.success("Form saved.");
-    else toast.error("Couldn't save the form.");
-  };
-
-  const fieldOptions = (currentId) =>
-    fields.filter((f) => f.id !== currentId);
+  // Only earlier-or-other questions can gate this one.
+  const fieldOptions = (currentId) => fields.filter((f) => f.id !== currentId);
 
   return (
-    <MainScreenWrapper>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-2 w-fit gap-1.5 text-muted-foreground hover:bg-surface-active hover:text-foreground"
-        onClick={onBack}
-      >
-        <ArrowLeft className="h-4 w-4" /> All forms
-      </Button>
-
-      <div className="space-y-4 border-b border-border pb-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                {form.name}
-              </h1>
-              <StatusPill status={form.status} map={FORM_STATUS_MAP} />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {form.description ||
-                "Build the fields, access rules, and confirmation for this form."}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="outline"
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              onClick={() =>
-                onStatusChange(form.status === "Published" ? "Draft" : "Published")
-              }
-            >
-              {form.status === "Published" ? "Unpublish" : "Publish"}
-            </Button>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              disabled={saving}
-              onClick={save}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {saving ? "Saving…" : "Save form"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex w-fit flex-wrap items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
-        {BUILDER_TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              tab === t.key
-                ? "bg-surface-hover text-foreground"
-                : "text-text-secondary hover:text-foreground",
-            )}
+    <div className="space-y-4">
+      <SectionCard
+        title="Questions"
+        description="Drag-free reorder with the arrows. Add a 'show when' rule to make a question conditional."
+        action={
+          <Button
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={addField}
           >
-            {t.label}
-          </button>
-        ))}
-      </div>
+            <Plus className="h-4 w-4" /> Add question
+          </Button>
+        }
+      >
+        {fields.length ? (
+          <div className="space-y-3">
+            {fields.map((field, i) => (
+              <div
+                key={field.id}
+                className="rounded-lg border border-border bg-surface-card p-3"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="mt-7 flex flex-col items-center gap-0.5 text-text-tertiary">
+                    <button
+                      type="button"
+                      aria-label="Move question up"
+                      className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                      disabled={i === 0}
+                      onClick={() => moveField(i, -1)}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <GripVertical className="h-4 w-4 opacity-60" aria-hidden />
+                    <button
+                      type="button"
+                      aria-label="Move question down"
+                      className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                      disabled={i === fields.length - 1}
+                      onClick={() => moveField(i, 1)}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </div>
 
-      {tab === "fields" ? (
-        <div className="space-y-4">
-          <SectionCard
-            title="Questions"
-            description="Drag-free reorder with the arrows. Add a 'show when' rule to make a question conditional."
+                  <div className="grid flex-1 gap-3">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
+                      <Field label="Question label">
+                        <Input
+                          value={field.label}
+                          onChange={(e) =>
+                            updateField(field.id, { label: e.target.value })
+                          }
+                        />
+                      </Field>
+                      <Field label="Type">
+                        <Select
+                          value={field.type}
+                          onValueChange={(v) => updateField(field.id, { type: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FIELD_TYPE_OPTIONS.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>
+                                {o.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                    </div>
+
+                    {field.type === "select" ? (
+                      <Field
+                        label="Options"
+                        hint="Comma-separated choices for the dropdown."
+                      >
+                        <Input
+                          value={(field.options || []).join(", ")}
+                          onChange={(e) =>
+                            updateField(field.id, {
+                              options: e.target.value
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            })
+                          }
+                          placeholder="e.g. Small, Medium, Large"
+                        />
+                      </Field>
+                    ) : null}
+
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Switch
+                          checked={!!field.required}
+                          onCheckedChange={(v) =>
+                            updateField(field.id, { required: v })
+                          }
+                        />
+                        Required
+                      </label>
+
+                      <div className="flex flex-1 items-center gap-2">
+                        <span className="text-sm text-text-secondary">
+                          Show when
+                        </span>
+                        <Select
+                          value={field.showWhen?.fieldId || "always"}
+                          onValueChange={(v) =>
+                            updateField(field.id, {
+                              showWhen:
+                                v === "always"
+                                  ? undefined
+                                  : {
+                                      fieldId: v,
+                                      equals: field.showWhen?.equals || "",
+                                    },
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-44">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="always">Always shown</SelectItem>
+                            {fieldOptions(field.id).map((f) => (
+                              <SelectItem key={f.id} value={f.id}>
+                                {f.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {field.showWhen ? (
+                          <Input
+                            value={field.showWhen.equals}
+                            onChange={(e) =>
+                              updateField(field.id, {
+                                showWhen: {
+                                  ...field.showWhen,
+                                  equals: e.target.value,
+                                },
+                              })
+                            }
+                            placeholder="equals…"
+                            className="h-8 w-32"
+                          />
+                        ) : null}
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Remove question"
+                        className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                        onClick={() => removeField(field.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={FileText}
+            title="No questions yet"
+            description="Add the fields you want to collect at registration."
             action={
               <Button
-                size="sm"
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={addField}
               >
                 <Plus className="h-4 w-4" /> Add question
               </Button>
             }
-          >
-            {fields.length ? (
-              <div className="space-y-3">
-                {fields.map((field, i) => (
-                  <div
-                    key={field.id}
-                    className="rounded-lg border border-border bg-surface-card p-3"
-                  >
-                    <div className="flex items-start gap-2">
-                      <div className="mt-7 flex flex-col items-center gap-0.5 text-text-tertiary">
-                        <button
-                          type="button"
-                          aria-label="Move question up"
-                          className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-                          disabled={i === 0}
-                          onClick={() => moveField(i, -1)}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </button>
-                        <GripVertical className="h-4 w-4 opacity-60" aria-hidden />
-                        <button
-                          type="button"
-                          aria-label="Move question down"
-                          className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-                          disabled={i === fields.length - 1}
-                          onClick={() => moveField(i, 1)}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </button>
-                      </div>
+          />
+        )}
+      </SectionCard>
+    </div>
+  );
+}
 
-                      <div className="grid flex-1 gap-3">
-                        <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
-                          <Field label="Question label">
-                            <Input
-                              value={field.label}
-                              onChange={(e) =>
-                                updateField(field.id, { label: e.target.value })
-                              }
-                            />
-                          </Field>
-                          <Field label="Type">
-                            <Select
-                              value={field.type}
-                              onValueChange={(v) => updateField(field.id, { type: v })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {FIELD_TYPE_OPTIONS.map((o) => (
-                                  <SelectItem key={o.value} value={o.value}>
-                                    {o.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </Field>
-                        </div>
+function AccessSection({ settings, setSetting }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard
+        title="Who can register"
+        description="Gate who's allowed to use this form."
+      >
+        <SettingsList>
+          <SettingRow
+            title="Token-gated"
+            description="Require a connected wallet holding a specific token or NFT."
+            checked={settings.tokenGated}
+            onCheckedChange={setSetting("tokenGated")}
+          />
+          <SettingRow
+            title="Member-only"
+            description="Restrict to your members list, an email domain, or Geiger suite membership."
+            checked={settings.memberOnly}
+            onCheckedChange={setSetting("memberOnly")}
+          />
+          <SettingRow
+            title="Group registration"
+            description="Let one person register a team/table and collect details per seat."
+            checked={settings.group}
+            onCheckedChange={setSetting("group")}
+          />
+          <SettingRow
+            title="Autofill returning guests"
+            description="Recognise returning contacts and pre-fill known fields."
+            checked={settings.autofill}
+            onCheckedChange={setSetting("autofill")}
+          />
+        </SettingsList>
+      </SectionCard>
 
-                        {field.type === "select" ? (
-                          <Field
-                            label="Options"
-                            hint="Comma-separated choices for the dropdown."
-                          >
-                            <Input
-                              value={(field.options || []).join(", ")}
-                              onChange={(e) =>
-                                updateField(field.id, {
-                                  options: e.target.value
-                                    .split(",")
-                                    .map((s) => s.trim())
-                                    .filter(Boolean),
-                                })
-                              }
-                              placeholder="e.g. Small, Medium, Large"
-                            />
-                          </Field>
-                        ) : null}
-
-                        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Switch
-                              checked={!!field.required}
-                              onCheckedChange={(v) =>
-                                updateField(field.id, { required: v })
-                              }
-                            />
-                            Required
-                          </label>
-
-                          <div className="flex flex-1 items-center gap-2">
-                            <span className="text-sm text-text-secondary">
-                              Show when
-                            </span>
-                            <Select
-                              value={field.showWhen?.fieldId || "always"}
-                              onValueChange={(v) =>
-                                updateField(field.id, {
-                                  showWhen:
-                                    v === "always"
-                                      ? undefined
-                                      : { fieldId: v, equals: field.showWhen?.equals || "" },
-                                })
-                              }
-                            >
-                              <SelectTrigger className="h-8 w-44">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="always">Always shown</SelectItem>
-                                {fieldOptions(field.id).map((f) => (
-                                  <SelectItem key={f.id} value={f.id}>
-                                    {f.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {field.showWhen ? (
-                              <Input
-                                value={field.showWhen.equals}
-                                onChange={(e) =>
-                                  updateField(field.id, {
-                                    showWhen: {
-                                      ...field.showWhen,
-                                      equals: e.target.value,
-                                    },
-                                  })
-                                }
-                                placeholder="equals…"
-                                className="h-8 w-32"
-                              />
-                            ) : null}
-                          </div>
-
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Remove question"
-                            className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
-                            onClick={() => removeField(field.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon={FileText}
-                title="No questions yet"
-                description="Add the fields you want to collect at registration."
-                action={
-                  <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={addField}
-                  >
-                    <Plus className="h-4 w-4" /> Add question
-                  </Button>
-                }
-              />
-            )}
-          </SectionCard>
+      <SectionCard
+        title="Registration window"
+        description="Open and close the form automatically."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Opens" hint="Leave empty to open immediately.">
+            <Input
+              type="date"
+              value={settings.opensAt}
+              onChange={(e) => setSetting("opensAt")(e.target.value)}
+            />
+          </Field>
+          <Field label="Closes" hint="Leave empty for no deadline.">
+            <Input
+              type="date"
+              value={settings.closesAt}
+              onChange={(e) => setSetting("closesAt")(e.target.value)}
+            />
+          </Field>
         </div>
-      ) : null}
+      </SectionCard>
+    </div>
+  );
+}
 
-      {tab === "access" ? (
+function ConfirmationSection({ settings, setConfirmation }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard
+        title="Confirmation page"
+        description="What registrants see right after they sign up."
+      >
         <div className="space-y-4">
-          <SectionCard title="Who can register" description="Gate who's allowed to use this form.">
-            <SettingsList>
-              <SettingRow
-                title="Token-gated"
-                description="Require a connected wallet holding a specific token or NFT."
-                checked={settings.tokenGated}
-                onCheckedChange={setSetting("tokenGated")}
-              />
-              <SettingRow
-                title="Member-only"
-                description="Restrict to your members list, an email domain, or Geiger suite membership."
-                checked={settings.memberOnly}
-                onCheckedChange={setSetting("memberOnly")}
-              />
-              <SettingRow
-                title="Group registration"
-                description="Let one person register a team/table and collect details per seat."
-                checked={settings.group}
-                onCheckedChange={setSetting("group")}
-              />
-              <SettingRow
-                title="Autofill returning guests"
-                description="Recognise returning contacts and pre-fill known fields."
-                checked={settings.autofill}
-                onCheckedChange={setSetting("autofill")}
-              />
-            </SettingsList>
-          </SectionCard>
-
-          <SectionCard title="Registration window" description="Open and close the form automatically.">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Opens" hint="Leave empty to open immediately.">
-                <Input
-                  type="date"
-                  value={settings.opensAt}
-                  onChange={(e) => setSetting("opensAt")(e.target.value)}
-                />
-              </Field>
-              <Field label="Closes" hint="Leave empty for no deadline.">
-                <Input
-                  type="date"
-                  value={settings.closesAt}
-                  onChange={(e) => setSetting("closesAt")(e.target.value)}
-                />
-              </Field>
-            </div>
-          </SectionCard>
+          <Field label="Heading">
+            <Input
+              value={settings.confirmation.title}
+              onChange={(e) => setConfirmation("title")(e.target.value)}
+            />
+          </Field>
+          <Field label="Message">
+            <Textarea
+              rows={3}
+              value={settings.confirmation.body}
+              onChange={(e) => setConfirmation("body")(e.target.value)}
+            />
+          </Field>
+          <SettingsList>
+            <SettingRow
+              title="Show 'Add to calendar'"
+              description="Offer calendar links on the confirmation page."
+              checked={settings.confirmation.showCalendar}
+              onCheckedChange={setConfirmation("showCalendar")}
+            />
+            <SettingRow
+              title="Show share buttons"
+              description="Let attendees share the event after registering."
+              checked={settings.confirmation.showShare}
+              onCheckedChange={setConfirmation("showShare")}
+            />
+          </SettingsList>
         </div>
-      ) : null}
-
-      {tab === "confirmation" ? (
-        <div className="space-y-4">
-          <SectionCard
-            title="Confirmation page"
-            description="What registrants see right after they sign up."
-          >
-            <div className="space-y-4">
-              <Field label="Heading">
-                <Input
-                  value={settings.confirmation.title}
-                  onChange={(e) => setConfirmation("title")(e.target.value)}
-                />
-              </Field>
-              <Field label="Message">
-                <Textarea
-                  rows={3}
-                  value={settings.confirmation.body}
-                  onChange={(e) => setConfirmation("body")(e.target.value)}
-                />
-              </Field>
-              <SettingsList>
-                <SettingRow
-                  title="Show 'Add to calendar'"
-                  description="Offer calendar links on the confirmation page."
-                  checked={settings.confirmation.showCalendar}
-                  onCheckedChange={setConfirmation("showCalendar")}
-                />
-                <SettingRow
-                  title="Show share buttons"
-                  description="Let attendees share the event after registering."
-                  checked={settings.confirmation.showShare}
-                  onCheckedChange={setConfirmation("showShare")}
-                />
-              </SettingsList>
-            </div>
-          </SectionCard>
-        </div>
-      ) : null}
-    </MainScreenWrapper>
+      </SectionCard>
+    </div>
   );
 }
 
@@ -732,43 +743,20 @@ export function RegistrationFormsScreen() {
       align: "right",
       className: "text-right",
       render: (f) => (
-        <div onClick={(ev) => ev.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-40 border-border bg-surface-subtle"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => setOpenId(f.id)}
-              >
-                <FileText className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => handleDuplicate(f)}
-              >
-                <Copy className="h-4 w-4" /> Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setDeleteTarget(f)}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label={`Actions for ${f.name}`}
+          items={[
+            { icon: FileText, label: "Edit", onSelect: () => setOpenId(f.id) },
+            { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(f) },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(f),
+            },
+          ]}
+        />
       ),
     },
   ];

@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Loader2, ShoppingBag } from "lucide-react";
+import {
+  Loader2,
+  Repeat,
+  RotateCcw,
+  Settings2,
+  ShoppingBag,
+} from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -20,7 +26,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listProjectOrders } from "@/lib/supabase/orders";
@@ -54,25 +60,32 @@ function summarizePolicy(r) {
   return `${refund} · transfers ${c.allowTicketTransfer ? "on" : "off"}`;
 }
 
-function PolicyEditForm({ config, setConfig }) {
-  const set = (patch) => setConfig({ ...config, ...patch });
-  return (
-    <div className="space-y-4">
-      <SectionCard title="Self-service">
-        <SettingsList>
-          <SettingRow
-            title="Let buyers manage their order"
-            description="Update details and download tickets from their confirmation link."
-            checked={config.selfService ?? true}
-            onCheckedChange={(v) => set({ selfService: v })}
-          />
-        </SettingsList>
-      </SectionCard>
+// --- Policy edit sections ----------------------------------------------------
+// records_kit renders each as an element, never calls it.
 
-      <SectionCard
-        title="Refunds"
-        description="Your refund policy and how requests are handled."
-      >
+function SelfServiceSection({ config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+
+  return (
+    <SectionCard bare>
+      <SettingsList>
+        <SettingRow
+          title="Let buyers manage their order"
+          description="Update details and download tickets from their confirmation link."
+          checked={config.selfService ?? true}
+          onCheckedChange={(v) => set({ selfService: v })}
+        />
+      </SettingsList>
+    </SectionCard>
+  );
+}
+
+function PolicyRefundsSection({ config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+
+  return (
+    <div className="space-y-6">
+      <SectionCard bare>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Policy">
             <Select
@@ -98,45 +111,73 @@ function PolicyEditForm({ config, setConfig }) {
             />
           ) : null}
         </div>
-        {config.refundPolicy !== "none" ? (
-          <div className="mt-4 border-t border-border pt-4">
-            <Field
-              label="Approval"
-              hint="Auto-approve eligible requests, or review each one."
-            >
-              <Segmented
-                value={config.refundApproval || "manual"}
-                onChange={(v) => set({ refundApproval: v })}
-                options={[
-                  { value: "auto", label: "Automatic" },
-                  { value: "manual", label: "Manual review" },
-                ]}
-              />
-            </Field>
-          </div>
-        ) : null}
       </SectionCard>
 
-      <SectionCard
-        title="Transfers"
-        description="Whether attendees can hand a ticket to someone else."
-      >
-        <SettingsList>
-          <SettingRow
-            title="Allow name changes"
-            checked={config.allowNameChange ?? true}
-            onCheckedChange={(v) => set({ allowNameChange: v })}
-          />
-          <SettingRow
-            title="Allow ticket transfer"
-            checked={config.allowTicketTransfer ?? false}
-            onCheckedChange={(v) => set({ allowTicketTransfer: v })}
-          />
-        </SettingsList>
-      </SectionCard>
+      {config.refundPolicy !== "none" ? (
+        <SectionCard bare>
+          <Field
+            label="Approval"
+            hint="Auto-approve eligible requests, or review each one."
+          >
+            <Segmented
+              value={config.refundApproval || "manual"}
+              onChange={(v) => set({ refundApproval: v })}
+              options={[
+                { value: "auto", label: "Automatic" },
+                { value: "manual", label: "Manual review" },
+              ]}
+            />
+          </Field>
+        </SectionCard>
+      ) : null}
     </div>
   );
 }
+
+function PolicyTransfersSection({ config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+
+  return (
+    <SectionCard bare>
+      <SettingsList>
+        <SettingRow
+          title="Allow name changes"
+          checked={config.allowNameChange ?? true}
+          onCheckedChange={(v) => set({ allowNameChange: v })}
+        />
+        <SettingRow
+          title="Allow ticket transfer"
+          checked={config.allowTicketTransfer ?? false}
+          onCheckedChange={(v) => set({ allowTicketTransfer: v })}
+        />
+      </SettingsList>
+    </SectionCard>
+  );
+}
+
+const POLICY_SECTIONS = [
+  {
+    key: "selfService",
+    label: "Self-service",
+    icon: Settings2,
+    desc: "What buyers can change about their order themselves.",
+    render: SelfServiceSection,
+  },
+  {
+    key: "refunds",
+    label: "Refunds",
+    icon: RotateCcw,
+    desc: "Your refund policy and how requests are handled.",
+    render: PolicyRefundsSection,
+  },
+  {
+    key: "transfers",
+    label: "Transfers",
+    icon: Repeat,
+    desc: "Whether attendees can hand a ticket to someone else.",
+    render: PolicyTransfersSection,
+  },
+];
 
 // --- View switch -------------------------------------------------------------
 
@@ -276,7 +317,7 @@ export function OrdersAttendeesScreen() {
       icon={ShoppingBag}
       kinds={KINDS}
       summarize={summarizePolicy}
-      EditForm={PolicyEditForm}
+      sections={POLICY_SECTIONS}
       headerExtra={tabs}
     />
   );

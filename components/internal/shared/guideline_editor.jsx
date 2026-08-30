@@ -3,16 +3,16 @@
 import React from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2, Accessibility } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { EmptyState } from "./screen_kit";
 import { GUIDELINE_CATEGORY_OPTIONS } from "@/components/internal/screens/registrations/constants";
 

@@ -37,10 +37,12 @@ export function countRegs(regs) {
 export function PipelineBar({ counts, capacity, className, size = "md" }) {
   const cap = Number(capacity) || 0;
   const taken = counts.seats;
-  const pctOf = (n) => (cap ? Math.min(100, (n / cap) * 100) : taken ? 100 : 0);
+  // Uncapped events have nothing to fill toward, so a bar would only lie.
+  if (cap <= 0) return null;
+  const pctOf = (n) => Math.min(100, (n / cap) * 100);
   const checkedPct = pctOf(counts["Checked-in"]);
   const confirmedPct = pctOf(counts.Confirmed);
-  const over = cap > 0 && taken > cap;
+  const over = taken > cap;
   const height = size === "lg" ? "h-2.5" : size === "sm" ? "h-1.5" : "h-2";
 
   return (
@@ -51,7 +53,7 @@ export function PipelineBar({ counts, capacity, className, size = "md" }) {
         className,
       )}
       role="img"
-      aria-label={`${taken} of ${cap || "∞"} seats filled`}
+      aria-label={`${taken} of ${cap} seats filled`}
     >
       <div className="h-full bg-primary/50" style={{ width: `${checkedPct}%` }} />
       <div

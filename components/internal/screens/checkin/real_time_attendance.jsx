@@ -11,7 +11,7 @@ import {
   StatsBar,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { useOptionalProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listRegistrations } from "@/lib/supabase/registrations";

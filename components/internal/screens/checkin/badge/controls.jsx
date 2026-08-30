@@ -3,14 +3,14 @@
 import React from "react";
 
 import { Field } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { Slider } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 

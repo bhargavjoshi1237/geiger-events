@@ -17,8 +17,8 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@geiger/ui/button";
+import { Switch } from "@geiger/ui/switch";
 import { useEventConfig } from "@/lib/events/use-event-config";
 
 // Per-event toggles for the project-global Tickets features. Each flag is stored

@@ -3,7 +3,7 @@
 import { Plus, Users } from "lucide-react";
 
 import { EmptyState, SectionCard } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 
 export default function GroupsTab({ groups, counts, onCreate }) {
   return (

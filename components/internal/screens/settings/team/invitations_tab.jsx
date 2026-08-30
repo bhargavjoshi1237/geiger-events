@@ -7,9 +7,9 @@ import {
   SectionCard,
   SettingsList,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import { formatRelativeTime, initialsOf } from "../constants";
 
 export default function InvitationsTab({ invites, roleById, onRevoke, onInvite }) {

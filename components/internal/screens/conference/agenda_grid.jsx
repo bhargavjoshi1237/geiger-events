@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { Button, cn } from "@geiger/ui";
+import { Button, cn, SegmentedTabs } from "@geiger/ui";
 import {
   agendaDays,
   agendaTracks,
@@ -46,23 +46,11 @@ const snap = (mins) =>
 function DayTabs({ days, value, onChange }) {
   if (days.length < 2) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
-      {days.map((day) => (
-        <button
-          key={day}
-          type="button"
-          onClick={() => onChange(day)}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors",
-            value === day
-              ? "bg-surface-hover text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <CalendarDays className="h-3.5 w-3.5" /> {day}
-        </button>
-      ))}
-    </div>
+    <SegmentedTabs
+      tabs={days.map((day) => ({ value: day, label: day, icon: CalendarDays }))}
+      value={value}
+      onChange={onChange}
+    />
   );
 }
 

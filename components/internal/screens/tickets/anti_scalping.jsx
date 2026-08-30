@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ShieldAlert, UserCheck, IdCard } from "lucide-react";
+import { IdCard, Repeat, ShieldAlert, UserCheck } from "lucide-react";
 
 import {
   Field,
@@ -15,7 +15,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 
 import { RecordsScreen } from "./records_kit";
 import { NumField as Num } from "./controls";
@@ -45,83 +45,102 @@ function summarize(r) {
   return parts.join(" · ");
 }
 
-function ResaleRuleEditForm({ config, setConfig }) {
-  const set = (patch) => setConfig({ ...config, ...patch });
-  return (
-    <div className="space-y-4">
-      <SectionCard
-        title="Ownership"
-        description="Bind tickets to a buyer so they can't be freely resold."
-      >
-        <SettingsList>
-          <SettingRow
-            icon={UserCheck}
-            title="Require name lock"
-            description="Each ticket is tied to the buyer's name."
-            checked={!!config.nameLockRequired}
-            onCheckedChange={(v) => set({ nameLockRequired: v })}
-          />
-          <SettingRow
-            icon={IdCard}
-            title="ID check at entry"
-            description="Staff verify a matching ID when admitting the holder."
-            checked={!!config.identityCheck}
-            onCheckedChange={(v) => set({ identityCheck: v })}
-          />
-        </SettingsList>
-      </SectionCard>
+// --- Edit sections ----------------------------------------------------------
+// records_kit renders each as an element, never calls it.
 
-      <SectionCard
-        title="Transfers & resale"
-        description="How, and whether, buyers can hand tickets on."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Transfer policy">
-            <Select
-              value={config.transferPolicy || "off"}
-              onValueChange={(v) => set({ transferPolicy: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRANSFER_POLICY_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field
-            label="Resale price cap"
-            hint="Cap resale at the original face value to deter scalping."
-          >
-            <Select
-              value={config.maxResalePrice || "none"}
-              onValueChange={(v) => set({ maxResalePrice: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No cap</SelectItem>
-                <SelectItem value="face">Face value</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Num
-            label="Max per buyer"
-            hint="0 = no limit."
-            value={config.maxPerBuyer ?? 0}
-            onChange={(v) => set({ maxPerBuyer: v })}
-            unit="tickets"
-          />
-        </div>
-      </SectionCard>
-    </div>
+function OwnershipSection({ config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+
+  return (
+    <SectionCard bare>
+      <SettingsList>
+        <SettingRow
+          icon={UserCheck}
+          title="Require name lock"
+          description="Each ticket is tied to the buyer's name."
+          checked={!!config.nameLockRequired}
+          onCheckedChange={(v) => set({ nameLockRequired: v })}
+        />
+        <SettingRow
+          icon={IdCard}
+          title="ID check at entry"
+          description="Staff verify a matching ID when admitting the holder."
+          checked={!!config.identityCheck}
+          onCheckedChange={(v) => set({ identityCheck: v })}
+        />
+      </SettingsList>
+    </SectionCard>
   );
 }
+
+function ResaleSection({ config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+
+  return (
+    <SectionCard bare>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Transfer policy">
+          <Select
+            value={config.transferPolicy || "off"}
+            onValueChange={(v) => set({ transferPolicy: v })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TRANSFER_POLICY_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field
+          label="Resale price cap"
+          hint="Cap resale at the original face value to deter scalping."
+        >
+          <Select
+            value={config.maxResalePrice || "none"}
+            onValueChange={(v) => set({ maxResalePrice: v })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No cap</SelectItem>
+              <SelectItem value="face">Face value</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+        <Num
+          label="Max per buyer"
+          hint="0 = no limit."
+          value={config.maxPerBuyer ?? 0}
+          onChange={(v) => set({ maxPerBuyer: v })}
+          unit="tickets"
+        />
+      </div>
+    </SectionCard>
+  );
+}
+
+const SECTIONS = [
+  {
+    key: "ownership",
+    label: "Ownership",
+    icon: UserCheck,
+    desc: "Bind tickets to a buyer so they can't be freely resold.",
+    render: OwnershipSection,
+  },
+  {
+    key: "resale",
+    label: "Transfers & resale",
+    icon: Repeat,
+    desc: "How, and whether, buyers can hand tickets on.",
+    render: ResaleSection,
+  },
+];
 
 export function AntiScalpingScreen() {
   return (
@@ -133,7 +152,7 @@ export function AntiScalpingScreen() {
       icon={ShieldAlert}
       kinds={KINDS}
       summarize={summarize}
-      EditForm={ResaleRuleEditForm}
+      sections={SECTIONS}
     />
   );
 }

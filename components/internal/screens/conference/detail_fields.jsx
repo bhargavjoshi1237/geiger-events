@@ -42,6 +42,7 @@ import {
   cn,
 } from "@geiger/ui";
 import { SectionCard, StatusPill } from "@/components/internal/shared/screen_kit";
+import { IconInput } from "@/components/internal/shared/icon_input";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listEvents } from "@/lib/supabase/events";
@@ -175,15 +176,12 @@ export function EventMultiField({ record, commit, configKey = "eventIds" }) {
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search events…"
-          className="pl-8"
-        />
-      </div>
+      <IconInput
+        icon={Search}
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search events…"
+      />
       <div className="max-h-72 space-y-1.5 overflow-y-auto">
         {filtered.map((e) => {
           const on = selected.includes(e.id);
@@ -659,15 +657,13 @@ export function SessionMultiField({ record, commit, configKey = "sessionIds" }) 
     <div className="space-y-3">
       {/* Clear sits with the search — there's no card header to hang it off. */}
       <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search sessions, tracks, speakers…"
-            className="pl-8"
-          />
-        </div>
+        <IconInput
+          icon={Search}
+          wrapperClassName="flex-1"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search sessions, tracks, speakers…"
+        />
         {selected.length ? (
           <Button
             variant="outline"

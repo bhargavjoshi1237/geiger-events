@@ -31,16 +31,12 @@ import {
   StatGrid,
   StatusPill,
   Toolbar,
+  SegmentedTabs,
 } from "@/components/internal/shared/screen_kit";
 import {
+  ActionMenu,
   Badge,
   Button,
-  cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Input,
   Select,
   SelectContent,
@@ -50,8 +46,7 @@ import {
   Switch,
   Textarea,
 } from "@geiger/ui";
-import { MoreHorizontal } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { listEvents } from "@/lib/supabase/events";
 import { listRegistrations } from "@/lib/supabase/registrations";
@@ -76,9 +71,9 @@ import { downloadCsv } from "./csv";
 const shortId = () => `dq_${Math.random().toString(36).slice(2, 8)}`;
 
 const TABS = [
-  { key: "report", label: "Needs report", icon: Accessibility },
-  { key: "requests", label: "Requests", icon: MessageSquare },
-  { key: "inquiry", label: "Inquiry", icon: MailQuestion },
+  { value: "report", label: "Needs report", icon: Accessibility },
+  { value: "requests", label: "Requests", icon: MessageSquare },
+  { value: "inquiry", label: "Inquiry", icon: MailQuestion },
 ];
 
 function NeedsReportTab({ regs, events, eventNames, questions, registerExport }) {
@@ -487,46 +482,21 @@ function RequestsTab({ config, onConfigChange, requests, setRequests, events, ev
       align: "right",
       className: "text-right",
       render: (r) => (
-        <div onClick={(ev) => ev.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-subtle"
-            >
-              {r.status === "Open" ? (
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                  onClick={() => setStatus(r, "Resolved")}
-                >
-                  <Check className="h-4 w-4" /> Mark resolved
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                  onClick={() => setStatus(r, "Open")}
-                >
-                  <RotateCcw className="h-4 w-4" /> Reopen
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setDeleteTarget(r)}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Request actions"
+          items={[
+            r.status === "Open"
+              ? { icon: Check, label: "Mark resolved", onSelect: () => setStatus(r, "Resolved") }
+              : { icon: RotateCcw, label: "Reopen", onSelect: () => setStatus(r, "Open") },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(r),
+            },
+          ]}
+        />
       ),
     },
   ];
@@ -983,24 +953,7 @@ export function DietaryAccessibilityScreen() {
           <Download className="h-4 w-4" />
         </Button>
       ) : null}
-      <div className="flex w-fit items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              tab === t.key
-                ? "bg-surface-hover text-foreground"
-                : "text-text-secondary hover:text-foreground",
-            )}
-          >
-            <t.icon className="h-3.5 w-3.5" />
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
     </div>
   );
 

@@ -12,20 +12,17 @@ import {
 } from "lucide-react";
 
 import { SecondaryScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import {
-  DataTable,
-  Field,
-  ScreenHeader,
-} from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
+import { DataTable, Field } from "@/components/internal/shared/screen_kit";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { listContacts, createContact } from "@/lib/supabase/contacts";
@@ -174,18 +171,10 @@ export function GuestImportScreen({ onBack, onImported } = {}) {
 
   return (
     <SecondaryScreenWrapper>
-      {onBack ? (
-        <Button
-          variant="ghost"
-          className="-ml-2 w-fit text-muted-foreground hover:text-foreground"
-          onClick={onBack}
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to contacts
-        </Button>
-      ) : null}
-      <ScreenHeader
+      <EditorHeader
+        back={onBack ? { label: "Back to contacts", onClick: onBack } : null}
         title="Import contacts"
-        description="Bring contacts in from a CSV — map your columns, preview, and import into the contact book."
+        meta="Bring contacts in from a CSV — map your columns, preview, and import into the contact book."
       />
 
       <Stepper step={step} />

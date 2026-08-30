@@ -4,7 +4,7 @@ import React, { Suspense, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { AppSidebar } from "@/components/internal/sidebar/sidebar";
 import { Topbar } from "@/components/internal/topbar/topbar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@geiger/ui/sidebar";
 import { EventsOverviewScreen } from "@/components/internal/screens/overview/events_overview";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";

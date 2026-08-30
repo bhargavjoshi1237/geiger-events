@@ -22,14 +22,17 @@ import {
   resolveTheme,
   themeStyle,
   themeAccent,
+  themeButtonStyle,
   themeFontFaceCss,
   themeWebfonts,
   resolveWidth,
   pageBackgroundVideo,
+  DEFAULT_THEME,
 } from "@/lib/events/theme";
-import { PageFooter } from "../page_footer";
+import { PageFooter, socialsFromLinks } from "../page_footer";
+import { coverKind } from "@/lib/events/gallery";
 import { FollowButton } from "@/components/internal/screens/discovery/public_follow";
-import { resolveLayout } from "./wall_layout";
+import { ctaHref, resolveCta, resolveLayout } from "./wall_layout";
 import {
   applyFilters,
   byStatus,
@@ -246,60 +249,141 @@ function TypeChips({ chips, type, onType, accent }) {
   );
 }
 
-function WallHero({ wall, profile, banner, accent }) {
+// A photo behind the whole top section, washed towards the page background so
+// the name, tagline, and buttons stay legible whatever the organiser picks.
+function heroScrim(theme) {
+  const c = (theme || DEFAULT_THEME).colors;
+  return `linear-gradient(to bottom, color-mix(in srgb, ${c.bg} 74%, transparent), color-mix(in srgb, ${c.bg} 93%, transparent))`;
+}
+
+function WallHero({ wall, profile, banner, headerBg, accent, theme, contentWidth }) {
   const name = profile?.displayName || wall?.name || "Our Events";
   const avatar = wall?.logoUrl || profile?.avatarUrl || "";
   const managedBy = profile?.displayName || wall?.name;
+  const cta = resolveCta(wall?.cta);
+  const showCta = Boolean(cta.label && cta.url);
 
   return (
-    <header className="relative">
+    // Full-bleed: the header itself spans the whole viewport so the backdrop
+    // reaches the edges. The inner content (banner, identity, actions) is
+    // re-centred against contentWidth so it lines up with the Events section
+    // below.
+    <header className="relative w-full overflow-hidden">
+      {headerBg ? (
+        <>
+          {/* A video link loops muted behind the header; anything else is
+              treated as a still. Muted + playsInline is what lets a video
+              autoplay on mobile. */}
+          {coverKind(headerBg) === "video" ? (
+            <video
+              src={headerBg}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              aria-hidden
+              tabIndex={-1}
+              className="absolute inset-0 -z-20 h-full w-full object-cover"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={headerBg}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 -z-20 h-full w-full object-cover"
+            />
+          )}
+          <div
+            aria-hidden
+            className="absolute inset-0 -z-10"
+            style={{ backgroundImage: heroScrim(theme) }}
+          />
+        </>
+      ) : null}
+
       {banner ? (
-        <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={banner} alt="" className="h-44 w-full object-cover sm:h-72" />
         </div>
       ) : null}
 
-      <div className={cn("flex items-end justify-between gap-4", banner && "-mt-8")}>
-        {avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatar}
-            alt=""
-            className=""
-          />
-        ) : (
-          <span />
-        )}
-        <FollowButton
-          projectId={profile?.projectId || wall?.projectId}
-          organiserName={name}
-        />
-      </div>
+      <div
+        className="relative mx-auto px-4 pb-12 pt-6 sm:px-6 lg:px-8"
+        style={{ maxWidth: contentWidth }}
+      >
+      {/* Top row: logo on the left, Follow on the right, both vertically
+          centred against each other. The identity text (time, managed-by,
+          tagline, bio, socials) and the CTA flow below in a single column. */}
+      <div className={cn("flex justify-between gap-4", banner && "-mt-8")}>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-4">
+            {avatar ? (
+              // Height drives the size and width is capped, so a full-resolution
+              // logo can't blow out the hero.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatar}
+                alt=""
+                className="h-14 w-auto max-w-[200px] object-contain object-left sm:h-16 sm:max-w-[280px]"
+              />
+            ) : (
+              <span className="h-14 sm:h-16" aria-hidden />
+            )}
 
-      <div className="mt-5 space-y-2">
-        <LocalTimeLine />
-        {managedBy ? (
-          <p className="text-sm text-text-secondary">Events managed by {managedBy}</p>
-        ) : null}
-        {wall?.tagline ? (
-          <p className="max-w-xl text-sm text-text-secondary">{wall.tagline}</p>
-        ) : null}
-        {profile?.bio ? (
-          <p className="max-w-2xl text-sm text-text-secondary">{profile.bio}</p>
-        ) : null}
-        <div className="pt-1">
-          <SocialLinks profile={profile} />
+            <FollowButton
+              projectId={profile?.projectId || wall?.projectId}
+              organiserName={name}
+            />
+          </div>
+
+          <div className={cn("space-y-2", avatar && "mt-5")}>
+            <LocalTimeLine />
+            {managedBy ? (
+              <p className="text-sm text-text-secondary">
+                Events managed by {managedBy}
+              </p>
+            ) : null}
+            {wall?.tagline ? (
+              <p className="max-w-xl text-sm text-text-secondary">{wall.tagline}</p>
+            ) : null}
+            {profile?.bio ? (
+              <p className="max-w-2xl text-sm text-text-secondary">{profile.bio}</p>
+            ) : null}
+            <div className="pt-1">
+              <SocialLinks profile={profile} />
+            </div>
+          </div>
+
+          {showCta ? (
+            <div className="mt-4 flex justify-end">
+              <a
+                href={ctaHref(cta)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={themeButtonStyle({ ...theme, button: cta.style }, accent)}
+                className="inline-flex h-9 max-w-[220px] items-center justify-center px-4 text-sm font-medium transition-opacity hover:opacity-90"
+              >
+                <span className="truncate">{cta.label}</span>
+              </a>
+            </div>
+          ) : null}
         </div>
       </div>
+      </div>
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-24 -z-10 h-64"
-        style={{
-          background: `radial-gradient(60% 100% at 50% 0%, color-mix(in srgb, ${accent.color} 16%, transparent), transparent 72%)`,
-        }}
-      />
+      {/* The accent glow stands in for the backdrop when no photo is set. */}
+      {headerBg ? null : (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 -top-24 -z-10 h-64"
+          style={{
+            background: `radial-gradient(60% 100% at 50% 0%, color-mix(in srgb, ${accent.color} 16%, transparent), transparent 72%)`,
+          }}
+        />
+      )}
     </header>
   );
 }
@@ -314,6 +398,19 @@ export function WallPublicPageContent({ wall, events, profile }) {
   const fontFaceCss = themeFontFaceCss(theme);
   const layout = resolveLayout(wall?.layout);
   const banner = layout.header.bannerUrl || profile?.bannerUrl || "";
+  const headerBg = wall?.headerBgUrl || "";
+
+  // An organiser who filled in their public profile shouldn't have to retype
+  // those links to get social buttons in the footer; anything set on the footer
+  // itself wins.
+  const profileSocials = useMemo(
+    () =>
+      socialsFromLinks([
+        ...(profile?.website ? [{ url: profile.website }] : []),
+        ...(Array.isArray(profile?.links) ? profile.links : []),
+      ]),
+    [profile],
+  );
 
   const [view, setView] = useState(layout.defaultView);
   const [status, setStatus] = useState(
@@ -379,12 +476,15 @@ export function WallPublicPageContent({ wall, events, profile }) {
       ) : null}
 
       <div className="relative z-10 isolate">
-        <div
-          className="mx-auto px-4 pb-12 pt-6 sm:px-6 lg:px-8"
-          style={{ maxWidth: contentWidth }}
-        >
-          <WallHero wall={wall} profile={profile} banner={banner} accent={accent} />
-        </div>
+        <WallHero
+          wall={wall}
+          profile={profile}
+          banner={banner}
+          headerBg={headerBg}
+          accent={accent}
+          theme={theme}
+          contentWidth={contentWidth}
+        />
 
         <div className="border-t border-border bg-surface-subtle/25">
           <div
@@ -422,7 +522,11 @@ export function WallPublicPageContent({ wall, events, profile }) {
               />
             </div>
 
-            <PageFooter footer={wall?.footer} accent={accent} />
+            <PageFooter
+              footer={wall?.footer}
+              accent={accent}
+              fallbackSocials={profileSocials}
+            />
           </div>
         </div>
       </div>

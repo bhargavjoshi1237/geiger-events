@@ -4,9 +4,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Handshake, Loader2, Mic, Plus } from "lucide-react";
 
 import { EditorSectionHeader, StatusPill } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@geiger/ui/button";
+import { Switch } from "@geiger/ui/switch";
+import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { useProject } from "@/context/project-context";

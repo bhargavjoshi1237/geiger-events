@@ -4,14 +4,14 @@ import React from "react";
 import { CreditCard } from "lucide-react";
 
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { RecordsScreen } from "./records_kit";
 
 const KINDS = [

@@ -1,7 +1,14 @@
-import { SquarePen, Palette, CalendarDays, Link2 } from "lucide-react";
+import {
+  SquarePen,
+  Palette,
+  PanelBottom,
+  CalendarDays,
+  Link2,
+} from "lucide-react";
 
 import { WallGeneralSection } from "./general";
 import { WallDesignSection } from "./design";
+import { WallFooterSection } from "./footer";
 import { WallEventsSection } from "./listing";
 import { WallCustomUrlSection } from "./custom_url";
 
@@ -22,6 +29,12 @@ export const NAV_GROUPS = [
         desc: "Brand colors, typography, and layout for the wall.",
       },
       {
+        key: "footer",
+        label: "Footer",
+        icon: PanelBottom,
+        desc: "Social buttons, links, and the closing line at the bottom of the wall.",
+      },
+      {
         key: "listing",
         label: "Events",
         icon: CalendarDays,
@@ -40,6 +53,7 @@ export const NAV_GROUPS = [
 export const SECTIONS = {
   general: WallGeneralSection,
   design: WallDesignSection,
+  footer: WallFooterSection,
   listing: WallEventsSection,
   url: WallCustomUrlSection,
 };

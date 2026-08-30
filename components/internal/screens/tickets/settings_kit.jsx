@@ -5,10 +5,9 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorSections } from "@/components/internal/shared/editor_shell";
 import { ScreenHeader } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { Button } from "@geiger/ui/button";
 import { useProject } from "@/context/project-context";
 import { getSetting, upsertSetting } from "@/lib/supabase/ticketing_settings";
 
@@ -34,7 +33,6 @@ export function SettingsScreen({
   children,
 }) {
   const { projectId } = useProject();
-  const { section, setSection } = useWorkspaceUrl();
   const [config, setConfig] = useState(() =>
     typeof defaultConfig === "function" ? defaultConfig() : { ...defaultConfig },
   );
@@ -104,12 +102,13 @@ export function SettingsScreen({
           Loading…
         </div>
       ) : sections?.length ? (
-        <SettingsSections
-          sections={sections}
-          section={section}
-          setSection={setSection}
-          formProps={{ config, set, save, saving }}
-        />
+        <EditorSections nav={sections} defaultSection={sections[0].key}>
+          {({ activeItem }) => {
+            // Rendered as an element, not called — sections own their own hooks.
+            const Body = activeItem.render;
+            return <Body config={config} set={set} save={save} saving={saving} />;
+          }}
+        </EditorSections>
       ) : (
         <div className="space-y-6">
           <Form config={config} set={set} save={save} saving={saving} />
@@ -117,59 +116,6 @@ export function SettingsScreen({
         </div>
       )}
     </MainScreenWrapper>
-  );
-}
-
-// Content left, section nav right — the event-editor layout, with the open
-// section mirrored to the URL so a refresh lands back on it.
-function SettingsSections({ sections, section, setSection, formProps }) {
-  const activeItem = sections.find((s) => s.key === section) || sections[0];
-  // Rendered as an element, not called — sections own their own hooks.
-  const Body = activeItem.render;
-  return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px]">
-      <div className="order-2 min-w-0 lg:order-1">
-        <div className="mb-5">
-          <h2 className="text-lg font-semibold text-foreground">{activeItem.label}</h2>
-          {activeItem.desc ? (
-            <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
-          ) : null}
-        </div>
-        <Body {...formProps} />
-      </div>
-
-      <aside className="order-1 lg:order-2">
-        <nav className="space-y-0.5 lg:sticky lg:top-0">
-          {sections.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.key === activeItem.key;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setSection(item.key)}
-                className={cn(
-                  "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                  isActive
-                    ? "bg-surface-card font-medium text-foreground"
-                    : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
-                )}
-              >
-                {Icon ? (
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 shrink-0",
-                      isActive ? "text-foreground" : "text-text-secondary",
-                    )}
-                  />
-                ) : null}
-                <span className="truncate">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </aside>
-    </div>
   );
 }
 

@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { CalendarX2, MapPin, Star } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@geiger/ui/badge";
 import { cn } from "@/lib/utils";
 import { coverKind } from "@/lib/events/gallery";
 import { cardPriceLabel, isSoldOut } from "./wall_layout";

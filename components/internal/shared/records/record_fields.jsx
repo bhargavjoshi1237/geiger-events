@@ -302,6 +302,14 @@ export function FieldControl({ field, value, onValue, values }) {
           placeholder={field.placeholder}
         />
       );
+    case "time":
+      return (
+        <Input
+          type="time"
+          value={value ?? ""}
+          onChange={(e) => onValue(e.target.value)}
+        />
+      );
     case "datetime":
       return (
         <Input

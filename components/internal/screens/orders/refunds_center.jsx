@@ -2,7 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, MoreHorizontal, RotateCcw, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -14,7 +18,8 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -22,14 +27,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
@@ -215,47 +213,25 @@ export function RefundsCenterScreen() {
       align: "right",
       className: "text-right",
       render: (r) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-subtle"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => setOpenId(r.orderId)}
-              >
-                <RotateCcw className="h-4 w-4" /> View order
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border" />
-              {NEXT_STATUS.filter((s) => s !== r.status).map((s) => (
-                <DropdownMenuItem
-                  key={s}
-                  className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                  onClick={() => setStatusFor(r, s)}
-                >
-                  Mark {s.toLowerCase()}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                onClick={() => setRemoveTarget(r)}
-              >
-                <Trash2 className="h-4 w-4 text-red-300" /> Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Refund actions"
+          items={[
+            { icon: RotateCcw, label: "View order", onSelect: () => setOpenId(r.orderId) },
+            { separator: true },
+            ...NEXT_STATUS.filter((s) => s !== r.status).map((s) => ({
+              key: s,
+              label: `Mark ${s.toLowerCase()}`,
+              onSelect: () => setStatusFor(r, s),
+            })),
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Remove",
+              variant: "destructive",
+              onSelect: () => setRemoveTarget(r),
+            },
+          ]}
+        />
       ),
     },
   ];

@@ -10,6 +10,8 @@ import {
   Mail,
   Plus,
   Trash2,
+  Twitch,
+  Twitter,
 } from "lucide-react";
 
 import {
@@ -17,8 +19,8 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -26,17 +28,50 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 
 export const SOCIAL_PLATFORMS = [
   { key: "instagram", label: "Instagram", icon: Instagram },
+  { key: "twitter", label: "X / Twitter", icon: Twitter },
   { key: "facebook", label: "Facebook", icon: Facebook },
   { key: "linkedin", label: "LinkedIn", icon: Linkedin },
   { key: "youtube", label: "YouTube", icon: Youtube },
+  { key: "twitch", label: "Twitch", icon: Twitch },
   { key: "github", label: "GitHub", icon: Github },
   { key: "website", label: "Website", icon: Globe },
   { key: "email", label: "Email", icon: Mail },
 ];
+
+// A URL is enough to tell which platform it is, so links captured elsewhere (an
+// organiser profile, a brand import) can render as icon buttons without asking
+// the user to classify them again.
+const URL_PLATFORMS = [
+  [/instagram\./i, "instagram"],
+  [/(twitter\.|x\.com)/i, "twitter"],
+  [/(youtube\.|youtu\.be)/i, "youtube"],
+  [/linkedin\./i, "linkedin"],
+  [/facebook\./i, "facebook"],
+  [/twitch\./i, "twitch"],
+  [/github\./i, "github"],
+  [/^mailto:/i, "email"],
+];
+
+export function platformFromUrl(url) {
+  const value = String(url || "");
+  for (const [pattern, key] of URL_PLATFORMS) {
+    if (pattern.test(value)) return key;
+  }
+  return "website";
+}
+
+// `links` are {url,label} rows (or bare url strings) — the shape the discovery
+// profile stores. Returns footer social rows.
+export function socialsFromLinks(links) {
+  return (Array.isArray(links) ? links : [])
+    .map((l) => (typeof l === "string" ? { url: l } : l))
+    .filter((l) => l && l.url)
+    .map((l) => ({ platform: platformFromUrl(l.url), url: l.url }));
+}
 
 export const DEFAULT_FOOTER = {
   showBranding: true,
@@ -46,8 +81,8 @@ export const DEFAULT_FOOTER = {
 };
 
 function socialIcon(platform) {
-  return (SOCIAL_PLATFORMS.find((p) => p.key === platform) || SOCIAL_PLATFORMS[0])
-    .icon;
+  const match = SOCIAL_PLATFORMS.find((p) => p.key === platform);
+  return match ? match.icon : Globe;
 }
 
 export function resolveFooter(footer) {
@@ -60,16 +95,21 @@ export function resolveFooter(footer) {
   };
 }
 
+// `fallbackSocials` renders when the footer has none of its own — it lets a
+// surface reuse links it already knows about (the wall passes the organiser
+// profile's) instead of leaving the footer bare until someone retypes them.
 export function PageFooter({
   footer,
   accent,
   logo,
   surface = null,
   contentWidth = null,
+  fallbackSocials = [],
 }) {
   const f = resolveFooter(footer);
   const links = f.links.filter((l) => l && l.label);
-  const socials = f.socials.filter((s) => s && s.url);
+  const own = f.socials.filter((s) => s && s.url);
+  const socials = own.length ? own : fallbackSocials.filter((s) => s && s.url);
   const hasCustom = links.length || socials.length || f.text;
 
   if (!hasCustom && !f.showBranding && !logo?.url) return null;

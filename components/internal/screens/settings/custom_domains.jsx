@@ -14,7 +14,6 @@ import {
   Loader2,
   Lock,
   Info,
-  MoreHorizontal,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
@@ -27,8 +26,9 @@ import {
   EmptyState,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -36,21 +36,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from "@/components/ui/sheet";
+} from "@geiger/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import {
@@ -668,70 +661,34 @@ function DomainsTable({
       render: (d) => {
         const verifying = verifyingId === d.id;
         return (
-          <div onClick={(e) => e.stopPropagation()} className="flex justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Domain actions"
-                  className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-48 border-border bg-surface-subtle shadow-xl"
-              >
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 focus:bg-surface-hover"
-                  onClick={() => onShowDns(d.id)}
-                >
-                  <Settings2 className="h-4 w-4" /> DNS record
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 focus:bg-surface-hover"
-                  onClick={() => onCopyTarget(d)}
-                >
-                  <Copy className="h-4 w-4" /> Copy target
-                </DropdownMenuItem>
-                {d.status !== "connected" ? (
-                  <DropdownMenuItem
-                    className="cursor-pointer gap-2 focus:bg-surface-hover"
-                    disabled={verifying}
-                    onClick={() => onVerify(d.id)}
-                  >
-                    {verifying ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                    {verifying ? "Verifying…" : "Verify now"}
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    className="cursor-pointer gap-2 focus:bg-surface-hover"
-                    asChild
-                  >
-                    <a
-                      href={`https://${d.domain}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink className="h-4 w-4" /> Visit
-                    </a>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator className="bg-surface-strong" />
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-300"
-                  onClick={() => onDelete(d)}
-                >
-                  <Trash2 className="h-4 w-4" /> Remove
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex justify-end">
+            <ActionMenu
+              label="Domain actions"
+              items={[
+                { icon: Settings2, label: "DNS record", onSelect: () => onShowDns(d.id) },
+                { icon: Copy, label: "Copy target", onSelect: () => onCopyTarget(d) },
+                d.status !== "connected"
+                  ? {
+                      icon: verifying ? Loader2 : RefreshCw,
+                      spin: verifying,
+                      label: verifying ? "Verifying…" : "Verify now",
+                      disabled: verifying,
+                      onSelect: () => onVerify(d.id),
+                    }
+                  : {
+                      icon: ExternalLink,
+                      label: "Visit",
+                      href: `https://${d.domain}`,
+                    },
+                { separator: true },
+                {
+                  icon: Trash2,
+                  label: "Remove",
+                  variant: "destructive",
+                  onSelect: () => onDelete(d),
+                },
+              ]}
+            />
           </div>
         );
       },

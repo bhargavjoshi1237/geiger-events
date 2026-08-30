@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AlertTriangle, Plus, Trash2, ShieldCheck } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +11,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+} from "@geiger/ui/dialog";
+import { Input } from "@geiger/ui/input";
+import { Switch } from "@geiger/ui/switch";
+import { Textarea } from "@geiger/ui/textarea";
 import { checkJs, normalizeCustomCode } from "@/lib/events/custom_code";
 import { cn } from "@/lib/utils";
 

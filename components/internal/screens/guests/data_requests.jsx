@@ -2,7 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, MoreHorizontal, ShieldAlert, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  ShieldAlert,
+  Trash2,
+} from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -16,10 +20,11 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -27,21 +32,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { listContacts } from "@/lib/supabase/contacts";
@@ -217,41 +215,23 @@ export function DataRequestsScreen() {
       header: "",
       align: "right",
       render: (r) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-text-secondary hover:text-foreground"
-                aria-label="Request actions"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="border-border bg-surface-subtle text-foreground"
-            >
-              {DATA_REQUEST_STATUS_VALUES.filter((s) => s !== r.status).map((s) => (
-                <DropdownMenuItem
-                  key={s}
-                  className="focus:bg-surface-hover"
-                  onClick={() => handleStatus(r, s)}
-                >
-                  Mark {s}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                onClick={() => setDeleteTarget(r)}
-              >
-                <Trash2 className="h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label="Request actions"
+          items={[
+            ...DATA_REQUEST_STATUS_VALUES.filter((s) => s !== r.status).map((s) => ({
+              key: s,
+              label: `Mark ${s}`,
+              onSelect: () => handleStatus(r, s),
+            })),
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(r),
+            },
+          ]}
+        />
       ),
     },
   ];

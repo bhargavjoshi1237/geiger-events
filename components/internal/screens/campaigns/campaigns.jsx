@@ -8,7 +8,6 @@ import {
   Info,
   Loader2,
   Megaphone,
-  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
@@ -25,9 +24,10 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -35,21 +35,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
@@ -221,41 +214,15 @@ function CampaignCard({ campaign, segmentName, recipients, onOpen, onDuplicate, 
           </span>
         </p>
       </div>
-      <div onClick={(e) => e.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              aria-label="Campaign actions"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44 border-border bg-surface-card shadow-xl">
-            <DropdownMenuItem
-              className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-              onClick={onOpen}
-            >
-              <Pencil className="h-4 w-4" /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-              onClick={onDuplicate}
-            >
-              <Copy className="h-4 w-4" /> Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-surface-strong" />
-            <DropdownMenuItem
-              className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-              onClick={onDelete}
-            >
-              <Trash2 className="h-4 w-4 text-red-300" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <ActionMenu
+        label="Campaign actions"
+        items={[
+          { icon: Pencil, label: "Edit", onSelect: onOpen },
+          { icon: Copy, label: "Duplicate", onSelect: onDuplicate },
+          { separator: true },
+          { icon: Trash2, label: "Delete", variant: "destructive", onSelect: onDelete },
+        ]}
+      />
     </div>
   );
 }

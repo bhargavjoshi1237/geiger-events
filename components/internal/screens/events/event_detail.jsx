@@ -1,21 +1,14 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, ExternalLink } from "lucide-react";
+import { Eye, ExternalLink } from "lucide-react";
 
-import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import {
-  EditorSectionHeader,
-  SearchInput,
-  StatusPill,
-} from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
-import { useIdleRecenter } from "@/lib/hooks/use-idle-recenter";
+import { EditorShell } from "@/components/internal/shared/editor_shell";
+import { Button } from "@geiger/ui/button";
 import { useAddons } from "@/context/addons-context";
 
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { EVENT_STATUS_MAP, formatDate } from "./sample_data";
 import { EventPublicPage } from "./event_public_page";
 import { PageDesignSection, defaultPageDesign } from "./page_design";
@@ -26,7 +19,6 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
   const { section: active, setSection: setActive } = useWorkspaceUrl();
   const { isEnabled } = useAddons();
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [screenQuery, setScreenQuery] = useState("");
   const [design, setDesign] = useState(
     () => event?.pageDesign || defaultPageDesign(),
   );
@@ -37,15 +29,6 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
     setForm(event);
     setDesign(event?.pageDesign || defaultPageDesign());
   }
-
-  const navRef = useIdleRecenter(active);
-
-  const activeItem = useMemo(
-    () =>
-      NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === active) ||
-      NAV_GROUPS[0].items[0],
-    [active],
-  );
 
   if (!event) return null;
 
@@ -80,54 +63,20 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
     }
   };
 
-  const ActiveSection = SECTIONS[active] || SECTIONS.overview;
-  const sectionCtx = { isEnabled };
-
-  const normalizedQuery = screenQuery.trim().toLowerCase().replace(/[-_]/g, " ");
-  const navGroups = NAV_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((i) => !i.showIf || i.showIf(form, sectionCtx)),
-  }))
-    .map((group) => ({
-      ...group,
-      items: normalizedQuery
-        ? group.items.filter((item) => {
-            const label = item.label.toLowerCase().replace(/[-_]/g, " ");
-            const groupName = group.group?.toLowerCase().replace(/[-_]/g, " ");
-            return (
-              label.includes(normalizedQuery) ||
-              groupName?.includes(normalizedQuery)
-            );
-          })
-        : group.items,
-    }))
-    .filter((group) => group.items.length > 0);
-
   return (
-    <MainScreenWrapper className="lg:flex lg:h-full lg:flex-col lg:gap-6 lg:space-y-0 lg:overflow-hidden lg:py-0">
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between lg:shrink-0">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            All Events
-          </button>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-              {form.name}
-            </h1>
-            <StatusPill status={form.status} map={EVENT_STATUS_MAP} />
-          </div>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
-            {[formatDate(form.date), form.time, form.venue]
-              .filter(Boolean)
-              .join(" · ") || "No date or venue set yet"}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+    <EditorShell
+      searchable
+      back={{ label: "All Events", onClick: onBack }}
+      title={form.name}
+      status={form.status}
+      statusMap={EVENT_STATUS_MAP}
+      meta={
+        [formatDate(form.date), form.time, form.venue]
+          .filter(Boolean)
+          .join(" · ") || "No date or venue set yet"
+      }
+      actions={
+        <>
           <Button
             variant="outline"
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
@@ -143,31 +92,38 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
           >
             Save Changes
           </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:min-h-0 lg:flex-1 lg:grid-rows-1 lg:grid-cols-[1fr_260px]">
-        <div className="scrollbar-subtle order-2 min-w-0 lg:order-1 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
-          {activeItem.ownHeader ? null : (
-            <EditorSectionHeader
-              title={activeItem.label}
-              description={activeItem.desc}
-              action={
-                active === "design" ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                    onClick={() => setPreviewOpen(true)}
-                  >
-                    <Eye className="h-4 w-4" /> Preview
-                  </Button>
-                ) : null
-              }
-              className="mb-5"
-            />
-          )}
-          {active === "design" ? (
+        </>
+      }
+      nav={NAV_GROUPS}
+      subject={form}
+      navContext={{ isEnabled }}
+      active={active}
+      onActiveChange={setActive}
+      sectionAction={
+        active === "design" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={() => setPreviewOpen(true)}
+          >
+            <Eye className="h-4 w-4" /> Preview
+          </Button>
+        ) : null
+      }
+      after={
+        previewOpen ? (
+          <EventPublicPage
+            event={form}
+            design={design}
+            onClose={() => setPreviewOpen(false)}
+          />
+        ) : null
+      }
+    >
+      {({ activeItem }) => {
+        if (active === "design") {
+          return (
             <PageDesignSection
               design={design}
               event={form}
@@ -176,91 +132,22 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
               onPreview={() => setPreviewOpen(true)}
               eventId={form?.id}
             />
-          ) : (
-            <ActiveSection
-              event={form}
-              headerItem={activeItem}
-              onPatch={patch}
-              onCommit={commit}
-              onNavigate={setActive}
-              onPreview={() => setPreviewOpen(true)}
-              onViewLive={viewLive}
-            />
-          )}
-        </div>
-
-        <aside className="order-1 lg:order-2 lg:flex lg:min-h-0 lg:flex-col">
-          <div className="mb-3 lg:shrink-0">
-            <SearchInput
-              value={screenQuery}
-              onChange={setScreenQuery}
-              placeholder="Search screens…"
-              aria-label="Search screens"
-            />
-          </div>
-          <nav
-            ref={navRef}
-            className="space-y-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {navGroups.map((group, gi) => {
-              
-              return (
-                <div key={group.group || `g${gi}`}>
-                  {group.group ? (
-                    <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                      {group.group}
-                    </p>
-                  ) : null}
-                  <div className="space-y-0.5">
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = active === item.key;
-                      return (
-                        <button
-                          key={item.key}
-                          type="button"
-                          data-active={isActive ? "true" : undefined}
-                          onClick={() => setActive(item.key)}
-                          className={cn(
-                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                            isActive
-                              ? "bg-surface-card font-medium text-white"
-                              : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
-                          )}
-                        >
-                          <Icon
-                            className={cn(
-                              "h-4 w-4 shrink-0",
-                              isActive ? "text-white" : "text-text-secondary",
-                            )}
-                          />
-                          <span className="truncate capitalize">
-                            {item.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-            {navGroups.length === 0 ? (
-              <p className="px-3 text-sm text-text-tertiary">
-                No screens match “{screenQuery}”.
-              </p>
-            ) : null}
-          </nav>
-        </aside>
-      </div>
-
-      {previewOpen ? (
-        <EventPublicPage
-          event={form}
-          design={design}
-          onClose={() => setPreviewOpen(false)}
-        />
-      ) : null}
-    </MainScreenWrapper>
+          );
+        }
+        const ActiveSection = SECTIONS[active] || SECTIONS.overview;
+        return (
+          <ActiveSection
+            event={form}
+            headerItem={activeItem}
+            onPatch={patch}
+            onCommit={commit}
+            onNavigate={setActive}
+            onPreview={() => setPreviewOpen(true)}
+            onViewLive={viewLive}
+          />
+        );
+      }}
+    </EditorShell>
   );
 }
 

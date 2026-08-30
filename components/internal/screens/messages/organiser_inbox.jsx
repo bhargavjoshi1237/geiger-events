@@ -20,10 +20,11 @@ import {
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorHeader } from "@/components/internal/shared/editor_shell";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import { useProject } from "@/context/project-context";
 import {
   listThreads,
@@ -197,45 +198,36 @@ function ThreadDetail({ threadId, onBack, onChanged }) {
 
   return (
     <MainScreenWrapper>
-      <div className="flex flex-col gap-4 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
+      <EditorHeader
+        back={{ label: "Messages", onClick: onBack }}
+        title={thread.subject}
+        status={thread.status}
+        statusMap={THREAD_STATUS_MAP}
+        meta={`${who}${
+          thread.memberName && thread.memberEmail
+            ? ` · ${thread.memberEmail}`
+            : ""
+        }${thread.eventName ? ` · ${thread.eventName}` : ""}`}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={statusBusy}
+            onClick={toggleStatus}
+            className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Messages
-          </button>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
-              {thread.subject}
-            </h1>
-            <StatusPill status={thread.status} map={THREAD_STATUS_MAP} />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {who}
-            {thread.memberName && thread.memberEmail ? ` · ${thread.memberEmail}` : ""}
-            {thread.eventName ? ` · ${thread.eventName}` : ""}
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={statusBusy}
-          onClick={toggleStatus}
-          className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-        >
-          {closed ? (
-            <>
-              <RotateCcw className="h-4 w-4" /> Reopen
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="h-4 w-4" /> Mark resolved
-            </>
-          )}
-        </Button>
-      </div>
+            {closed ? (
+              <>
+                <RotateCcw className="h-4 w-4" /> Reopen
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4" /> Mark resolved
+              </>
+            )}
+          </Button>
+        }
+      />
 
       <div className="mx-auto w-full max-w-3xl space-y-4">
         <div className="space-y-3 rounded-xl border border-border bg-surface-subtle p-4">

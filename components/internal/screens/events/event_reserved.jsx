@@ -9,7 +9,7 @@ import {
   Field,
   SectionCard,
 } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import { ticketAvailable } from "@/lib/events/reserved";
 import { useEventConfig } from "@/lib/events/use-event-config";
 

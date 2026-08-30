@@ -5,7 +5,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { ArrowRight, Bell, Loader2, Mail, QrCode, WifiOff } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 import { portalPostJson } from "@/lib/portal/portal_fetch";
 

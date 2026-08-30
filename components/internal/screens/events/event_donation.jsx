@@ -10,8 +10,8 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { EMPTY_DONATION } from "@/lib/events/donation";
 

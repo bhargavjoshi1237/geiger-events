@@ -3,7 +3,6 @@
 import {
   Ban,
   CircleCheck,
-  MoreHorizontal,
   Trash2,
   UserPlus,
   Users,
@@ -16,14 +15,8 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button } from "@geiger/ui/button";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   MEMBER_STATUS_MAP,
@@ -121,41 +114,25 @@ export default function MembersTab({
       header: "",
       align: "right",
       render: (m) => (
-        <div onClick={(e) => e.stopPropagation()} className="flex justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Member actions">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="border-border bg-surface-subtle">
-              <DropdownMenuItem onClick={() => onOpen(m)} className="cursor-pointer focus:bg-surface-hover">
-                <Users className="h-4 w-4" /> Manage
-              </DropdownMenuItem>
-              {canAssign ? (
-                <>
-                  <DropdownMenuItem onClick={() => onToggleSuspend(m)} className="cursor-pointer focus:bg-surface-hover">
-                    {m.status === "suspended" ? (
-                      <>
-                        <CircleCheck className="h-4 w-4" /> Reactivate
-                      </>
-                    ) : (
-                      <>
-                        <Ban className="h-4 w-4" /> Suspend
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => onRemove(m)}
-                    className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
-                  >
-                    <Trash2 className="h-4 w-4" /> Remove
-                  </DropdownMenuItem>
-                </>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex justify-end">
+          <ActionMenu
+            label="Member actions"
+            items={[
+              { icon: Users, label: "Manage", onSelect: () => onOpen(m) },
+              canAssign && {
+                icon: m.status === "suspended" ? CircleCheck : Ban,
+                label: m.status === "suspended" ? "Reactivate" : "Suspend",
+                onSelect: () => onToggleSuspend(m),
+              },
+              { separator: true },
+              canAssign && {
+                icon: Trash2,
+                label: "Remove",
+                variant: "destructive",
+                onSelect: () => onRemove(m),
+              },
+            ]}
+          />
         </div>
       ),
     },

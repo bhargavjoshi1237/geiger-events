@@ -2,7 +2,7 @@
 
 import { Minus, Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 
 export function QtyStepper({ qty, setQty, max, accent }) {
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { SidebarHeader, useSidebar } from "@/components/ui/sidebar";
+import { SidebarHeader, useSidebar } from "@geiger/ui/sidebar";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 

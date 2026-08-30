@@ -3,15 +3,20 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Loader2, Star, X } from "lucide-react";
 
-import { Field, SectionCard, EmptyState } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import {
+  Field,
+  EditorSectionHeader,
+  SectionCard,
+  EmptyState,
+} from "@/components/internal/shared/screen_kit";
+import { Button } from "@geiger/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
 import { useWallConfig } from "@/lib/events/use-wall-config";
 import { listListableEvents } from "@/lib/supabase/events";
@@ -73,32 +78,32 @@ export function WallEventsSection({ wall }) {
 
   return (
     <div className="space-y-6">
-      <SectionCard
+      <EditorSectionHeader
         title="Filter & sort"
         description="Controls which listable events show on your public page, and their default order."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Show">
-            <Select
-              value={filters.status || "upcoming"}
-              onValueChange={(v) =>
-                saveFilters({ ...filters, status: v }, {
-                  successMsg: "Filter updated.",
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Show">
+          <Select
+            value={filters.status || "upcoming"}
+            onValueChange={(v) =>
+              saveFilters({ ...filters, status: v }, {
+                successMsg: "Filter updated.",
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
           <Field label="Sort by">
             <Select
               value={filters.sortBy || "date_asc"}
@@ -120,8 +125,7 @@ export function WallEventsSection({ wall }) {
               </SelectContent>
             </Select>
           </Field>
-        </div>
-      </SectionCard>
+      </div>
 
       <SectionCard
         title="Featured events"

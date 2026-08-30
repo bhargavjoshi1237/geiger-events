@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { CalendarX2, Loader2, ArrowLeft } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { findEventById } from "@/components/internal/screens/events/sample_data";
 import { PackagesPublicPage } from "@/components/internal/screens/events/packages_page/packages_public_page";
 import { TicketCheckout } from "@/components/internal/screens/events/public_page/checkout/ticket_checkout";

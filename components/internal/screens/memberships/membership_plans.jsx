@@ -4,16 +4,16 @@ import React, { useEffect, useState } from "react";
 import { BadgeCheck, CircleDollarSign, Gift, SquarePen } from "lucide-react";
 
 import { Field } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@geiger/ui/input";
+import { Switch } from "@geiger/ui/switch";
+import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";

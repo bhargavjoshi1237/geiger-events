@@ -7,27 +7,29 @@ import {
   Field,
   SectionCard,
 } from "@/components/internal/shared/screen_kit";
-import { Input } from "@/components/ui/input";
+import { Input } from "@geiger/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { RecordsScreen } from "./records_kit";
 import { Segmented, NumField as Num } from "./controls";
+import { DiscountRuleEditor } from "./discount_rule_editor";
+import {
+  couponSummary,
+  defaultCouponConfig,
+  normalizeCoupon,
+  ruleValueLabel,
+} from "@/lib/events/discount_rules";
 
 const KINDS = [
   {
     value: "coupon",
     label: "Coupon",
-    defaultConfig: {
-      code: "",
-      discountType: "percent",
-      value: 10,
-      usageLimit: 0,
-    },
+    defaultConfig: defaultCouponConfig(),
   },
   {
     value: "group",
@@ -48,8 +50,7 @@ const KINDS = [
 
 function summarize(r) {
   const c = r.config || {};
-  if (r.kind === "coupon")
-    return `${c.code || "no code"} | ${c.discountType === "flat" ? `$${c.value}` : `${c.value}%`} off`;
+  if (r.kind === "coupon") return couponSummary(c);
   if (r.kind === "group")
     return `${c.mode === "manual" ? "Manual" : "Auto"} | ${c.percent}% at ${c.minQty}+`;
   if (r.kind === "earlybird")
@@ -59,28 +60,51 @@ function summarize(r) {
   return "";
 }
 
-function DiscountEditForm({ record, config, setConfig }) {
-  const set = (patch) => setConfig({ ...config, ...patch });
+// --- Edit sections ----------------------------------------------------------
+// records_kit renders each as an element, never calls it. Each kind carries its
+// own small set of fields, so the one section branches on `record.kind`.
 
-  if (record.kind === "coupon") {
-    return (
-      <SectionCard title="Coupon" description="A code buyers enter at checkout.">
-        <div className="grid gap-4 sm:grid-cols-2">
+// A coupon has three distinct layers, kept apart because they answer different
+// questions:
+//
+//   Coupon       — the code, and the BASE discount used when no rule matches.
+//   Eligibility  — gates. Failing one rejects the code outright; it never
+//                  quietly falls back to a smaller discount.
+//   Rules        — an ordered list deciding HOW MUCH the code gives. Top match
+//                  wins, so the organiser drags the most specific rule up.
+//
+// Which TICKETS a code works on is not set here — coupons are ticked onto
+// individual tickets from the event's Tickets tab, which is what keeps a code
+// from leaking onto every ticket in the event.
+function CouponSection({ config, setConfig }) {
+  const c = normalizeCoupon(config);
+  const set = (patch) => setConfig({ ...c, ...patch });
+
+  return (
+    <div className="space-y-6">
+      <SectionCard
+        title="Coupon"
+        description="A code buyers type at checkout. Tick it onto a ticket from the event's Tickets tab — that is what makes it redeemable."
+      >
+        <div className="space-y-4">
           <Field label="Code">
             <Input
-              value={config.code || ""}
+              value={c.code || ""}
               onChange={(e) => set({ code: e.target.value })}
               placeholder="SAVE10"
               className="uppercase"
             />
           </Field>
-          <Field label="Discount">
+          <Field
+            label="Base discount"
+            hint="What the code gives when no rule below matches."
+          >
             <div className="flex items-center gap-2">
               <Select
-                value={config.discountType || "percent"}
+                value={c.discountType}
                 onValueChange={(v) => set({ discountType: v })}
               >
-                <SelectTrigger className="w-28">
+                <SelectTrigger className="flex-[3_1_0%]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -91,32 +115,133 @@ function DiscountEditForm({ record, config, setConfig }) {
               <Input
                 type="number"
                 min={0}
-                value={config.value ?? 0}
+                value={c.value ?? 0}
                 onChange={(e) => set({ value: Number(e.target.value) || 0 })}
-                className="w-24 tabular-nums"
+                className="tabular-nums flex-[7_1_0%]"
               />
             </div>
           </Field>
-          <Num
-            label="Usage limit"
-            hint="0 = unlimited."
-            value={config.usageLimit ?? 0}
-            onChange={(v) => set({ usageLimit: v })}
-            unit="uses"
-          />
+          {c.discountType === "flat" ? (
+            <Field
+              label="Flat applies"
+              hint="Once against the order, or once for every ticket bought."
+            >
+              <Segmented
+                value={c.applyPer}
+                onChange={(v) => set({ applyPer: v })}
+                options={[
+                  { value: "order", label: "Once per order" },
+                  { value: "ticket", label: "Per ticket" },
+                ]}
+              />
+            </Field>
+          ) : null}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Num
+              label="Usage Limit"
+              hint="0 = unlimited."
+              value={c.usageLimit ?? 0}
+              onChange={(v) => set({ usageLimit: v })}
+              unit="uses"
+              fullWidth
+            />
+            <Field label="Max discount" hint="Blank = uncapped.">
+              <Input
+                type="number"
+                min={0}
+                className="tabular-nums"
+                value={c.maxDiscount ?? ""}
+                onChange={(e) =>
+                  set({
+                    maxDiscount:
+                      e.target.value === "" ? null : Number(e.target.value) || 0,
+                  })
+                }
+              />
+            </Field>
+          </div>
         </div>
       </SectionCard>
-    );
+
+      <SectionCard
+        title="Eligibility"
+        description="When the code works at all. Fail one of these and the buyer is told the code doesn't apply — it never falls back to a smaller discount."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Min. tickets" hint="Blank = any quantity.">
+            <Input
+              type="number"
+              min={0}
+              className="tabular-nums"
+              value={c.minQty ?? ""}
+              onChange={(e) =>
+                set({
+                  minQty:
+                    e.target.value === "" ? null : Number(e.target.value) || 0,
+                })
+              }
+            />
+          </Field>
+          <Field label="Max. tickets" hint="Blank = no upper bound.">
+            <Input
+              type="number"
+              min={0}
+              className="tabular-nums"
+              value={c.maxQty ?? ""}
+              onChange={(e) =>
+                set({
+                  maxQty:
+                    e.target.value === "" ? null : Number(e.target.value) || 0,
+                })
+              }
+            />
+          </Field>
+          <Field label="Valid from" hint="Blank = live immediately.">
+            <Input
+              type="datetime-local"
+              value={c.validFrom || ""}
+              onChange={(e) => set({ validFrom: e.target.value })}
+            />
+          </Field>
+          <Field label="Valid until" hint="Blank = never expires.">
+            <Input
+              type="datetime-local"
+              value={c.validUntil || ""}
+              onChange={(e) => set({ validUntil: e.target.value })}
+            />
+          </Field>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Discount Rules"
+        description="How much the code gives, by quantity and by date. Rules are checked top-down and the first match wins — drag the most specific one to the top."
+      >
+        <DiscountRuleEditor
+          rules={c.rules}
+          onChange={(rules) => set({ rules })}
+          baseLabel={ruleValueLabel(c)}
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
+function DiscountSection({ record, config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+
+  if (record.kind === "coupon") {
+    return <CouponSection config={config} setConfig={setConfig} />;
   }
 
   if (record.kind === "group") {
     return (
       <SectionCard
-        title="Group purchasing"
+        title="Group Purchasing"
         description="Reward buyers who bring a crowd."
       >
         <Field
-          label="Discount mode"
+          label="Discount Mode"
           hint="Automatic applies at a quantity threshold; Manual gives groups a code."
         >
           <Segmented
@@ -126,23 +251,29 @@ function DiscountEditForm({ record, config, setConfig }) {
               { value: "automatic", label: "Automatic" },
               { value: "manual", label: "Manual code" },
             ]}
+            className="w-fit"
           />
         </Field>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Num
-            label="Min. quantity"
+            label="Min. Quantity"
             value={config.minQty ?? 5}
             onChange={(v) => set({ minQty: v })}
             unit="tickets"
+            fullWidth
           />
           <Num
             label="Discount"
             value={config.percent ?? 10}
             onChange={(v) => set({ percent: v })}
             unit="%"
+            fullWidth
           />
-          {config.mode === "manual" ? (
-            <Field label="Group code">
+        </div>
+        {/* The code only exists in manual mode, so it grows inside this card. */}
+        {config.mode === "manual" ? (
+          <div className="mt-4 border-t border-border pt-4">
+            <Field label="Group Code">
               <Input
                 value={config.code || ""}
                 onChange={(e) => set({ code: e.target.value })}
@@ -150,8 +281,8 @@ function DiscountEditForm({ record, config, setConfig }) {
                 className="uppercase"
               />
             </Field>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </SectionCard>
     );
   }
@@ -159,7 +290,7 @@ function DiscountEditForm({ record, config, setConfig }) {
   if (record.kind === "earlybird") {
     return (
       <SectionCard
-        title="Early-bird"
+        title="Early-Bird"
         description="A limited-time discount before a cut-off date."
       >
         <div className="grid gap-4 sm:grid-cols-2">
@@ -168,8 +299,9 @@ function DiscountEditForm({ record, config, setConfig }) {
             value={config.percent ?? 15}
             onChange={(v) => set({ percent: v })}
             unit="%"
+            fullWidth
           />
-          <Field label="Available until">
+          <Field label="Available Until">
             <Input
               type="date"
               value={config.until || ""}
@@ -184,7 +316,7 @@ function DiscountEditForm({ record, config, setConfig }) {
   // affiliate
   return (
     <SectionCard
-      title="Affiliate code"
+      title="Affiliate Code"
       description="A tracked code that attributes sales to a partner."
     >
       <div className="grid gap-4 sm:grid-cols-2">
@@ -196,24 +328,37 @@ function DiscountEditForm({ record, config, setConfig }) {
             className="uppercase"
           />
         </Field>
-        <Field label="Partner name">
+        <Field label="Partner Name">
           <Input
             value={config.partner || ""}
             onChange={(e) => set({ partner: e.target.value })}
             placeholder="e.g. City Radio"
           />
         </Field>
+      </div>
+      <div className="mt-4">
         <Num
           label="Commission"
           hint="Paid to the partner per sale."
           value={config.commission ?? 0}
           onChange={(v) => set({ commission: v })}
           unit="%"
+          fullWidth
         />
       </div>
     </SectionCard>
   );
 }
+
+const SECTIONS = [
+  {
+    key: "discount",
+    label: "Discount",
+    icon: Percent,
+    desc: "How this rule is applied at checkout.",
+    render: DiscountSection,
+  },
+];
 
 export function DiscountsScreen() {
   return (
@@ -225,8 +370,7 @@ export function DiscountsScreen() {
       icon={Percent}
       kinds={KINDS}
       summarize={summarize}
-      EditForm={DiscountEditForm}
-      summaryRight
+      sections={SECTIONS}
     />
   );
 }

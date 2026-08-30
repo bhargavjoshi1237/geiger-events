@@ -2,7 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { MoreHorizontal, Pause, Play, Plus, Trash2, Users } from "lucide-react";
+import {
+  Pause,
+  Play,
+  Plus,
+  Trash2,
+  Users,
+} from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -16,9 +22,10 @@ import {
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -26,14 +33,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 import { useProject } from "@/context/project-context";
 import {
@@ -240,44 +240,25 @@ export function AffiliatesRosterScreen() {
       header: "",
       align: "right",
       render: (row) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                aria-label={`Actions for ${row.name}`}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="border-border bg-surface-subtle"
-            >
-              {row.status === "suspended" ? (
-                <DropdownMenuItem onClick={() => handleStatus(row, "active")}>
-                  <Play className="mr-2 h-4 w-4" />
-                  Reactivate
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onClick={() => handleStatus(row, "suspended")}>
-                  <Pause className="mr-2 h-4 w-4" />
-                  Pause affiliate
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-                onClick={() => handleDelete(row)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label={`Actions for ${row.name}`}
+          items={[
+            row.status === "suspended"
+              ? { icon: Play, label: "Reactivate", onSelect: () => handleStatus(row, "active") }
+              : {
+                  icon: Pause,
+                  label: "Pause affiliate",
+                  onSelect: () => handleStatus(row, "suspended"),
+                },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Remove",
+              variant: "destructive",
+              onSelect: () => handleDelete(row),
+            },
+          ]}
+        />
       ),
     },
   ];

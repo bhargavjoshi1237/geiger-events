@@ -6,7 +6,6 @@ import {
   Ban,
   Eye,
   Loader2,
-  MoreHorizontal,
   RotateCcw,
   ShoppingBag,
 } from "lucide-react";
@@ -21,7 +20,8 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
   DialogContent,
@@ -29,14 +29,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/dialog";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
@@ -225,44 +218,21 @@ export function AllOrdersScreen() {
       align: "right",
       className: "text-right",
       render: (o) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 border-border bg-surface-subtle"
-            >
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => setOpenId(o.id)}
-              >
-                <Eye className="h-4 w-4" /> View order
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => setOpenId(o.id)}
-              >
-                <RotateCcw className="h-4 w-4" /> Issue refund
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-                disabled={!!o.cancelledAt}
-                onClick={() => setCancelTarget(o)}
-              >
-                <Ban className="h-4 w-4 text-red-300" /> Cancel order
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ActionMenu
+          label={`Actions for order ${orderRef(o.id)}`}
+          items={[
+            { icon: Eye, label: "View order", onSelect: () => setOpenId(o.id) },
+            { icon: RotateCcw, label: "Issue refund", onSelect: () => setOpenId(o.id) },
+            { separator: true },
+            {
+              icon: Ban,
+              label: "Cancel order",
+              variant: "destructive",
+              disabled: !!o.cancelledAt,
+              onSelect: () => setCancelTarget(o),
+            },
+          ]}
+        />
       ),
     },
   ];

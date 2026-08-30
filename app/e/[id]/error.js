@@ -9,7 +9,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, RotateCw, TriangleAlert } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 
 export default function PublishedEventError({ error, retry }) {
   useEffect(() => {

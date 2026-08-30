@@ -12,7 +12,7 @@ import {
   Undo2,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 import { normalizeClip } from "@/lib/clip/model";
 import {
@@ -159,7 +159,9 @@ export function ClipPruner({ clip, onChange, className }) {
 
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="flex flex-wrap items-center gap-1.5">
+      {/* Edit toggle hard left, clean-up actions hard right, so the row frames
+          the preview instead of clustering above its left corner. */}
+      <div className="flex items-center justify-between gap-2">
         <Button
           size="sm"
           variant="outline"
@@ -167,59 +169,56 @@ export function ClipPruner({ clip, onChange, className }) {
             setEditing((v) => !v);
             setHovered(null);
           }}
-          className={cn(
-            "border-border bg-transparent",
-            editing
-              ? "border-primary bg-primary/10 text-foreground"
-              : "text-muted-foreground hover:bg-surface-active hover:text-foreground",
-          )}
+          title={editing ? "Done editing" : "Edit what's included"}
+          aria-label={editing ? "Done editing" : "Edit what's included"}
+          aria-pressed={editing}
+          className={cn(editing && "border-primary bg-primary/10 text-foreground")}
         >
-          {editing ? <MousePointerSquareDashed className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+          {editing ? (
+            <MousePointerSquareDashed className="h-3.5 w-3.5" />
+          ) : (
+            <Pencil className="h-3.5 w-3.5" />
+          )}
         </Button>
 
-        {trimmable ? (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={trim}
-            title="Strip the layout containers the component was sitting in"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          >
-            <Scissors className="h-3.5 w-3.5" />
-            Trim {trimmable} wrapper{trimmable === 1 ? "" : "s"}
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {trimmable ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={trim}
+              title="Strip the layout containers the component was sitting in"
+            >
+              <Scissors className="h-3.5 w-3.5" />
+              Trim {trimmable} Wrapper{trimmable === 1 ? "" : "s"}
+            </Button>
+          ) : null}
 
-        {slack > MIN_RECLAIM ? (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={refit}
-            title={[
-              wide > MIN_RECLAIM
-                ? `${wide}px of empty width (box ${data.width}px, design ${ink.width}px)`
-                : "",
-              tall > MIN_RECLAIM ? `${tall}px of empty space below the design` : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          >
-            <Shrink className="h-3.5 w-3.5" />
-            Fit to content ({slack}px)
-          </Button>
-        ) : null}
+          {slack > MIN_RECLAIM ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={refit}
+              title={[
+                wide > MIN_RECLAIM
+                  ? `${wide}px of empty width (box ${data.width}px, design ${ink.width}px)`
+                  : "",
+                tall > MIN_RECLAIM ? `${tall}px of empty space below the design` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            >
+              <Shrink className="h-3.5 w-3.5" />
+              Fit to content ({slack}px)
+            </Button>
+          ) : null}
 
-        {history.length ? (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={undo}
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-          >
-            <Undo2 className="h-3.5 w-3.5" /> Undo
-          </Button>
-        ) : null}
+          {history.length ? (
+            <Button size="sm" variant="outline" onClick={undo}>
+              <Undo2 className="h-3.5 w-3.5" /> Undo
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {editing ? (
@@ -248,7 +247,7 @@ export function ClipPruner({ clip, onChange, className }) {
                   <Icon
                     className={cn(
                       "h-3.5 w-3.5 shrink-0",
-                      on ? "text-primary" : "text-text-tertiary",
+                      on ? "text-primary" : "text-muted-foreground",
                     )}
                   />
                   <span className="min-w-0">
@@ -260,7 +259,7 @@ export function ClipPruner({ clip, onChange, className }) {
                     >
                       {m.label}
                     </span>
-                    <span className="block truncate text-[10px] leading-tight text-text-tertiary">
+                    <span className="block truncate text-[10px] leading-tight text-muted-foreground">
                       {m.hint}
                     </span>
                   </span>
@@ -272,7 +271,7 @@ export function ClipPruner({ clip, onChange, className }) {
           <p
             className={cn(
               "text-[11px]",
-              notice ? "text-amber-400" : "truncate text-text-tertiary",
+              notice ? "text-amber-400" : "truncate text-muted-foreground",
             )}
           >
             {notice ||

@@ -7,13 +7,16 @@ import {
   Copy,
   ExternalLink,
   Loader2,
-  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import {
+  ListPagination,
+  usePagination,
+} from "@/components/internal/shared/pagination";
 import {
   DataTable,
   EmptyState,
@@ -24,9 +27,9 @@ import {
   Toolbar,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
+import { Input } from "@geiger/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -34,25 +37,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@geiger/ui/select";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { EventDatePicker, EventTimeSelect } from "./date_time_fields";
+import { EventDatePicker, EventTimeField } from "./date_time_fields";
 import {
-  EVENTS,
   EVENT_STATUS_MAP,
   EVENT_TYPE_MAP,
   VENUES,
@@ -202,7 +198,7 @@ function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
               <EventDatePicker value={draft.date} onChange={set("date")} />
             </Field>
             <Field label="Start time">
-              <EventTimeSelect value={draft.time} onChange={set("time")} />
+              <EventTimeField value={draft.time} onChange={set("time")} />
             </Field>
           </div>
 
@@ -270,7 +266,7 @@ function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
 }
 
 export function AllEventsScreen() {
-  const [events, setEvents] = useState(EVENTS);
+  const [events, setEvents] = useState([]);
   const [source, setSource] = useState("sample");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -322,6 +318,8 @@ export function AllEventsScreen() {
       return true;
     });
   }, [events, search, status, type]);
+
+  const pager = usePagination(filtered, { resetKey: `${search}|${status}|${type}` });
 
   const stats = useMemo(() => {
     const live = events.filter((e) =>
@@ -484,50 +482,21 @@ export function AllEventsScreen() {
       align: "right",
       className: "text-right",
       render: (e) => (
-        <div onClick={(ev) => ev.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Actions"
-              className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="w-44 border-border bg-surface-card shadow-xl"
-          >
-            <DropdownMenuItem
-              className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-              onClick={() => openEvent(e.id)}
-            >
-              <Pencil className="h-4 w-4" /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-              onClick={() => handleDuplicate(e)}
-            >
-              <Copy className="h-4 w-4" /> Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-              onClick={() => handleViewPage(e)}
-            >
-              <ExternalLink className="h-4 w-4" /> View page
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-surface-strong" />
-            <DropdownMenuItem
-              className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
-              onClick={() => setDeleteTarget(e)}
-            >
-              <Trash2 className="h-4 w-4 text-red-300" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        </div>
+        <ActionMenu
+          label={`Actions for ${e.name}`}
+          items={[
+            { icon: Pencil, label: "Edit", onSelect: () => openEvent(e.id) },
+            { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(e) },
+            { icon: ExternalLink, label: "View page", onSelect: () => handleViewPage(e) },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(e),
+            },
+          ]}
+        />
       ),
     },
   ];
@@ -591,37 +560,40 @@ export function AllEventsScreen() {
           Loading Events…
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filtered}
-          getRowKey={(e) => e.id}
-          onRowClick={(e) => openEvent(e.id)}
-          empty={
-            <div className="rounded-xl border border-border bg-surface-subtle">
-              <EmptyState
-                icon={CalendarPlus}
-                title={
-                  events.length
-                    ? "No events match your filters"
-                    : "No events yet"
-                }
-                description={
-                  events.length
-                    ? "Try clearing the search or filters, or create a new event to get started."
-                    : "Create your first event to start selling tickets and collecting RSVPs."
-                }
-                action={
-                  <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => setCreateOpen(true)}
-                  >
-                    <Plus className="h-4 w-4" /> Create event
-                  </Button>
-                }
-              />
-            </div>
-          }
-        />
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(e) => e.id}
+            onRowClick={(e) => openEvent(e.id)}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={CalendarPlus}
+                  title={
+                    events.length
+                      ? "No events match your filters"
+                      : "No events yet"
+                  }
+                  description={
+                    events.length
+                      ? "Try clearing the search or filters, or create a new event to get started."
+                      : "Create your first event to start selling tickets and collecting RSVPs."
+                  }
+                  action={
+                    <Button
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => setCreateOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" /> Create event
+                    </Button>
+                  }
+                />
+              </div>
+            }
+          />
+          <ListPagination {...pager} itemLabel="events" />
+        </div>
       )}
 
       <CreateEventDialog

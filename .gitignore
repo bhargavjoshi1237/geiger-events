@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Superpowers brainstorm scratch
 .superpowers/
+
+# WorkBuddy AI scratch
+.workbuddy-ai/
