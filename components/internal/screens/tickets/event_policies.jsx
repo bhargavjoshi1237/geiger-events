@@ -40,7 +40,13 @@ import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listRecords } from "@/lib/supabase/ticketing";
 import { listOrders } from "@/lib/supabase/orders";
-import { currency, formatDate, TRANSFER_POLICY_OPTIONS } from "./constants";
+import {
+  currency,
+  formatDate,
+  pricingRuleSummary,
+  PRICING_RULE_KIND_LABELS,
+  TRANSFER_POLICY_OPTIONS,
+} from "./constants";
 
 // Per-event sections for the ticketing modules that used to share one long
 // "Ticketing" attach page. Each promotes a single module: a header, a stat strip,
@@ -856,17 +862,25 @@ function PriceCurve({ rules }) {
   );
 }
 
-const ruleSummary = (r) => {
-  const c = r.config || {};
-  if ((r.kind || "demand") === "demand")
-    return `+${c.bump ?? 10}% once ${c.threshold ?? 75}% sold`;
-  return `Resale ≤ ${c.maxPricePercent ?? 100}% of face · ${c.transferCap ?? 2} transfers`;
+// The summary lives with the config in constants.js so this list and the
+// Tickets screen's table always read the same.
+const ruleSummary = pricingRuleSummary;
+
+// Badge tone per rule kind: the three price-moving kinds read as violet/blue,
+// the resale cap as amber.
+const PRICING_KIND_VARIANT = {
+  demand: "purple",
+  time: "info",
+  quantity: "info",
+  resale: "warning",
 };
 
 export function EventPricingSection({ event, headerItem }) {
   const mod = useModuleRecords(event, "pricing_rule", "Dynamic Pricing");
   const rules = mod.effective;
   const demand = rules.filter((r) => (r.kind || "demand") === "demand");
+  const time = rules.filter((r) => r.kind === "time");
+  const quantity = rules.filter((r) => r.kind === "quantity");
   const resale = rules.filter((r) => r.kind === "resale");
 
   const bumps = demand.map((r) => Number(r.config?.bump) || 0);
@@ -881,7 +895,12 @@ export function EventPricingSection({ event, headerItem }) {
       label: "Rules attached",
       value: String(rules.length),
       icon: TrendingUp,
-      hint: `${demand.length} demand · ${resale.length} resale`,
+      hint: [
+        `${demand.length} sell-through`,
+        `${time.length} date`,
+        `${quantity.length} quantity`,
+        `${resale.length} resale`,
+      ].join(" · "),
     },
     {
       label: "Top uplift",
@@ -933,7 +952,7 @@ export function EventPricingSection({ event, headerItem }) {
         bare
         className="pt-4"
         title="Price curve"
-        description="How the ticket price moves as this event sells through. Demand rules stack."
+        description="How the ticket price moves as this event sells through. Sell-through rules stack; date and quantity rules fire on their own triggers."
       >
         <PriceCurve rules={demand} />
       </SectionCard>
@@ -961,10 +980,8 @@ export function EventPricingSection({ event, headerItem }) {
                     {ruleSummary(r)}
                   </p>
                 </div>
-                <Badge
-                  variant={(r.kind || "demand") === "demand" ? "purple" : "warning"}
-                >
-                  {(r.kind || "demand") === "demand" ? "Demand" : "Resale"}
+                <Badge variant={PRICING_KIND_VARIANT[r.kind || "demand"]}>
+                  {PRICING_RULE_KIND_LABELS[r.kind || "demand"]}
                 </Badge>
               </div>
             ))}

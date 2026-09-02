@@ -17,6 +17,7 @@ import {
 import { PortalDataProvider } from "@/state/data";
 import { LivePlayerProvider } from "@/state/live_player";
 import { SessionProvider, useSession } from "@/state/session";
+import { useAppFonts } from "@/theme/load_fonts";
 import { colors } from "@/theme/tokens";
 
 SplashScreen.preventAutoHideAsync();
@@ -42,6 +43,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { status } = useSession();
+  const fontsReady = useAppFonts();
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
@@ -69,9 +71,10 @@ function RootNavigator() {
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="pass/[id]" options={{ animation: "fade_from_bottom" }} />
       </Stack>
       {!splashDone ? (
-        <Splash ready={status !== "loading"} onFinish={() => setSplashDone(true)} />
+        <Splash ready={status !== "loading" && fontsReady} onFinish={() => setSplashDone(true)} />
       ) : null}
     </>
   );

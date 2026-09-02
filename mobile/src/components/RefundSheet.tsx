@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import { usePortalData } from "@/state/data";
 import { useSession } from "@/state/session";
-import { spacing } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 
 type RefundSheetProps = {
   visible: boolean;
@@ -42,9 +42,12 @@ export function RefundSheet({ visible, onClose, orderId }: RefundSheetProps) {
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} title="Request a refund">
+    <Sheet visible={visible} onClose={onClose} title="Request A Refund">
       <View style={styles.form}>
-        <Field label="Reason" hint="Tell the organiser why you can't attend.">
+        <Text style={styles.hint}>
+          The organiser reviews this. You keep your ticket until they approve it.
+        </Text>
+        <Field label="Reason">
           <Input
             value={reason}
             onChangeText={setReason}
@@ -55,8 +58,12 @@ export function RefundSheet({ visible, onClose, orderId }: RefundSheetProps) {
           />
         </Field>
         <View style={styles.actions}>
-          <Button title="Cancel" variant="ghost" onPress={onClose} />
-          <Button title="Submit request" onPress={submit} loading={busy} />
+          <View style={styles.cancel}>
+            <Button title="Cancel" variant="secondary" onPress={onClose} fullWidth />
+          </View>
+          <View style={styles.submit}>
+            <Button title="Submit request" onPress={submit} loading={busy} fullWidth />
+          </View>
         </View>
       </View>
     </Sheet>
@@ -67,13 +74,25 @@ const styles = StyleSheet.create({
   form: {
     gap: spacing.lg,
   },
+  hint: {
+    ...type.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textSecondary,
+    marginTop: -spacing.sm,
+  },
   reason: {
     minHeight: 96,
     paddingTop: spacing.md,
   },
   actions: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: spacing.sm,
+    gap: spacing.md - 2,
+  },
+  cancel: {
+    flex: 1,
+  },
+  submit: {
+    flex: 1.4,
   },
 });

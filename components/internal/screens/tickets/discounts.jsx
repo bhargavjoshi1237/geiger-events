@@ -1,7 +1,13 @@
 "use client";
 
 import React from "react";
-import { Percent } from "lucide-react";
+import {
+  Keyboard,
+  Percent,
+  Receipt,
+  Ticket,
+  Wand2,
+} from "lucide-react";
 
 import {
   Field,
@@ -130,8 +136,8 @@ function CouponSection({ config, setConfig }) {
                 value={c.applyPer}
                 onChange={(v) => set({ applyPer: v })}
                 options={[
-                  { value: "order", label: "Once per order" },
-                  { value: "ticket", label: "Per ticket" },
+                  { value: "order", label: "Once per order", icon: Receipt },
+                  { value: "ticket", label: "Per ticket", icon: Ticket },
                 ]}
               />
             </Field>
@@ -248,8 +254,8 @@ function DiscountSection({ record, config, setConfig }) {
             value={config.mode || "automatic"}
             onChange={(v) => set({ mode: v })}
             options={[
-              { value: "automatic", label: "Automatic" },
-              { value: "manual", label: "Manual code" },
+              { value: "automatic", label: "Automatic", icon: Wand2 },
+              { value: "manual", label: "Manual code", icon: Keyboard },
             ]}
             className="w-fit"
           />

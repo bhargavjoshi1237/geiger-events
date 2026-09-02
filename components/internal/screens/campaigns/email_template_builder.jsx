@@ -2,7 +2,7 @@
 
 import React from "react";
 import { toast } from "sonner";
-import { Copy, LayoutTemplate } from "lucide-react";
+import { Copy, FileText, LayoutTemplate, Tags } from "lucide-react";
 
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
 import { Input } from "@geiger/ui/input";
@@ -56,86 +56,99 @@ function summarize(r) {
   return `${cat} · ${words}`;
 }
 
-function TemplateEditForm({ config, setConfig }) {
+function TemplateContentSection({ config, setConfig }) {
   const set = (patch) => setConfig({ ...config, ...patch });
   return (
-    <div className="space-y-6">
-      <SectionCard
-        title="Template details"
-        description="Reusable content you can load into any email campaign."
-      >
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Subject">
-              <Input
-                value={config.subject || ""}
-                onChange={(e) => set({ subject: e.target.value })}
-                placeholder="e.g. You're invited to {{event_name}}"
-                className="bg-surface-card"
-              />
-            </Field>
-            <Field label="Category">
-              <Select
-                value={config.category || "general"}
-                onValueChange={(v) => set({ category: v })}
-              >
-                <SelectTrigger className="bg-surface-card">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TEMPLATE_CATEGORY_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-          <Field label="Preview text" hint="Shown after the subject in most inboxes.">
+    <SectionCard>
+      <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Subject">
             <Input
-              value={config.previewText || ""}
-              onChange={(e) => set({ previewText: e.target.value })}
-              placeholder="Optional preheader"
+              value={config.subject || ""}
+              onChange={(e) => set({ subject: e.target.value })}
+              placeholder="e.g. You're invited to {{event_name}}"
               className="bg-surface-card"
             />
           </Field>
-          <Field label="Body">
-            <Textarea
-              rows={10}
-              value={config.body || ""}
-              onChange={(e) => set({ body: e.target.value })}
-              placeholder="Write your reusable email content…"
-              className="bg-surface-card"
-            />
-          </Field>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Merge tags"
-        description="Drop these into the subject or body — they're replaced per recipient at send time."
-      >
-        <div className="grid gap-2 sm:grid-cols-2">
-          {MERGE_TAGS.map((m) => (
-            <button
-              key={m.tag}
-              type="button"
-              onClick={() => copyTag(m.tag)}
-              className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-card px-3 py-2 text-left transition-colors hover:bg-surface-hover"
+          <Field label="Category">
+            <Select
+              value={config.category || "general"}
+              onValueChange={(v) => set({ category: v })}
             >
-              <div className="min-w-0">
-                <code className="text-sm text-foreground">{m.tag}</code>
-                <p className="text-xs text-text-secondary">{m.label}</p>
-              </div>
-              <Copy className="h-4 w-4 shrink-0 text-text-tertiary transition-colors group-hover:text-muted-foreground" />
-            </button>
-          ))}
+              <SelectTrigger className="bg-surface-card">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TEMPLATE_CATEGORY_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
         </div>
-      </SectionCard>
-    </div>
+        <Field label="Preview text" hint="Shown after the subject in most inboxes.">
+          <Input
+            value={config.previewText || ""}
+            onChange={(e) => set({ previewText: e.target.value })}
+            placeholder="Optional preheader"
+            className="bg-surface-card"
+          />
+        </Field>
+        <Field label="Body">
+          <Textarea
+            rows={10}
+            value={config.body || ""}
+            onChange={(e) => set({ body: e.target.value })}
+            placeholder="Write your reusable email content…"
+            className="bg-surface-card"
+          />
+        </Field>
+      </div>
+    </SectionCard>
   );
 }
+
+function TemplateMergeTagsSection() {
+  return (
+    <SectionCard>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {MERGE_TAGS.map((m) => (
+          <button
+            key={m.tag}
+            type="button"
+            onClick={() => copyTag(m.tag)}
+            className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-card px-3 py-2 text-left transition-colors hover:bg-surface-hover"
+          >
+            <div className="min-w-0">
+              <code className="text-sm text-foreground">{m.tag}</code>
+              <p className="text-xs text-text-secondary">{m.label}</p>
+            </div>
+            <Copy className="h-4 w-4 shrink-0 text-text-tertiary transition-colors group-hover:text-muted-foreground" />
+          </button>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
+const SECTIONS = [
+  {
+    key: "content",
+    label: "Content",
+    icon: FileText,
+    desc: "Reusable content you can load into any email campaign.",
+    render: TemplateContentSection,
+  },
+  {
+    key: "merge-tags",
+    label: "Merge tags",
+    icon: Tags,
+    desc: "Drop these into the subject or body — they're replaced per recipient at send time.",
+    render: TemplateMergeTagsSection,
+  },
+];
 
 export function EmailTemplateBuilderScreen() {
   return (
@@ -147,7 +160,7 @@ export function EmailTemplateBuilderScreen() {
       icon={LayoutTemplate}
       kinds={KINDS}
       summarize={summarize}
-      EditForm={TemplateEditForm}
+      sections={SECTIONS}
       data={TEMPLATE_DATA}
     />
   );

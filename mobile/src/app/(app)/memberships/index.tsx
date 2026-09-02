@@ -1,12 +1,13 @@
-import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown, LinearTransition, useSharedValue } from "react-native-reanimated";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 
+import { Icon, type IconName } from "@/components/ui/icons";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pill } from "@/components/ui/Pill";
 import { Screen } from "@/components/ui/Screen";
@@ -15,7 +16,7 @@ import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { api, API_BASE } from "@/lib/api";
 import { useCountdown } from "@/lib/countdown";
-import { fmtDate, money } from "@/lib/format";
+import { fmtDate, money, pluralize } from "@/lib/format";
 import { MEMBER_STATUS, statusPill } from "@/lib/status";
 import { usePortalData } from "@/state/data";
 import { useSession } from "@/state/session";
@@ -25,16 +26,14 @@ import type { IncludedSummary, Membership, Plan } from "@/types/portal";
 const stagger = (i: number) => Math.min(i, 11) * 40;
 
 const periodSuffix = (p?: string) =>
-  p && p !== "one-time"
-    ? `/${p === "monthly" ? "mo" : p === "yearly" ? "yr" : p}`
-    : "";
+  p && p !== "one-time" ? `/${p === "monthly" ? "mo" : p === "yearly" ? "yr" : p}` : "";
 
 export default function MembershipsScreen() {
-  const { data, plans, loading, refreshing, refreshAll } = usePortalData();
+  const router = useRouter();
+  const { data, plans, counts, loading, refreshAll } = usePortalData();
   const { token } = useSession();
   const { success, error, info } = useToast();
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
-  const scrollY = useSharedValue(0);
 
   const held = data?.memberships || [];
   const available = useMemo(() => (plans.plans || []).filter((p) => !p.held), [plans]);
@@ -54,9 +53,14 @@ export default function MembershipsScreen() {
         return;
       }
       if (res.data.url) {
-        const result = await WebBrowser.openAuthSessionAsync(res.data.url, "geigerevents://membership-return");
+        const result = await WebBrowser.openAuthSessionAsync(
+          res.data.url,
+          "geigerevents://membership-return",
+        );
         if (result.type === "success" && result.url) {
-          const params = new URLSearchParams((result.url.split("?")[1] || "").replace(/#.*$/, ""));
+          const params = new URLSearchParams(
+            (result.url.split("?")[1] || "").replace(/#.*$/, ""),
+          );
           const sessionId = params.get("membership_session");
           const canceled = params.get("membership_canceled");
           if (sessionId) {
@@ -88,55 +92,76 @@ export default function MembershipsScreen() {
   };
 
   return (
-    <Screen scroll refreshing={refreshing} onRefresh={refreshAll} onScroll={(y) => (scrollY.value = y)}>
-      <ScreenHeader
-        title="Memberships"
-        subtitle="Your memberships, their benefits and renewal dates — and plans you can join."
-        scrollY={scrollY}
-      />
+    <Screen scroll>
+      <ScreenHeader title="Memberships" />
 
       {dataLoading ? (
         <SkeletonList rows={3} />
       ) : (
         <Animated.View layout={LinearTransition} style={styles.stack}>
-          {held.length ? (
-            <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
-              <SectionTitle>Your memberships</SectionTitle>
-              <View style={styles.list}>
-                {held.map((m, idx) => (
-                  <Animated.View key={m.id} entering={FadeInDown.delay(stagger(idx)).springify()} layout={LinearTransition}>
-                    <HeldCard m={m} />
-                  </Animated.View>
-                ))}
-              </View>
+          {held.map((m, idx) => (
+            <Animated.View
+              key={m.id}
+              entering={FadeInDown.delay(stagger(idx)).springify()}
+              layout={LinearTransition}
+            >
+              <HeldCard
+                m={m}
+                recordings={counts.watch || 0}
+                onWatch={() => router.push("/watch")}
+                onRooms={() => router.push("/live")}
+              />
             </Animated.View>
+          ))}
+
+          {held.length ? (
+            <View>
+              <SectionTitle>What&apos;s included</SectionTitle>
+              <View style={styles.card}>
+                {held
+                  .flatMap((m) => m.included || [])
+                  .map((item, idx, all) => (
+                    <IncludedRow key={`${item.key}-${idx}`} item={item} last={idx === all.length - 1} />
+                  ))}
+                {!held.some((m) => m.included?.length) ? (
+                  <Text style={styles.emptyIncluded}>
+                    Your organiser hasn&apos;t listed perks for this plan yet.
+                  </Text>
+                ) : null}
+              </View>
+            </View>
           ) : null}
 
-          {loading.plans ? (
+          {loading.plans && !available.length ? (
             <SkeletonList rows={2} />
           ) : available.length ? (
-            <Animated.View entering={FadeInDown.delay(stagger(1)).springify()}>
-              <SectionTitle>{held.length ? "Available memberships" : "Join a membership"}</SectionTitle>
+            <View>
+              <SectionTitle>{held.length ? "Upgrade" : "Join a membership"}</SectionTitle>
               <View style={styles.list}>
                 {available.map((p, idx) => (
-                  <Animated.View key={p.id} entering={FadeInDown.delay(stagger(idx)).springify()} layout={LinearTransition}>
+                  <Animated.View
+                    key={p.id}
+                    entering={FadeInDown.delay(stagger(idx)).springify()}
+                    layout={LinearTransition}
+                  >
                     <PlanCard
                       plan={p}
                       paymentsEnabled={plans.paymentsEnabled}
                       busy={busyPlanId === p.id}
+                      upgrade={held.length > 0}
                       onBuy={() => buy(p)}
                     />
                   </Animated.View>
                 ))}
               </View>
-            </Animated.View>
+            </View>
           ) : null}
 
           {!held.length && !available.length && !loading.plans ? (
             <EmptyState
-              icon="check-circle"
+              icon="award"
               title="No memberships"
-              message="Memberships you hold will appear here. When an organizer offers one, you'll be able to join right from this page."
+              message="When an organiser offers one, you'll be able to join right here — and your perks show up across the app."
             />
           ) : null}
         </Animated.View>
@@ -145,50 +170,20 @@ export default function MembershipsScreen() {
   );
 }
 
-function HeldCard({ m }: { m: Membership }) {
+function HeldCard({
+  m,
+  recordings,
+  onWatch,
+  onRooms,
+}: {
+  m: Membership;
+  recordings: number;
+  onWatch: () => void;
+  onRooms: () => void;
+}) {
   const status = statusPill(MEMBER_STATUS, m.status);
-  return (
-    <Card>
-      <View style={styles.cardHead}>
-        <View style={styles.cardHeadStack}>
-          <Text style={styles.cardTitle}>{m.planName}</Text>
-          <Text style={styles.cardSub}>
-            {money(m.price)}
-            {periodSuffix(m.billingPeriod)}
-            {m.discountPercent ? ` · ${m.discountPercent}% member discount` : ""}
-          </Text>
-        </View>
-        <Pill label={status.label} tone={status.tone} />
-      </View>
-
-      {m.description ? <Text style={styles.cardBody}>{m.description}</Text> : null}
-
-      {m.benefits?.length ? (
-        <View style={styles.benefits}>
-          {m.benefits.map((b, i) => (
-            <View key={i} style={styles.benefit}>
-              <Feather name="check" size={14} color={colors.success} />
-              <Text style={styles.benefitText}>{b}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      <Included items={m.included} />
-
-      <View style={styles.footRow}>
-        {m.startedAt ? <Text style={styles.footText}>Since {fmtDate(m.startedAt)}</Text> : null}
-        {m.expiresAt ? (
-          <Text style={styles.footText}> · Renews {fmtDate(m.expiresAt)}</Text>
-        ) : null}
-      </View>
-      {m.status === "Active" && m.expiresAt ? <RenewalBar m={m} /> : null}
-    </Card>
-  );
-}
-
-function RenewalBar({ m }: { m: Membership }) {
   const parts = useCountdown(m.expiresAt);
+
   const progress = useMemo(() => {
     if (!m.startedAt || !m.expiresAt || !parts || parts.done) return 1;
     const s = new Date(m.startedAt).getTime();
@@ -199,19 +194,97 @@ function RenewalBar({ m }: { m: Membership }) {
     return Math.max(0, Math.min(1, (e - s - remaining) / (e - s)));
   }, [m.startedAt, m.expiresAt, parts]);
 
+  const priceLine = [
+    `${money(m.price)}${periodSuffix(m.billingPeriod)}`,
+    m.discountPercent ? `${m.discountPercent}% off every ticket` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <View style={styles.renewBlock}>
-      {parts && !parts.done ? (
-        <View style={styles.renewsRow}>
-          <Feather name="clock" size={12} color={colors.textTertiary} />
-          <Text style={styles.renewsText}>
-            Renews in {parts.days} {parts.days === 1 ? "day" : "days"}
+    <LinearGradient
+      colors={[colors.surfaceDialog, colors.surfaceSubtle]}
+      start={{ x: 0.15, y: 0 }}
+      end={{ x: 0.85, y: 1 }}
+      style={styles.held}
+    >
+      <View style={styles.heldHead}>
+        <View style={styles.heldHeadStack}>
+          {m.startedAt ? (
+            <Text style={styles.heldKicker}>Member since {fmtDate(m.startedAt)}</Text>
+          ) : null}
+          <Text style={styles.heldName} numberOfLines={2}>
+            {m.planName}
           </Text>
         </View>
-      ) : null}
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+        <Pill label={status.label} tone={status.tone} />
       </View>
+
+      {priceLine ? <Text style={styles.heldPrice}>{priceLine}</Text> : null}
+
+      {m.status === "Active" && m.expiresAt ? (
+        <>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+          </View>
+          <Text style={styles.heldRenews}>
+            {parts && !parts.done
+              ? `Renews in ${parts.days} ${pluralize(parts.days, "day", "days")} · ${fmtDate(m.expiresAt)}`
+              : `Renews ${fmtDate(m.expiresAt)}`}
+          </Text>
+        </>
+      ) : null}
+
+      <View style={styles.heldActions}>
+        <GhostAction
+          icon="circle-play"
+          label={
+            recordings ? `${recordings} ${pluralize(recordings, "recording", "recordings")}` : "Watch"
+          }
+          onPress={onWatch}
+        />
+        <GhostAction icon="radio" label="Member rooms" onPress={onRooms} />
+      </View>
+    </LinearGradient>
+  );
+}
+
+function GhostAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.ghost, pressed && styles.pressed]}
+    >
+      <Icon name={icon} size={17} color={colors.foreground} />
+      <Text style={styles.ghostLabel} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function IncludedRow({ item, last }: { item: IncludedSummary; last: boolean }) {
+  return (
+    <View style={[styles.includedRow, !last && styles.includedDivided]}>
+      <View style={styles.includedStack}>
+        <Text style={styles.includedName}>{item.label}</Text>
+        {item.summary || item.extras?.length ? (
+          <Text style={styles.includedSummary} numberOfLines={2}>
+            {item.summary || item.extras.join(" · ")}
+          </Text>
+        ) : null}
+      </View>
+      {item.duration ? <Text style={styles.includedDuration}>{item.duration}</Text> : null}
     </View>
   );
 }
@@ -220,80 +293,43 @@ function PlanCard({
   plan,
   paymentsEnabled,
   busy,
+  upgrade,
   onBuy,
 }: {
   plan: Plan;
   paymentsEnabled: boolean;
   busy: boolean;
+  upgrade: boolean;
   onBuy: () => void;
 }) {
   const free = plan.price <= 0;
   const disabled = plan.held || busy || (!free && !paymentsEnabled);
-  const label = plan.held
-    ? "Current plan"
-    : free
-      ? "Join for free"
-      : `Join — ${money(plan.price)}${periodSuffix(plan.billingPeriod)}`;
+  const priceLabel = free ? "Free" : `${money(plan.price)}${periodSuffix(plan.billingPeriod)}`;
+  const cta = free
+    ? "Join for free"
+    : `${upgrade ? "Switch to" : "Join"} ${plan.name} — ${priceLabel}`;
 
   return (
-    <Card>
-      <View style={styles.cardHead}>
-        <View style={styles.cardHeadStack}>
-          <Text style={styles.cardTitle}>{plan.name}</Text>
-          <View style={styles.cardSubRow}>
-            <Text style={styles.cardPrice}>{free ? "Free" : money(plan.price)}</Text>
-            {!free ? <Text style={styles.cardPeriod}>{periodSuffix(plan.billingPeriod)}</Text> : null}
-            {plan.discountPercent ? (
-              <Text style={styles.cardPeriod}> · {plan.discountPercent}% off tickets</Text>
-            ) : null}
-          </View>
-        </View>
-        {plan.held ? (
-          <Pill label="Held" tone="warning" />
-        ) : (
-          <Feather name="star" size={16} color={colors.textTertiary} />
-        )}
-      </View>
-
-      {plan.description ? <Text style={styles.cardBody}>{plan.description}</Text> : null}
-
-      {plan.benefits?.length ? (
-        <View style={styles.benefits}>
-          {plan.benefits.map((b, i) => (
-            <View key={i} style={styles.benefit}>
-              <Feather name="check" size={14} color={colors.success} />
-              <Text style={styles.benefitText}>{b}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      <Included items={plan.included} />
-
-      <Button title={label} onPress={onBuy} loading={busy} disabled={disabled} fullWidth />
-      {!free && !paymentsEnabled && !plan.held ? (
-        <Text style={styles.paymentsOffline}>Online payments aren&apos;t available right now.</Text>
-      ) : null}
-    </Card>
-  );
-}
-
-function Included({ items }: { items: IncludedSummary[] }) {
-  if (!items?.length) return null;
-  return (
-    <View style={styles.included}>
-      <Text style={styles.includedTitle}>What&apos;s included</Text>
-      {items.map((i) => (
-        <View key={i.key} style={styles.includedItem}>
-          <View style={styles.includedHead}>
-            <Text style={styles.includedName}>{i.label}</Text>
-            <Text style={styles.includedDuration}>{i.duration}</Text>
-          </View>
-          {i.extras?.length ? (
-            <Text style={styles.includedExtras}>{i.extras.join(" · ")}</Text>
+    <View style={[styles.card, styles.planCard]}>
+      <View style={styles.planHead}>
+        <View style={styles.planStack}>
+          <Text style={styles.planName}>{plan.name}</Text>
+          <Text style={styles.planPrice}>
+            <Text style={styles.planPriceStrong}>{priceLabel}</Text>
+            {plan.discountPercent ? ` · ${plan.discountPercent}% off tickets` : ""}
+          </Text>
+          {plan.benefits?.length ? (
+            <Text style={styles.planBenefits} numberOfLines={3}>
+              {plan.benefits.join(" · ")}
+            </Text>
           ) : null}
         </View>
-      ))}
+        <Icon name="star" size={18} color={colors.textTertiary} />
+      </View>
+      <Button title={cta} onPress={onBuy} loading={busy} disabled={disabled} fullWidth />
+      {!free && !paymentsEnabled && !plan.held ? (
+        <Text style={styles.offline}>Online payments aren&apos;t available right now.</Text>
+      ) : null}
     </View>
   );
 }
@@ -305,135 +341,160 @@ const styles = StyleSheet.create({
   list: {
     gap: spacing.md,
   },
-  cardHead: {
+  pressed: {
+    opacity: 0.7,
+  },
+  held: {
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    borderRadius: radius.xl,
+    padding: spacing.lg + 4,
+  },
+  heldHead: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: spacing.md,
   },
-  cardHeadStack: {
+  heldHeadStack: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
   },
-  cardTitle: {
-    ...type.label,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  cardSub: {
-    ...type.caption,
+  heldKicker: {
+    ...type.kicker,
+    textTransform: "uppercase",
     color: colors.textSecondary,
   },
-  cardBody: {
+  heldName: {
+    ...type.title,
+    fontSize: 24,
+    lineHeight: 28,
+    color: colors.foreground,
+    marginTop: spacing.sm + 2,
+  },
+  heldPrice: {
     ...type.body,
+    fontSize: 14,
     color: colors.mutedForeground,
     marginTop: spacing.md,
-  },
-  benefits: {
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  benefit: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-  },
-  benefitText: {
-    ...type.caption,
-    flexShrink: 1,
-    color: colors.mutedForeground,
-  },
-  footRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 2,
-    marginTop: spacing.md,
-  },
-  footText: {
-    ...type.caption,
-    color: colors.textTertiary,
-  },
-  renewBlock: {
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  renewsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs + 2,
-  },
-  renewsText: {
-    ...type.caption,
-    color: colors.textTertiary,
   },
   progressTrack: {
-    height: 3,
+    height: 6,
     overflow: "hidden",
-    backgroundColor: colors.surfaceStrong,
     borderRadius: radius.pill,
+    backgroundColor: colors.borderMuted,
+    marginTop: spacing.lg + 2,
   },
   progressFill: {
     height: "100%",
-    backgroundColor: colors.primary,
     borderRadius: radius.pill,
+    backgroundColor: colors.foreground,
   },
-  cardSubRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    flexWrap: "wrap",
-    gap: 2,
-  },
-  cardPrice: {
-    ...type.body,
-    fontWeight: "600",
-    color: colors.foreground,
-    fontVariant: ["tabular-nums"],
-  },
-  cardPeriod: {
+  heldRenews: {
     ...type.caption,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
+    marginTop: spacing.sm + 2,
   },
-  included: {
+  heldActions: {
+    flexDirection: "row",
+    gap: spacing.md - 2,
+    marginTop: spacing.lg + 2,
+  },
+  ghost: {
+    flex: 1,
+    height: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: spacing.sm,
-    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    backgroundColor: "rgba(0,0,0,0.2)",
+    paddingHorizontal: spacing.sm,
+  },
+  ghostLabel: {
+    ...type.label,
+    flexShrink: 1,
+    color: colors.foreground,
+  },
+  card: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    paddingHorizontal: spacing.lg,
   },
-  includedTitle: {
+  emptyIncluded: {
     ...type.caption,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
+    paddingVertical: spacing.lg,
   },
-  includedItem: {
-    gap: 2,
-  },
-  includedHead: {
+  includedRow: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: spacing.md,
+    paddingVertical: 14,
+  },
+  includedDivided: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
+  includedStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
   },
   includedName: {
-    ...type.caption,
+    ...type.label,
     color: colors.foreground,
+  },
+  includedSummary: {
+    ...type.caption,
+    color: colors.textSecondary,
   },
   includedDuration: {
     ...type.caption,
     color: colors.textSecondary,
   },
-  includedExtras: {
+  planCard: {
+    paddingVertical: spacing.lg,
+    gap: 14,
+  },
+  planHead: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  planStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  },
+  planName: {
+    ...type.bodyStrong,
+    color: colors.foreground,
+  },
+  planPrice: {
+    ...type.caption,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  planPriceStrong: {
+    ...type.title,
+    fontSize: 18,
+    color: colors.foreground,
+    fontVariant: ["tabular-nums"],
+  },
+  planBenefits: {
     ...type.caption,
     color: colors.textTertiary,
   },
-  paymentsOffline: {
+  offline: {
     ...type.caption,
     textAlign: "center",
     color: colors.textTertiary,
-    marginTop: spacing.sm,
   },
 });

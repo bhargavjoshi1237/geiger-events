@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Loader2,
   Search,
+  LogOut,
 } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
@@ -270,18 +271,30 @@ function Kiosk({ eventId, code, role, exit, event }) {
     ];
     return (
       <div className="flex min-h-[100dvh] flex-col bg-background px-6 py-8 text-foreground">
-        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">{event?.name || "Kiosk"}</h1>
-            <Button variant="outline" size="sm" onClick={exit} className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground">Exit</Button>
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5">
+          <div className="mb-1 flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold">{event?.name || "Kiosk"}</h1>
+              <p className="text-sm text-text-secondary">Choose how you'd like to continue</p>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={exit}
+              aria-label="Exit kiosk"
+              title="Exit kiosk"
+              className="shrink-0 rounded-full border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
           {actions.map((a) => (
             <button key={a.key} type="button" onClick={() => setView(a.key)}
-              className="flex items-center gap-4 rounded-2xl border border-border bg-surface-subtle p-5 text-left transition-colors hover:border-border-strong hover:bg-surface-hover">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface-card text-primary">
+              className="flex items-center gap-4 rounded-2xl border border-border bg-surface-subtle p-5 text-left transition-all hover:border-border-strong hover:bg-surface-hover active:scale-[0.99]">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-card text-primary">
                 <a.icon className="h-6 w-6" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-lg font-semibold text-foreground">{a.label}</p>
                 <p className="text-sm text-text-secondary">{a.desc}</p>
               </div>

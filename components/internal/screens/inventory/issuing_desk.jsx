@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listAllocations, listItems } from "@/lib/supabase/inventory";
@@ -374,6 +375,11 @@ export function IssuingDeskScreen() {
     });
   }, [redemptions, search, status, eventFilter, itemsById]);
 
+  // Every active filter joins the reset key, so changing one drops back to page 1.
+  const pager = usePagination(rows, {
+    resetKey: `${search}|${status}|${eventFilter}`,
+  });
+
   const stats = useMemo(() => {
     const live = redemptions.filter((r) => r.status === "issued");
     const startOfDay = new Date();
@@ -572,7 +578,14 @@ export function IssuingDeskScreen() {
           />
         </div>
       ) : (
-        <DataTable columns={columns} data={rows} getRowKey={(r) => r.id} />
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(r) => r.id}
+          />
+          <ListPagination {...pager} itemLabel="hand-outs" />
+        </div>
       )}
 
       {manualOpen ? (

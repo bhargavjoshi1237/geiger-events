@@ -1,7 +1,6 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +16,6 @@ export default function ChangePasswordScreen() {
   const router = useRouter();
   const { token } = useSession();
   const { success, error } = useToast();
-  const scrollY = useSharedValue(0);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -40,8 +38,8 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <Screen scroll onScroll={(y) => (scrollY.value = y)}>
-      <ScreenHeader title="Change password" subtitle="Use at least 8 characters." scrollY={scrollY} />
+    <Screen scroll>
+      <ScreenHeader title="Change password" subtitle="Use at least 8 characters" />
       <View style={styles.form}>
         <Field label="Current password">
           <Input

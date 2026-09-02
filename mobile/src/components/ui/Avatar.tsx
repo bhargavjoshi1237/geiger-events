@@ -2,18 +2,37 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { initials } from "@/lib/format";
-import { colors } from "@/theme/tokens";
+import { colors, fonts, radius } from "@/theme/tokens";
 
 type AvatarProps = {
   name?: string | null;
   email?: string | null;
   size?: number;
+  // "square" is the rounded tile the inbox and thread headers use.
+  shape?: "circle" | "square";
+  inverted?: boolean;
 };
 
-export function Avatar({ name, email, size = 40 }: AvatarProps) {
+export function Avatar({ name, email, size = 40, shape = "circle", inverted = false }: AvatarProps) {
   return (
-    <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.initial, { fontSize: Math.round(size * 0.38) }]}>
+    <View
+      style={[
+        styles.tile,
+        inverted && styles.inverted,
+        {
+          width: size,
+          height: size,
+          borderRadius: shape === "circle" ? size / 2 : radius.md,
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.initial,
+          inverted && styles.initialInverted,
+          { fontSize: Math.round(size * 0.34) },
+        ]}
+      >
         {initials(name, email)}
       </Text>
     </View>
@@ -21,13 +40,19 @@ export function Avatar({ name, email, size = 40 }: AvatarProps) {
 }
 
 const styles = StyleSheet.create({
-  circle: {
+  tile: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.surfaceActive,
+    backgroundColor: colors.surfaceStrong,
+  },
+  inverted: {
+    backgroundColor: colors.foreground,
   },
   initial: {
-    color: colors.mutedForeground,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
+    color: colors.foreground,
+  },
+  initialInverted: {
+    color: colors.primaryForeground,
   },
 });

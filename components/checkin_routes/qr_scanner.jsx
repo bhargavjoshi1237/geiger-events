@@ -12,6 +12,7 @@ export function QrScanner({ onDecode, paused = false }) {
   const lastRef = useRef({ text: "", at: 0 });
   const pausedRef = useRef(paused);
   const onDecodeRef = useRef(onDecode);
+  const [status, setStatus] = useState("starting");
 
   useEffect(() => {
     pausedRef.current = paused;

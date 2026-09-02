@@ -1,40 +1,31 @@
-import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-  useReducedMotion,
-} from "react-native-reanimated";
-import type { SharedValue } from "react-native-reanimated";
 
+import { Icon } from "@/components/ui/icons";
 import { tapFeedback } from "@/lib/haptics";
 import { colors, spacing, type } from "@/theme/tokens";
 
 type ScreenHeaderProps = {
   title: string;
   subtitle?: string;
+  leading?: React.ReactNode;
   right?: React.ReactNode;
   onBack?: () => void;
-  scrollY?: SharedValue<number>;
+  bordered?: boolean;
 };
 
-export function ScreenHeader({ title, subtitle, right, onBack, scrollY }: ScreenHeaderProps) {
-  const reduced = useReducedMotion();
-  const titleStyle = useAnimatedStyle(() => {
-    if (reduced || !scrollY) {
-      return { fontSize: type.title.fontSize, lineHeight: type.title.lineHeight };
-    }
-    const p = interpolate(Math.max(0, Math.min(scrollY.value, 24)), [0, 24], [0, 1]);
-    return {
-      fontSize: interpolate(p, [0, 1], [type.title.fontSize, type.heading.fontSize]),
-      lineHeight: interpolate(p, [0, 1], [type.title.lineHeight, type.heading.lineHeight]),
-    };
-  });
-
+// The nav bar for pushed screens: 44pt back target, compact title, optional trailing actions.
+export function ScreenHeader({
+  title,
+  subtitle,
+  leading,
+  right,
+  onBack,
+  bordered = false,
+}: ScreenHeaderProps) {
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, bordered && styles.bordered]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Back"
@@ -43,33 +34,36 @@ export function ScreenHeader({ title, subtitle, right, onBack, scrollY }: Screen
           if (onBack) onBack();
           else router.back();
         }}
-        style={styles.back}
+        style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       >
-        <Feather name="chevron-left" size={24} color={colors.foreground} />
+        <Icon name="chevron-left" size={22} color={colors.foreground} />
       </Pressable>
+      {leading}
       <View style={styles.stack}>
-        <Animated.Text style={[styles.title, titleStyle]} numberOfLines={1}>
+        <Text style={styles.title} numberOfLines={1}>
           {title}
-        </Animated.Text>
+        </Text>
         {subtitle ? (
           <Text style={styles.subtitle} numberOfLines={1}>
             {subtitle}
           </Text>
         ) : null}
       </View>
-      {right}
+      {right ? <View style={styles.actions}>{right}</View> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  bordered: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.surfaceActive,
   },
   back: {
     width: 44,
@@ -78,16 +72,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginLeft: -spacing.md,
   },
+  pressed: {
+    opacity: 0.6,
+  },
   stack: {
     flex: 1,
     minWidth: 0,
-    gap: 1,
+    gap: 2,
   },
   title: {
+    ...type.heading,
     color: colors.foreground,
   },
   subtitle: {
     ...type.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: colors.textSecondary,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
   },
 });

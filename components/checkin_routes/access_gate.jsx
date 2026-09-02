@@ -25,6 +25,7 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, co
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [booting, setBooting] = useState(true);
+  const [unlocked, setUnlocked] = useState(null);
 
   const attempt = async (candidate) => {
     const value = String(candidate || "").trim();

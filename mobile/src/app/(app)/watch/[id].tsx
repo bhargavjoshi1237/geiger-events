@@ -1,19 +1,15 @@
-import { Feather } from "@expo/vector-icons";
-import { useEvent } from "expo";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { VideoView, useVideoPlayer } from "expo-video";
-import React, { useEffect } from "react";
+import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
 
+import { Icon } from "@/components/ui/icons";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pill } from "@/components/ui/Pill";
 import { Screen } from "@/components/ui/Screen";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { fmtDate } from "@/lib/format";
-import { useHeartbeat } from "@/lib/use_heartbeat";
-import { useAppFocused } from "@/lib/use_poll";
 import { usePortalData } from "@/state/data";
 import { colors, spacing, type } from "@/theme/tokens";
 import type { WatchItem } from "@/types/portal";
@@ -21,13 +17,12 @@ import type { WatchItem } from "@/types/portal";
 export default function WatchDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { watch, loading, refreshing, refreshAll } = usePortalData();
-  const scrollY = useSharedValue(0);
+  const { watch, loading } = usePortalData();
 
   if (loading.watch) {
     return (
-      <Screen scroll onScroll={(y) => (scrollY.value = y)}>
-        <ScreenHeader title="Watch" scrollY={scrollY} />
+      <Screen scroll>
+        <ScreenHeader title="Watch" />
         <SkeletonList rows={4} />
       </Screen>
     );
@@ -36,10 +31,10 @@ export default function WatchDetailScreen() {
   const item = watch?.find((w) => w.id === id);
   if (!item) {
     return (
-      <Screen scroll onScroll={(y) => (scrollY.value = y)}>
-        <ScreenHeader title="Watch" scrollY={scrollY} />
+      <Screen scroll>
+        <ScreenHeader title="Watch" />
         <EmptyState
-          icon="play-circle"
+          icon="circle-play"
           title="Recording not found"
           message="This recording isn't on your account anymore."
           actionLabel="Go back"
@@ -50,33 +45,24 @@ export default function WatchDetailScreen() {
   }
 
   return (
-    <Screen scroll refreshing={refreshing} onRefresh={refreshAll} onScroll={(y) => (scrollY.value = y)}>
-      <ScreenHeader title={item.name} scrollY={scrollY} />
+    <Screen scroll>
+      <ScreenHeader
+        title={item.name}
+        subtitle={[item.session, item.eventName].filter(Boolean).join(" · ")}
+      />
       <PlayerView item={item} />
     </Screen>
   );
 }
 
 function PlayerView({ item }: { item: WatchItem }) {
-  const player = useVideoPlayer(item.videoUrl, (p) => {
-    p.loop = false;
-  });
-  const { isPlaying } = useEvent(player, "playingChange", { isPlaying: player.playing });
-  const focused = useAppFocused();
-  useHeartbeat(item.id, isPlaying && focused);
-
-  useEffect(() => {
-    player.play();
-  }, [player]);
-
   return (
     <>
-      <View style={styles.playerFrame}>
-        <VideoView
-          player={player}
-          allowsPictureInPicture
-          nativeControls
-          style={styles.video}
+      <View style={styles.playerSlot}>
+        <VideoPlayer
+          url={item.videoUrl}
+          heartbeatId={item.id}
+          thumbnailUrl={item.thumbnailUrl}
         />
       </View>
 
@@ -94,7 +80,7 @@ function PlayerView({ item }: { item: WatchItem }) {
         </View>
       ) : null}
       <View style={styles.access}>
-        <Feather name="check-circle" size={14} color={colors.textSecondary} />
+        <Icon name="circle-check" size={14} color={colors.textSecondary} />
         <Text style={styles.accessText}>Included with {item.planName}</Text>
       </View>
       {item.expiresAt ? (
@@ -105,16 +91,8 @@ function PlayerView({ item }: { item: WatchItem }) {
 }
 
 const styles = StyleSheet.create({
-  playerFrame: {
-    overflow: "hidden",
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
+  playerSlot: {
     marginBottom: spacing.lg,
-  },
-  video: {
-    aspectRatio: 16 / 9,
   },
   meta: {
     ...type.caption,

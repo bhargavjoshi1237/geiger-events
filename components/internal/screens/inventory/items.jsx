@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import {
@@ -366,9 +367,17 @@ export function InventoryItemsScreen() {
       .filter(Boolean);
   }, [tree, search, category, stock]);
 
+  // Paging counts top-level items, not flattened rows — a page break lands
+  // between groups, so an expanded item's variants can never be orphaned from
+  // it. `expanded` is deliberately absent from the reset key: expanding a row
+  // changes how many rows render but not how many items exist.
+  const pager = usePagination(filteredTree, {
+    resetKey: `${search}|${category}|${stock}`,
+  });
+
   const rows = useMemo(() => {
     const out = [];
-    for (const group of filteredTree) {
+    for (const group of pager.pageItems) {
       out.push({ ...group, rowType: "group" });
       if (expanded.has(group.id)) {
         for (const v of group.variants) {
@@ -377,7 +386,7 @@ export function InventoryItemsScreen() {
       }
     }
     return out;
-  }, [filteredTree, expanded]);
+  }, [pager.pageItems, expanded]);
 
   const stats = useMemo(() => {
     const leafCount = items.filter(
@@ -714,46 +723,49 @@ export function InventoryItemsScreen() {
           Loading inventory…
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={rows}
-          getRowKey={(row) => row.id}
-          onRowClick={(row) => setOpenId(row.id)}
-          empty={
-            <div className="rounded-xl border border-border bg-surface-subtle">
-              <EmptyState
-                icon={items.length ? Boxes : Package}
-                title={items.length ? "No items match your filters" : "No items yet"}
-                description={
-                  items.length
-                    ? "Try clearing the search or filters."
-                    : "Add your merch, swag and supplies to start tracking stock."
-                }
-                action={
-                  items.length ? (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setSearch("");
-                        setCategory("all");
-                        setStock("all");
-                      }}
-                    >
-                      Clear filters
-                    </Button>
-                  ) : (
-                    <Button
-                      className="bg-primary gap-2 text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setCreating(true)}
-                    >
-                      <Plus className="h-4 w-4" /> New item
-                    </Button>
-                  )
-                }
-              />
-            </div>
-          }
-        />
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={rows}
+            getRowKey={(row) => row.id}
+            onRowClick={(row) => setOpenId(row.id)}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={items.length ? Boxes : Package}
+                  title={items.length ? "No items match your filters" : "No items yet"}
+                  description={
+                    items.length
+                      ? "Try clearing the search or filters."
+                      : "Add your merch, swag and supplies to start tracking stock."
+                  }
+                  action={
+                    items.length ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setSearch("");
+                          setCategory("all");
+                          setStock("all");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : (
+                      <Button
+                        className="bg-primary gap-2 text-primary-foreground hover:bg-primary/90"
+                        onClick={() => setCreating(true)}
+                      >
+                        <Plus className="h-4 w-4" /> New item
+                      </Button>
+                    )
+                  }
+                />
+              </div>
+            }
+          />
+          <ListPagination {...pager} itemLabel="items" />
+        </div>
       )}
 
       <CreateItemDialog

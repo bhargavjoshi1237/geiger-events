@@ -1,12 +1,12 @@
-import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { Icon, type IconName } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 type EmptyStateProps = {
-  icon: React.ComponentProps<typeof Feather>["name"];
+  icon: IconName;
   title: string;
   message: string;
   actionLabel?: string;
@@ -16,10 +16,8 @@ type EmptyStateProps = {
 export function EmptyState({ icon, title, message, actionLabel, onAction }: EmptyStateProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.halo}>
-        <View style={styles.iconTile}>
-          <Feather name={icon} size={22} color={colors.mutedForeground} />
-        </View>
+      <View style={styles.iconTile}>
+        <Icon name={icon} size={22} color={colors.mutedForeground} />
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
@@ -35,33 +33,25 @@ export function EmptyState({ icon, title, message, actionLabel, onAction }: Empt
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    paddingVertical: spacing.xxl * 2,
-    paddingHorizontal: spacing.xl,
-    gap: spacing.sm,
-  },
-  halo: {
-    width: 76,
-    height: 76,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
     borderWidth: 1,
+    borderStyle: "dashed",
     borderColor: colors.border,
-    backgroundColor: colors.surfaceSubtle,
-    marginBottom: spacing.sm,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xxl - 4,
+    paddingHorizontal: spacing.xl,
+    gap: 6,
   },
   iconTile: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radius.lg - 2,
+    backgroundColor: colors.surfaceActive,
+    marginBottom: spacing.sm,
   },
   title: {
-    ...type.heading,
+    ...type.bodyStrong,
     color: colors.foreground,
     textAlign: "center",
   },
@@ -74,6 +64,6 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   action: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
 });

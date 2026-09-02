@@ -102,7 +102,6 @@ export default defineNavConfig({
       requires: ["Tickets"],
       reason: "Check-in scans the tickets people bought.",
     },
-    { screen: "Wallet Passes", requires: ["QR Tickets"] },
     { screen: "Check-in App", requires: ["QR Tickets"] },
     { screen: "Offline Check-in", requires: ["Check-in App"] },
     { screen: "Kiosk Mode", requires: ["Check-in App"] },

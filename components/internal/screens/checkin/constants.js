@@ -35,6 +35,19 @@ export const METHOD_MAP = {
   door: { label: "Door sale", dotClass: "bg-orange-400" },
 };
 
+// --- Real-time attendance lookup ---------------------------------------------
+
+export const ATTENDANCE_STATUS_MAP = {
+  live: { label: "Live", variant: "success", dotClass: "bg-emerald-400" },
+  idle: { label: "No arrivals", variant: "neutral", dotClass: "bg-zinc-400" },
+};
+
+export const ATTENDANCE_STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All events" },
+  { value: "live", label: "Live" },
+  { value: "idle", label: "No arrivals yet" },
+];
+
 // --- Per-feature config defaults ---------------------------------------------
 // Each feature slice of events.checkin_settings.config. Returned by functions so
 // nested objects aren't shared across reads.
@@ -48,16 +61,6 @@ export const defaultQrTickets = () => ({
   dynamic: false, // rotating vs static code
   showLogo: true,
   brandColor: "",
-});
-
-export const defaultWalletPasses = () => ({
-  enabled: false,
-  apple: true,
-  google: true,
-  orgName: "",
-  logoUrl: "",
-  bgColor: "",
-  fields: { name: true, ticketType: true, seat: false, qr: true },
 });
 
 export const defaultCheckinApp = () => ({
@@ -86,6 +89,7 @@ export const defaultSession = () => ({ enabled: false });
 export const defaultRfid = () => ({
   enabled: false,
   medium: "wristband", // wristband | card | badge
+  range: "short", // short (NFC/HF tap) | long (UHF)
   checksum: true,
 });
 
@@ -114,7 +118,6 @@ export const withDefaults = (config, feature) => ({
 
 export const FEATURE_DEFAULTS = {
   qrTickets: defaultQrTickets,
-  walletPasses: defaultWalletPasses,
   checkinApp: defaultCheckinApp,
   doorSales: defaultDoorSales,
   kiosk: defaultKiosk,
@@ -157,6 +160,29 @@ export const RFID_MEDIUM_OPTIONS = [
   { value: "card", label: "Cards" },
   { value: "badge", label: "NFC badges" },
 ];
+
+export const RFID_RANGE_OPTIONS = [
+  { value: "short", label: "Short-range (NFC/HF tap)" },
+  { value: "long", label: "Long-range (UHF)" },
+];
+
+// Minimum specs to quote a badge/tag vendor, per read range. Shown as
+// documentation on the RFID/NFC screen — not enforced by the app, since actual
+// compatibility depends on the reader hardware the project already owns.
+export const RFID_RANGE_SPECS = {
+  short: {
+    label: "Short-range (NFC/HF tap)",
+    summary:
+      "Tap-to-read, a few centimetres — the same tech as hotel keycards and most access badges.",
+    spec: "13.56 MHz, ISO14443 Type A/B or ISO15693, 4- or 7-byte UID (MIFARE Ultralight/Classic/DESFire are common chips).",
+  },
+  long: {
+    label: "Long-range (UHF)",
+    summary:
+      "Read from a distance without a deliberate tap — the tech behind bulk wristband gates at festivals.",
+    spec: "860–960 MHz, EPC Gen2 / ISO 18000-6C. Confirm the exact band with your reader vendor (e.g. 902–928 MHz US, 865–868 MHz EU) — UHF tags and readers must match bands to work.",
+  },
+};
 
 export const KIOSK_MODE_OPTIONS = [
   { value: "kiosk", label: "Kiosk (scanner)" },
@@ -310,7 +336,6 @@ export const newPassTemplate = (preset = "classic", overrides = {}) => {
 
 export const defaultEventCheckin = () => ({
   qrOnTicket: true,
-  walletPass: false,
   doorSales: false,
   kiosk: false,
   session: false,

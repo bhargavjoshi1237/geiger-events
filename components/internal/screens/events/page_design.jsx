@@ -3,14 +3,20 @@
 import React, { useState, useMemo, useRef, Suspense, lazy } from "react";
 import { toast } from "sonner";
 import {
+  AlignCenter,
+  AlignLeft,
   Check,
   GripVertical,
   ArrowUp,
   ArrowDown,
   Eye,
   Globe,
+  Moon,
   Palette,
+  PanelLeft,
+  PanelRight,
   Pencil,
+  Sun,
   Trash2,
   Plus,
   Wand2,
@@ -66,7 +72,20 @@ import {
 } from "@/lib/events/theme";
 import { useCan } from "@/context/rbac-context";
 import { hasTree } from "@/lib/events/page_migrate";
-import { Segmented, ColorField } from "./theme_controls";
+import { Segmented, ColorField, withIcons } from "./theme_controls";
+
+// Two-option sets render as an icon+label tab pair, so each needs a glyph.
+// Attached here rather than in lib/events/theme.js because the public event
+// page imports that module and shouldn't pull lucide in with it.
+const BASE_OPTIONS = withIcons(BASES, { dark: Moon, light: Sun });
+const HEADER_ALIGN_OPTIONS = withIcons(HEADER_ALIGNS, {
+  left: AlignLeft,
+  center: AlignCenter,
+});
+const SIDEBAR_OPTIONS = withIcons(SIDEBAR_SIDES, {
+  right: PanelRight,
+  left: PanelLeft,
+});
 import { LayoutPicker } from "./layout_picker";
 import { FooterEditor, DEFAULT_FOOTER } from "./page_footer";
 import { ImportBrandDialog, BrandLogoSection } from "./brand_import";
@@ -109,7 +128,7 @@ function SiteHeaderEditor({ header, onChange }) {
         <Segmented
           value={h.align}
           onChange={(v) => patch({ align: v })}
-          options={HEADER_ALIGNS}
+          options={HEADER_ALIGN_OPTIONS}
         />
       </Field>
 
@@ -810,7 +829,11 @@ export function PageDesignSection({
             >
               <div className="space-y-4">
                 <Field label="Base">
-                  <Segmented value={theme.base} onChange={onBase} options={BASES} />
+                  <Segmented
+                    value={theme.base}
+                    onChange={onBase}
+                    options={BASE_OPTIONS}
+                  />
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <ColorField
@@ -1244,7 +1267,7 @@ export function PageDesignSection({
                   <Segmented
                     value={theme.sidebar}
                     onChange={(v) => setTheme({ sidebar: v })}
-                    options={SIDEBAR_SIDES}
+                    options={SIDEBAR_OPTIONS}
                   />
                 </Field>
               </div>

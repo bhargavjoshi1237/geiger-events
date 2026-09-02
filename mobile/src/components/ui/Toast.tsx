@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import React, {
   createContext,
   useCallback,
@@ -15,12 +14,13 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Icon, type IconName } from "@/components/ui/icons";
 import { errorFeedback, successFeedback, tapFeedback } from "@/lib/haptics";
-import { colors, radius, spacing, spring, type } from "@/theme/tokens";
+import { colors, radius, spacing, timing, type } from "@/theme/tokens";
 
 const TOAST_DURATION = 3200;
 const MAX_TOASTS = 3;
@@ -41,9 +41,9 @@ type ToastContextValue = {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const KIND_ICON: Record<ToastKind, React.ComponentProps<typeof Feather>["name"]> = {
-  success: "check-circle",
-  error: "alert-circle",
+const KIND_ICON: Record<ToastKind, IconName> = {
+  success: "circle-check",
+  error: "circle-alert",
   info: "info",
 };
 
@@ -115,7 +115,8 @@ function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: () => void })
       if (e.translationY < -40 || e.velocityY < -500) {
         runOnJS(onDismiss)();
       } else {
-        offsetYRef.value = withSpring(0, spring);
+        // Settle back flat rather than springing past the resting position.
+        offsetYRef.value = withTiming(0, { duration: timing.fast });
       }
     });
 
@@ -126,11 +127,11 @@ function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: () => void })
   return (
     <GestureDetector gesture={pan}>
       <Animated.View
-        entering={FadeInUp.springify().damping(18)}
-        exiting={FadeOutUp}
+        entering={FadeInUp.duration(timing.base)}
+        exiting={FadeOutUp.duration(timing.fast)}
         style={[styles.toast, animStyle]}
       >
-        <Feather name={KIND_ICON[toast.kind]} size={16} color={KIND_COLOR[toast.kind]} />
+        <Icon name={KIND_ICON[toast.kind]} size={16} color={KIND_COLOR[toast.kind]} />
         <Text style={styles.message} numberOfLines={3}>
           {toast.message}
         </Text>

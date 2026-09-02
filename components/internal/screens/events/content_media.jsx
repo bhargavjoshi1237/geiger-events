@@ -6,6 +6,8 @@ import {
   ImageIcon,
   FileText,
   ClipboardList,
+  GalleryVerticalEnd,
+  LayoutGrid,
   UploadCloud,
   Plus,
   Trash2,
@@ -79,7 +81,15 @@ import {
   fitClass,
   coverKind,
 } from "@/lib/events/gallery";
-import { Segmented } from "./theme_controls";
+import { Segmented, withIcons } from "./theme_controls";
+
+// Two-option sets render as an icon+label tab pair, so each needs a glyph.
+// Attached here rather than in lib/events/gallery.js, which the public event
+// page also imports.
+const GALLERY_LAYOUT_OPTIONS = withIcons(GALLERY_LAYOUTS, {
+  grid: LayoutGrid,
+  carousel: GalleryVerticalEnd,
+});
 
 function AddByLinkDialog({ open, onOpenChange, onAdd }) {
   const [url, setUrl] = useState("");
@@ -195,7 +205,7 @@ function GalleryLayoutDialog({ open, onOpenChange, gallery, onChange }) {
               <Segmented
                 value={gallery.layout}
                 onChange={onChange("layout")}
-                options={GALLERY_LAYOUTS}
+                options={GALLERY_LAYOUT_OPTIONS}
               />
             </Field>
             {isCarousel ? (

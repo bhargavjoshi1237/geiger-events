@@ -1,6 +1,25 @@
-import QRCode from "qrcode";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { getSessionMember } from "@/lib/portal/session";
 import { getMemberOrder } from "@/lib/portal/reads";
+import { getQrTicketsConfig } from "@/lib/passes/ticket_qr_settings";
+import { qrTicketSvg } from "@/lib/passes/qr_core";
+
+// Inlined as a data: URI — this SVG is served standalone via <img src>, so a
+// relative /logo1.svg href would never resolve.
+let logoDataUriPromise = null;
+function logoDataUri() {
+  if (!logoDataUriPromise) {
+    logoDataUriPromise = readFile(path.join(process.cwd(), "public", "logo1.svg"))
+      .then((buf) => `data:image/svg+xml;base64,${buf.toString("base64")}`)
+      .catch((e) => {
+        console.error("[portal.qr] logo read failed", e);
+        return "";
+      });
+  }
+  return logoDataUriPromise;
+}
 
 export async function GET(_request, { params }) {
   const member = await getSessionMember();
@@ -10,19 +29,21 @@ export async function GET(_request, { params }) {
   const order = await getMemberOrder(member.email, id);
   if (!order) return new Response("Not found.", { status: 404 });
 
-  let svg;
-  try {
-    svg = await QRCode.toString(order.id, {
-      type: "svg",
-      margin: 1,
-      width: 240,
-      errorCorrectionLevel: "M",
-      color: { dark: "#111111", light: "#ffffff" },
-    });
-  } catch (e) {
-    console.error("[portal.qr]", e);
-    return new Response("QR unavailable.", { status: 500 });
-  }
+  const [config, logoHref] = await Promise.all([
+    getQrTicketsConfig(order.projectId),
+    logoDataUri(),
+  ]);
+
+  const svg = qrTicketSvg({
+    payload: order.id,
+    errorCorrection: config.errorCorrection,
+    brandColor: config.brandColor,
+    showLogo: config.showLogo,
+    logoHref,
+    size: 240,
+  });
+
+  if (!svg) return new Response("QR unavailable.", { status: 500 });
 
   return new Response(svg, {
     headers: {

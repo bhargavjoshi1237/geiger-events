@@ -1,19 +1,23 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Icon } from "@/components/ui/icons";
 import { ChatComposer } from "@/components/ChatComposer";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { IconTile } from "@/components/ui/IconTile";
 import { Screen } from "@/components/ui/Screen";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import { fmtDateTime } from "@/lib/format";
 import { usePoll } from "@/lib/use_poll";
+import { usePortalData } from "@/state/data";
 import { useSession } from "@/state/session";
-import { colors, spacing, type } from "@/theme/tokens";
+import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { ThreadDetail, ThreadMessage } from "@/types/portal";
 
 const POLL_MS = 5_000;
@@ -39,8 +43,10 @@ function replaceTemp(messages: ThreadMessage[], tempId: string, real: ThreadMess
 }
 
 export default function ThreadDetailScreen() {
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token } = useSession();
+  const { data } = usePortalData();
   const { error: toastError } = useToast();
   const [thread, setThread] = useState<ThreadDetail | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -60,6 +66,10 @@ export default function ThreadDetailScreen() {
 
   usePoll(load, POLL_MS, true);
 
+  const order = useMemo(
+    () => (thread?.orderId ? (data?.orders || []).find((o) => o.id === thread.orderId) : null),
+    [thread, data],
+  );
   const messages = useMemo(() => thread?.messages || [], [thread]);
   const reversed = useMemo(() => [...messages].reverse(), [messages]);
   const closed = thread?.status === "closed";
@@ -132,7 +142,29 @@ export default function ThreadDetailScreen() {
       <ScreenHeader
         title={thread.subject}
         subtitle={`${closed ? "Closed" : "Open"} · started ${fmtDateTime(thread.createdAt)}`}
+        leading={<Avatar name={thread.subject} size={36} shape="square" />}
+        bordered
       />
+      {order ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${order.eventName}`}
+          onPress={() => router.push(`/tickets/${order.id}`)}
+          style={({ pressed }) => [styles.context, pressed && styles.pressed]}
+        >
+          <IconTile icon="credit-card" size={38} />
+          <View style={styles.contextStack}>
+            <Text style={styles.contextName} numberOfLines={1}>
+              {order.eventName}
+            </Text>
+            <Text style={styles.contextCode} numberOfLines={1}>
+              {order.orderCode} · {order.ticket || "Admission"}
+              {order.quantity > 1 ? ` × ${order.quantity}` : ""}
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={17} color={colors.textTertiary} />
+        </Pressable>
+      ) : null}
       {messages.length ? (
         <FlatList
           data={reversed}
@@ -167,6 +199,36 @@ export default function ThreadDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  context: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg - 2,
+    backgroundColor: colors.surfaceSubtle,
+    paddingVertical: spacing.md,
+    paddingHorizontal: 14,
+    marginTop: spacing.md,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  contextStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  contextName: {
+    ...type.captionStrong,
+    fontSize: 13,
+    color: colors.foreground,
+  },
+  contextCode: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textTertiary,
+  },
   messageRow: {
     paddingVertical: spacing.xs,
   },

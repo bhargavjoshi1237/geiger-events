@@ -133,7 +133,7 @@ Every buyer gets a personal portal to manage everything they've bought:
 - **Account** — update their profile, change their password, and sign out of devices.
 
 ### Refunds
-Buyers can request a refund on an eligible order, add a reason, and track the status (requested → approved/denied → refunded) right from the portal — and the organiser handles it from their side.
+Buyers can Request A Refund on an eligible order, add a reason, and track the status (requested → approved/denied → refunded) right from the portal — and the organiser handles it from their side.
 
 ### The organiser wall & following
 Your public **Event Wall** (`/w/your-name`) shows your branding, bio, links, and a filterable, sortable grid of your events with featured highlights. Visitors can **follow** you with just an email to get notified whenever you publish something new.

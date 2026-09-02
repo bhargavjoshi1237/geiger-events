@@ -29,13 +29,14 @@ export function TicketCheckout(props) {
   const accentStyle = { backgroundColor: accent.color, color: accent.text };
 
   const wide = step === "seats" || step === "booths";
+  const wideForm = step === "details" || step === "addons";
   const fills = step === "seats";
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         className={`flex flex-col overflow-hidden transition-[max-width] ${
-          wide ? "max-w-6xl" : "max-w-lg"
+          wide ? "max-w-6xl" : wideForm ? "max-w-3xl" : "max-w-lg"
         } ${fills ? "h-[88vh] max-h-[88vh]" : "max-h-[85vh]"}`}
       >
         <DialogHeader className="shrink-0 gap-0">
@@ -60,7 +61,7 @@ export function TicketCheckout(props) {
             <div
               className={cn(
                 "shrink-0 items-center gap-4 text-xs text-text-secondary",
-                wide ? "hidden md:flex" : "hidden",
+                wide || wideForm ? "hidden md:flex" : "hidden",
               )}
             >
               <span className="inline-flex items-center gap-1.5">

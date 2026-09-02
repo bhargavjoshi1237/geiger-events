@@ -120,7 +120,7 @@ export function RefundPanel({ ticket, onRequestRefund }) {
 
   return (
     <div className="space-y-2 rounded-xl border border-border bg-surface-card p-3">
-      <p className="text-sm font-medium text-foreground">Request a refund</p>
+      <p className="text-sm font-medium text-foreground">Request A Refund</p>
       <Textarea
         rows={3}
         value={reason}

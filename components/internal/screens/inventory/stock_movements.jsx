@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import { listEvents } from "@/lib/supabase/events";
@@ -258,6 +259,11 @@ export function StockMovementsScreen() {
     });
   }, [movements, search, kind, itemFilter, itemsById]);
 
+  // Every active filter joins the reset key, so changing one drops back to page 1.
+  const pager = usePagination(filtered, {
+    resetKey: `${search}|${kind}|${itemFilter}`,
+  });
+
   const stats = useMemo(() => {
     const sum = (predicate) =>
       movements
@@ -413,42 +419,45 @@ export function StockMovementsScreen() {
           Loading movements…
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filtered}
-          getRowKey={(m) => m.id}
-          empty={
-            <div className="rounded-xl border border-border bg-surface-subtle">
-              <EmptyState
-                icon={movements.length ? ArrowLeftRight : History}
-                title={
-                  movements.length
-                    ? "No movements match your filters"
-                    : "No movements yet"
-                }
-                description={
-                  movements.length
-                    ? "Try clearing the search or filters."
-                    : "Receiving stock, issuing it to an event, or writing it off will show up here."
-                }
-                action={
-                  movements.length ? (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setSearch("");
-                        setKind("all");
-                        setItemFilter("all");
-                      }}
-                    >
-                      Clear filters
-                    </Button>
-                  ) : null
-                }
-              />
-            </div>
-          }
-        />
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(m) => m.id}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={movements.length ? ArrowLeftRight : History}
+                  title={
+                    movements.length
+                      ? "No movements match your filters"
+                      : "No movements yet"
+                  }
+                  description={
+                    movements.length
+                      ? "Try clearing the search or filters."
+                      : "Receiving stock, issuing it to an event, or writing it off will show up here."
+                  }
+                  action={
+                    movements.length ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setSearch("");
+                          setKind("all");
+                          setItemFilter("all");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null
+                  }
+                />
+              </div>
+            }
+          />
+          <ListPagination {...pager} itemLabel="movements" />
+        </div>
       )}
 
       <RecordMovementDialog

@@ -1,7 +1,7 @@
-import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Icon } from "@/components/ui/icons";
 import { tapFeedback } from "@/lib/haptics";
 import { colors, spacing, type } from "@/theme/tokens";
 
@@ -42,7 +42,7 @@ export function ListRow({
       </View>
       {trailing}
       {showChevron ? (
-        <Feather name="chevron-right" size={18} color={colors.textTertiary} />
+        <Icon name="chevron-right" size={18} color={colors.textTertiary} />
       ) : null}
     </>
   );
@@ -75,7 +75,7 @@ export function ListRow({
 const styles = StyleSheet.create({
   container: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.surfaceActive,
   },
   noDivider: {
     borderBottomWidth: 0,
@@ -83,18 +83,20 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing.lg,
+    gap: spacing.md + 2,
+    paddingVertical: 15,
   },
   pressed: {
     opacity: 0.6,
   },
   stack: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   title: {
     ...type.label,
+    fontSize: 15,
+    lineHeight: 20,
     color: colors.foreground,
   },
   subtitle: {

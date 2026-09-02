@@ -87,7 +87,7 @@ other schema changes — refunds/announcements reuse existing tables.
 - Ticket dialog shows full details incl. add-ons, total, organiser, refund status.
 - A member can open a thread with the organiser and exchange messages; unread
   organiser replies badge the nav.
-- A paid order can request a refund; the status shows through and the organiser's
+- A paid order can Request A Refund; the status shows through and the organiser's
   Refunds inbox receives it.
 - Announcements from the member's events appear under Notifications with unread
   tracking. Top bar shows the real logo. `npx eslint` clean; `next build` passes.

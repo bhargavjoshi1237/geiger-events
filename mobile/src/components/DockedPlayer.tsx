@@ -1,9 +1,9 @@
-import { Feather } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 
+import { Icon } from "@/components/ui/icons";
 import { selectionFeedback } from "@/lib/haptics";
 import { useLivePlayer } from "@/state/live_player";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -47,7 +47,7 @@ export function DockedPlayer({ bottom }: { bottom: number }) {
         }}
       >
         <View style={styles.thumb}>
-          <Feather name="radio" size={16} color={colors.foreground} />
+          <Icon name="radio" size={16} color={colors.foreground} />
         </View>
         <View style={styles.textStack}>
           <Text style={styles.name} numberOfLines={1}>
@@ -69,7 +69,7 @@ export function DockedPlayer({ bottom }: { bottom: number }) {
           }}
           style={styles.close}
         >
-          <Feather name="x" size={16} color={colors.textSecondary} />
+          <Icon name="x" size={16} color={colors.textSecondary} />
         </Pressable>
       </Pressable>
     </Animated.View>

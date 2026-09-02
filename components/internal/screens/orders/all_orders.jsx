@@ -6,6 +6,7 @@ import {
   Ban,
   Eye,
   Loader2,
+  Pencil,
   RotateCcw,
   ShoppingBag,
 } from "lucide-react";
@@ -20,6 +21,10 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
+import {
+  ListPagination,
+  usePagination,
+} from "@/components/internal/shared/pagination";
 import { Button } from "@geiger/ui/button";
 import { ActionMenu } from "@geiger/ui/action-menu";
 import {
@@ -36,6 +41,7 @@ import { listEvents } from "@/lib/supabase/events";
 import { listProjectOrders, cancelOrder } from "@/lib/supabase/orders";
 
 import { OrderDetailDrawer } from "./order_detail_drawer";
+import { OrderEditScreen } from "./order_edit_screen";
 import {
   ORDER_STATUS_MAP,
   ORDER_STATUS_FILTER_OPTIONS,
@@ -53,6 +59,7 @@ export function AllOrdersScreen() {
   const [status, setStatus] = useState("all");
   const [eventId, setEventId] = useState("all");
   const [openId, setOpenId] = useState(null);
+  const [editId, setEditId] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
 
   useEffect(() => {
@@ -116,6 +123,16 @@ export function AllOrdersScreen() {
     [openId, orders],
   );
 
+  const editOrder = useMemo(
+    () => (editId ? orders.find((o) => o.id === editId) || null : null),
+    [editId, orders],
+  );
+
+  // Every active filter joins the reset key, so changing one drops back to page 1.
+  const pager = usePagination(filtered, {
+    resetKey: `${search}|${status}|${eventId}`,
+  });
+
   const applyCancel = (id) => {
     setOrders((prev) =>
       prev.map((o) =>
@@ -145,6 +162,10 @@ export function AllOrdersScreen() {
     );
   };
 
+  const applyEdit = (id, patch) => {
+    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+  };
+
   const handleRowCancel = async (o) => {
     if (o.cancelledAt) return;
     applyCancel(o.id);
@@ -158,11 +179,16 @@ export function AllOrdersScreen() {
       key: "order",
       header: "Order",
       render: (o) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{o.name || "Unnamed"}</span>
-          <span className="text-xs text-text-secondary">
-            {orderRef(o.id)} · {o.email || "—"}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+            <ShoppingBag className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-medium text-foreground">{o.name || "Unnamed"}</span>
+            <span className="text-xs text-text-secondary">
+              {orderRef(o.id)} · {o.email || "—"}
+            </span>
+          </div>
         </div>
       ),
     },
@@ -221,12 +247,20 @@ export function AllOrdersScreen() {
         <ActionMenu
           label={`Actions for order ${orderRef(o.id)}`}
           items={[
-            { icon: Eye, label: "View order", onSelect: () => setOpenId(o.id) },
-            { icon: RotateCcw, label: "Issue refund", onSelect: () => setOpenId(o.id) },
+            {
+              icon: Pencil,
+              label: "Edit Order",
+              onSelect: () => {
+                setOpenId(null);
+                setEditId(o.id);
+              },
+            },
+            { icon: Eye, label: "View Order", onSelect: () => setOpenId(o.id) },
+            { icon: RotateCcw, label: "Issue Refund", onSelect: () => setOpenId(o.id) },
             { separator: true },
             {
               icon: Ban,
-              label: "Cancel order",
+              label: "Cancel Order",
               variant: "destructive",
               disabled: !!o.cancelledAt,
               onSelect: () => setCancelTarget(o),
@@ -236,6 +270,23 @@ export function AllOrdersScreen() {
       ),
     },
   ];
+
+  // The editor takes the whole screen, the same way a record's edit page does.
+  if (editOrder) {
+    return (
+      <OrderEditScreen
+        key={editOrder.id}
+        order={editOrder}
+        eventName={eventNames[editOrder.eventId]}
+        onBack={() => setEditId(null)}
+        onView={() => {
+          setEditId(null);
+          setOpenId(editOrder.id);
+        }}
+        onSaved={applyEdit}
+      />
+    );
+  }
 
   return (
     <MainScreenWrapper>
@@ -274,25 +325,28 @@ export function AllOrdersScreen() {
           Loading orders…
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filtered}
-          getRowKey={(o) => o.id}
-          onRowClick={(o) => setOpenId(o.id)}
-          empty={
-            <div className="rounded-xl border border-border bg-surface-subtle">
-              <EmptyState
-                icon={ShoppingBag}
-                title={orders.length ? "No orders match your filters" : "No orders yet"}
-                description={
-                  orders.length
-                    ? "Try clearing the search or filters."
-                    : "Ticket orders from your events will show up here as they come in."
-                }
-              />
-            </div>
-          }
-        />
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(o) => o.id}
+            onRowClick={(o) => setOpenId(o.id)}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={ShoppingBag}
+                  title={orders.length ? "No orders match your filters" : "No orders yet"}
+                  description={
+                    orders.length
+                      ? "Try clearing the search or filters."
+                      : "Ticket orders from your events will show up here as they come in."
+                  }
+                />
+              </div>
+            }
+          />
+          <ListPagination {...pager} itemLabel="orders" />
+        </div>
       )}
 
       <OrderDetailDrawer
@@ -309,7 +363,7 @@ export function AllOrdersScreen() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Cancel order</DialogTitle>
+            <DialogTitle>Cancel Order</DialogTitle>
             <DialogDescription>
               Cancel{" "}
               <span className="font-medium text-foreground">
@@ -333,7 +387,7 @@ export function AllOrdersScreen() {
                 setCancelTarget(null);
               }}
             >
-              <Ban className="h-4 w-4" /> Cancel order
+              <Ban className="h-4 w-4" /> Cancel Order
             </Button>
           </DialogFooter>
         </DialogContent>

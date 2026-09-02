@@ -14,11 +14,15 @@ import {
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
+  DataTable,
   EmptyState,
   Field,
   ScreenHeader,
+  SearchInput,
   StatsBar,
+  Toolbar,
 } from "@/components/internal/shared/screen_kit";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
@@ -79,6 +83,7 @@ export function SegmentsScreen() {
   const [attendingEmails, setAttendingEmails] = useState(new Set());
   const [eventsByEmail, setEventsByEmail] = useState(new Map());
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [membersOf, setMembersOf] = useState(null);
@@ -141,6 +146,18 @@ export function SegmentsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, contacts, ctx]);
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return segments;
+    return segments.filter(
+      (s) =>
+        (s.name || "").toLowerCase().includes(q) ||
+        (s.description || "").toLowerCase().includes(q),
+    );
+  }, [segments, search]);
+
+  const pager = usePagination(filtered, { resetKey: search });
+
   const openCreate = () => {
     setEditing({ name: "", description: "", color: "slate", rules: [emptyRule()] });
     setEditorOpen(true);
@@ -197,6 +214,88 @@ export function SegmentsScreen() {
     ? contacts.filter((c) => isSegmentMember(membersOf, c, ctx))
     : [];
 
+  const columns = [
+    {
+      key: "name",
+      header: "Name",
+      render: (seg) => (
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
+              SEGMENT_COLOR_MAP[seg.color] || SEGMENT_COLOR_MAP.slate,
+            )}
+          />
+          <div className="min-w-0">
+            <span className="block truncate font-medium text-foreground">{seg.name}</span>
+            {seg.description ? (
+              <span className="block truncate text-xs text-text-secondary">
+                {seg.description}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "rules",
+      header: "Rules",
+      render: (seg) => {
+        const rules = seg.rules || [];
+        return rules.length ? (
+          <div className="flex flex-wrap items-center gap-1">
+            {rules.slice(0, 3).map((r, i) => (
+              <Badge key={i} variant="neutral">
+                {FIELD_BY_VALUE[r.field]?.label || r.field}
+              </Badge>
+            ))}
+            {rules.length > 3 ? (
+              <span className="text-xs text-text-tertiary">+{rules.length - 3}</span>
+            ) : null}
+          </div>
+        ) : (
+          <span className="text-xs text-text-tertiary">All contacts</span>
+        );
+      },
+    },
+    {
+      key: "members",
+      header: "Members",
+      align: "right",
+      className: "text-right",
+      render: (seg) => {
+        const count = countMembers(seg);
+        return (
+          <span className="tabular-nums text-sm font-medium text-foreground">
+            {count.toLocaleString("en-US")}
+          </span>
+        );
+      },
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "text-right",
+      render: (seg) => (
+        <ActionMenu
+          label="Segment actions"
+          items={[
+            { icon: Users, label: "View members", onSelect: () => setMembersOf(seg) },
+            { icon: Pencil, label: "Edit rules", onSelect: () => openEdit(seg) },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(seg),
+            },
+          ]}
+        />
+      ),
+    },
+  ];
+
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -214,38 +313,58 @@ export function SegmentsScreen() {
 
       <StatsBar stats={stats} />
 
+      <Toolbar>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search segments…"
+        />
+      </Toolbar>
+
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading segments…
         </div>
-      ) : segments.length ? (
-        <div className="grid gap-3">
-          {segments.map((seg) => (
-            <SegmentCard
-              key={seg.id}
-              segment={seg}
-              count={countMembers(seg)}
-              onView={() => setMembersOf(seg)}
-              onEdit={() => openEdit(seg)}
-              onDelete={() => setDeleteTarget(seg)}
-            />
-          ))}
-        </div>
       ) : (
-        <div className="rounded-xl border border-border bg-surface-subtle">
-          <EmptyState
-            icon={ListChecks}
-            title="No segments yet"
-            description="Group your contacts by status, tags, consent, or event attendance — then reuse the segment for exports and campaigns."
-            action={
-              <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={openCreate}
-              >
-                <Plus className="h-4 w-4" /> New segment
-              </Button>
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(seg) => seg.id}
+            onRowClick={(seg) => setMembersOf(seg)}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={ListChecks}
+                  title={segments.length ? "No matches" : "No segments yet"}
+                  description={
+                    segments.length
+                      ? "Try a different search."
+                      : "Group your contacts by status, tags, consent, or event attendance — then reuse the segment for exports and campaigns."
+                  }
+                  action={
+                    segments.length ? (
+                      <Button
+                        variant="outline"
+                        className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                        onClick={() => setSearch("")}
+                      >
+                        Clear search
+                      </Button>
+                    ) : (
+                      <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={openCreate}
+                      >
+                        <Plus className="h-4 w-4" /> New segment
+                      </Button>
+                    )
+                  }
+                />
+              </div>
             }
           />
+          <ListPagination {...pager} itemLabel="segments" />
         </div>
       )}
 
@@ -331,77 +450,6 @@ export function SegmentsScreen() {
         </DialogContent>
       </Dialog>
     </MainScreenWrapper>
-  );
-}
-
-function SegmentCard({ segment, count, onView, onEdit, onDelete }) {
-  const rules = segment.rules || [];
-  return (
-    <div className="group flex w-full items-center gap-4 rounded-xl border border-border bg-surface-subtle p-4 transition-colors hover:border-border-strong hover:bg-surface-hover">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-text-secondary transition-colors group-hover:text-foreground">
-        <ListChecks className="h-5 w-5" />
-      </div>
-      <div className="w-px self-stretch bg-border" />
-
-      <button
-        type="button"
-        onClick={onView}
-        className="flex min-w-0 flex-1 items-center justify-between gap-4 text-left"
-      >
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
-                SEGMENT_COLOR_MAP[segment.color] || SEGMENT_COLOR_MAP.slate,
-              )}
-            />
-            <span className="truncate font-medium text-foreground">
-              {segment.name}
-            </span>
-          </div>
-          {segment.description ? (
-            <p className="mt-0.5 line-clamp-1 text-xs text-text-secondary">
-              {segment.description}
-            </p>
-          ) : null}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            {rules.slice(0, 3).map((r, i) => (
-              <Badge key={i} variant="neutral">
-                {FIELD_BY_VALUE[r.field]?.label || r.field}
-              </Badge>
-            ))}
-            {rules.length > 3 ? (
-              <span className="text-xs text-text-tertiary">
-                +{rules.length - 3}
-              </span>
-            ) : null}
-            {rules.length === 0 ? (
-              <span className="text-xs text-text-tertiary">All contacts</span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="shrink-0 text-right">
-          <span className="text-lg font-semibold text-foreground tabular-nums">
-            {count.toLocaleString("en-US")}
-          </span>
-          <p className="text-[11px] text-text-tertiary">
-            {count === 1 ? "member" : "members"}
-          </p>
-        </div>
-      </button>
-
-      <ActionMenu
-        label="Segment actions"
-        items={[
-          { icon: Users, label: "View members", onSelect: onView },
-          { icon: Pencil, label: "Edit rules", onSelect: onEdit },
-          { separator: true },
-          { icon: Trash2, label: "Delete", variant: "destructive", onSelect: onDelete },
-        ]}
-      />
-    </div>
   );
 }
 

@@ -3,6 +3,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  Archive,
+  Bookmark,
+  CalendarClock,
   CalendarDays,
   Loader2,
   PackageCheck,
@@ -43,6 +46,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import { listEvents } from "@/lib/supabase/events";
@@ -82,6 +86,16 @@ import {
   itemLabel,
   qty,
 } from "./constants";
+
+// One icon per status so the "Mark …" entries in the row menu can be scanned
+// rather than read — they're generated from ALLOCATION_STATUS_OPTIONS, so they
+// had none until now.
+const ALLOCATION_STATUS_ICONS = {
+  Planned: CalendarClock,
+  Reserved: Bookmark,
+  Issued: PackageCheck,
+  Closed: Archive,
+};
 
 function AllocateDialog({
   open,
@@ -413,7 +427,16 @@ function IssueDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      {/* DialogContent lays its children out as a single implicit `grid` track.
+          A grid item's default `min-width: auto` makes that track grow to the
+          item's min-content width, and the item name below is `truncate`
+          (white-space: nowrap) — so a long "Tee — Black / Large" label sized
+          the track past the dialog's content box and every w-full child,
+          the quantity input included, spilled out over the rounded border.
+          `truncate` only zeroes the span's own minimum as a *flex* item; it
+          does not shrink the row's min-content width, which is what sizes the
+          track. `min-w-0` on the grid item itself is the actual fix. */}
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {mode === "issue" ? "Issue stock" : "Return stock"}
@@ -425,14 +448,14 @@ function IssueDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-2">
+        <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-2">
           <ItemThumb item={item} items={allItems} />
-          <span className="truncate text-sm font-medium text-foreground">
+          <span className="min-w-0 truncate text-sm font-medium text-foreground">
             {item ? itemLabel(item) : "Deleted item"}
           </span>
         </div>
 
-        <Field label="Quantity">
+        <Field label="Quantity" className="min-w-0">
           <Input
             type="number"
             min="0"
@@ -564,6 +587,11 @@ export function EventAllocationsScreen() {
       })
       .sort((a, b) => a.eventName.localeCompare(b.eventName));
   }, [decorated, search, eventFilter, statusFilter, issuanceFilter]);
+
+  // Every active filter joins the reset key, so changing one drops back to page 1.
+  const pager = usePagination(filtered, {
+    resetKey: `${search}|${eventFilter}|${statusFilter}|${issuanceFilter}`,
+  });
 
   const stats = useMemo(() => {
     const planned = decorated.reduce((s, a) => s + Number(a.plannedQty || 0), 0);
@@ -857,6 +885,7 @@ export function EventAllocationsScreen() {
             { separator: true },
             ...ALLOCATION_STATUS_OPTIONS.filter((s) => s.value !== a.status).map((s) => ({
               key: s.value,
+              icon: ALLOCATION_STATUS_ICONS[s.value],
               label: `Mark ${s.label.toLowerCase()}`,
               onSelect: () => handleStatus(a, s.value),
             })),
@@ -925,43 +954,46 @@ export function EventAllocationsScreen() {
           Loading allocations…
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filtered}
-          getRowKey={(a) => a.id}
-          empty={
-            <div className="rounded-xl border border-border bg-surface-subtle">
-              <EmptyState
-                icon={CalendarDays}
-                title={
-                  allocations.length
-                    ? "No allocations match your filters"
-                    : "Nothing allocated yet"
-                }
-                description={
-                  allocations.length
-                    ? "Try clearing the search or filters."
-                    : "Commit stock to an event to plan what you'll need on the day."
-                }
-                action={
-                  allocations.length ? (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setSearch("");
-                        setEventFilter("all");
-                        setStatusFilter("all");
-                        setIssuanceFilter("all");
-                      }}
-                    >
-                      Clear filters
-                    </Button>
-                  ) : null
-                }
-              />
-            </div>
-          }
-        />
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(a) => a.id}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={CalendarDays}
+                  title={
+                    allocations.length
+                      ? "No allocations match your filters"
+                      : "Nothing allocated yet"
+                  }
+                  description={
+                    allocations.length
+                      ? "Try clearing the search or filters."
+                      : "Commit stock to an event to plan what you'll need on the day."
+                  }
+                  action={
+                    allocations.length ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setSearch("");
+                          setEventFilter("all");
+                          setStatusFilter("all");
+                          setIssuanceFilter("all");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null
+                  }
+                />
+              </div>
+            }
+          />
+          <ListPagination {...pager} itemLabel="allocations" />
+        </div>
       )}
 
       <AllocateDialog

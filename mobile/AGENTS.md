@@ -12,13 +12,28 @@ Supabase directly except for the chat Realtime subscription.
 - **Theme tokens only.** Every colour comes from `src/theme/tokens.ts`. Never
   write a hex literal in a screen or component. The palette mirrors the web
   app's dark theme exactly (`#161616` canvas, `#1a1a1a` subtle, `#202020` card,
-  `#333333` border) so the app reads as part of the same suite.
+  `#333333` border) so the app reads as part of the same suite. The `paper*`
+  tokens are the deliberate exception: the QR pass is white so scanners read it.
+- **Typography comes from `type.*`.** Geist ships as separate files per weight,
+  so a `fontWeight` override without a matching `fontFamily` renders the wrong
+  face — use `type.labelStrong` / `type.bodyStrong` / `fonts.semibold` instead.
+  Import font weights from their per-weight subpath, never the package barrel.
 - **StyleSheet, not inline objects.** `StyleSheet.create` at the bottom of each
   file. Inline styles only for values computed at render (animated, measured).
 - **Shared primitives before bespoke layout.** Build from `src/components/ui/*`
-  (`Screen`, `Card`, `Button`, `Input`, `Field`, `Pill`, `SectionTitle`,
-  `EmptyState`, `Skeleton`, `ListRow`, `Segmented`, `Sheet`). If one is *almost*
+  (`Screen`, `Card`, `Button`, `Input`, `Field`, `Pill`, `PulseDot`,
+  `SectionTitle`, `EmptyState`, `Skeleton`, `ListRow`, `Segmented`, `Sheet`,
+  `FilterChips`, `IconButton`, `IconTile`, `Perforation`). If one is *almost*
   right, extend it — do not fork layout into a screen.
+- **Icons are lucide, via `src/components/ui/icons.tsx`.** Render `<Icon
+  name="qr-code" />` and type icon props as `IconName`. Never import
+  `@expo/vector-icons`, and never import the lucide barrel — Metro does not
+  tree-shake, so each icon is deep-imported (`lucide-react-native/icons/<name>`)
+  and registered in `ICONS`. Adding an icon means adding it there first. Names
+  are lucide v1's, which differ from Feather's (`circle-play`, `square-pen`,
+  `funnel`, `house`, `circle-check`).
+- **Headers:** tab roots use `ScreenTitle` (large 28pt title); pushed screens use
+  `ScreenHeader` (44pt back target, 17pt title).
 - **Three list states, always:** loading (skeletons, not a bare spinner), empty
   (`EmptyState` with an action), and content. Filtered lists get a fourth
   "no results" state.
@@ -28,6 +43,14 @@ Supabase directly except for the chat Realtime subscription.
   never narrate what the next line does. No JSDoc blocks, no banner comments.
 - Every touchable has `accessibilityRole` / `accessibilityLabel`, and a
   `hitSlop` when its box is under 44pt.
+
+## Navigation
+
+Five tabs: **Home, Tickets, Live, Inbox, More**. Inbox is one merged list over
+four sources (organiser threads, announcements, event chats, Q&A) with filter
+chips; the per-source screens still exist as pushed routes for deep links.
+Orders, Memberships, Watch and Account hang off More. `/pass/[id]` lives outside
+the tabs so the QR fills the screen with no chrome.
 
 ## Layout
 

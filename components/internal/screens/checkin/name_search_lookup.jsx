@@ -28,6 +28,37 @@ import {
   listAttendanceByEvent,
   createCheckin,
 } from "@/lib/supabase/checkin";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All statuses" },
+  { value: "Confirmed", label: "Confirmed" },
+  { value: "Pending", label: "Pending" },
+  { value: "Waitlisted", label: "Waitlisted" },
+  { value: "Declined", label: "Declined" },
+  { value: "Cancelled", label: "Cancelled" },
+];
+
+const CHECKIN_FILTER_OPTIONS = [
+  { value: "all", label: "All attendees" },
+  { value: "in", label: "Checked in" },
+  { value: "out", label: "Not checked in" },
+];
+
+const SORT_OPTIONS = [
+  { value: "name-asc", label: "Name (A–Z)" },
+  { value: "name-desc", label: "Name (Z–A)" },
+  { value: "recent", label: "Recently registered" },
+  { value: "party-desc", label: "Largest party" },
+];
+
+const SORT_COMPARATORS = {
+  "name-asc": (a, b) => a.name.localeCompare(b.name),
+  "name-desc": (a, b) => b.name.localeCompare(a.name),
+  recent: (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+  "party-desc": (a, b) => (b.partySize || 1) - (a.partySize || 1),
+};
 
 const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUpperCase();export function NameSearchLookupScreen() {
   const { projectId } = useProject();
@@ -39,6 +70,9 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
   const [loadingList, setLoadingList] = useState(false);
   const [search, setSearch] = useState("");
   const [admittingId, setAdmittingId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [checkinFilter, setCheckinFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("name-asc");
 
   useEffect(() => {
     let alive = true;
@@ -83,14 +117,28 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
 
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return attendees;
-    return attendees.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.email.toLowerCase().includes(q) ||
-        ticketCode(a.id).toLowerCase().includes(q),
-    );
-  }, [attendees, search]);
+    const filtered = attendees.filter((a) => {
+      if (statusFilter !== "all" && a.status !== statusFilter) return false;
+      const isIn = checkedIn.has(a.id);
+      if (checkinFilter === "in" && !isIn) return false;
+      if (checkinFilter === "out" && isIn) return false;
+      if (
+        q &&
+        !(
+          a.name.toLowerCase().includes(q) ||
+          a.email.toLowerCase().includes(q) ||
+          ticketCode(a.id).toLowerCase().includes(q)
+        )
+      )
+        return false;
+      return true;
+    });
+    return [...filtered].sort(SORT_COMPARATORS[sortBy] || SORT_COMPARATORS["name-asc"]);
+  }, [attendees, search, statusFilter, checkinFilter, sortBy, checkedIn]);
+
+  const pager = usePagination(results, {
+    resetKey: `${eventId}|${search}|${statusFilter}|${checkinFilter}|${sortBy}`,
+  });
 
   const admit = (reg) => {
     if (checkedIn.has(reg.id) || admittingId) return;
@@ -128,18 +176,41 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
       />
 
       <Toolbar>
-        <Select value={eventId} onValueChange={setEventId}>
-          <SelectTrigger className="h-9 w-full bg-surface-card sm:max-w-xs">
-            <SelectValue placeholder={loadingEvents ? "Loading Events…" : "Select an event"} />
-          </SelectTrigger>
-          <SelectContent>
-            {events.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={eventId} onValueChange={setEventId}>
+            <SelectTrigger className="h-9 w-full bg-surface-card sm:w-auto sm:max-w-[220px]">
+              <SelectValue placeholder={loadingEvents ? "Loading Events…" : "Select an event"} />
+            </SelectTrigger>
+            <SelectContent>
+              {events.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FilterDropdown
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+            options={STATUS_FILTER_OPTIONS}
+            placeholder="All statuses"
+            height="h-9"
+          />
+          <FilterDropdown
+            value={checkinFilter}
+            onValueChange={setCheckinFilter}
+            options={CHECKIN_FILTER_OPTIONS}
+            placeholder="All attendees"
+            height="h-9"
+          />
+          <FilterDropdown
+            value={sortBy}
+            onValueChange={setSortBy}
+            options={SORT_OPTIONS}
+            placeholder="Sort"
+            height="h-9"
+          />
+        </div>
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -160,52 +231,55 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
           <Loader2 className="h-4 w-4 animate-spin" /> Loading attendees…
         </div>
       ) : results.length ? (
-        <div className="grid gap-2">
-          {results.map((a) => {
-            const isIn = checkedIn.has(a.id);
-            return (
-              <div
-                key={a.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-3.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-foreground">{a.name || "Unnamed"}</span>
-                    <Badge variant="neutral" className="font-mono text-[11px]">
-                      {ticketCode(a.id)}
-                    </Badge>
-                    {a.status === "Waitlisted" ? (
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-amber-400">
-                        Waitlisted
-                      </span>
-                    ) : null}
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            {pager.pageItems.map((a) => {
+              const isIn = checkedIn.has(a.id);
+              return (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-3.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-foreground">{a.name || "Unnamed"}</span>
+                      <Badge variant="neutral" className="font-mono text-[11px]">
+                        {ticketCode(a.id)}
+                      </Badge>
+                      {a.status === "Waitlisted" ? (
+                        <span className="text-[11px] font-medium uppercase tracking-wide text-amber-400">
+                          Waitlisted
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-text-secondary">
+                      {a.email || "No email"}
+                      {a.partySize > 1 ? ` · party of ${a.partySize}` : ""}
+                    </p>
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-text-secondary">
-                    {a.email || "No email"}
-                    {a.partySize > 1 ? ` · party of ${a.partySize}` : ""}
-                  </p>
+                  {isIn ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4" /> Checked in
+                    </span>
+                  ) : (
+                    <Button
+                      className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                      disabled={admittingId === a.id}
+                      onClick={() => admit(a)}
+                    >
+                      {admittingId === a.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UserCheck className="h-4 w-4" />
+                      )}
+                      Check in
+                    </Button>
+                  )}
                 </div>
-                {isIn ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300">
-                    <CheckCircle2 className="h-4 w-4" /> Checked in
-                  </span>
-                ) : (
-                  <Button
-                    className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={admittingId === a.id}
-                    onClick={() => admit(a)}
-                  >
-                    {admittingId === a.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <UserCheck className="h-4 w-4" />
-                    )}
-                    Check in
-                  </Button>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          <ListPagination {...pager} itemLabel="attendees" />
         </div>
       ) : (
         <div className="rounded-xl border border-border bg-surface-subtle">
@@ -214,8 +288,22 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
             title={attendees.length ? "No matches" : "No attendees yet"}
             description={
               attendees.length
-                ? "Try a different name, email, or ticket number."
+                ? "Try a different name, email, ticket number, or filter."
                 : "Registrations for this event will appear here to look up and check in."
+            }
+            action={
+              attendees.length > 0 && (search || statusFilter !== "all" || checkinFilter !== "all") ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSearch("");
+                    setStatusFilter("all");
+                    setCheckinFilter("all");
+                  }}
+                >
+                  Clear filters
+                </Button>
+              ) : undefined
             }
           />
         </div>

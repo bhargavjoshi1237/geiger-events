@@ -4,6 +4,7 @@ import React from "react";
 import {
   Armchair,
   CalendarClock,
+  Infinity as InfinityIcon,
   KeyRound,
   ListChecks,
   RotateCcw,
@@ -69,8 +70,8 @@ function AvailabilitySection({ config, setConfig }) {
             value={sales.mode || "always"}
             onChange={(v) => setSales({ mode: v })}
             options={[
-              { value: "always", label: "Always on sale" },
-              { value: "window", label: "Scheduled window" },
+              { value: "always", label: "Always on sale", icon: InfinityIcon },
+              { value: "window", label: "Scheduled window", icon: CalendarClock },
             ]}
             className="w-fit"
           />
@@ -134,7 +135,7 @@ function RefundSection({ config, setConfig }) {
           <SettingRow
             icon={RotateCcw}
             title="Refundable"
-            description="Allow buyers to request a refund before the cutoff."
+            description="Allow buyers to Request A Refund before the cutoff."
             checked={!!refund.refundable}
             onCheckedChange={(v) => setRefund({ refundable: v })}
           />

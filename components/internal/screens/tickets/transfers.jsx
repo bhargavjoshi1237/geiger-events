@@ -84,6 +84,8 @@ function TransferFeesSection({ config, set }) {
           />
         ) : null}
         <Num
+          fullWidth
+          className="sm:col-span-2"
           label="Transfer deadline"
           hint="Transfers close this many days before the event."
           value={config.deadlineDays ?? 2}

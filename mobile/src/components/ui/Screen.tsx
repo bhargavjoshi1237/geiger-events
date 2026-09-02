@@ -1,5 +1,5 @@
 import React from "react";
-import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TAB_BAR_HEIGHT } from "@/components/TabBar";
@@ -10,8 +10,6 @@ const TAB_BAR_CLEARANCE = TAB_BAR_HEIGHT + spacing.lg;
 type ScreenProps = {
   children: React.ReactNode;
   scroll?: boolean;
-  refreshing?: boolean;
-  onRefresh?: () => void;
   header?: React.ReactNode;
   padded?: boolean;
   onScroll?: (y: number) => void;
@@ -20,8 +18,6 @@ type ScreenProps = {
 export function Screen({
   children,
   scroll = false,
-  refreshing,
-  onRefresh,
   header,
   padded = true,
   onScroll,
@@ -42,16 +38,6 @@ export function Screen({
             onScroll
               ? (e) => onScroll(e.nativeEvent.contentOffset.y)
               : undefined
-          }
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={!!refreshing}
-                onRefresh={onRefresh}
-                tintColor={colors.mutedForeground}
-                colors={[colors.mutedForeground]}
-              />
-            ) : undefined
           }
         >
           {header}

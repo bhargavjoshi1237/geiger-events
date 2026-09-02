@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Plus, Trash2, Workflow } from "lucide-react";
+import { ListOrdered, Plus, Trash2, Workflow, Zap } from "lucide-react";
 
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
@@ -129,7 +129,32 @@ function StepCard({ step, index, onChange, onRemove, removable }) {
   );
 }
 
-function SequenceEditForm({ config, setConfig }) {
+function TriggerSection({ config, setConfig }) {
+  const set = (patch) => setConfig({ ...config, ...patch });
+  return (
+    <SectionCard>
+      <Field label="Trigger" className="max-w-sm">
+        <Select
+          value={config.trigger || "registration"}
+          onValueChange={(v) => set({ trigger: v })}
+        >
+          <SelectTrigger className="bg-surface-card">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SEQUENCE_TRIGGER_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+    </SectionCard>
+  );
+}
+
+function StepsSection({ config, setConfig }) {
   const steps = Array.isArray(config.steps) ? config.steps : [];
   const set = (patch) => setConfig({ ...config, ...patch });
 
@@ -145,66 +170,56 @@ function SequenceEditForm({ config, setConfig }) {
   const removeStep = (i) => set({ steps: steps.filter((_, idx) => idx !== i) });
 
   return (
-    <div className="space-y-6">
-      <SectionCard
-        title="Enrolment trigger"
-        description="What starts a contact down this sequence."
-      >
-        <Field label="Trigger" className="max-w-sm">
-          <Select
-            value={config.trigger || "registration"}
-            onValueChange={(v) => set({ trigger: v })}
-          >
-            <SelectTrigger className="bg-surface-card">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SEQUENCE_TRIGGER_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-      </SectionCard>
-
-      <SectionCard
-        title="Steps"
-        description="Messages sent in order, each after its delay."
-        action={
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={addStep}
-          >
-            <Plus className="h-4 w-4" /> Add step
-          </Button>
-        }
-      >
-        <div className="space-y-3">
-          {steps.length ? (
-            steps.map((step, i) => (
-              <StepCard
-                key={step.id || i}
-                step={step}
-                index={i}
-                onChange={(patch) => setStep(i, patch)}
-                onRemove={() => removeStep(i)}
-                removable={steps.length > 1}
-              />
-            ))
-          ) : (
-            <p className="py-6 text-center text-sm text-text-tertiary">
-              No steps yet — add the first message to send.
-            </p>
-          )}
-        </div>
-      </SectionCard>
-    </div>
+    <SectionCard
+      action={
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          onClick={addStep}
+        >
+          <Plus className="h-4 w-4" /> Add step
+        </Button>
+      }
+    >
+      <div className="space-y-3">
+        {steps.length ? (
+          steps.map((step, i) => (
+            <StepCard
+              key={step.id || i}
+              step={step}
+              index={i}
+              onChange={(patch) => setStep(i, patch)}
+              onRemove={() => removeStep(i)}
+              removable={steps.length > 1}
+            />
+          ))
+        ) : (
+          <p className="py-6 text-center text-sm text-text-tertiary">
+            No steps yet — add the first message to send.
+          </p>
+        )}
+      </div>
+    </SectionCard>
   );
 }
+
+const SECTIONS = [
+  {
+    key: "trigger",
+    label: "Enrolment trigger",
+    icon: Zap,
+    desc: "What starts a contact down this sequence.",
+    render: TriggerSection,
+  },
+  {
+    key: "steps",
+    label: "Steps",
+    icon: ListOrdered,
+    desc: "Messages sent in order, each after its delay.",
+    render: StepsSection,
+  },
+];
 
 export function DripSequencesScreen() {
   return (
@@ -216,7 +231,7 @@ export function DripSequencesScreen() {
       icon={Workflow}
       kinds={KINDS}
       summarize={summarize}
-      EditForm={SequenceEditForm}
+      sections={SECTIONS}
       data={SEQUENCE_DATA}
     />
   );

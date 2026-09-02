@@ -1,50 +1,60 @@
 import Constants from "expo-constants";
-import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import * as WebBrowser from "expo-web-browser";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
+import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
 import { ListRow } from "@/components/ui/ListRow";
-import { Pill } from "@/components/ui/Pill";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Screen } from "@/components/ui/Screen";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
 import { api, API_BASE } from "@/lib/api";
-import { registerForPush } from "@/lib/push";
-import { usePortalData } from "@/state/data";
+import { pluralize } from "@/lib/format";
 import { useSession } from "@/state/session";
-import { colors, spacing, type } from "@/theme/tokens";
+import { colors, radius, spacing, type } from "@/theme/tokens";
+import type { PortalDevice } from "@/types/portal";
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { member, token, refreshMember, signOut, signOutEverywhere } = useSession();
-  const { refreshing, refreshAll } = usePortalData();
+  const { member, token, pushToken, refreshMember, signOut, signOutEverywhere } = useSession();
   const { success, error } = useToast();
-  const scrollY = useSharedValue(0);
 
+  const storedPhone = typeof member?.metadata?.phone === "string" ? member.metadata.phone : "";
   const [name, setName] = useState(member?.name || "");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(storedPhone);
   const [saving, setSaving] = useState(false);
   const [confirmOut, setConfirmOut] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushUnavailable, setPushUnavailable] = useState(false);
-  const [registering, setRegistering] = useState(false);
+  const [devices, setDevices] = useState<PortalDevice[] | null>(null);
 
-  const storedPhone =
-    typeof member?.metadata?.phone === "string" ? member.metadata.phone : "";
   const dirty = name !== (member?.name || "") || phone !== storedPhone;
 
-  const saveProfile = async () => {
+  useEffect(() => {
     if (!token) return;
+    const query = pushToken ? `?current=${encodeURIComponent(pushToken)}` : "";
+    void api<{ devices: PortalDevice[] }>(`/api/portal/devices${query}`, { token }).then((res) => {
+      if (res.ok) setDevices(res.data.devices);
+    });
+  }, [token, pushToken]);
+
+  const deviceSummary = devices === null
+    ? "Where you're signed in for push"
+    : !devices.length
+      ? "No devices registered yet"
+      : devices.some((d) => d.current)
+        ? `This device${devices.length > 1 ? ` · ${devices.length - 1} more` : ""}`
+        : `${devices.length} ${pluralize(devices.length, "device", "devices")}`;
+
+  const saveProfile = async () => {
+    if (!token || !dirty) return;
     setSaving(true);
     const res = await api<{ ok?: boolean }>("/api/portal/profile", {
       method: "POST",
@@ -57,48 +67,42 @@ export default function AccountScreen() {
     void refreshMember();
   };
 
-  const enablePush = async () => {
-    if (!token) return;
-    setRegistering(true);
-    const t = await registerForPush(token);
-    setRegistering(false);
-    if (t) {
-      setPushEnabled(true);
-      success("Push notifications enabled.");
-    } else {
-      setPushUnavailable(true);
-    }
-  };
-
-  const openPortal = () => WebBrowser.openBrowserAsync(`${API_BASE}/members`);
-
   return (
-    <Screen scroll refreshing={refreshing} onRefresh={refreshAll} onScroll={(y) => (scrollY.value = y)}>
-      <ScreenHeader title="Account" subtitle="Manage your profile, password, and sessions." scrollY={scrollY} />
+    <Screen scroll>
+      <ScreenHeader
+        title="Account"
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Save profile"
+            accessibilityState={{ disabled: !dirty, busy: saving }}
+            disabled={!dirty || saving}
+            hitSlop={8}
+            onPress={saveProfile}
+            style={styles.saveHit}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={colors.foreground} />
+            ) : (
+              <Text style={[styles.save, !dirty && styles.saveIdle]}>Save</Text>
+            )}
+          </Pressable>
+        }
+      />
 
-      <View style={styles.head}>
-        <Avatar name={member?.name} email={member?.email} size={56} />
-        <View style={styles.headStack}>
-          <Text style={styles.headName} numberOfLines={1}>
-            {member?.name || "Your account"}
-          </Text>
-          <Text style={styles.headEmail} numberOfLines={1}>
-            {member?.email}
-          </Text>
-        </View>
+      <ProgressBar active={saving} />
+
+      <View style={styles.identity}>
+        <Avatar name={member?.name} email={member?.email} size={76} />
+        <Text style={styles.identityHint}>Shown on your tickets and receipts</Text>
       </View>
 
-      <SectionTitle>Profile</SectionTitle>
-      <Card style={styles.formCard}>
+      <SectionTitle variant="kicker">Profile</SectionTitle>
+      <View style={[styles.card, styles.formCard]}>
         <Field label="Full name">
-          <Input
-            value={name}
-            onChangeText={setName}
-            placeholder="Your name"
-            autoCapitalize="words"
-          />
+          <Input value={name} onChangeText={setName} placeholder="Your name" autoCapitalize="words" />
         </Field>
-        <Field label="Phone" hint="Optional — used for event updates.">
+        <Field label="Phone" hint="Optional — used for event-day updates.">
           <Input
             value={phone}
             onChangeText={setPhone}
@@ -106,70 +110,61 @@ export default function AccountScreen() {
             keyboardType="phone-pad"
           />
         </Field>
-        <Field label="Email">
+        <Field label="Email" hint="Tied to your purchases — it can't be changed here.">
           <Input value={member?.email || ""} editable={false} style={styles.readonly} />
         </Field>
-        <Button
-          title="Save changes"
-          onPress={saveProfile}
-          loading={saving}
-          disabled={!dirty}
-          icon="user"
-          fullWidth
-        />
-      </Card>
+      </View>
 
-      <SectionTitle>Security</SectionTitle>
-      <Card style={styles.rowsCard}>
+      <SectionTitle variant="kicker">Security</SectionTitle>
+      <View style={styles.card}>
         <ListRow
+          leading={<IconTile icon="shield" size={34} />}
           title="Change password"
-          subtitle="Update the password you use to sign in."
+          subtitle="Update the password you use to sign in"
           onPress={() => router.push("/account/change-password")}
+        />
+        <ListRow
+          leading={<IconTile icon="smartphone" size={34} />}
+          title="Devices"
+          subtitle={deviceSummary}
+          onPress={() => router.push("/account/devices")}
           divider={false}
         />
-      </Card>
-      <Button
-        title="Sign out of all devices"
-        variant="destructiveGhost"
-        icon="log-out"
-        onPress={() => setConfirmAll(true)}
-        fullWidth
-      />
+      </View>
 
-      <SectionTitle>Notifications</SectionTitle>
-      <Card style={styles.rowsCard}>
-        {pushEnabled ? (
-          <ListRow
-            title="Push notifications"
-            subtitle="Enabled on this device"
-            trailing={<Pill label="On" tone="success" />}
-            divider={false}
-          />
-        ) : pushUnavailable ? (
-          <Text style={styles.mutedLine}>Push isn&apos;t available on this device yet.</Text>
-        ) : (
-          <Button
-            title="Enable push notifications"
-            variant="secondary"
-            onPress={enablePush}
-            loading={registering}
-            fullWidth
-          />
-        )}
-      </Card>
-
-      <SectionTitle>About</SectionTitle>
-      <Card style={styles.rowsCard}>
-        <ListRow title="Version" subtitle={Constants.expoConfig?.version || "1.0.0"} />
+      <SectionTitle variant="kicker">About</SectionTitle>
+      <View style={styles.card}>
         <ListRow
+          leading={<IconTile icon="external-link" size={34} />}
           title="Open web portal"
           subtitle="Manage your account in a browser"
-          onPress={() => void openPortal()}
+          onPress={() => void WebBrowser.openBrowserAsync(`${API_BASE}/members`)}
+        />
+        <ListRow
+          leading={<IconTile icon="info" size={34} />}
+          title="Version"
+          subtitle={Constants.expoConfig?.version || "1.0.0"}
+          chevron={false}
           divider={false}
         />
-      </Card>
+      </View>
 
-      <Button title="Sign out" variant="destructive" icon="log-out" onPress={() => setConfirmOut(true)} fullWidth />
+      <View style={styles.card}>
+        <ListRow
+          leading={<IconTile icon="log-out" size={34} />}
+          title="Sign out"
+          onPress={() => setConfirmOut(true)}
+          chevron={false}
+        />
+        <ListRow
+          leading={<IconTile icon="log-out" size={34} tone="danger" />}
+          title="Sign out of all devices"
+          subtitle="Ends every session using your account"
+          onPress={() => setConfirmAll(true)}
+          chevron={false}
+          divider={false}
+        />
+      </View>
 
       <Sheet visible={confirmOut} onClose={() => setConfirmOut(false)} title="Sign out?">
         <View style={styles.sheetBody}>
@@ -211,39 +206,42 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  head: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing.xl,
+  saveHit: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  headStack: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  headName: {
-    ...type.heading,
+  save: {
+    ...type.bodyStrong,
     color: colors.foreground,
   },
-  headEmail: {
+  saveIdle: {
+    color: colors.textTertiary,
+  },
+  identity: {
+    alignItems: "center",
+    gap: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+  identityHint: {
     ...type.caption,
+    fontSize: 13,
     color: colors.textSecondary,
   },
+  card: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
+  },
   formCard: {
+    paddingVertical: spacing.lg,
     gap: spacing.md,
   },
   readonly: {
     opacity: 0.6,
-  },
-  rowsCard: {
-    padding: 0,
-    paddingHorizontal: spacing.lg,
-  },
-  mutedLine: {
-    ...type.caption,
-    color: colors.textTertiary,
-    paddingVertical: spacing.sm,
   },
   sheetBody: {
     gap: spacing.lg,

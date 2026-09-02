@@ -199,7 +199,7 @@ function TicketEditForm({ config, setConfig }) {
           <SettingRow
             icon={RotateCcw}
             title="Refundable"
-            description="Allow buyers to request a refund before the cutoff."
+            description="Allow buyers to Request A Refund before the cutoff."
             checked={!!refund.refundable}
             onCheckedChange={(v) => setRefund({ refundable: v })}
           />

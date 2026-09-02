@@ -6,6 +6,14 @@ export type Member = {
   metadata: Record<string, unknown>;
 };
 
+export type PortalDevice = {
+  id: string;
+  platform: string;
+  appVersion: string | null;
+  lastSeenAt: string | null;
+  current: boolean;
+};
+
 export type RefundInfo = {
   id: string;
   status: string;

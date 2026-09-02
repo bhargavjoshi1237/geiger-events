@@ -1,9 +1,8 @@
-import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
 
+import { Icon } from "@/components/ui/icons";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -25,7 +24,6 @@ export default function NewMessageScreen() {
   const [subject, setSubject] = useState(params.subject || "");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
-  const scrollY = useSharedValue(0);
 
   const send = async () => {
     if (!token || !body.trim() || busy) return;
@@ -46,12 +44,12 @@ export default function NewMessageScreen() {
   };
 
   return (
-    <Screen scroll onScroll={(y) => (scrollY.value = y)}>
-      <ScreenHeader title="New message" scrollY={scrollY} />
+    <Screen scroll>
+      <ScreenHeader title="New message" subtitle="Goes straight to the organiser" />
 
       {params.contextLabel ? (
         <View style={styles.context}>
-          <Feather name="tag" size={13} color={colors.textTertiary} />
+          <Icon name="tag" size={13} color={colors.textTertiary} />
           <Text style={styles.contextText} numberOfLines={1}>
             {params.contextLabel}
           </Text>

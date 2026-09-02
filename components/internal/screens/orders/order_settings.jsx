@@ -9,7 +9,7 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Input } from "@geiger/ui/input";
+import { IconInput } from "@/components/internal/shared/icon_input";
 import { Textarea } from "@geiger/ui/textarea";
 import {
   Select,
@@ -46,15 +46,14 @@ function OrderSettingsForm({ config, set }) {
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Order prefix" hint={`Preview: ${orderRef("00000000-0000-0000-0000-000000000000", config.orderPrefix || "ORD")}`}>
-            <div className="flex items-center gap-2">
-              <Hash className="h-4 w-4 text-text-tertiary" />
-              <Input
-                value={config.orderPrefix || ""}
-                onChange={(e) => set({ orderPrefix: e.target.value.toUpperCase() })}
-                placeholder="ORD"
-                className="w-32"
-              />
-            </div>
+            <IconInput
+              icon={Hash}
+              wrapperClassName="w-full"
+              className="w-full"
+              value={config.orderPrefix || ""}
+              onChange={(e) => set({ orderPrefix: e.target.value.toUpperCase() })}
+              placeholder="ORD"
+            />
           </Field>
           <Field label="Default refund policy">
             <Select

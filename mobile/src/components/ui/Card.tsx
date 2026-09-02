@@ -9,10 +9,13 @@ import { colors, radius, spacing, spring } from "@/theme/tokens";
 type CardProps = {
   children: React.ReactNode;
   onPress?: () => void;
+  // "subtle" is the recessed container the design uses for grouped list rows.
+  tone?: "card" | "subtle";
   style?: StyleProp<ViewStyle>;
 };
 
-export function Card({ children, onPress, style }: CardProps) {
+export function Card({ children, onPress, tone = "card", style }: CardProps) {
+  const toneStyle = tone === "subtle" ? styles.subtle : null;
   const scaleRef = useSharedValue(1);
   const pressIn = () => {
     scaleRef.value = withSpring(0.98, spring);
@@ -35,12 +38,12 @@ export function Card({ children, onPress, style }: CardProps) {
           onPress();
         }}
       >
-        <Animated.View style={[styles.card, animStyle, style]}>{children}</Animated.View>
+        <Animated.View style={[styles.card, toneStyle, animStyle, style]}>{children}</Animated.View>
       </Pressable>
     );
   }
 
-  return <View style={[styles.card, style]}>{children}</View>;
+  return <View style={[styles.card, toneStyle, style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -50,5 +53,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.lg,
     padding: spacing.lg,
+  },
+  subtle: {
+    backgroundColor: colors.surfaceSubtle,
   },
 });

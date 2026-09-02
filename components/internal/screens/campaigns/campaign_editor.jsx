@@ -4,14 +4,15 @@ import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   CalendarClock,
+  FlaskConical,
   Loader2,
+  Mail,
   Send,
   Undo2,
   Users,
 } from "lucide-react";
 
-import { SecondaryScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { EditorHeader } from "@/components/internal/shared/editor_shell";
+import { EditorShell } from "@/components/internal/shared/editor_shell";
 import {
   Field,
   InlineTitleInput,
@@ -31,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@geiger/ui/select";
-import { cn } from "@/lib/utils";
 import {
   AB_METRIC_OPTIONS,
   CAMPAIGN_STATUS_MAP,
@@ -43,7 +43,42 @@ import {
   formatDateTime,
 } from "./constants";
 
+import { Segmented } from "@/components/internal/screens/events/theme_controls";
+
 const SMS_SEGMENT = 160;
+
+const SCHEDULE_MODES = [
+  { key: "now", label: "Send now", icon: Send },
+  { key: "scheduled", label: "Schedule for later", icon: CalendarClock },
+];
+
+const CAMPAIGN_NAV = [
+  {
+    key: "audience",
+    label: "Audience",
+    icon: Users,
+    desc: "Who this campaign goes to. Recipient count recomputes live from your contacts.",
+  },
+  {
+    key: "content",
+    label: "Content",
+    icon: Mail,
+    desc: "What your audience receives. Use merge tags like {{first_name}} to personalize.",
+  },
+  {
+    key: "schedule",
+    label: "Schedule",
+    icon: CalendarClock,
+    desc: "Send immediately or queue it for later.",
+  },
+  {
+    key: "ab",
+    label: "A/B testing",
+    icon: FlaskConical,
+    desc: "Send two variants to a split of your audience and compare results.",
+    showIf: (subject) => subject.abAvailable,
+  },
+];
 
 export function CampaignEditor({
   campaign,
@@ -186,269 +221,36 @@ export function CampaignEditor({
   };
 
   return (
-    <SecondaryScreenWrapper>
-      <EditorHeader
-        back={{ label: "Back", onClick: onBack }}
-        title={
-          <InlineTitleInput
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            aria-label="Campaign name"
-            placeholder="Untitled campaign"
-            className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
-          />
-        }
-        badges={
-          <>
-            <StatusPill status={status} map={CAMPAIGN_STATUS_MAP} />
-            <Badge variant={channelMeta.variant}>
-              <channelMeta.icon className="h-3 w-3" /> {channelMeta.label}
-            </Badge>
-            <Badge variant={TYPE_MAP[campaign.type]?.variant || "neutral"}>
-              {TYPE_MAP[campaign.type]?.label || campaign.type}
-            </Badge>
-            {status === "sent" && campaign.sentAt ? (
-              <span className="text-xs text-text-tertiary">
-                Sent {formatDateTime(campaign.sentAt)}
-              </span>
-            ) : null}
-          </>
-        }
-        actions={primaryAction()}
-      />
-
-      <div className="mt-6 space-y-6">
-        <SectionCard
-          title="Audience"
-          description="Who this campaign goes to. Recipient count recomputes live from your contacts."
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Segment" hint="Choose a saved segment or send to everyone.">
-              <Select
-                value={segmentId || "all"}
-                onValueChange={(v) => setSegmentId(v === "all" ? "" : v)}
-                disabled={readOnly}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All contacts</SelectItem>
-                  {segments.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Estimated recipients">
-              <div className="flex h-10 w-full items-center gap-2.5 rounded-md border border-border bg-surface-card px-3 text-sm">
-                <Users className="h-4 w-4 shrink-0 text-text-tertiary" />
-                <span className="font-semibold tabular-nums text-foreground">
-                  {recipients.toLocaleString("en-US")}
-                </span>
-                <span className="truncate text-text-secondary">
-                  {recipients === 1 ? "contact" : "contacts"}
-                </span>
-              </div>
-            </Field>
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Content"
-          description="What your audience receives. Use merge tags like {{first_name}} to personalize."
-          action={
-            isEmail && emailTemplates.length ? (
-              <Select value="" onValueChange={applyTemplate} disabled={readOnly}>
-                <SelectTrigger className="h-9 w-44 bg-surface-card">
-                  <SelectValue placeholder="Load template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {emailTemplates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : null
-          }
-        >
-          <div className="space-y-4">
-            {isEmail ? (
-              <>
-                <Field label="Subject">
-                  <Input
-                    value={content.subject || ""}
-                    onChange={(e) => setC({ subject: e.target.value })}
-                    placeholder="e.g. You're invited to {{event_name}}"
-                    disabled={readOnly}
-                  />
-                </Field>
-                <Field label="Preview text" hint="The snippet shown after the subject in most inboxes.">
-                  <Input
-                    value={content.previewText || ""}
-                    onChange={(e) => setC({ previewText: e.target.value })}
-                    placeholder="Optional preheader"
-                    disabled={readOnly}
-                  />
-                </Field>
-              </>
-            ) : null}
-
-            {isPush ? (
-              <Field label="Title">
-                <Input
-                  value={content.pushTitle || ""}
-                  onChange={(e) => setC({ pushTitle: e.target.value })}
-                  placeholder="e.g. Doors open in 30 minutes"
-                  disabled={readOnly}
-                />
-              </Field>
-            ) : null}
-
-            <Field
-              label={isEmail ? "Body" : isPush ? "Message" : "Message"}
-              hint={
-                isText
-                  ? `${bodyLen} characters · ${Math.max(1, Math.ceil(bodyLen / SMS_SEGMENT))} segment${bodyLen > SMS_SEGMENT ? "s" : ""}`
-                  : undefined
-              }
-            >
-              <Textarea
-                rows={isEmail ? 8 : 4}
-                value={content.body || ""}
-                onChange={(e) => setC({ body: e.target.value })}
-                placeholder={
-                  isEmail
-                    ? "Write your email…"
-                    : isPush
-                      ? "Short push message…"
-                      : "Your text message… keep it under 160 characters for a single segment."
-                }
-                disabled={readOnly}
-              />
-            </Field>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Schedule" description="Send immediately or queue it for later.">
-          <Field label="Timing">
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: "now", label: "Send now" },
-                { value: "scheduled", label: "Schedule for later" },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  disabled={readOnly}
-                  onClick={() => setScheduleMode(opt.value)}
-                  className={cn(
-                    "rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors disabled:opacity-50",
-                    scheduleMode === opt.value
-                      ? "border-primary bg-primary/15 text-foreground"
-                      : "border-border bg-surface-card text-text-secondary hover:bg-surface-hover",
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </Field>
-          {scheduleMode === "scheduled" ? (
-            <div className="mt-4 max-w-xs">
-              <Field label="Send at">
-                <Input
-                  type="datetime-local"
-                  value={scheduledAt}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                  disabled={readOnly}
-                />
-              </Field>
-            </div>
+    <EditorShell
+      back={{ label: "Back", onClick: onBack }}
+      title={
+        <InlineTitleInput
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-label="Campaign name"
+          placeholder="Untitled campaign"
+          className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
+        />
+      }
+      badges={
+        <>
+          <StatusPill status={status} map={CAMPAIGN_STATUS_MAP} />
+          <Badge variant={channelMeta.variant}>
+            <channelMeta.icon className="h-3 w-3" /> {channelMeta.label}
+          </Badge>
+          <Badge variant={TYPE_MAP[campaign.type]?.variant || "neutral"}>
+            {TYPE_MAP[campaign.type]?.label || campaign.type}
+          </Badge>
+          {status === "sent" && campaign.sentAt ? (
+            <span className="text-xs text-text-tertiary">
+              Sent {formatDateTime(campaign.sentAt)}
+            </span>
           ) : null}
-        </SectionCard>
-
-        {isEmail || isText ? (
-          <SectionCard
-            title="A/B testing"
-            description="Send two variants to a split of your audience and compare results."
-          >
-            <SettingsList>
-              <SettingRow
-                title="Run an A/B test"
-                description="Variant B goes to part of your audience; the rest get variant A."
-                checked={!!ab.enabled}
-                onCheckedChange={(v) => !readOnly && setAb((a) => ({ ...a, enabled: v }))}
-              />
-            </SettingsList>
-            {ab.enabled ? (
-              <div className="mt-4 space-y-4 border-t border-border pt-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Variant A split" hint="Percent of recipients on variant A.">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={5}
-                        max={95}
-                        value={ab.split}
-                        onChange={(e) =>
-                          setAb((a) => ({ ...a, split: Number(e.target.value) || 50 }))
-                        }
-                        className="tabular-nums"
-                        disabled={readOnly}
-                      />
-                      <span className="text-sm text-text-secondary">%</span>
-                    </div>
-                  </Field>
-                  <Field label="Winning metric">
-                    <Select
-                      value={ab.metric}
-                      onValueChange={(v) => setAb((a) => ({ ...a, metric: v }))}
-                      disabled={readOnly}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {AB_METRIC_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                </div>
-                {isEmail ? (
-                  <Field label="Variant B subject">
-                    <Input
-                      value={ab.variantB?.subject || ""}
-                      onChange={(e) => setVariantB({ subject: e.target.value })}
-                      placeholder="Alternate subject line"
-                      disabled={readOnly}
-                    />
-                  </Field>
-                ) : null}
-                <Field label={isEmail ? "Variant B body" : "Variant B message"}>
-                  <Textarea
-                    rows={isEmail ? 5 : 3}
-                    value={ab.variantB?.body || ""}
-                    onChange={(e) => setVariantB({ body: e.target.value })}
-                    placeholder="Alternate content for variant B"
-                    disabled={readOnly}
-                  />
-                </Field>
-              </div>
-            ) : null}
-          </SectionCard>
-        ) : null}
-
-        {!readOnly ? (
-          <div className="flex justify-end">
+        </>
+      }
+      actions={
+        <>
+          {!readOnly ? (
             <Button
               variant="outline"
               className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
@@ -458,10 +260,230 @@ export function CampaignEditor({
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Save draft
             </Button>
-          </div>
-        ) : null}
-      </div>
-    </SecondaryScreenWrapper>
+          ) : null}
+          {primaryAction()}
+        </>
+      }
+      nav={CAMPAIGN_NAV}
+      subject={{ abAvailable: isEmail || isText }}
+      defaultSection="audience"
+    >
+      {({ active }) => (
+        <>
+          {active === "audience" ? (
+            <SectionCard>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Segment" hint="Choose a saved segment or send to everyone.">
+                  <Select
+                    value={segmentId || "all"}
+                    onValueChange={(v) => setSegmentId(v === "all" ? "" : v)}
+                    disabled={readOnly}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All contacts</SelectItem>
+                      {segments.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Estimated recipients">
+                  <div className="flex h-10 w-full items-center gap-2.5 rounded-md border border-border bg-surface-card px-3 text-sm">
+                    <Users className="h-4 w-4 shrink-0 text-text-tertiary" />
+                    <span className="font-semibold tabular-nums text-foreground">
+                      {recipients.toLocaleString("en-US")}
+                    </span>
+                    <span className="truncate text-text-secondary">
+                      {recipients === 1 ? "contact" : "contacts"}
+                    </span>
+                  </div>
+                </Field>
+              </div>
+            </SectionCard>
+          ) : null}
+
+          {active === "content" ? (
+            <SectionCard
+              action={
+                isEmail && emailTemplates.length ? (
+                  <Select value="" onValueChange={applyTemplate} disabled={readOnly}>
+                    <SelectTrigger className="h-9 w-44 bg-surface-card">
+                      <SelectValue placeholder="Load template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {emailTemplates.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null
+              }
+            >
+              <div className="space-y-4">
+                {isEmail ? (
+                  <>
+                    <Field label="Subject">
+                      <Input
+                        value={content.subject || ""}
+                        onChange={(e) => setC({ subject: e.target.value })}
+                        placeholder="e.g. You're invited to {{event_name}}"
+                        disabled={readOnly}
+                      />
+                    </Field>
+                    <Field label="Preview text" hint="The snippet shown after the subject in most inboxes.">
+                      <Input
+                        value={content.previewText || ""}
+                        onChange={(e) => setC({ previewText: e.target.value })}
+                        placeholder="Optional preheader"
+                        disabled={readOnly}
+                      />
+                    </Field>
+                  </>
+                ) : null}
+
+                {isPush ? (
+                  <Field label="Title">
+                    <Input
+                      value={content.pushTitle || ""}
+                      onChange={(e) => setC({ pushTitle: e.target.value })}
+                      placeholder="e.g. Doors open in 30 minutes"
+                      disabled={readOnly}
+                    />
+                  </Field>
+                ) : null}
+
+                <Field
+                  label={isEmail ? "Body" : isPush ? "Message" : "Message"}
+                  hint={
+                    isText
+                      ? `${bodyLen} characters · ${Math.max(1, Math.ceil(bodyLen / SMS_SEGMENT))} segment${bodyLen > SMS_SEGMENT ? "s" : ""}`
+                      : undefined
+                  }
+                >
+                  <Textarea
+                    rows={isEmail ? 8 : 4}
+                    value={content.body || ""}
+                    onChange={(e) => setC({ body: e.target.value })}
+                    placeholder={
+                      isEmail
+                        ? "Write your email…"
+                        : isPush
+                          ? "Short push message…"
+                          : "Your text message… keep it under 160 characters for a single segment."
+                    }
+                    disabled={readOnly}
+                  />
+                </Field>
+              </div>
+            </SectionCard>
+          ) : null}
+
+          {active === "schedule" ? (
+            <SectionCard>
+              <Field label="Timing">
+                <Segmented
+                  value={scheduleMode}
+                  onChange={setScheduleMode}
+                  options={SCHEDULE_MODES}
+                  disabled={readOnly}
+                />
+              </Field>
+              {scheduleMode === "scheduled" ? (
+                <div className="mt-4 max-w-xs">
+                  <Field label="Send at">
+                    <Input
+                      type="datetime-local"
+                      value={scheduledAt}
+                      onChange={(e) => setScheduledAt(e.target.value)}
+                      disabled={readOnly}
+                    />
+                  </Field>
+                </div>
+              ) : null}
+            </SectionCard>
+          ) : null}
+
+          {active === "ab" && (isEmail || isText) ? (
+            <SectionCard>
+              <SettingsList>
+                <SettingRow
+                  title="Run an A/B test"
+                  description="Variant B goes to part of your audience; the rest get variant A."
+                  checked={!!ab.enabled}
+                  onCheckedChange={(v) => !readOnly && setAb((a) => ({ ...a, enabled: v }))}
+                />
+              </SettingsList>
+              {ab.enabled ? (
+                <div className="mt-4 space-y-4 border-t border-border pt-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Variant A split" hint="Percent of recipients on variant A.">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={5}
+                          max={95}
+                          value={ab.split}
+                          onChange={(e) =>
+                            setAb((a) => ({ ...a, split: Number(e.target.value) || 50 }))
+                          }
+                          className="tabular-nums"
+                          disabled={readOnly}
+                        />
+                        <span className="text-sm text-text-secondary">%</span>
+                      </div>
+                    </Field>
+                    <Field label="Winning metric">
+                      <Select
+                        value={ab.metric}
+                        onValueChange={(v) => setAb((a) => ({ ...a, metric: v }))}
+                        disabled={readOnly}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AB_METRIC_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+                  {isEmail ? (
+                    <Field label="Variant B subject">
+                      <Input
+                        value={ab.variantB?.subject || ""}
+                        onChange={(e) => setVariantB({ subject: e.target.value })}
+                        placeholder="Alternate subject line"
+                        disabled={readOnly}
+                      />
+                    </Field>
+                  ) : null}
+                  <Field label={isEmail ? "Variant B body" : "Variant B message"}>
+                    <Textarea
+                      rows={isEmail ? 5 : 3}
+                      value={ab.variantB?.body || ""}
+                      onChange={(e) => setVariantB({ body: e.target.value })}
+                      placeholder="Alternate content for variant B"
+                      disabled={readOnly}
+                    />
+                  </Field>
+                </div>
+              ) : null}
+            </SectionCard>
+          ) : null}
+        </>
+      )}
+    </EditorShell>
   );
 }
 

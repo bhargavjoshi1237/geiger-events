@@ -511,9 +511,9 @@ export const NAV_GROUPS = [
       },
       {
         key: "gateszones",
-        label: "Gates & Zones",
+        label: "Multi-gate & Zones",
         icon: MapIcon,
-        desc: "Which entrances and restricted areas apply to this event.",
+        desc: "Create the entrances and restricted areas for this event, turn them on or off, or remove them.",
         ownHeader: true,
       },
       {

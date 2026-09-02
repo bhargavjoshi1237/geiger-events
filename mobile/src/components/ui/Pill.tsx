@@ -4,10 +4,13 @@ import { StyleSheet, Text, View } from "react-native";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 type PillTone = "success" | "danger" | "info" | "warning" | "neutral";
+type PillVariant = "tint" | "outline";
 
 type PillProps = {
   label: string;
   tone: PillTone;
+  variant?: PillVariant;
+  dot?: boolean;
 };
 
 const TONES: Record<PillTone, string> = {
@@ -18,12 +21,24 @@ const TONES: Record<PillTone, string> = {
   neutral: colors.mutedForeground,
 };
 
-export function Pill({ label, tone }: PillProps) {
+// "tint" is the status badge on cards; "outline" is the quieter row-trailing badge in lists.
+export function Pill({ label, tone, variant = "tint", dot = true }: PillProps) {
   const tint = TONES[tone];
+  const outline = variant === "outline";
   return (
-    <View style={[styles.pill, { backgroundColor: `${tint}1A`, borderColor: `${tint}40` }]}>
-      <View style={[styles.dot, { backgroundColor: tint }]} />
-      <Text style={[styles.label, { color: tint }]} numberOfLines={1}>
+    <View
+      style={[
+        styles.pill,
+        outline
+          ? styles.outline
+          : { backgroundColor: `${tint}1A`, borderColor: `${tint}40` },
+      ]}
+    >
+      {dot ? <View style={[styles.dot, { backgroundColor: tint }]} /> : null}
+      <Text
+        style={[styles.label, { color: outline ? colors.mutedForeground : tint }]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </View>
@@ -37,18 +52,23 @@ const styles = StyleSheet.create({
     gap: spacing.xs + 2,
     borderWidth: 1,
     borderRadius: radius.pill,
-    paddingVertical: 3,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm + 2,
     alignSelf: "flex-start",
   },
+  outline: {
+    backgroundColor: colors.surfaceCard,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+  },
   dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   label: {
-    ...type.caption,
-    fontSize: 10,
+    ...type.micro,
+    fontSize: 11,
     lineHeight: 14,
   },
 });

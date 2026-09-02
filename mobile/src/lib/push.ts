@@ -1,12 +1,42 @@
 import Constants from "expo-constants";
 import * as Device from "expo-device";
+import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 import { api } from "@/lib/api";
 import { colors } from "@/theme/tokens";
 
+const PUSH_TOKEN_KEY = "geiger.portal.pushToken";
+
 type NotificationsModule = typeof import("expo-notifications");
 let cached: NotificationsModule | null | undefined;
+
+// The registered token is persisted so "push is on" survives a relaunch —
+// the session token alone can't tell us whether this device is registered.
+export async function getStoredPushToken(): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(PUSH_TOKEN_KEY);
+  } catch (e) {
+    console.warn("[push] getStoredPushToken failed", e);
+    return null;
+  }
+}
+
+async function storePushToken(pushToken: string): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(PUSH_TOKEN_KEY, pushToken);
+  } catch (e) {
+    console.warn("[push] storePushToken failed", e);
+  }
+}
+
+async function clearStoredPushToken(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(PUSH_TOKEN_KEY);
+  } catch (e) {
+    console.warn("[push] clearStoredPushToken failed", e);
+  }
+}
 
 function notificationsModule(): NotificationsModule | null {
   if (cached === undefined) {
@@ -71,7 +101,7 @@ export async function registerForPush(token: string): Promise<string | null> {
     const pushToken = (
       await Notifications.getExpoPushTokenAsync({ projectId })
     ).data;
-    await api("/api/portal/devices", {
+    const res = await api("/api/portal/devices", {
       method: "POST",
       token,
       body: {
@@ -80,6 +110,8 @@ export async function registerForPush(token: string): Promise<string | null> {
         appVersion: Constants.expoConfig?.version,
       },
     });
+    if (!res.ok) return null;
+    await storePushToken(pushToken);
     return pushToken;
   } catch (e) {
     console.warn("[push] registration failed", e);
@@ -91,6 +123,7 @@ export async function unregisterPush(
   sessionToken: string,
   pushToken: string | null,
 ): Promise<void> {
+  await clearStoredPushToken();
   if (!pushToken) return;
   await api("/api/portal/devices", {
     method: "DELETE",

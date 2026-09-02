@@ -22,7 +22,7 @@ export function AddonsStep({ checkout, accent, accentStyle }) {
   } = checkout;
 
   return (
-    <div className="grid gap-4">
+    <div className="mx-auto grid w-full max-w-md gap-4">
       <TicketAddonsStep
         purchasables={visiblePurs}
         selections={purSelections}

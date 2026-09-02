@@ -1,8 +1,8 @@
-import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Icon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
 import { fmtTimeAgo } from "@/lib/format";
@@ -144,9 +144,20 @@ export function MessageBubble({
               {poll ? (
                 <PollCard poll={poll} meKey={meKey} onVote={onVote} />
               ) : (
-                <Text style={[styles.text, deleted && styles.textDeleted]}>
-                  {deleted ? "Message removed" : textOf(message)}
-                </Text>
+                <>
+                  <Text
+                    style={[
+                      styles.text,
+                      isOwn && styles.textOwn,
+                      deleted && styles.textDeleted,
+                    ]}
+                  >
+                    {deleted ? "Message removed" : textOf(message)}
+                  </Text>
+                  <Text style={[styles.time, isOwn && styles.timeOwn]}>
+                    {fmtTimeAgo(message.createdAt)}
+                  </Text>
+                </>
               )}
             </View>
           </Pressable>
@@ -158,7 +169,7 @@ export function MessageBubble({
               hitSlop={8}
               style={styles.reply}
             >
-              <Feather name="corner-up-left" size={14} color={colors.textTertiary} />
+              <Icon name="corner-up-left" size={14} color={colors.textTertiary} />
             </Pressable>
           ) : null}
         </View>
@@ -200,7 +211,6 @@ export function MessageBubble({
             ))}
           </View>
         ) : null}
-        {!grouped ? <Text style={styles.time}>{fmtTimeAgo(message.createdAt)}</Text> : null}
       </View>
     </View>
   );
@@ -284,9 +294,10 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   author: {
-    ...type.caption,
-    color: colors.textSecondary,
+    ...type.captionStrong,
+    color: colors.mutedForeground,
     paddingHorizontal: spacing.xs,
+    marginBottom: 4,
   },
   line: {
     flexDirection: "row",
@@ -297,17 +308,17 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
   },
   bubble: {
-    borderRadius: radius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    borderRadius: 18,
+    paddingVertical: 11,
+    paddingHorizontal: 15,
   },
   bubbleOwn: {
-    backgroundColor: colors.surfaceStrong,
+    backgroundColor: colors.primary,
+    borderBottomRightRadius: 6,
   },
   bubbleOther: {
-    backgroundColor: colors.surfaceCard,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceActive,
+    borderBottomLeftRadius: 6,
   },
   bubbleDeleted: {
     backgroundColor: colors.surfaceSubtle,
@@ -315,6 +326,9 @@ const styles = StyleSheet.create({
   text: {
     ...type.body,
     color: colors.foreground,
+  },
+  textOwn: {
+    color: colors.primaryForeground,
   },
   textDeleted: {
     fontStyle: "italic",
@@ -396,30 +410,33 @@ const styles = StyleSheet.create({
   time: {
     ...type.caption,
     fontSize: 10,
-    color: colors.textTertiary,
-    paddingHorizontal: spacing.xs,
-    paddingTop: 2,
+    lineHeight: 13,
+    color: colors.textSecondary,
+    marginTop: 6,
+  },
+  timeOwn: {
+    textAlign: "right",
+    color: "rgba(22,22,22,0.55)",
   },
   poll: {
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   pollQuestion: {
     ...type.label,
-    fontWeight: "600",
     color: colors.foreground,
   },
   pollOption: {
+    height: 36,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
     overflow: "hidden",
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.sm,
+    borderRadius: radius.md - 2,
+    backgroundColor: colors.surfaceStrong,
     paddingHorizontal: spacing.md,
   },
   pollOptionMine: {
+    borderWidth: 1,
     borderColor: `${colors.primary}59`,
   },
   pollBar: {
@@ -427,21 +444,23 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: `${colors.primary}14`,
+    backgroundColor: colors.borderStrong,
   },
   pollLabel: {
     flex: 1,
-    ...type.caption,
+    ...type.captionStrong,
+    fontSize: 13,
     color: colors.foreground,
   },
   pollVotes: {
-    ...type.caption,
-    color: colors.textSecondary,
+    ...type.micro,
+    fontSize: 12,
+    color: colors.mutedForeground,
     fontVariant: ["tabular-nums"],
   },
   pollMeta: {
     ...type.caption,
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textTertiary,
   },
 });

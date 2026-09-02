@@ -727,7 +727,7 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Cancel order</DialogTitle>
+            <DialogTitle>Cancel Order</DialogTitle>
             <DialogDescription>
               Cancel{" "}
               <span className="font-medium text-foreground">
@@ -751,7 +751,7 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                 handleCancel();
               }}
             >
-              <Ban className="h-4 w-4" /> Cancel order
+              <Ban className="h-4 w-4" /> Cancel Order
             </Button>
           </DialogFooter>
         </DialogContent>

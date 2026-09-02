@@ -1,8 +1,8 @@
-import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Icon } from "@/components/ui/icons";
 import { ChatComposer } from "@/components/ChatComposer";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -232,14 +232,30 @@ export function ChannelRoom({ channelId }: ChannelRoomProps) {
         hitSlop={8}
         style={styles.replyClear}
       >
-        <Feather name="x" size={16} color={colors.textTertiary} />
+        <Icon name="x" size={16} color={colors.textTertiary} />
       </Pressable>
     </View>
   ) : null;
 
   return (
     <Screen>
-      <ScreenHeader title={channel.name} subtitle={channel.topic || undefined} />
+      <ScreenHeader
+        title={channel.name}
+        subtitle={
+          channel.participantCount
+            ? `${channel.participantCount} members · ${channel.postingMode === "announce" ? "announcements" : "group chat"}`
+            : channel.topic || undefined
+        }
+        bordered
+        right={
+          channel.participantCount ? (
+            <View style={styles.memberChip}>
+              <Icon name="users" size={14} color={colors.mutedForeground} />
+              <Text style={styles.memberCount}>{channel.participantCount}</Text>
+            </View>
+          ) : null
+        }
+      />
       {messages.length ? (
         <FlatList
           data={reversed}
@@ -285,6 +301,21 @@ export function ChannelRoom({ channelId }: ChannelRoomProps) {
 }
 
 const styles = StyleSheet.create({
+  memberChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+  },
+  memberCount: {
+    ...type.captionStrong,
+    color: colors.mutedForeground,
+    fontVariant: ["tabular-nums"],
+  },
   messageRow: {
     paddingVertical: spacing.xs,
   },

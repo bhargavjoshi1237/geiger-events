@@ -21,7 +21,6 @@ import {
   SearchInput,
   StatsBar,
   StatusPill,
-  Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -262,7 +261,7 @@ function PurchaseOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="min-w-0 sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>New purchase order</DialogTitle>
           <DialogDescription>
@@ -271,9 +270,9 @@ function PurchaseOrderDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Supplier">
+        <div className="grid min-w-0 gap-4">
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <Field label="Supplier" className="min-w-0">
               <Select value={supplierId} onValueChange={setSupplierId}>
                 <SelectTrigger className="bg-surface-card">
                   <SelectValue placeholder="Choose a supplier" />
@@ -324,22 +323,28 @@ function PurchaseOrderDialog({
             </Field>
           </div>
 
-          <Field label="Lines">
-            <div className="space-y-2">
+          <Field label="Lines" className="min-w-0">
+            <div className="min-w-0 space-y-2">
               {lines.map((line, index) => (
-                <div key={index} className="flex items-end gap-2">
+                <div
+                  key={index}
+                  className="flex min-w-0 flex-wrap items-end gap-2"
+                >
                   <ItemThumb
                     item={items.find((i) => i.id === line.itemId) || null}
                     items={allItems}
-                    className="mb-0.5"
+                    className="mb-0.5 shrink-0"
                   />
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <Select
                       value={line.itemId}
                       onValueChange={(v) => pickItem(index, v)}
                     >
-                      <SelectTrigger className="bg-surface-card">
-                        <SelectValue placeholder="Choose an item" />
+                      <SelectTrigger className="min-w-0 bg-surface-card">
+                        <SelectValue
+                          className="min-w-0 truncate"
+                          placeholder="Choose an item"
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {items.map((i) => (
@@ -357,7 +362,7 @@ function PurchaseOrderDialog({
                     placeholder="Qty"
                     aria-label={`Quantity for line ${index + 1}`}
                     onChange={(e) => setLine(index, "qty", e.target.value)}
-                    className="w-24 bg-surface-card"
+                    className="w-24 shrink-0 bg-surface-card"
                   />
                   <Input
                     type="number"
@@ -366,7 +371,7 @@ function PurchaseOrderDialog({
                     placeholder="Cost"
                     aria-label={`Unit cost for line ${index + 1}`}
                     onChange={(e) => setLine(index, "unitCost", e.target.value)}
-                    className="w-28 bg-surface-card"
+                    className="w-28 shrink-0 bg-surface-card"
                   />
                   <Button
                     variant="ghost"
@@ -374,7 +379,7 @@ function PurchaseOrderDialog({
                     aria-label="Remove line"
                     disabled={lines.length === 1}
                     onClick={() => removeLine(index)}
-                    className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    className="shrink-0 text-muted-foreground hover:bg-surface-active hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -834,7 +839,7 @@ export function SuppliersPurchaseOrdersScreen() {
             },
             po.status !== "Cancelled" &&
               po.status !== "Received" && {
-                label: "Cancel order",
+                label: "Cancel Order",
                 onSelect: () => setConfirmTarget({ kind: "cancel-po", po }),
               },
             { separator: true },
@@ -940,31 +945,51 @@ export function SuppliersPurchaseOrdersScreen() {
 
       <StatsBar stats={stats} />
 
-      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="orders" className="gap-1.5">
-            <Receipt className="h-4 w-4" /> Purchase orders
-          </TabsTrigger>
-          <TabsTrigger value="suppliers" className="gap-1.5">
-            <Building2 className="h-4 w-4" /> Suppliers
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={tab} onValueChange={setTab} className="min-w-0 gap-4">
+        {/* Keep the view switcher and its active-view controls in one flexible
+            row. Tabs itself is a column, so leaving the toolbar inside
+            TabsContent puts the filter on a separate line even on wide screens. */}
+        <div className="flex min-w-0 flex-nowrap items-center justify-between gap-3 overflow-hidden">
+          <TabsList className="flex w-fit max-w-full shrink-0 flex-wrap justify-start">
+            <TabsTrigger value="orders" className="gap-1.5">
+              <Receipt className="h-4 w-4" /> Purchase orders
+            </TabsTrigger>
+            <TabsTrigger value="suppliers" className="gap-1.5">
+              <Building2 className="h-4 w-4" /> Suppliers
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="orders" className="space-y-4">
-          <Toolbar>
-            <FilterDropdown
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-              options={PO_STATUS_FILTER_OPTIONS}
-              height="h-9"
-            />
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search reference or supplier…"
-            />
-          </Toolbar>
+          {tab === "orders" ? (
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+              <FilterDropdown
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+                options={PO_STATUS_FILTER_OPTIONS}
+                height="h-9"
+              />
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Search reference or supplier…"
+                className="ml-0 sm:ml-auto"
+              />
+            </div>
+          ) : (
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+              <span className="truncate text-sm text-text-tertiary">
+                {suppliers.length} supplier{suppliers.length === 1 ? "" : "s"}
+              </span>
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Search supplier or contact…"
+                className="ml-0 sm:ml-auto"
+              />
+            </div>
+          )}
+        </div>
 
+        <TabsContent value="orders" className="min-w-0 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -996,18 +1021,7 @@ export function SuppliersPurchaseOrdersScreen() {
           )}
         </TabsContent>
 
-        <TabsContent value="suppliers" className="space-y-4">
-          <Toolbar>
-            <span className="text-sm text-text-tertiary">
-              {suppliers.length} supplier{suppliers.length === 1 ? "" : "s"}
-            </span>
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search supplier or contact…"
-            />
-          </Toolbar>
-
+        <TabsContent value="suppliers" className="min-w-0 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1121,7 +1135,7 @@ export function SuppliersPurchaseOrdersScreen() {
               onClick={confirmAction}
             >
               <Trash2 className="h-4 w-4" />
-              {confirmTarget?.kind === "cancel-po" ? "Cancel order" : "Remove"}
+              {confirmTarget?.kind === "cancel-po" ? "Cancel Order" : "Remove"}
             </Button>
           </DialogFooter>
         </DialogContent>

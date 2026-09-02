@@ -73,7 +73,6 @@ import { TagsScreen } from "./guests/tags";
 import { NotesScreen } from "./guests/notes";
 import { DataRequestsScreen } from "./guests/data_requests";
 import { QrTicketsScreen } from "./checkin/qr_tickets";
-import { WalletPassesScreen } from "./checkin/wallet_passes";
 import { CheckinAppScreen } from "./checkin/checkin_app";
 import { DoorSalesScreen } from "./checkin/door_sales";
 import { OfflineCheckinScreen } from "./checkin/offline_checkin";
@@ -303,7 +302,6 @@ export const SCREEN_REGISTRY = {
   // Phase-2 staff routes (scanner/kiosk/door POS) are separate app routes.
   // "Capacity Control" and "Smart Badges" stay on ComingSoon for now.
   "QR Tickets": QrTicketsScreen,
-  "Wallet Passes": WalletPassesScreen,
   "Check-in App": CheckinAppScreen,
   "Door Sales": DoorSalesScreen,
   "Offline Check-in": OfflineCheckinScreen,

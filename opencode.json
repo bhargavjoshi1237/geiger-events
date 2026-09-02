@@ -17,6 +17,18 @@
       }
     }
   },
+  "mcp": {
+    "claude_design": {
+      "type": "remote",
+      "url": "https://api.anthropic.com/v1/design/mcp",
+      "enabled": true,
+      "oauth": {
+        "scope": "user:design:read user:design:write",
+        "redirectUri": "http://localhost:19876/mcp/oauth/callback"
+      },
+      "timeout": 30000
+    }
+  },
   "permission": {
     "read": "allow",
     "edit": "allow",

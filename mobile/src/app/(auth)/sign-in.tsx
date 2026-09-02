@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -9,9 +8,12 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import Animated, { FadeInRight, FadeOutLeft } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Icon } from "@/components/ui/icons";
 import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -23,25 +25,19 @@ import { colors, radius, spacing, type } from "@/theme/tokens";
 
 type Step = "email" | "password" | "setup-prompt" | "check-email" | "no-account";
 
-const FEATURES = [
-  { icon: "credit-card" as const, label: "All your tickets in one place" },
-  { icon: "maximize" as const, label: "Scan to get in at the door" },
-  { icon: "calendar" as const, label: "Add events to your calendar" },
-];
+// A percentage margin in RN resolves against parent width, so take it off height.
+const INTRO_TOP_RATIO = 0.1;
 
-function FeatureRow({ icon, label }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string }) {
-  return (
-    <View style={styles.feature}>
-      <View style={styles.featureTile}>
-        <Feather name={icon} size={14} color={colors.mutedForeground} />
-      </View>
-      <Text style={styles.featureLabel}>{label}</Text>
-    </View>
-  );
-}
+const PROMISES = [
+  { icon: "qr-code" as const, label: "Scan To Get In At The Door" },
+  { icon: "bell" as const, label: "Push For Gate Changes & Refunds" },
+  { icon: "wifi-off" as const, label: "Passes Work With No Signal" },
+];
 
 export default function SignInScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const session = useSession();
   const { error } = useToast();
   const [step, setStep] = useState<Step>("email");
@@ -50,6 +46,7 @@ export default function SignInScreen() {
   const [busy, setBusy] = useState(false);
 
   const submitEmail = async () => {
+    if (!email.trim()) return error("Enter the email you bought with.");
     setBusy(true);
     const res = await auth.lookupEmail(email.trim());
     setBusy(false);
@@ -80,112 +77,117 @@ export default function SignInScreen() {
       style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View pointerEvents="none" style={styles.watermark}>
-        <BrandMark size={340} color={colors.muted} />
-      </View>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: insets.top + 44, paddingBottom: insets.bottom + spacing.xxl },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
-          <View style={styles.header}>
-            <View style={styles.markTile}>
-              <BrandMark size={30} />
-            </View>
-            <Text style={styles.title}>Geiger Events</Text>
-            <Text style={styles.subtitle}>Your tickets, orders, and memberships.</Text>
-          </View>
+        <View style={[styles.intro, { marginTop: height * INTRO_TOP_RATIO }]}>
+          <BrandMark size={36} color={colors.foreground} />
+
+          <Text style={styles.headline}>
+            Your tickets,{"\n"}ready at the door.
+          </Text>
+          <Text style={styles.lede}>
+            Sign in with the email you bought with — your account already exists.
+          </Text>
 
           <Animated.View
             key={step}
             entering={FadeInRight.duration(220).withInitialValues({ translateX: 12 })}
             exiting={FadeOutLeft.duration(160).withTargetValues({ translateX: -12 })}
+            style={styles.step}
           >
-            {step === "email" ? (
-              <View style={styles.step}>
-                <Field label="Email">
-                  <Input
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="you@email.com"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    autoFocus
-                    onSubmitEditing={submitEmail}
-                    returnKeyType="go"
-                  />
-                </Field>
-                <Button title="Continue" onPress={submitEmail} loading={busy} fullWidth />
-                <View style={styles.divider} />
-                {FEATURES.map((f) => (
-                  <FeatureRow key={f.label} icon={f.icon} label={f.label} />
-                ))}
-              </View>
-            ) : null}
+          {step === "email" ? (
+            <>
+              <Input
+                leftIcon="mail"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@email.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                autoFocus
+                onSubmitEditing={submitEmail}
+                returnKeyType="go"
+                style={styles.tallInput}
+              />
+              <Button
+                title="Continue"
+                icon="arrow-right"
+                iconPosition="trailing"
+                onPress={submitEmail}
+                loading={busy}
+                fullWidth
+              />
+            </>
+          ) : null}
 
-            {step === "password" ? (
-              <View style={styles.step}>
-                <Text style={styles.emailText}>{email}</Text>
-                <Field label="Password">
-                  <Input
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    autoComplete="password"
-                    autoFocus
-                    placeholder="••••••••"
-                    onSubmitEditing={submitPassword}
-                    returnKeyType="go"
-                  />
-                </Field>
-                <Button title="Log in" onPress={submitPassword} loading={busy} fullWidth />
-                <TextLink label="Forgot password?" onPress={sendSetup} />
-              </View>
-            ) : null}
-
-            {step === "setup-prompt" ? (
-              <View style={styles.step}>
-                <Text style={styles.bodyText}>
-                  Your account <Text style={styles.emphasis}>{email}</Text> needs a
-                  password. We&apos;ll email you a secure link to set one.
-                </Text>
-                <Button
-                  title="Email me a set-up link"
-                  onPress={sendSetup}
-                  loading={busy}
-                  fullWidth
+          {step === "password" ? (
+            <>
+                <Input
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete="password"
+                  autoFocus
+                  placeholder="Password"
+                  onSubmitEditing={submitPassword}
+                  returnKeyType="go"
+                  style={styles.tallInput}
                 />
-              </View>
-            ) : null}
+              <Button title="Log in" onPress={submitPassword} loading={busy} fullWidth />
+              <TextLink label="Forgot password?" onPress={sendSetup} />
+            </>
+          ) : null}
 
-            {step === "check-email" ? (
-              <View style={styles.centeredStep}>
-                <Feather name="mail" size={28} color={colors.textTertiary} />
-                <Text style={styles.bodyText}>
-                  If <Text style={styles.emphasis}>{email}</Text> has an account, a link
-                  is on its way. Check your inbox to set your password.
-                </Text>
-              </View>
-            ) : null}
+          {step === "setup-prompt" ? (
+            <>
+              <Text style={styles.body}>
+                Your account <Text style={styles.emphasis}>{email}</Text> needs a password.
+                We&apos;ll email you a secure link to set one.
+              </Text>
+              <Button title="Email me a set-up link" onPress={sendSetup} loading={busy} fullWidth />
+              <TextLink label="Use another email" onPress={() => setStep("email")} />
+            </>
+          ) : null}
 
-            {step === "no-account" ? (
-              <View style={styles.centeredStep}>
-                <Text style={styles.bodyText}>
-                  We couldn&apos;t find an account for{" "}
-                  <Text style={styles.emphasis}>{email}</Text>. Buy a ticket to any event
-                  and your account is created automatically.
-                </Text>
-                <TextLink
-                  label="Try another email"
-                  onPress={() => {
-                    setStep("email");
-                  }}
-                />
+          {step === "check-email" ? (
+            <>
+              <View style={styles.noticeIcon}>
+                <Icon name="mail" size={22} color={colors.mutedForeground} />
               </View>
+              <Text style={styles.body}>
+                If <Text style={styles.emphasis}>{email}</Text> has an account, a link is on its
+                way. Check your inbox to set your password.
+              </Text>
+              <TextLink label="Use another email" onPress={() => setStep("email")} />
+            </>
+          ) : null}
+
+          {step === "no-account" ? (
+            <>
+              <Text style={styles.body}>
+                We couldn&apos;t find an account for <Text style={styles.emphasis}>{email}</Text>.
+                Buy a ticket to any event and your account is created automatically.
+              </Text>
+              <TextLink label="Try another email" onPress={() => setStep("email")} />
+            </>
             ) : null}
           </Animated.View>
+        </View>
+
+        <View style={styles.promises}>
+          {PROMISES.map((p) => (
+            <View key={p.label} style={styles.promise}>
+              <Icon name={p.icon} size={18} color={colors.mutedForeground} />
+              <Text style={styles.promiseLabel}>{p.label}</Text>
+            </View>
+          ))}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -211,106 +213,75 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  watermark: {
-    position: "absolute",
-    bottom: -spacing.xxl,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    opacity: 0.55,
-  },
   scroll: {
     flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing.lg,
+    paddingHorizontal: spacing.xl + 4,
   },
-  card: {
-    width: "100%",
-    maxWidth: 400,
-    backgroundColor: colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xxl,
-    paddingVertical: spacing.xxl + spacing.md,
-    paddingHorizontal: spacing.xl,
-    gap: spacing.xl,
+  // Top offset only — set at render from window height, see INTRO_TOP_RATIO.
+  intro: {
+    marginTop: 0,
   },
-  header: {
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  markTile: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.sm,
-  },
-  title: {
-    ...type.title,
+  headline: {
+    ...type.hero,
     color: colors.foreground,
+    marginTop: spacing.xxl + spacing.lg,
   },
-  subtitle: {
+  lede: {
     ...type.body,
-    fontSize: 13,
-    lineHeight: 19,
-    color: colors.textSecondary,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.mutedForeground,
+    marginTop: 14,
   },
   step: {
-    gap: spacing.lg,
-  },
-  centeredStep: {
-    alignItems: "center",
-    gap: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-  },
-  feature: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: spacing.md,
+    marginTop: 40,
   },
-  featureTile: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm + 2,
+  tallInput: {
+    minHeight: 56,
   },
-  featureLabel: {
-    ...type.caption,
-    color: colors.textSecondary,
-  },
-  emailText: {
+  emailEcho: {
     ...type.label,
     color: colors.textSecondary,
   },
-  bodyText: {
+  body: {
     ...type.body,
-    color: colors.textSecondary,
-    textAlign: "center",
+    color: colors.mutedForeground,
   },
   emphasis: {
+    ...type.bodyStrong,
     color: colors.foreground,
-    fontWeight: "600",
+  },
+  noticeIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg - 2,
+    backgroundColor: colors.surfaceActive,
   },
   link: {
-    alignSelf: "center",
+    alignSelf: "flex-start",
     paddingVertical: spacing.xs,
   },
   linkText: {
     ...type.caption,
-    color: colors.textTertiary,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  promises: {
+    gap: 14,
+    marginTop: "auto",
+    paddingTop: 40,
+  },
+  promise: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  promiseLabel: {
+    ...type.body,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
 });

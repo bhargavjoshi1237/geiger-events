@@ -13,6 +13,21 @@ import {
   UploadCloud,
   Loader2,
   Settings2,
+  LayoutGrid,
+  Rows3,
+  Columns2,
+  Columns3,
+  Columns4,
+  Square,
+  RectangleVertical,
+  Circle,
+  Maximize2,
+  Minimize2,
+  SquareDashed,
+  AlignLeft,
+  AlignCenter,
+  Eye,
+  Text,
 } from "lucide-react";
 
 import {
@@ -25,6 +40,7 @@ import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
 import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
+import { Separator } from "@geiger/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -46,10 +62,13 @@ import {
   GUEST_IMAGE_FITS,
   GUEST_CARD_STYLES,
   GUEST_ALIGNS,
+  GUEST_SHAPE_CLASS,
+  GUEST_FIT_CLASS,
   DEFAULT_GUEST_DISPLAY,
   resolveGuestDisplay,
 } from "@/lib/events/guests";
-import { Segmented } from "./theme_controls";
+import { cn } from "@/lib/utils";
+import { Segmented, withIcons } from "./theme_controls";
 import { initials } from "./sample_data";
 
 const EMPTY_GUEST = { name: "", role: "", company: "", bio: "", image: "" };
@@ -234,11 +253,122 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
   );
 }
 
-function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
+const LAYOUT_OPTIONS = withIcons(GUEST_LAYOUTS, { grid: LayoutGrid, list: Rows3 });
+const COLUMN_OPTIONS = withIcons(GUEST_COLUMN_OPTIONS, {
+  2: Columns2,
+  3: Columns3,
+  4: Columns4,
+});
+const SHAPE_OPTIONS = withIcons(GUEST_IMAGE_SHAPES, {
+  square: Square,
+  portrait: RectangleVertical,
+  circle: Circle,
+});
+const FIT_OPTIONS = withIcons(GUEST_IMAGE_FITS, {
+  cover: Maximize2,
+  contain: Minimize2,
+});
+const CARD_STYLE_OPTIONS = withIcons(GUEST_CARD_STYLES, {
+  plain: SquareDashed,
+  card: Square,
+});
+const ALIGN_OPTIONS = withIcons(GUEST_ALIGNS, {
+  left: AlignLeft,
+  center: AlignCenter,
+});
+
+const PREVIEW_GUESTS = [
+  { name: "Ava Mitchell", role: "VP, Product", bio: "Leads the platform team building developer tools." },
+  { name: "Ravi Patel", role: "Head of Design", bio: "Twelve years shaping interfaces for technical teams." },
+  { name: "Mei Tanaka", role: "Founder", bio: "Writes and speaks about audio on the web." },
+  { name: "Jonas Weber", role: "Staff Engineer", bio: "Works on edge runtime performance." },
+];
+
+const PREVIEW_COLUMNS = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" };
+
+const GUEST_DISPLAY_KEYS = Object.keys(DEFAULT_GUEST_DISPLAY);
+
+// Miniature of GuestsBlock so settings can be judged without leaving the dialog.
+function GuestLayoutPreview({ display, guests }) {
   const isGrid = display.layout === "grid";
+  const source = guests?.length ? guests : PREVIEW_GUESTS;
+  const items = Array.from(
+    { length: isGrid ? display.columns : 2 },
+    (_, i) => source[i % source.length],
+  );
+  const carded = display.cardStyle === "card";
+  return (
+    <div className="rounded-xl border border-border bg-surface-subtle p-4">
+      <p className="mb-3 flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+        <Eye className="h-3.5 w-3.5" /> Preview
+      </p>
+      <div
+        className={
+          isGrid
+            ? cn("grid gap-x-3 gap-y-4", PREVIEW_COLUMNS[display.columns])
+            : "flex flex-col gap-3"
+        }
+      >
+        {items.map((g, i) => (
+          <div
+            key={i}
+            className={cn(
+              isGrid ? "min-w-0" : "flex min-w-0 items-start gap-3",
+              isGrid && display.align === "center" && "text-center",
+              carded && "rounded-lg border border-border bg-surface-card p-2.5",
+            )}
+          >
+            <div
+              className={cn(
+                "flex items-center justify-center overflow-hidden border border-border bg-surface-card",
+                GUEST_SHAPE_CLASS[display.imageShape],
+                isGrid ? "w-full" : "w-11 shrink-0",
+              )}
+            >
+              {g.image ? (
+                <img
+                  src={g.image}
+                  alt=""
+                  className={cn(
+                    "h-full w-full",
+                    GUEST_FIT_CLASS[display.imageFit],
+                    display.imageFit === "contain" && "bg-white p-1",
+                  )}
+                />
+              ) : (
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  {initials(g.name || "?")}
+                </span>
+              )}
+            </div>
+            <div className={cn("min-w-0", isGrid && "mt-2")}>
+              <p className="truncate text-[11px] font-semibold text-foreground">
+                {g.name}
+              </p>
+              {g.role ? (
+                <p className="truncate text-[10px] text-text-secondary">{g.role}</p>
+              ) : null}
+              {display.showBio && g.bio ? (
+                <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
+                  {g.bio}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GuestDisplayDialog({ open, onOpenChange, display, onChange, onReset, guests }) {
+  const isGrid = display.layout === "grid";
+  const isDefault = GUEST_DISPLAY_KEYS.every(
+    (k) => display[k] === DEFAULT_GUEST_DISPLAY[k],
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto bg-background">
         <DialogHeader>
           <DialogTitle>Guest layout</DialogTitle>
           <DialogDescription>
@@ -246,13 +376,15 @@ function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
           </DialogDescription>
         </DialogHeader>
 
+        <GuestLayoutPreview display={display} guests={guests} />
+
         <div className="grid gap-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Layout" hint="Grid shows photo cards; list stacks rows.">
               <Segmented
                 value={display.layout}
                 onChange={onChange("layout")}
-                options={GUEST_LAYOUTS}
+                options={LAYOUT_OPTIONS}
               />
             </Field>
             {isGrid ? (
@@ -260,7 +392,7 @@ function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
                 <Segmented
                   value={display.columns}
                   onChange={onChange("columns")}
-                  options={GUEST_COLUMN_OPTIONS}
+                  options={COLUMN_OPTIONS}
                 />
               </Field>
             ) : null}
@@ -271,7 +403,7 @@ function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
               <Segmented
                 value={display.imageShape}
                 onChange={onChange("imageShape")}
-                options={GUEST_IMAGE_SHAPES}
+                options={SHAPE_OPTIONS}
               />
             </Field>
             <Field
@@ -281,7 +413,7 @@ function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
               <Segmented
                 value={display.imageFit}
                 onChange={onChange("imageFit")}
-                options={GUEST_IMAGE_FITS}
+                options={FIT_OPTIONS}
               />
             </Field>
           </div>
@@ -291,7 +423,7 @@ function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
               <Segmented
                 value={display.cardStyle}
                 onChange={onChange("cardStyle")}
-                options={GUEST_CARD_STYLES}
+                options={CARD_STYLE_OPTIONS}
               />
             </Field>
             {isGrid ? (
@@ -299,14 +431,17 @@ function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
                 <Segmented
                   value={display.align}
                   onChange={onChange("align")}
-                  options={GUEST_ALIGNS}
+                  options={ALIGN_OPTIONS}
                 />
               </Field>
             ) : null}
           </div>
 
+          <Separator />
+
           <SettingsList>
             <SettingRow
+              icon={Text}
               title="Show bios"
               description="The short introduction under each guest's name."
               checked={display.showBio}
@@ -315,7 +450,15 @@ function GuestDisplayDialog({ open, onOpenChange, display, onChange }) {
           </SettingsList>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
+          <Button
+            variant="ghost"
+            disabled={isDefault}
+            onClick={onReset}
+            className="text-muted-foreground hover:bg-surface-active hover:text-foreground disabled:opacity-40"
+          >
+            Reset to default
+          </Button>
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => onOpenChange(false)}
@@ -494,6 +637,8 @@ export function GuestsSection({ event, headerItem }) {
         onOpenChange={setSettingsOpen}
         display={display}
         onChange={setDisplay}
+        onReset={() => saveDisplay(DEFAULT_GUEST_DISPLAY)}
+        guests={guests}
       />
       <GuestDialog
         open={addOpen}

@@ -34,6 +34,7 @@ import { listOrders } from "@/lib/supabase/orders";
 import { listGuests } from "@/lib/supabase/contacts";
 import { listSegments } from "@/lib/supabase/segments";
 import { CONTACT_STATUS_VALUES } from "@/components/internal/screens/guests/constants";
+import { Segmented } from "@/components/internal/screens/events/theme_controls";
 import {
   buildContext,
   matchesFilters,
@@ -360,31 +361,18 @@ export function AudienceBuilder({
     <div className="overflow-hidden rounded-xl border border-border bg-surface-card">
       {specMode ? (
         <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
-          <div className="inline-flex rounded-lg bg-surface-subtle p-0.5">
-            {[
-              { value: "all", label: eventId ? "All attendees" : "All guests", icon: Users },
-              { value: "filtered", label: "Filtered", icon: SlidersHorizontal },
-            ].map((opt) => {
-              const Icon = opt.icon;
-              const on = activeSpec.mode === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setMode(opt.value)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                    on
-                      ? "bg-surface-active text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
+          <Segmented
+            value={activeSpec.mode}
+            onChange={setMode}
+            options={[
+              {
+                key: "all",
+                label: eventId ? "All attendees" : "All guests",
+                icon: Users,
+              },
+              { key: "filtered", label: "Filtered", icon: SlidersHorizontal },
+            ]}
+          />
           {countBadge}
         </div>
       ) : null}

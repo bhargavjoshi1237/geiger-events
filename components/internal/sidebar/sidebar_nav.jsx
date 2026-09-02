@@ -308,7 +308,6 @@ export const workspaceNav = [
     icon: QrCode,
     subItems: [
       { title: "QR Tickets", icon: QrCode },
-      { title: "Wallet Passes", icon: Wallet },
       { title: "Check-in App", icon: ScanLine },
       { title: "Door Sales", icon: DoorOpen },
       { title: "Offline Check-in", icon: CloudOff },

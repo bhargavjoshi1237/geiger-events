@@ -7,6 +7,7 @@ import {
   Layers,
   Package,
   Plus,
+  Sigma,
   Trash2,
 } from "lucide-react";
 
@@ -171,8 +172,8 @@ function BundlePricingSection({ config, setConfig }) {
           value={config.pricingMode || "fixed"}
           onChange={(v) => set({ pricingMode: v })}
           options={[
-            { value: "fixed", label: "Fixed price" },
-            { value: "sum", label: "Sum of items" },
+            { value: "fixed", label: "Fixed price", icon: CircleDollarSign },
+            { value: "sum", label: "Sum of items", icon: Sigma },
           ]}
         />
       </Field>

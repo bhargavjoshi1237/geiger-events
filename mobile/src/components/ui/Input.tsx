@@ -1,6 +1,5 @@
-import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, TextInput } from "react-native";
+import { StyleSheet, TextInput, View } from "react-native";
 import type { BlurEvent, FocusEvent, TextInputProps } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -8,10 +7,11 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { colors, radius, spacing, timing } from "@/theme/tokens";
+import { Icon, type IconName } from "@/components/ui/icons";
+import { colors, radius, spacing, timing, type } from "@/theme/tokens";
 
 type InputProps = TextInputProps & {
-  leftIcon?: React.ComponentProps<typeof Feather>["name"];
+  leftIcon?: IconName;
 };
 
 export function Input({ leftIcon, ...props }: InputProps) {
@@ -29,7 +29,10 @@ export function Input({ leftIcon, ...props }: InputProps) {
   return (
     <Animated.View style={[styles.frame, animStyle]}>
       {leftIcon ? (
-        <Feather name={leftIcon} size={16} color={colors.textTertiary} style={styles.icon} />
+        // Padding has to sit on a View: it is a no-op on a fixed-size svg glyph.
+        <View style={styles.icon}>
+          <Icon name={leftIcon} size={16} color={colors.textTertiary} />
+        </View>
       ) : null}
       <TextInput
         {...props}
@@ -46,18 +49,19 @@ const styles = StyleSheet.create({
   frame: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surfaceSubtle,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.lg - 2,
   },
   icon: {
     paddingLeft: spacing.lg,
   },
   input: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 48,
     paddingHorizontal: spacing.lg,
+    ...type.body,
     color: colors.foreground,
   },
   inputWithIcon: {

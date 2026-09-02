@@ -7,7 +7,9 @@ import {
   ChevronDown,
   GripVertical,
   Plus,
+  Receipt,
   Sparkles,
+  Ticket,
   Trash2,
 } from "lucide-react";
 
@@ -200,12 +202,11 @@ function RuleCard({ rule, index, total, onChange, onRemove, onMove, drag, setDra
             />
             {r.discountType === "flat" ? (
               <Segmented
-                size="sm"
                 value={r.applyPer}
                 onChange={(v) => patch({ applyPer: v })}
                 options={[
-                  { value: "order", label: "Per order" },
-                  { value: "ticket", label: "Per ticket" },
+                  { value: "order", label: "Per order", icon: Receipt },
+                  { value: "ticket", label: "Per ticket", icon: Ticket },
                 ]}
               />
             ) : null}

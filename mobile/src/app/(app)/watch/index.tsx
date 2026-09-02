@@ -1,101 +1,164 @@
-import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 
+import { Icon } from "@/components/ui/icons";
 import { EventCover } from "@/components/EventCover";
+import { ScreenTitle } from "@/components/ScreenTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
-import { Pill } from "@/components/ui/Pill";
 import { Screen } from "@/components/ui/Screen";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDate, fmtDateTime, pluralize } from "@/lib/format";
 import { usePortalData } from "@/state/data";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { WatchItem } from "@/types/portal";
 
 const stagger = (i: number) => Math.min(i, 11) * 40;
-const LEAVING_DAYS = 7;
+const LEAVING_DAYS = 14;
 
 function notYetPremiered(premiereAt: string | null): boolean {
   return !!premiereAt && new Date(premiereAt).getTime() > Date.now();
 }
 
-function leavingDays(expiresAt: string | null): number | null {
+function daysLeft(expiresAt: string | null): number | null {
   if (!expiresAt) return null;
   return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 864e5);
 }
 
+function accessLine(item: WatchItem): { label: string; leaving: boolean } {
+  const days = daysLeft(item.expiresAt);
+  if (days === null) return { label: "Permanent access", leaving: false };
+  if (days <= 0) return { label: "Access ended", leaving: true };
+  return { label: `Access until ${fmtDate(item.expiresAt)}`, leaving: days <= LEAVING_DAYS };
+}
+
 export default function WatchScreen() {
   const router = useRouter();
-  const { watch, loading, refreshing, refreshAll } = usePortalData();
-  const [search, setSearch] = useState("");
+  const { watch, loading } = usePortalData();
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = query.trim().toLowerCase();
     if (!q) return watch || [];
     return (watch || []).filter((i) =>
       `${i.name} ${i.session} ${i.speaker} ${i.eventName} ${i.tags.join(" ")}`
         .toLowerCase()
         .includes(q),
     );
-  }, [watch, search]);
+  }, [watch, query]);
+
+  const [featured, ...rest] = filtered;
+
+  const groups = useMemo(() => {
+    const byPlan = new Map<string, WatchItem[]>();
+    for (const item of rest) {
+      const key = item.planName || "Your library";
+      const list = byPlan.get(key);
+      if (list) list.push(item);
+      else byPlan.set(key, [item]);
+    }
+    return [...byPlan.entries()];
+  }, [rest]);
 
   return (
-    <Screen scroll refreshing={refreshing} onRefresh={refreshAll}>
-      <View style={styles.head}>
-        <Text style={styles.title}>Watch</Text>
-        <Text style={styles.subtitle}>
-          Recordings and replays your memberships unlock — watch any time until your access ends.
-        </Text>
-      </View>
+    <Screen scroll>
+      <ScreenHeaderRow
+        searching={searching}
+        onToggle={() => {
+          setSearching((s) => !s);
+          setQuery("");
+        }}
+      />
 
-      {loading.watch ? (
-        <SkeletonList rows={4} />
-      ) : watch?.length ? (
-        <>
+      {searching ? (
+        <View style={styles.search}>
           <Input
             leftIcon="search"
-            value={search}
-            onChangeText={setSearch}
+            value={query}
+            onChangeText={setQuery}
             placeholder="Search recordings, sessions, speakers…"
+            autoCapitalize="none"
+            autoFocus
           />
-          {filtered.length ? (
-            <Animated.View layout={LinearTransition} style={styles.list}>
-              {filtered.map((item, idx) => (
-                <Animated.View
-                  key={item.id}
-                  entering={FadeInDown.delay(stagger(idx)).springify()}
-                  layout={LinearTransition}
-                >
-                  <WatchCard
-                    item={item}
-                    onOpen={() => router.push(`/watch/${item.id}`)}
-                  />
-                </Animated.View>
-              ))}
-            </Animated.View>
-          ) : (
-            <EmptyState icon="search" title="No matches" message="Try a different search." />
-          )}
-        </>
-      ) : (
+        </View>
+      ) : null}
+
+      {loading.watch && watch === null ? (
+        <SkeletonList rows={4} />
+      ) : !watch?.length ? (
         <EmptyState
-          icon="play-circle"
+          icon="circle-play"
           title="Nothing to watch yet"
-          message="Recordings your memberships unlock will appear here."
+          message="Recordings your memberships and tickets unlock will appear here."
+          actionLabel="See memberships"
+          onAction={() => router.push("/memberships")}
         />
+      ) : !filtered.length ? (
+        <EmptyState
+          icon="search"
+          title="No matches"
+          message="Try a different session, speaker or event."
+          actionLabel="Clear search"
+          onAction={() => setQuery("")}
+        />
+      ) : (
+        <Animated.View layout={LinearTransition} style={styles.stack}>
+          {featured ? (
+            <Animated.View entering={FadeInDown.springify()}>
+              <Text style={styles.groupLabel}>Latest</Text>
+              <FeaturedCard
+                item={featured}
+                onOpen={() => router.push(`/watch/${featured.id}`)}
+              />
+            </Animated.View>
+          ) : null}
+
+          {groups.map(([plan, items]) => (
+            <View key={plan}>
+              <Text style={styles.groupLabel}>
+                {plan} · {items.length} {pluralize(items.length, "recording", "recordings")}
+              </Text>
+              <View style={styles.rows}>
+                {items.map((item, idx) => (
+                  <Animated.View
+                    key={item.id}
+                    entering={FadeInDown.delay(stagger(idx)).springify()}
+                    layout={LinearTransition}
+                  >
+                    <WatchRow item={item} onOpen={() => router.push(`/watch/${item.id}`)} />
+                  </Animated.View>
+                ))}
+              </View>
+            </View>
+          ))}
+        </Animated.View>
       )}
     </Screen>
   );
 }
 
-function WatchCard({ item, onOpen }: { item: WatchItem; onOpen: () => void }) {
+function ScreenHeaderRow({ searching, onToggle }: { searching: boolean; onToggle: () => void }) {
+  return (
+    <ScreenTitle
+      title="Watch"
+      right={
+        <IconButton
+          icon={searching ? "x" : "search"}
+          label={searching ? "Close search" : "Search recordings"}
+          onPress={onToggle}
+        />
+      }
+    />
+  );
+}
+
+function FeaturedCard({ item, onOpen }: { item: WatchItem; onOpen: () => void }) {
   const premiere = item.kind === "simulive" && notYetPremiered(item.premiereAt);
-  const days = leavingDays(item.expiresAt);
-  const leaving = days !== null && days > 0 && days <= LEAVING_DAYS;
 
   return (
     <Pressable
@@ -104,55 +167,91 @@ function WatchCard({ item, onOpen }: { item: WatchItem; onOpen: () => void }) {
       accessibilityState={{ disabled: premiere }}
       disabled={premiere}
       onPress={onOpen}
-      style={({ pressed }) => [styles.card, premiere && styles.cardLocked, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.featured, pressed && styles.pressed]}
     >
-      <View style={styles.coverWrap}>
-        <EventCover uri={item.thumbnailUrl} name={item.name} height={160} />
+      <View style={styles.featuredPoster}>
+        <EventCover uri={item.thumbnailUrl} name={item.name} height={196} radius={0} />
         <LinearGradient
-          colors={[colors.overlay, "transparent"]}
+          colors={["rgba(0,0,0,0.55)", "transparent"]}
           start={{ x: 0, y: 1 }}
-          end={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 0.6 }}
+          pointerEvents="none"
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.playWrap} pointerEvents="none">
-          <View style={styles.playDisc}>
-            <Feather
-              name={premiere ? "clock" : "play"}
-              size={22}
-              color={colors.primary}
-              style={!premiere ? styles.playGlyph : undefined}
-            />
-          </View>
+        <View style={styles.playDisc}>
+          <Icon
+            name={premiere ? "clock" : "play"}
+            size={24}
+            color={colors.paperForeground}
+            style={premiere ? undefined : styles.playGlyph}
+          />
         </View>
-        {item.duration && !premiere ? (
-          <View style={styles.duration}>
+        {premiere ? (
+          <View style={styles.premiereChip}>
+            <Text style={styles.premiereText}>Premieres {fmtDateTime(item.premiereAt)}</Text>
+          </View>
+        ) : item.duration ? (
+          <View style={styles.durationChip}>
             <Text style={styles.durationText}>{item.duration}</Text>
           </View>
         ) : null}
-        {premiere ? (
-          <View style={styles.premiereChip}>
-            <Text style={styles.premiereChipText}>Premieres {fmtDateTime(item.premiereAt)}</Text>
+      </View>
+      <View style={styles.featuredBody}>
+        <Text style={styles.featuredName} numberOfLines={2}>
+          {item.name}
+        </Text>
+        <Text style={styles.featuredMeta} numberOfLines={1}>
+          {[item.session, item.speaker, item.eventName].filter(Boolean).join(" · ")}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function WatchRow({ item, onOpen }: { item: WatchItem; onOpen: () => void }) {
+  const premiere = item.kind === "simulive" && notYetPremiered(item.premiereAt);
+  const access = accessLine(item);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={item.name}
+      accessibilityState={{ disabled: premiere }}
+      disabled={premiere}
+      onPress={onOpen}
+      style={({ pressed }) => [styles.row, premiere && styles.rowDim, pressed && styles.pressed]}
+    >
+      <View style={styles.thumb}>
+        <EventCover uri={item.thumbnailUrl} name={item.name} height={68} radius={0} />
+        <View style={styles.thumbGlyph} pointerEvents="none">
+          <Icon
+            name={premiere ? "clock" : "circle-play"}
+            size={22}
+            color="rgba(255,255,255,0.85)"
+          />
+        </View>
+        {item.duration && !premiere ? (
+          <View style={styles.thumbDuration}>
+            <Text style={styles.thumbDurationText}>{item.duration}</Text>
           </View>
         ) : null}
       </View>
-
-      <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={2}>
+      <View style={styles.rowStack}>
+        <Text style={styles.rowName} numberOfLines={2}>
           {item.name}
         </Text>
-        <Text style={styles.meta} numberOfLines={1}>
-          {[item.speaker, item.session, item.eventName].filter(Boolean).join(" · ")}
+        <Text style={styles.rowMeta} numberOfLines={1}>
+          {[item.session, item.eventName].filter(Boolean).join(" · ")}
         </Text>
-        <View style={styles.footer}>
-          <Text style={styles.included} numberOfLines={1}>
-            Included with {item.planName}
+        <View style={styles.accessRow}>
+          <Icon
+            name="clock"
+            size={12}
+            color={access.leaving ? colors.warning : colors.textTertiary}
+          />
+          <Text style={[styles.accessText, access.leaving && styles.accessLeaving]} numberOfLines={1}>
+            {premiere ? `Premieres ${fmtDateTime(item.premiereAt)}` : access.label}
           </Text>
-          {!premiere && leaving ? (
-            <Pill
-              label={`Leaves in ${days} ${days === 1 ? "day" : "days"}`}
-              tone="warning"
-            />
-          ) : null}
         </View>
       </View>
     </Pressable>
@@ -160,39 +259,106 @@ function WatchCard({ item, onOpen }: { item: WatchItem; onOpen: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  head: {
-    gap: spacing.xs,
-    marginBottom: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
-  title: {
-    ...type.display,
-    color: colors.foreground,
+  pressed: {
+    opacity: 0.75,
   },
-  subtitle: {
-    ...type.body,
-    color: colors.textSecondary,
+  search: {
+    marginBottom: spacing.md,
   },
-  list: {
-    gap: spacing.lg,
-    marginTop: spacing.lg,
+  groupLabel: {
+    ...type.subhead,
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
   },
-  card: {
+  featured: {
     overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surfaceSubtle,
   },
-  cardLocked: {
+  featuredPoster: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  playDisc: {
+    position: "absolute",
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.92)",
+  },
+  playGlyph: {
+    marginLeft: 3,
+  },
+  durationChip: {
+    position: "absolute",
+    right: spacing.sm + 2,
+    bottom: spacing.sm + 2,
+    borderRadius: radius.sm - 2,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+  },
+  durationText: {
+    ...type.micro,
+    fontSize: 11,
+    color: colors.primary,
+    fontVariant: ["tabular-nums"],
+  },
+  premiereChip: {
+    position: "absolute",
+    left: spacing.md,
+    bottom: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: `${colors.warning}26`,
+    borderWidth: 1,
+    borderColor: `${colors.warning}4D`,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm + 2,
+  },
+  premiereText: {
+    ...type.micro,
+    fontSize: 11,
+    color: colors.warning,
+  },
+  featuredBody: {
+    padding: 14,
+    gap: 5,
+  },
+  featuredName: {
+    ...type.bodyStrong,
+    color: colors.foreground,
+  },
+  featuredMeta: {
+    ...type.caption,
+    color: colors.textSecondary,
+  },
+  rows: {
+    gap: spacing.md,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  rowDim: {
     opacity: 0.7,
   },
-  pressed: {
-    opacity: 0.8,
+  thumb: {
+    width: 120,
+    height: 68,
+    overflow: "hidden",
+    borderRadius: radius.md - 2,
+    backgroundColor: colors.surfaceActive,
   },
-  coverWrap: {
-    position: "relative",
-  },
-  playWrap: {
+  thumbGlyph: {
     position: "absolute",
     top: 0,
     left: 0,
@@ -201,77 +367,47 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  playDisc: {
-    width: 52,
-    height: 52,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    backgroundColor: colors.chipScrim,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderStrong,
-  },
-  playGlyph: {
-    marginLeft: 3,
-  },
-  duration: {
+  thumbDuration: {
     position: "absolute",
-    right: spacing.sm,
-    bottom: spacing.sm,
-    backgroundColor: colors.chipScrim,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.pill,
-    paddingVertical: 3,
-    paddingHorizontal: spacing.sm + 2,
+    right: 6,
+    bottom: 6,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingVertical: 2,
+    paddingHorizontal: 5,
   },
-  durationText: {
-    ...type.caption,
+  thumbDurationText: {
+    ...type.micro,
     fontSize: 10,
+    lineHeight: 13,
     color: colors.primary,
     fontVariant: ["tabular-nums"],
   },
-  premiereChip: {
-    position: "absolute",
-    left: spacing.md,
-    bottom: spacing.md,
-    backgroundColor: `${colors.warning}26`,
-    borderWidth: 1,
-    borderColor: `${colors.warning}4D`,
-    borderRadius: radius.pill,
-    paddingVertical: 3,
-    paddingHorizontal: spacing.sm + 2,
+  rowStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
   },
-  premiereChipText: {
-    ...type.caption,
-    fontSize: 10,
-    color: colors.warning,
-    fontVariant: ["tabular-nums"],
-  },
-  body: {
-    gap: spacing.xs,
-    padding: spacing.lg,
-  },
-  name: {
-    ...type.body,
-    fontWeight: "600",
+  rowName: {
+    ...type.label,
     color: colors.foreground,
   },
-  meta: {
+  rowMeta: {
     ...type.caption,
     color: colors.textSecondary,
   },
-  footer: {
+  accessRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: 5,
   },
-  included: {
-    flex: 1,
+  accessText: {
     ...type.caption,
     fontSize: 11,
+    flexShrink: 1,
     color: colors.textTertiary,
+  },
+  accessLeaving: {
+    color: colors.warning,
   },
 });

@@ -89,7 +89,7 @@ function RefundRequestsList() {
       <EmptyState
         icon={RotateCcw}
         title="No refund requests"
-        description="When buyers request a refund, they'll show up here to review."
+        description="When buyers Request A Refund, they'll show up here to review."
       />
     );
   }
@@ -148,7 +148,7 @@ function RefundPolicySection({ config, set }) {
         <SettingRow
           icon={RotateCcw}
           title="Allow refunds"
-          description="Let buyers request a refund before the cutoff."
+          description="Let buyers Request A Refund before the cutoff."
           checked={!!config.enabled}
           onCheckedChange={(v) => set({ enabled: v })}
         />
@@ -167,8 +167,9 @@ function RefundTermsSection({ config, set }) {
   return (
     <div className="space-y-6">
       <SectionCard bare>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4">
           <Num
+            fullWidth
             label="Refund window"
             hint="Days before the event refunds close."
             value={config.windowDays ?? 7}

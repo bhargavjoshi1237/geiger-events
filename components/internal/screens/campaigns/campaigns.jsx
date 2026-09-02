@@ -16,6 +16,7 @@ import {
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
+  DataTable,
   EmptyState,
   Field,
   ScreenHeader,
@@ -24,6 +25,7 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
@@ -44,7 +46,6 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import {
@@ -178,52 +179,13 @@ function scheduleLine(c) {
   return "Not scheduled";
 }
 
-function CampaignCard({ campaign, segmentName, recipients, onOpen, onDuplicate, onDelete }) {
-  const ch = CHANNEL_MAP[campaign.channel] || CHANNEL_MAP.email;
+function ChannelBadge({ channel }) {
+  const ch = CHANNEL_MAP[channel] || CHANNEL_MAP.email;
   const Icon = ch.icon;
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        onOpen();
-      }}
-      className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium text-foreground">{campaign.name}</span>
-          <StatusPill status={campaign.status} map={CAMPAIGN_STATUS_MAP} />
-          <Badge variant={TYPE_MAP[campaign.type]?.variant || "neutral"}>
-            {TYPE_MAP[campaign.type]?.label || campaign.type}
-          </Badge>
-        </div>
-        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-text-secondary">
-          <span className="inline-flex items-center gap-1">
-            <Users className="h-3 w-3" /> {segmentName}
-          </span>
-          <span className="tabular-nums">{recipients.toLocaleString("en-US")} recipients</span>
-          <span className="inline-flex items-center gap-1">
-            <CalendarClock className="h-3 w-3" /> {scheduleLine(campaign)}
-          </span>
-        </p>
-      </div>
-      <ActionMenu
-        label="Campaign actions"
-        items={[
-          { icon: Pencil, label: "Edit", onSelect: onOpen },
-          { icon: Copy, label: "Duplicate", onSelect: onDuplicate },
-          { separator: true },
-          { icon: Trash2, label: "Delete", variant: "destructive", onSelect: onDelete },
-        ]}
-      />
-    </div>
+    <Badge variant={ch.variant}>
+      <Icon className="h-3 w-3" /> {ch.label}
+    </Badge>
   );
 }
 
@@ -327,6 +289,10 @@ export function CampaignsScreen({ preset }) {
     ];
   }, [presetList]);
 
+  const pager = usePagination(filtered, {
+    resetKey: `${preset?.title || ""}|${search}|${statusFilter}|${channelFilter}`,
+  });
+
   const handleCreate = (name, channel, type) => {
     const campaign = {
       id: crypto.randomUUID(),
@@ -414,6 +380,89 @@ export function CampaignsScreen({ preset }) {
     "Reach your audience across email, SMS, WhatsApp, and push — compose, segment, schedule, and track every send.";
   const filtersActive = search || statusFilter !== "all" || channelFilter !== "all";
 
+  const columns = [
+    {
+      key: "name",
+      header: "Name",
+      render: (c) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+            {React.createElement(CHANNEL_MAP[c.channel]?.icon || CHANNEL_MAP.email.icon, {
+              className: "h-4 w-4",
+            })}
+          </div>
+          <div className="min-w-0">
+            <span className="block truncate font-medium text-foreground">{c.name}</span>
+            <span className="text-xs text-text-secondary">
+              {TYPE_MAP[c.type]?.label || c.type}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "channel",
+      header: "Channel",
+      render: (c) => <ChannelBadge channel={c.channel} />,
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (c) => <StatusPill status={c.status} map={CAMPAIGN_STATUS_MAP} />,
+    },
+    {
+      key: "audience",
+      header: "Audience",
+      render: (c) => {
+        const recipients =
+          c.status === "sent"
+            ? Number(c.metrics?.recipients) || estimateRecipients(c.segmentId)
+            : estimateRecipients(c.segmentId);
+        return (
+          <div className="text-sm">
+            <p className="inline-flex items-center gap-1 text-foreground">
+              <Users className="h-3 w-3 text-text-tertiary" /> {segmentName(c.segmentId)}
+            </p>
+            <p className="tabular-nums text-xs text-text-secondary">
+              {recipients.toLocaleString("en-US")} recipients
+            </p>
+          </div>
+        );
+      },
+    },
+    {
+      key: "schedule",
+      header: "Schedule",
+      render: (c) => (
+        <span className="inline-flex items-center gap-1 text-sm text-text-secondary">
+          <CalendarClock className="h-3 w-3" /> {scheduleLine(c)}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "text-right",
+      render: (c) => (
+        <ActionMenu
+          label="Campaign actions"
+          items={[
+            { icon: Pencil, label: "Edit", onSelect: () => setOpenId(c.id) },
+            { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(c) },
+            { separator: true },
+            {
+              icon: Trash2,
+              label: "Delete",
+              variant: "destructive",
+              onSelect: () => setDeleteTarget(c),
+            },
+          ]}
+        />
+      ),
+    },
+  ];
+
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -466,63 +515,56 @@ export function CampaignsScreen({ preset }) {
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading campaigns…
         </div>
-      ) : filtered.length ? (
-        <div className="grid gap-3">
-          {filtered.map((c) => (
-            <CampaignCard
-              key={c.id}
-              campaign={c}
-              segmentName={segmentName(c.segmentId)}
-              recipients={
-                c.status === "sent"
-                  ? Number(c.metrics?.recipients) || estimateRecipients(c.segmentId)
-                  : estimateRecipients(c.segmentId)
-              }
-              onOpen={() => setOpenId(c.id)}
-              onDuplicate={() => handleDuplicate(c)}
-              onDelete={() => setDeleteTarget(c)}
-            />
-          ))}
-        </div>
       ) : (
-        <div className="rounded-xl border border-border bg-surface-subtle">
-          <EmptyState
-            icon={Megaphone}
-            title={
-              filtersActive
-                ? "No matches"
-                : presetList.length
-                  ? "No matches"
-                  : "No campaigns yet"
-            }
-            description={
-              filtersActive
-                ? "Try a different search or filter."
-                : "Create your first campaign — pick a channel, choose an audience, and schedule the send."
-            }
-            action={
-              filtersActive ? (
-                <Button
-                  variant="outline"
-                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                  onClick={() => {
-                    setSearch("");
-                    setStatusFilter("all");
-                    setChannelFilter("all");
-                  }}
-                >
-                  Clear filters
-                </Button>
-              ) : (
-                <Button
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <Plus className="h-4 w-4" /> New campaign
-                </Button>
-              )
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(c) => c.id}
+            onRowClick={(c) => setOpenId(c.id)}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={Megaphone}
+                  title={
+                    filtersActive
+                      ? "No matches"
+                      : presetList.length
+                        ? "No matches"
+                        : "No campaigns yet"
+                  }
+                  description={
+                    filtersActive
+                      ? "Try a different search or filter."
+                      : "Create your first campaign — pick a channel, choose an audience, and schedule the send."
+                  }
+                  action={
+                    filtersActive ? (
+                      <Button
+                        variant="outline"
+                        className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                        onClick={() => {
+                          setSearch("");
+                          setStatusFilter("all");
+                          setChannelFilter("all");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : (
+                      <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => setCreateOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" /> New campaign
+                      </Button>
+                    )
+                  }
+                />
+              </div>
             }
           />
+          <ListPagination {...pager} itemLabel="campaigns" />
         </div>
       )}
 

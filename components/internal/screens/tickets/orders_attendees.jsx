@@ -5,16 +5,21 @@ import {
   Loader2,
   Repeat,
   RotateCcw,
+  ScrollText,
   Settings2,
   ShoppingBag,
+  UserCheck,
+  Zap,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import {
   EmptyState,
   Field,
   ScreenHeader,
   SearchInput,
+  SegmentedTabs,
   SettingsList,
   SettingRow,
   SectionCard,
@@ -86,7 +91,7 @@ function PolicyRefundsSection({ config, setConfig }) {
   return (
     <div className="space-y-6">
       <SectionCard bare>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4">
           <Field label="Policy">
             <Select
               value={config.refundPolicy || "partial"}
@@ -123,8 +128,8 @@ function PolicyRefundsSection({ config, setConfig }) {
               value={config.refundApproval || "manual"}
               onChange={(v) => set({ refundApproval: v })}
               options={[
-                { value: "auto", label: "Automatic" },
-                { value: "manual", label: "Manual review" },
+                { value: "auto", label: "Automatic", icon: Zap },
+                { value: "manual", label: "Manual review", icon: UserCheck },
               ]}
             />
           </Field>
@@ -181,18 +186,19 @@ const POLICY_SECTIONS = [
 
 // --- View switch -------------------------------------------------------------
 
+// Transient view switch, not a saved field, so it goes straight to the suite's
+// tab component rather than through the Segmented form control.
 function ViewTabs({ view, setView }) {
   return (
-    <div className="w-fit">
-      <Segmented
-        value={view}
-        onChange={setView}
-        options={[
-          { value: "policies", label: "Policies" },
-          { value: "orders", label: "Orders" },
-        ]}
-      />
-    </div>
+    <SegmentedTabs
+      className="w-fit sm:w-fit"
+      value={view}
+      onChange={setView}
+      tabs={[
+        { value: "policies", label: "Policies", icon: ScrollText },
+        { value: "orders", label: "Orders", icon: ShoppingBag },
+      ]}
+    />
   );
 }
 
@@ -233,6 +239,14 @@ function OrdersListView({ tabs }) {
     );
   }, [orders, search, eventNames]);
 
+  // Filtering runs client-side over the full project list, so paging happens
+  // here too. Changing the search drops the user back to page 1.
+  const pager = usePagination(filtered, { resetKey: search });
+
+  const countLabel = search.trim()
+    ? `${pager.total.toLocaleString("en-US")} of ${orders.length.toLocaleString("en-US")} orders`
+    : `${orders.length.toLocaleString("en-US")} ${orders.length === 1 ? "order" : "orders"}`;
+
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -240,7 +254,14 @@ function OrdersListView({ tabs }) {
         description="Every ticket order across your events."
       />
       <Toolbar>
-        {tabs}
+        <div className="flex items-center gap-2.5">
+          {tabs}
+          {loading ? null : (
+            <span className="text-xs font-medium text-text-secondary tabular-nums">
+              {countLabel}
+            </span>
+          )}
+        </div>
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -253,45 +274,52 @@ function OrdersListView({ tabs }) {
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading orders…
         </div>
-      ) : filtered.length ? (
-        <div className="overflow-hidden rounded-xl border border-border bg-surface-subtle">
-          <div className="divide-y divide-border">
-            {filtered.map((o) => (
-              <div
-                key={o.id}
-                className="flex items-center gap-3 px-4 py-3 text-left"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {o.name || "Unnamed"}
-                  </p>
-                  <p className="truncate text-xs text-text-secondary">
-                    {eventNames[o.eventId] || "—"} · {o.ticket} ×{o.quantity}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-semibold text-emerald-400 tabular-nums">
-                    {currency(o.total)}
-                  </p>
-                  <p className="text-xs text-text-tertiary">
-                    {formatDate(o.createdAt)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       ) : (
-        <div className="rounded-xl border border-border bg-surface-subtle">
-          <EmptyState
-            icon={ShoppingBag}
-            title={orders.length ? "No orders match your search" : "No orders yet"}
-            description={
-              orders.length
-                ? "Try a different search."
-                : "Ticket orders from your events will appear here."
-            }
-          />
+        <div className="space-y-5">
+          {pager.pageItems.length ? (
+            <div className="overflow-hidden rounded-xl border border-border bg-surface-subtle">
+              <div className="divide-y divide-border">
+                {pager.pageItems.map((o) => (
+                  <div
+                    key={o.id}
+                    className="flex items-center gap-3 px-4 py-3 text-left"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {o.name || "Unnamed"}
+                      </p>
+                      <p className="truncate text-xs text-text-secondary">
+                        {eventNames[o.eventId] || "—"} · {o.ticket} ×{o.quantity}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold text-emerald-400 tabular-nums">
+                        {currency(o.total)}
+                      </p>
+                      <p className="text-xs text-text-tertiary">
+                        {formatDate(o.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-surface-subtle">
+              <EmptyState
+                icon={ShoppingBag}
+                title={
+                  orders.length ? "No orders match your search" : "No orders yet"
+                }
+                description={
+                  orders.length
+                    ? "Try a different search."
+                    : "Ticket orders from your events will appear here."
+                }
+              />
+            </div>
+          )}
+          <ListPagination {...pager} itemLabel="orders" />
         </div>
       )}
     </MainScreenWrapper>

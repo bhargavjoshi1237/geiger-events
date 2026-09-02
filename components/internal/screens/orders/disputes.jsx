@@ -3,13 +3,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  CheckCircle2,
+  Hourglass,
   Loader2,
+  MessageSquareWarning,
   Plus,
   Scale,
   Trash2,
+  XCircle,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import {
+  ListPagination,
+  usePagination,
+} from "@/components/internal/shared/pagination";
 import {
   DataTable,
   EmptyState,
@@ -58,6 +66,14 @@ import {
 } from "./constants";
 
 const DISPUTE_STATUSES = ["Needs response", "Under review", "Won", "Lost"];
+
+// One icon per outcome so the row menu can be scanned, not read.
+const DISPUTE_STATUS_ICONS = {
+  "Needs response": MessageSquareWarning,
+  "Under review": Hourglass,
+  Won: CheckCircle2,
+  Lost: XCircle,
+};
 
 function NewDisputeDialog({ open, onOpenChange, orders, onCreate }) {
   const [orderId, setOrderId] = useState("");
@@ -172,6 +188,7 @@ export function DisputesScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [eventId, setEventId] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
 
@@ -201,11 +218,20 @@ export function DisputesScreen() {
     return m;
   }, [orders]);
 
+  const eventFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "All Events" },
+      ...Object.entries(eventNames).map(([id, name]) => ({ value: id, label: name })),
+    ],
+    [eventNames],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return disputes.filter((d) => {
       if (status !== "all" && d.status !== status) return false;
       const o = ordersById[d.orderId];
+      if (eventId !== "all" && (d.eventId || o?.eventId) !== eventId) return false;
       if (
         q &&
         !`${o?.name || ""} ${eventNames[d.eventId] || ""} ${orderRef(d.orderId)} ${d.reason}`
@@ -215,7 +241,12 @@ export function DisputesScreen() {
         return false;
       return true;
     });
-  }, [disputes, search, status, ordersById, eventNames]);
+  }, [disputes, search, status, eventId, ordersById, eventNames]);
+
+  // Every active filter joins the reset key, so changing one drops back to page 1.
+  const pager = usePagination(filtered, {
+    resetKey: `${search}|${status}|${eventId}`,
+  });
 
   const stats = useMemo(() => {
     const open = disputes.filter((d) => !["Won", "Lost"].includes(d.status));
@@ -271,11 +302,18 @@ export function DisputesScreen() {
       render: (d) => {
         const o = ordersById[d.orderId];
         return (
-          <div className="flex flex-col gap-1">
-            <span className="font-medium text-foreground">{o?.name || "Unknown buyer"}</span>
-            <span className="text-xs text-text-secondary">
-              {orderRef(d.orderId)} · {eventNames[d.eventId] || "—"}
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+              <Scale className="h-4 w-4" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-medium text-foreground">
+                {o?.name || "Unknown buyer"}
+              </span>
+              <span className="text-xs text-text-secondary">
+                {orderRef(d.orderId)} · {eventNames[d.eventId] || "—"}
+              </span>
+            </div>
           </div>
         );
       },
@@ -317,6 +355,7 @@ export function DisputesScreen() {
           items={[
             ...DISPUTE_STATUSES.filter((s) => s !== d.status).map((s) => ({
               key: s,
+              icon: DISPUTE_STATUS_ICONS[s],
               label: `Mark ${s.toLowerCase()}`,
               onSelect: () => setStatusFor(d, s),
             })),
@@ -351,12 +390,20 @@ export function DisputesScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <FilterDropdown
-          value={status}
-          onValueChange={setStatus}
-          options={DISPUTE_STATUS_FILTER_OPTIONS}
-          height="h-9"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterDropdown
+            value={status}
+            onValueChange={setStatus}
+            options={DISPUTE_STATUS_FILTER_OPTIONS}
+            height="h-9"
+          />
+          <FilterDropdown
+            value={eventId}
+            onValueChange={setEventId}
+            options={eventFilterOptions}
+            height="h-9"
+          />
+        </div>
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -370,34 +417,37 @@ export function DisputesScreen() {
           Loading disputes…
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filtered}
-          getRowKey={(d) => d.id}
-          empty={
-            <div className="rounded-xl border border-border bg-surface-subtle">
-              <EmptyState
-                icon={Scale}
-                title={disputes.length ? "No disputes match your filters" : "No disputes"}
-                description={
-                  disputes.length
-                    ? "Try clearing the search or filters."
-                    : "Log a chargeback here to track evidence deadlines and outcomes."
-                }
-                action={
-                  disputes.length ? null : (
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setCreateOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" /> Log dispute
-                    </Button>
-                  )
-                }
-              />
-            </div>
-          }
-        />
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(d) => d.id}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={Scale}
+                  title={disputes.length ? "No disputes match your filters" : "No disputes"}
+                  description={
+                    disputes.length
+                      ? "Try clearing the search or filters."
+                      : "Log a chargeback here to track evidence deadlines and outcomes."
+                  }
+                  action={
+                    disputes.length ? null : (
+                      <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => setCreateOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" /> Log dispute
+                      </Button>
+                    )
+                  }
+                />
+              </div>
+            }
+          />
+          <ListPagination {...pager} itemLabel="disputes" />
+        </div>
       )}
 
       <NewDisputeDialog

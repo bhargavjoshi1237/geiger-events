@@ -46,7 +46,7 @@ export function KioskModeScreen() {
                   }
                 />
               </SettingsList>
-              <div className="mt-4 max-w-md">
+              <div className="mt-4">
                 <Field label="Idle screen message" hint="Shown between attendees.">
                   <Input
                     value={slice.idleMessage || ""}

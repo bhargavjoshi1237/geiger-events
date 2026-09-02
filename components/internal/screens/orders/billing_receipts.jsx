@@ -16,16 +16,28 @@ import {
   ScreenHeader,
   SearchInput,
   StatsBar,
+  StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
+import {
+  ListPagination,
+  usePagination,
+} from "@/components/internal/shared/pagination";
 import { ActionMenu } from "@geiger/ui/action-menu";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listProjectOrders } from "@/lib/supabase/orders";
 import { addOrderEvent } from "@/lib/supabase/order_events";
 
 import { OrderDetailDrawer } from "./order_detail_drawer";
-import { currency, formatDate, orderRef } from "./constants";
+import {
+  ORDER_STATUS_MAP,
+  RECEIPT_STATUS_FILTER_OPTIONS,
+  currency,
+  formatDate,
+  orderRef,
+} from "./constants";
 
 export function BillingReceiptsScreen() {
   const { projectId } = useProject();
@@ -33,6 +45,8 @@ export function BillingReceiptsScreen() {
   const [eventNames, setEventNames] = useState({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [eventId, setEventId] = useState("all");
   const [openId, setOpenId] = useState(null);
 
   useEffect(() => {
@@ -54,16 +68,34 @@ export function BillingReceiptsScreen() {
 
   const documents = useMemo(() => orders.filter((o) => !o.cancelledAt), [orders]);
 
+  const eventFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "All Events" },
+      ...Object.entries(eventNames).map(([id, name]) => ({ value: id, label: name })),
+    ],
+    [eventNames],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return documents.filter((o) =>
-      q
-        ? `${o.name} ${o.email} ${eventNames[o.eventId] || ""} ${orderRef(o.id)}`
-            .toLowerCase()
-            .includes(q)
-        : true,
-    );
-  }, [documents, search, eventNames]);
+    return documents.filter((o) => {
+      if (status !== "all" && o.displayStatus !== status) return false;
+      if (eventId !== "all" && o.eventId !== eventId) return false;
+      if (
+        q &&
+        !`${o.name} ${o.email} ${eventNames[o.eventId] || ""} ${orderRef(o.id)}`
+          .toLowerCase()
+          .includes(q)
+      )
+        return false;
+      return true;
+    });
+  }, [documents, search, status, eventId, eventNames]);
+
+  // Every active filter joins the reset key, so changing one drops back to page 1.
+  const pager = usePagination(filtered, {
+    resetKey: `${search}|${status}|${eventId}`,
+  });
 
   const stats = useMemo(() => {
     const billed = documents.reduce((s, o) => s + o.total, 0);
@@ -106,11 +138,16 @@ export function BillingReceiptsScreen() {
       key: "doc",
       header: "Receipt",
       render: (o) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{orderRef(o.id)}</span>
-          <span className="text-xs text-text-secondary">
-            {o.name || "Unnamed"} · {o.email || "—"}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+            <Receipt className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-medium text-foreground">{orderRef(o.id)}</span>
+            <span className="text-xs text-text-secondary">
+              {o.name || "Unnamed"} · {o.email || "—"}
+            </span>
+          </div>
         </div>
       ),
     },
@@ -121,6 +158,13 @@ export function BillingReceiptsScreen() {
         <span className="text-sm text-text-secondary">
           {eventNames[o.eventId] || "—"}
         </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (o) => (
+        <StatusPill status={o.displayStatus} map={ORDER_STATUS_MAP} />
       ),
     },
     {
@@ -166,6 +210,20 @@ export function BillingReceiptsScreen() {
       <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterDropdown
+            value={status}
+            onValueChange={setStatus}
+            options={RECEIPT_STATUS_FILTER_OPTIONS}
+            height="h-9"
+          />
+          <FilterDropdown
+            value={eventId}
+            onValueChange={setEventId}
+            options={eventFilterOptions}
+            height="h-9"
+          />
+        </div>
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -179,25 +237,32 @@ export function BillingReceiptsScreen() {
           Loading receipts…
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filtered}
-          getRowKey={(o) => o.id}
-          onRowClick={(o) => setOpenId(o.id)}
-          empty={
-            <div className="rounded-xl border border-border bg-surface-subtle">
-              <EmptyState
-                icon={Receipt}
-                title={documents.length ? "No receipts match your search" : "No receipts yet"}
-                description={
-                  documents.length
-                    ? "Try a different search."
-                    : "Each paid order gets a receipt here that you can resend or invoice."
-                }
-              />
-            </div>
-          }
-        />
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(o) => o.id}
+            onRowClick={(o) => setOpenId(o.id)}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={Receipt}
+                  title={
+                    documents.length
+                      ? "No receipts match your filters"
+                      : "No receipts yet"
+                  }
+                  description={
+                    documents.length
+                      ? "Try clearing the search or filters."
+                      : "Each paid order gets a receipt here that you can resend or invoice."
+                  }
+                />
+              </div>
+            }
+          />
+          <ListPagination {...pager} itemLabel="receipts" />
+        </div>
       )}
 
       <OrderDetailDrawer

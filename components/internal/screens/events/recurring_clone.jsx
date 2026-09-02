@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { CalendarClock, Check, Loader2 } from "lucide-react";
+import { CalendarClock, Loader2 } from "lucide-react";
 
 import {
   DataTable,
@@ -21,8 +21,15 @@ import {
 } from "@geiger/ui/select";
 import { EVENT_STATUS_MAP, formatDate } from "./sample_data";
 import { useEventConfig } from "@/lib/events/use-event-config";
+import { Segmented } from "./theme_controls";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const ENDS_OPTIONS = [
+  { key: "never", label: "Never" },
+  { key: "on", label: "On a specific date" },
+  { key: "after", label: "After a number of occurrences" },
+];
 
 const FREQ_LABEL = {
   daily: "day",
@@ -198,51 +205,22 @@ export function RecurringEventsSection({ event }) {
             ) : null}
 
             <Field label="Ends">
-              <div className="space-y-2">
-                {[
-                  { value: "never", label: "Never" },
-                  { value: "on", label: "On a specific date" },
-                  { value: "after", label: "After a number of occurrences" },
-                ].map((opt) => (
-                  <div key={opt.value} className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setEnds(opt.value)}
-                      className={cn(
-                        "flex flex-1 items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
-                        ends === opt.value
-                          ? "border-border-strong bg-surface-card text-foreground"
-                          : "border-border bg-transparent text-muted-foreground hover:bg-surface-card",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "flex h-4 w-4 items-center justify-center rounded-full border",
-                          ends === opt.value
-                            ? "border-primary bg-primary/15"
-                            : "border-border",
-                        )}
-                      >
-                        {ends === opt.value ? (
-                          <Check className="h-3 w-3 text-foreground" />
-                        ) : null}
-                      </span>
-                      {opt.label}
-                    </button>
-                    {opt.value === "after" && ends === "after" ? (
-                      <Input
-                        type="number"
-                        min={1}
-                        aria-label="Number of occurrences"
-                        value={count}
-                        onChange={(e) => setCount(Number(e.target.value) || 1)}
-                        className="!h-10 w-20 shrink-0"
-                      />
-                    ) : null}
-                  </div>
-                ))}
-              </div>
+              <Segmented
+                value={ends}
+                onChange={setEnds}
+                options={ENDS_OPTIONS}
+              />
             </Field>
+            {ends === "after" ? (
+              <Field label="Occurrences">
+                <Input
+                  type="number"
+                  min={1}
+                  value={count}
+                  onChange={(e) => setCount(Number(e.target.value) || 1)}
+                />
+              </Field>
+            ) : null}
           </div>
         </SectionCard>
 

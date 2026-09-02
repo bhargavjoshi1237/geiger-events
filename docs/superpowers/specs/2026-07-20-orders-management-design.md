@@ -151,7 +151,7 @@ on mount (start empty + loading); nothing is seeded from a static array. Uses
     add-ons/offerings, purchasables, donation, discount, fees, tax → total), payment
     refs (method, Stripe session/intent ids), the **order timeline**
     (`listOrderEvents`), and actions: **Issue refund** (full/partial dialog with
-    amount + reason code + method → `issueRefund`), **Cancel order** (`cancelOrder`),
+    amount + reason code + method → `issueRefund`), **Cancel Order** (`cancelOrder`),
     **Resend receipt** (writes a `receipt_sent` timeline entry + toast), **Add note**
     (writes a `note` timeline entry).
 

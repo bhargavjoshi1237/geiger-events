@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { QrCode } from "lucide-react";
 
 import {
@@ -12,39 +12,50 @@ import {
 import { Input } from "@geiger/ui/input";
 import { CheckinSettingsScreen, RowSelect } from "./checkin_kit";
 import { QR_SIZE_OPTIONS, QR_EC_OPTIONS, QR_ENCODE_OPTIONS } from "./constants";
+import { qrTicketSvg, logoEligible } from "@/lib/passes/qr_core";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-// A small faux-QR preview so the appearance settings read as real.
-function QrPreview({ showLogo, color }) {
+const QR_SIZE_PX = { small: 96, medium: 128, large: 160 };
+
+// Stand-ins for whatever the "Encoded value" select resolves to, so the
+// preview scans exactly like a real ticket would for the chosen setting.
+const SAMPLE_PAYLOAD = {
+  ticketCode: "8F3A9C2D",
+  orderId: "b7e2c9a1-4f3d-4e6a-9b2c-1a2b3c4d5e6f",
+  url: "https://checkin.geiger.events/t/demo",
+};
+
+// A real, scannable QR reflecting the current appearance settings — the
+// brand color, size, error correction, and logo knockout all render exactly
+// as they will on an issued ticket or emailed pass.
+function QrPreview({ size, errorCorrection, showLogo, color, payload }) {
+  const px = QR_SIZE_PX[size] || QR_SIZE_PX.medium;
+  const svg = useMemo(
+    () =>
+      qrTicketSvg({
+        payload,
+        errorCorrection,
+        brandColor: color,
+        showLogo,
+        logoHref: `${BASE_PATH}/logo1.svg`,
+        size: px,
+      }),
+    [payload, errorCorrection, showLogo, color, px],
+  );
+  const logoSuppressed = showLogo && !logoEligible(errorCorrection);
+
   return (
-    <div
-      className="relative grid h-32 w-32 grid-cols-8 grid-rows-8 gap-0.5 rounded-lg border border-border bg-white p-2"
-      aria-hidden
-    >
-      {Array.from({ length: 64 }).map((_, i) => {
-        const on = (i * 7 + (i % 5) * 3) % 3 !== 0;
-        return (
-          <span
-            key={i}
-            className="rounded-[1px]"
-            style={{ background: on ? color || "#111111" : "transparent" }}
-          />
-        );
-      })}
-      {showLogo ? (
-        // The mark sits on a knocked-out plate in the brand color — logo1.svg is
-        // a white glyph, so it needs the dark plate to read on the white code.
-        <span
-          className="absolute left-1/2 top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border-2 border-white"
-          style={{ background: color || "#111111" }}
-        >
-          <img
-            src={`${BASE_PATH}/logo1.svg`}
-            alt=""
-            className="h-auto w-4"
-          />
-        </span>
+    <div className="flex flex-col items-center gap-2">
+      <div
+        className="rounded-lg border border-border bg-white p-2 [&>svg]:block"
+        style={{ width: px + 16, height: px + 16 }}
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+      {logoSuppressed ? (
+        <p className="max-w-[180px] text-center text-[11px] text-text-tertiary">
+          Logo needs Quartile or High error correction to stay scannable — hidden at the current level.
+        </p>
       ) : null}
     </div>
   );
@@ -92,7 +103,7 @@ export function QrTicketsScreen() {
                   onCheckedChange={(v) => set({ showLogo: v })}
                 />
               </SettingsList>
-              <div className="mt-4 max-w-xs">
+              <div className="mt-4">
                 <Field label="Brand color" hint="Hex used for the code modules. Leave blank for black.">
                   <Input
                     value={slice.brandColor || ""}
@@ -128,7 +139,13 @@ export function QrTicketsScreen() {
 
           <SectionCard title="Preview">
             <div className="flex flex-col items-center gap-3 py-2">
-              <QrPreview showLogo={slice.showLogo} color={slice.brandColor} />
+              <QrPreview
+                size={slice.size}
+                errorCorrection={slice.errorCorrection}
+                showLogo={slice.showLogo}
+                color={slice.brandColor}
+                payload={SAMPLE_PAYLOAD[slice.encode] || SAMPLE_PAYLOAD.ticketCode}
+              />
               <p className="text-center text-xs text-text-secondary">
                 {slice.dynamic ? "Rotating code" : "Static code"} · EC {slice.errorCorrection}
               </p>

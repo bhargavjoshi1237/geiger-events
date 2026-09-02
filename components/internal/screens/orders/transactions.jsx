@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeftRight, Loader2 } from "lucide-react";
+import { ArrowLeftRight, Eye, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -13,23 +13,27 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
+import {
+  ListPagination,
+  usePagination,
+} from "@/components/internal/shared/pagination";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listProjectOrders } from "@/lib/supabase/orders";
 import { listOrderRefunds } from "@/lib/supabase/order_refunds";
 
+import { TransactionDetailSheet } from "./transaction_detail_sheet";
 import {
   TRANSACTION_TYPE_MAP,
   TRANSACTION_TYPE_FILTER_OPTIONS,
   currency,
+  estFee,
   formatDate,
   orderRef,
   methodLabel,
 } from "./constants";
-
-// Rough gateway fee estimate (Stripe-style 2.9% + $0.30 per successful charge).
-const estFee = (amount) => amount * 0.029 + 0.3;
 
 export function TransactionsScreen() {
   const { projectId } = useProject();
@@ -41,6 +45,7 @@ export function TransactionsScreen() {
   const [type, setType] = useState("all");
   const [eventId, setEventId] = useState("all");
   const [ticket, setTicket] = useState("all");
+  const [openId, setOpenId] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -86,12 +91,15 @@ export function TransactionsScreen() {
     [orders],
   );
 
-  // The ledger: every charge (order) and refund merged, newest first.
+  // The ledger: every charge (order) and refund merged, newest first. Each line
+  // carries the record it came from so the detail sheet needs no extra fetch.
   const ledger = useMemo(() => {
     const charges = orders.map((o) => ({
       id: `c-${o.id}`,
       type: "Charge",
       orderId: o.id,
+      order: o,
+      refund: null,
       name: o.name || "Unnamed",
       eventId: o.eventId,
       ticket: o.ticket,
@@ -99,17 +107,22 @@ export function TransactionsScreen() {
       amount: o.total,
       date: o.createdAt,
     }));
-    const refundLines = refunds.map((r) => ({
-      id: `r-${r.id}`,
-      type: "Refund",
-      orderId: r.orderId,
-      name: ordersById[r.orderId]?.name || "Unnamed",
-      eventId: r.eventId || ordersById[r.orderId]?.eventId,
-      ticket: ordersById[r.orderId]?.ticket,
-      method: r.method,
-      amount: -r.amount,
-      date: r.createdAt,
-    }));
+    const refundLines = refunds.map((r) => {
+      const o = ordersById[r.orderId];
+      return {
+        id: `r-${r.id}`,
+        type: "Refund",
+        orderId: r.orderId,
+        order: o || null,
+        refund: r,
+        name: o?.name || "Unnamed",
+        eventId: r.eventId || o?.eventId,
+        ticket: o?.ticket,
+        method: r.method,
+        amount: -r.amount,
+        date: r.createdAt,
+      };
+    });
     return [...charges, ...refundLines].sort(
       (a, b) => new Date(b.date || 0) - new Date(a.date || 0),
     );
@@ -132,6 +145,16 @@ export function TransactionsScreen() {
     });
   }, [ledger, search, type, eventId, ticket, eventNames]);
 
+  const openTransaction = useMemo(
+    () => (openId ? ledger.find((t) => t.id === openId) || null : null),
+    [openId, ledger],
+  );
+
+  // Every active filter joins the reset key, so changing one drops back to page 1.
+  const pager = usePagination(filtered, {
+    resetKey: `${search}|${type}|${eventId}|${ticket}`,
+  });
+
   const stats = useMemo(() => {
     const gross = orders.reduce((s, o) => s + o.total, 0);
     const refunded = refunds.reduce((s, r) => s + r.amount, 0);
@@ -147,21 +170,26 @@ export function TransactionsScreen() {
 
   const columns = [
     {
+      key: "transaction",
+      header: "Transaction",
+      render: (t) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+            <ArrowLeftRight className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-medium text-foreground">{t.name}</span>
+            <span className="text-xs text-text-secondary">
+              {orderRef(t.orderId)} · {eventNames[t.eventId] || "—"}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    {
       key: "type",
       header: "Type",
       render: (t) => <StatusPill status={t.type} map={TRANSACTION_TYPE_MAP} />,
-    },
-    {
-      key: "detail",
-      header: "Detail",
-      render: (t) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{t.name}</span>
-          <span className="text-xs text-text-secondary">
-            {orderRef(t.orderId)} · {eventNames[t.eventId] || "—"}
-          </span>
-        </div>
-      ),
     },
     {
       key: "method",
@@ -186,6 +214,20 @@ export function TransactionsScreen() {
         <span className={t.amount < 0 ? "text-red-300" : "text-emerald-400"}>
           {t.amount < 0 ? `-${currency(Math.abs(t.amount))}` : currency(t.amount)}
         </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "text-right",
+      render: (t) => (
+        <ActionMenu
+          label={`Actions for transaction ${orderRef(t.orderId)}`}
+          items={[
+            { icon: Eye, label: "View transaction", onSelect: () => setOpenId(t.id) },
+          ]}
+        />
       ),
     },
   ];
@@ -233,25 +275,35 @@ export function TransactionsScreen() {
           Loading transactions…
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filtered}
-          getRowKey={(t) => t.id}
-          empty={
-            <div className="rounded-xl border border-border bg-surface-subtle">
-              <EmptyState
-                icon={ArrowLeftRight}
-                title={ledger.length ? "No transactions match your filters" : "No transactions yet"}
-                description={
-                  ledger.length
-                    ? "Try clearing the search or filters."
-                    : "Charges and refunds will appear here as orders come in."
-                }
-              />
-            </div>
-          }
-        />
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(t) => t.id}
+            onRowClick={(t) => setOpenId(t.id)}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={ArrowLeftRight}
+                  title={ledger.length ? "No transactions match your filters" : "No transactions yet"}
+                  description={
+                    ledger.length
+                      ? "Try clearing the search or filters."
+                      : "Charges and refunds will appear here as orders come in."
+                  }
+                />
+              </div>
+            }
+          />
+          <ListPagination {...pager} itemLabel="transactions" />
+        </div>
       )}
+
+      <TransactionDetailSheet
+        transaction={openTransaction}
+        eventName={openTransaction ? eventNames[openTransaction.eventId] : ""}
+        onOpenChange={(o) => !o && setOpenId(null)}
+      />
     </MainScreenWrapper>
   );
 }

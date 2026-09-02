@@ -1,45 +1,38 @@
 import React from "react";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, radius, spacing } from "@/theme/tokens";
 
 type TicketQrProps = {
   orderId: string;
-  orderCode: string;
+  size: number;
+  padded?: boolean;
 };
 
-export function TicketQr({ orderId, orderCode }: TicketQrProps) {
-  const { width } = useWindowDimensions();
-  const side = Math.min(280, width - 96);
+// Always drawn dark-on-white — scanners need the contrast regardless of the surrounding surface.
+export function TicketQr({ orderId, size, padded = true }: TicketQrProps) {
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <QRCode
-          value={orderId}
-          size={side}
-          color={colors.primaryForeground}
-          backgroundColor={colors.primary}
-        />
-      </View>
-      <Text style={styles.code}>{orderCode}</Text>
+    <View style={[styles.frame, padded && styles.padded]}>
+      <QRCode
+        value={orderId}
+        size={size}
+        color={colors.paperForeground}
+        backgroundColor={colors.paper}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    gap: spacing.md,
+  frame: {
+    alignSelf: "center",
+    overflow: "hidden",
+    borderRadius: radius.sm,
+    backgroundColor: colors.paper,
   },
-  card: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-  },
-  code: {
-    ...type.label,
-    color: colors.textSecondary,
-    fontVariant: ["tabular-nums"],
+  padded: {
+    borderRadius: radius.md,
+    padding: spacing.md,
   },
 });

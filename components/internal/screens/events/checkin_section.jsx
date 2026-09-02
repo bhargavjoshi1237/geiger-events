@@ -13,7 +13,6 @@ import {
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Switch } from "@geiger/ui/switch";
-import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getCheckinSettings } from "@/lib/supabase/checkin";
@@ -64,12 +63,10 @@ export function CheckinOptionsSection({ event, headerItem }) {
   const globals = useCheckinGlobals();
   const [cfg, , save] = useEventConfig(event, "checkin", {
     qrOnTicket: true,
-    walletPass: false,
     selfCheckin: false,
     methods: { qr: true, manual: true },
   });
 
-  const walletOn = globals ? withDefaults(globals, "walletPasses").enabled : false;
   const selfOn = globals ? withDefaults(globals, "selfCheckin").enabled : false;
 
   return (
@@ -87,21 +84,6 @@ export function CheckinOptionsSection({ event, headerItem }) {
             checked={!!cfg.qrOnTicket}
             onCheckedChange={(v) =>
               save({ ...cfg, qrOnTicket: v }, { successMsg: "Saved." })
-            }
-          />
-          <SettingRow
-            title="Wallet pass"
-            description={
-              walletOn
-                ? "Offer Apple/Google Wallet passes for this event."
-                : "Requires Wallet Passes enabled for the project."
-            }
-            checked={!!cfg.walletPass && walletOn}
-            control={walletOn ? undefined : <DisabledSwitch />}
-            onCheckedChange={
-              walletOn
-                ? (v) => save({ ...cfg, walletPass: v }, { successMsg: "Saved." })
-                : undefined
             }
           />
         </SettingsList>
@@ -154,28 +136,89 @@ function DisabledSwitch() {
   return <Switch checked={false} disabled />;
 }
 
-function ChipToggle({ options, selectedIds, onToggle, emptyHint }) {
-  if (!options.length) return <p className="text-xs text-text-tertiary">{emptyHint}</p>;
+// Per-event gate/zone CRUD: create new ones for this event, flip them on/off,
+// or remove them. Also lets staff pull in a name already used elsewhere on the
+// project so scanning-role scopes (which read the project catalog) still line up.
+function GateZoneManager({ placeholder, items, catalog, onChange, emptyHint }) {
+  const [draft, setDraft] = useState("");
+
+  const add = () => {
+    const name = draft.trim();
+    if (!name) return;
+    onChange([...(items || []), { id: newId(), name, enabled: true }]);
+    setDraft("");
+  };
+  const remove = (id) => onChange((items || []).filter((x) => x.id !== id));
+  const toggle = (id, enabled) =>
+    onChange((items || []).map((x) => (x.id === id ? { ...x, enabled } : x)));
+  const addFromCatalog = (opt) => {
+    if ((items || []).some((x) => x.id === opt.id)) return;
+    onChange([...(items || []), { id: opt.id, name: opt.name, enabled: true }]);
+  };
+
+  const availableCatalog = (catalog || []).filter(
+    (opt) => !(items || []).some((x) => x.id === opt.id),
+  );
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((o) => {
-        const on = selectedIds.includes(o.id);
-        return (
-          <button
-            key={o.id}
-            type="button"
-            onClick={() => onToggle(o)}
-            className={cn(
-              "rounded-full border px-3 py-1 text-sm transition-colors",
-              on
-                ? "border-primary bg-primary/15 text-foreground"
-                : "border-border bg-surface-card text-text-secondary hover:text-foreground",
-            )}
-          >
-            {o.name}
-          </button>
-        );
-      })}
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+          placeholder={placeholder}
+        />
+        <Button
+          variant="outline"
+          className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          onClick={add}
+        >
+          <Plus className="h-4 w-4" /> Add
+        </Button>
+      </div>
+
+      {items?.length ? (
+        <div className="space-y-2">
+          {items.map((it) => (
+            <div
+              key={it.id}
+              className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-2"
+            >
+              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{it.name}</span>
+              <Switch checked={it.enabled !== false} onCheckedChange={(v) => toggle(it.id, v)} />
+              <button
+                type="button"
+                aria-label={`Remove ${it.name}`}
+                onClick={() => remove(it.id)}
+                className="text-text-tertiary transition-colors hover:text-red-400"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-text-tertiary">{emptyHint}</p>
+      )}
+
+      {availableCatalog.length ? (
+        <div className="space-y-1.5 border-t border-border pt-3">
+          <p className="text-xs text-text-tertiary">From the project catalog</p>
+          <div className="flex flex-wrap gap-2">
+            {availableCatalog.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => addFromCatalog(opt)}
+                className="rounded-full border border-dashed border-border px-3 py-1 text-sm text-text-secondary transition-colors hover:border-primary hover:text-foreground"
+              >
+                + {opt.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -192,32 +235,21 @@ export function GatesZonesSection({ event, headerItem }) {
   if (!mg.enabled) {
     return (
       <div className="space-y-6">
-        <EditorSectionHeader title={headerItem?.label || "Gates & Zones"} description={headerItem?.desc} />
+        <EditorSectionHeader title={headerItem?.label || "Multi-gate & Zones"} description={headerItem?.desc} />
         <GlobalOffHint feature="Multi-gate & Zones" />
       </div>
     );
   }
 
-  const toggle = (key, opt) => {
-    const has = (cfg[key] || []).some((x) => x.id === opt.id);
-    setCfg({
-      ...cfg,
-      [key]: has
-        ? cfg[key].filter((x) => x.id !== opt.id)
-        : [...(cfg[key] || []), { id: opt.id, name: opt.name }],
-    });
-  };
-  const idsOf = (arr) => (arr || []).map((x) => x.id);
-
   return (
     <div className="space-y-6">
       <EditorSectionHeader
-        title={headerItem?.label || "Gates & Zones"}
-        description={headerItem?.desc || "Which entrances and restricted areas apply to this event."}
+        title={headerItem?.label || "Multi-gate & Zones"}
+        description={headerItem?.desc || "Create the entrances and restricted areas for this event, turn them on or off, or remove them."}
       />
       <SectionCard
-        title="Assigned gates & zones"
-        description="Pick from the gates and zones defined under Multi-gate & Zones."
+        title="Gates & zones"
+        description="These apply to this event only."
         action={
           <Button
             size="sm"
@@ -230,23 +262,25 @@ export function GatesZonesSection({ event, headerItem }) {
           </Button>
         }
       >
-        <div className="space-y-4">
+        <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-2">
             <p className="text-sm font-medium text-foreground">Gates</p>
-            <ChipToggle
-              options={mg.gates || []}
-              selectedIds={idsOf(cfg.gates)}
-              onToggle={(opt) => toggle("gates", opt)}
-              emptyHint="No gates defined yet."
+            <GateZoneManager
+              placeholder="e.g. North entrance"
+              items={cfg.gates}
+              catalog={mg.gates}
+              onChange={(gates) => setCfg({ ...cfg, gates })}
+              emptyHint="No gates yet."
             />
           </div>
           <div className="space-y-2">
             <p className="text-sm font-medium text-foreground">Zones</p>
-            <ChipToggle
-              options={mg.zones || []}
-              selectedIds={idsOf(cfg.zones)}
-              onToggle={(opt) => toggle("zones", opt)}
-              emptyHint="No zones defined yet."
+            <GateZoneManager
+              placeholder="e.g. Backstage"
+              items={cfg.zones}
+              catalog={mg.zones}
+              onChange={(zones) => setCfg({ ...cfg, zones })}
+              emptyHint="No zones yet."
             />
           </div>
         </div>

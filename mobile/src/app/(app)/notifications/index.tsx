@@ -1,22 +1,14 @@
-import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeOut,
-  LinearTransition,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Pill } from "@/components/ui/Pill";
+import { IconTile } from "@/components/ui/IconTile";
 import { Screen } from "@/components/ui/Screen";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { fmtTimeAgo } from "@/lib/format";
+import { fmtCompactTime } from "@/lib/format";
 import { usePortalData } from "@/state/data";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { NotificationItem } from "@/types/portal";
@@ -24,8 +16,7 @@ import type { NotificationItem } from "@/types/portal";
 const stagger = (i: number) => Math.min(i, 11) * 40;
 
 export default function NotificationsScreen() {
-  const { notifications, loading, refreshing, refreshAll, markNotificationsRead } = usePortalData();
-  const scrollY = useSharedValue(0);
+  const { notifications, loading, markNotificationsRead } = usePortalData();
 
   useFocusEffect(
     useCallback(() => {
@@ -34,14 +25,10 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <Screen scroll refreshing={refreshing} onRefresh={refreshAll} onScroll={(y) => (scrollY.value = y)}>
-      <ScreenHeader
-        title="Notifications"
-        subtitle="Updates and announcements from the events you're attending."
-        scrollY={scrollY}
-      />
+    <Screen scroll>
+      <ScreenHeader title="Updates" subtitle="Announcements from your organisers" />
 
-      {loading.notifications ? (
+      {loading.notifications && !notifications.items.length ? (
         <SkeletonList rows={4} />
       ) : notifications.items.length ? (
         <Animated.View layout={LinearTransition} style={styles.list}>
@@ -59,7 +46,7 @@ export default function NotificationsScreen() {
         <EmptyState
           icon="bell"
           title="Nothing yet"
-          message="Updates from organisers will show up here."
+          message="Gate changes, schedule updates and refund news will show up here."
         />
       )}
     </Screen>
@@ -68,32 +55,24 @@ export default function NotificationsScreen() {
 
 function NotificationCard({ n }: { n: NotificationItem }) {
   return (
-    <Card style={n.unread ? styles.unreadCard : undefined}>
-      <View style={styles.row}>
-        <View style={styles.iconTile}>
-          <Feather name="bell" size={16} color={colors.mutedForeground} />
+    <View style={[styles.card, n.unread && styles.cardUnread]}>
+      <IconTile icon="volume-2" size={44} />
+      <View style={styles.stack}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={2}>
+            {n.title}
+          </Text>
+          <Text style={styles.time}>{fmtCompactTime(n.createdAt)}</Text>
         </View>
-        <View style={styles.stack}>
-          <View style={styles.titleRow}>
-            {n.unread ? (
-              <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(200)} style={styles.dot} />
-            ) : null}
-            <Text style={styles.title} numberOfLines={2}>
-              {n.title}
-            </Text>
-          </View>
-          {n.body ? (
-            <Text style={styles.body} numberOfLines={4}>
-              {n.body}
-            </Text>
-          ) : null}
-          <View style={styles.metaRow}>
-            {n.channel ? <Pill label={n.channel} tone="neutral" /> : null}
-            <Text style={styles.time}>{fmtTimeAgo(n.createdAt)}</Text>
-          </View>
-        </View>
+        {n.body ? (
+          <Text style={styles.body} numberOfLines={5}>
+            {n.body}
+          </Text>
+        ) : null}
+        {n.channel ? <Text style={styles.channel}>{n.channel}</Text> : null}
       </View>
-    </Card>
+      {n.unread ? <View style={styles.dot} /> : null}
+    </View>
   );
 }
 
@@ -101,57 +80,56 @@ const styles = StyleSheet.create({
   list: {
     gap: spacing.md,
   },
-  unreadCard: {
-    backgroundColor: `${colors.primary}0D`,
-    borderColor: `${colors.primary}4D`,
-  },
-  row: {
+  card: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
   },
-  iconTile: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceStrong,
-    borderRadius: radius.md,
+  cardUnread: {
+    backgroundColor: colors.surfaceCard,
   },
   stack: {
     flex: 1,
     minWidth: 0,
-    gap: spacing.xs,
+    gap: 5,
   },
   titleRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "baseline",
     gap: spacing.sm,
   },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: colors.primary,
-    marginTop: 5,
-  },
   title: {
-    ...type.label,
+    ...type.bodyStrong,
     flex: 1,
     color: colors.foreground,
   },
-  body: {
-    ...type.caption,
-    color: colors.mutedForeground,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    marginTop: 2,
-  },
   time: {
     ...type.caption,
+    fontSize: 11,
     color: colors.textTertiary,
+  },
+  body: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.mutedForeground,
+  },
+  channel: {
+    ...type.micro,
+    fontSize: 11,
+    color: colors.textTertiary,
+  },
+  dot: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: colors.primary,
+    marginTop: 6,
   },
 });

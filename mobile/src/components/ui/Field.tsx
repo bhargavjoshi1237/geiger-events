@@ -24,8 +24,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   label: {
-    ...type.label,
-    color: colors.mutedForeground,
+    ...type.micro,
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+    color: colors.textSecondary,
   },
   hint: {
     ...type.caption,

@@ -11,7 +11,6 @@ import {
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
-import { cn } from "@/lib/utils";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import {
   CTA_STYLES,
@@ -20,6 +19,7 @@ import {
   newCta,
   normalizeCtas,
 } from "@/lib/events/ctas";
+import { Segmented } from "./theme_controls";
 
 export function EventCtasSection({ event, headerItem }) {
   const [cfg, setCfg, saveCfg, saving] = useEventConfig(event, "ctas", EMPTY_CTAS);
@@ -150,27 +150,12 @@ export function EventCtasSection({ event, headerItem }) {
                     </button>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-3 gap-1.5 pl-6">
-                    {CTA_STYLES.map((style) => {
-                      const on = item.style === style.key;
-                      return (
-                        <button
-                          key={style.key}
-                          type="button"
-                          aria-pressed={on}
-                          title={style.hint}
-                          onClick={() => patch(item.id, "style", style.key)}
-                          className={cn(
-                            "rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors",
-                            on
-                              ? "border-primary bg-primary/10 text-foreground"
-                              : "border-border bg-surface-card text-muted-foreground hover:border-border-strong hover:bg-surface-active hover:text-foreground",
-                          )}
-                        >
-                          {style.label}
-                        </button>
-                      );
-                    })}
+                  <div className="mt-3 pl-6">
+                    <Segmented
+                      value={item.style || CTA_STYLES[0].key}
+                      onChange={(v) => patch(item.id, "style", v)}
+                      options={CTA_STYLES}
+                    />
                   </div>
                 </div>
               );

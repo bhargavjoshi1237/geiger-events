@@ -5,19 +5,23 @@ import { Activity, Loader2, RefreshCw, MapPin, Clock } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
+  DataTable,
   EmptyState,
   ScreenHeader,
   SearchInput,
   StatsBar,
+  StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { useOptionalProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listRegistrations } from "@/lib/supabase/registrations";
 import { listAttendanceByProject } from "@/lib/supabase/checkin";
 import { DEMO_ATTENDANCE } from "./demo_attendance";
-import { formatDate } from "./constants";
+import { ATTENDANCE_STATUS_FILTER_OPTIONS, ATTENDANCE_STATUS_MAP, formatDate } from "./constants";
 
 const REFRESH_MS = 15000;
 
@@ -28,6 +32,7 @@ export function RealTimeAttendanceScreen({ demo = false }) {
   const [attendance, setAttendance] = useState(demo ? DEMO_ATTENDANCE.attendance : []);
   const [loading, setLoading] = useState(!demo);
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
   const [refreshing, setRefreshing] = useState(false);
   const timer = useRef(null);
 
@@ -105,8 +110,16 @@ export function RealTimeAttendanceScreen({ demo = false }) {
         const toChips = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]);
         return { ...e, checkedIn, expected, pct, gates: toChips(gateB), sessions: toChips(sessB) };
       })
+      .filter((r) => {
+        if (status === "live") return r.checkedIn > 0;
+        if (status === "idle") return r.checkedIn === 0;
+        return true;
+      })
       .sort((a, b) => b.checkedIn - a.checkedIn);
-  }, [events, byEvent, search]);
+  }, [events, byEvent, search, status]);
+
+  // Every active filter joins the reset key, so changing one drops back to page 1.
+  const pager = usePagination(rows, { resetKey: `${search}|${status}` });
 
   const stats = useMemo(() => {
     const totalIn = rows.reduce((s, r) => s + r.checkedIn, 0);
@@ -122,6 +135,89 @@ export function RealTimeAttendanceScreen({ demo = false }) {
       },
     ];
   }, [rows]);
+
+  const columns = [
+    {
+      key: "event",
+      header: "Event",
+      className: "w-full",
+      headClassName: "w-full",
+      render: (r) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-foreground">{r.name}</p>
+          <p className="mt-0.5 text-xs text-text-secondary">{formatDate(r.date)}</p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      className: "whitespace-nowrap",
+      headClassName: "whitespace-nowrap",
+      render: (r) => (
+        <StatusPill status={r.checkedIn > 0 ? "live" : "idle"} map={ATTENDANCE_STATUS_MAP} />
+      ),
+    },
+    {
+      key: "checkedIn",
+      header: "Checked in",
+      align: "right",
+      className: "whitespace-nowrap text-right tabular-nums",
+      headClassName: "whitespace-nowrap",
+      render: (r) => (
+        <span>
+          <span className="font-semibold text-foreground">{r.checkedIn.toLocaleString("en-US")}</span>
+          <span className="text-text-tertiary"> / {r.expected.toLocaleString("en-US")}</span>
+        </span>
+      ),
+    },
+    {
+      key: "arrival",
+      header: "Arrival",
+      className: "whitespace-nowrap",
+      headClassName: "whitespace-nowrap",
+      render: (r) => (
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-surface-strong">
+            <div
+              className="h-full rounded-full bg-emerald-400 transition-all"
+              style={{ width: `${Math.min(100, r.pct)}%` }}
+            />
+          </div>
+          <span className="text-xs tabular-nums text-text-secondary">{r.pct}%</span>
+        </div>
+      ),
+    },
+    {
+      key: "breakdown",
+      header: "Gates & sessions",
+      render: (r) =>
+        r.gates.length || r.sessions.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {r.gates.map(([name, n]) => (
+              <span
+                key={`g-${name}`}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-card px-2 py-0.5 text-[11px] text-text-secondary"
+              >
+                <MapPin className="h-3 w-3 text-text-tertiary" />
+                {name} <span className="font-medium text-foreground tabular-nums">{n}</span>
+              </span>
+            ))}
+            {r.sessions.map(([name, n]) => (
+              <span
+                key={`s-${name}`}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-card px-2 py-0.5 text-[11px] text-text-secondary"
+              >
+                <Clock className="h-3 w-3 text-text-tertiary" />
+                {name} <span className="font-medium text-foreground tabular-nums">{n}</span>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs text-text-tertiary">—</span>
+        ),
+    },
+  ];
 
   return (
     <MainScreenWrapper>
@@ -144,6 +240,12 @@ export function RealTimeAttendanceScreen({ demo = false }) {
       <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
+        <FilterDropdown
+          value={status}
+          onValueChange={setStatus}
+          options={ATTENDANCE_STATUS_FILTER_OPTIONS}
+          height="h-9"
+        />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -155,72 +257,40 @@ export function RealTimeAttendanceScreen({ demo = false }) {
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading attendance…
         </div>
-      ) : rows.length ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {rows.map((r) => (
-            <div key={r.id} className="flex flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{r.name}</p>
-                  <p className="mt-0.5 text-xs text-text-secondary">{formatDate(r.date)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold tabular-nums text-foreground">
-                    {r.checkedIn.toLocaleString("en-US")}
-                    <span className="text-sm font-normal text-text-tertiary">
-                      {" "}/ {r.expected.toLocaleString("en-US")}
-                    </span>
-                  </p>
-                  <p className="text-xs text-text-secondary">checked in</p>
-                </div>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-strong">
-                <div
-                  className="h-full rounded-full bg-emerald-400 transition-all"
-                  style={{ width: `${Math.min(100, r.pct)}%` }}
+      ) : (
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(r) => r.id}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={Activity}
+                  title={events.length ? "No events match your filters" : "No events yet"}
+                  description={
+                    events.length
+                      ? "Try clearing the search or status filter."
+                      : "Once you create events and staff start scanning, live counts appear here."
+                  }
+                  action={
+                    events.length ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setSearch("");
+                          setStatus("all");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null
+                  }
                 />
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-text-secondary">{r.pct}% arrived</span>
-                {r.checkedIn > 0 ? (
-                  <span className="inline-flex items-center gap-1.5 text-emerald-400">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                    Live
-                  </span>
-                ) : (
-                  <span className="text-text-tertiary">No arrivals yet</span>
-                )}
-              </div>
-              {r.gates.length || r.sessions.length ? (
-                <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
-                  {r.gates.map(([name, n]) => (
-                    <span key={`g-${name}`} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-card px-2.5 py-0.5 text-[11px] text-text-secondary">
-                      <MapPin className="h-3 w-3 text-text-tertiary" />
-                      {name} <span className="font-medium text-foreground tabular-nums">{n}</span>
-                    </span>
-                  ))}
-                  {r.sessions.map(([name, n]) => (
-                    <span key={`s-${name}`} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-card px-2.5 py-0.5 text-[11px] text-text-secondary">
-                      <Clock className="h-3 w-3 text-text-tertiary" />
-                      {name} <span className="font-medium text-foreground tabular-nums">{n}</span>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-border bg-surface-subtle">
-          <EmptyState
-            icon={Activity}
-            title={events.length ? "No events match your search" : "No events yet"}
-            description={
-              events.length
-                ? "Try a different search."
-                : "Once you create events and staff start scanning, live counts appear here."
             }
           />
+          <ListPagination {...pager} itemLabel="events" />
         </div>
       )}
     </MainScreenWrapper>

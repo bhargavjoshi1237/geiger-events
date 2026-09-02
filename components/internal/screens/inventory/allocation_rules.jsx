@@ -230,7 +230,10 @@ export function SellAddonDialog({
         </DialogHeader>
 
         <div className="grid gap-4">
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-2">
+          {/* min-w-0: a grid item's default min-width:auto would size this
+              track to the item name's min-content width (it's `truncate`, so
+              nowrap) and push the fields below past the dialog's edge. */}
+          <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-2">
             <ItemThumb item={item} items={allItems} />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-foreground">

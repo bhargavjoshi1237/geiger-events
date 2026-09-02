@@ -1,22 +1,20 @@
-import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import type { Href } from "expo-router";
-import React, { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 
-import { Card } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/icons";
+import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { api } from "@/lib/api";
-import { fmtTimeAgo } from "@/lib/format";
+import { fmtCompactTime } from "@/lib/format";
 import { usePoll } from "@/lib/use_poll";
-import { useSession } from "@/state/session";
+import { usePortalData } from "@/state/data";
 import { colors, radius, spacing, type } from "@/theme/tokens";
-import type { Channel } from "@/types/portal";
 
 type ChannelListProps = {
-  kind: string;
+  kind: "event" | "qa";
   emptyTitle: string;
   emptyMessage: string;
   routeBase: string;
@@ -27,64 +25,78 @@ const POLL_MS = 15_000;
 
 export function ChannelList({ kind, emptyTitle, emptyMessage, routeBase }: ChannelListProps) {
   const router = useRouter();
-  const { token } = useSession();
-  const [channels, setChannels] = useState<Channel[] | null>(null);
+  const { channels, qaChannels, refreshChannels } = usePortalData();
 
-  const load = useCallback(async () => {
-    if (!token) return;
-    const res = await api<{ channels: Channel[] }>(`/api/portal/chat/channels?kind=${kind}`, { token });
-    setChannels(res.ok ? res.data.channels : []);
-  }, [kind, token]);
+  usePoll(refreshChannels, POLL_MS, true);
 
-  usePoll(load, POLL_MS, true);
+  const list = kind === "qa" ? qaChannels : channels;
 
-  if (channels === null) return <SkeletonList rows={4} />;
-  if (!channels.length) {
+  if (list === null) return <SkeletonList rows={4} />;
+  if (!list.length) {
     return <EmptyState icon="message-circle" title={emptyTitle} message={emptyMessage} />;
   }
 
   return (
     <Animated.View layout={LinearTransition} style={styles.list}>
-      {channels.map((c, idx) => (
-        <Animated.View
-          key={c.id}
-          entering={FadeInDown.delay(stagger(idx)).springify()}
-          layout={LinearTransition}
-        >
-          <Card onPress={() => router.push(`${routeBase}/${c.id}` as Href)} style={styles.card}>
-            <View style={styles.row}>
+      {list.map((c, idx) => {
+        const announce = c.postingMode === "announce";
+        return (
+          <Animated.View
+            key={c.id}
+            entering={FadeInDown.delay(stagger(idx)).springify()}
+            layout={LinearTransition}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={c.unread ? `${c.name}, ${c.unread} unread` : c.name}
+              onPress={() => router.push(`${routeBase}/${c.id}` as Href)}
+              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+            >
+              <Avatar name={c.name} size={40} shape="square" />
               <View style={styles.stack}>
                 <View style={styles.titleRow}>
-                  {c.postingMode === "announce" ? (
-                    <Feather name="volume-2" size={13} color={colors.textTertiary} />
-                  ) : null}
                   <Text style={styles.name} numberOfLines={1}>
                     {c.name}
                   </Text>
+                  <View
+                    style={[styles.badge, announce ? styles.badgeInfo : styles.badgeSuccess]}
+                  >
+                    <Icon
+                      name={announce ? "volume-2" : "users"}
+                      size={10}
+                      color={announce ? colors.info : colors.success}
+                    />
+                    <Text
+                      style={[
+                        styles.badgeText,
+                        { color: announce ? colors.info : colors.success },
+                      ]}
+                    >
+                      {announce ? "Announce" : c.participantCount || "Open"}
+                    </Text>
+                  </View>
                 </View>
-                {c.topic ? (
-                  <Text style={styles.topic} numberOfLines={1}>
-                    {c.topic}
-                  </Text>
-                ) : null}
-                {c.lastPreview ? (
-                  <Text style={styles.preview} numberOfLines={1}>
-                    {c.lastPreview}
-                  </Text>
-                ) : null}
+                <Text style={styles.preview} numberOfLines={1}>
+                  {c.lastPreview || c.topic || "No messages yet"}
+                </Text>
               </View>
               <View style={styles.trailing}>
+                <Text style={styles.time}>{fmtCompactTime(c.lastMessageAt)}</Text>
                 {c.unread > 0 ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{c.unread > 99 ? "99+" : c.unread}</Text>
+                  <View style={styles.unread}>
+                    <Text style={styles.unreadText}>{c.unread > 99 ? "99+" : c.unread}</Text>
                   </View>
-                ) : null}
-                <Text style={styles.time}>{fmtTimeAgo(c.lastMessageAt)}</Text>
+                ) : (
+                  <View style={styles.messageCount}>
+                    <Icon name="message-square" size={12} color={colors.textTertiary} />
+                    <Text style={styles.messageCountText}>{c.messageCount}</Text>
+                  </View>
+                )}
               </View>
-            </View>
-          </Card>
-        </Animated.View>
-      ))}
+            </Pressable>
+          </Animated.View>
+        );
+      })}
     </Animated.View>
   );
 }
@@ -94,60 +106,95 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   card: {
-    padding: spacing.lg,
-  },
-  row: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   stack: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
+    gap: 4,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   name: {
-    flex: 1,
-    ...type.label,
-    fontWeight: "600",
+    ...type.bodyStrong,
+    flexShrink: 1,
     color: colors.foreground,
   },
-  topic: {
-    ...type.caption,
-    color: colors.textSecondary,
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: radius.pill,
+    paddingVertical: 2,
+    paddingHorizontal: 7,
+  },
+  badgeSuccess: {
+    backgroundColor: `${colors.success}1A`,
+    borderColor: `${colors.success}40`,
+  },
+  badgeInfo: {
+    backgroundColor: `${colors.info}1A`,
+    borderColor: `${colors.info}40`,
+  },
+  badgeText: {
+    ...type.micro,
+    fontSize: 10,
+    lineHeight: 13,
   },
   preview: {
     ...type.caption,
-    color: colors.textTertiary,
-    marginTop: 2,
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   trailing: {
     alignItems: "flex-end",
-    gap: spacing.sm,
+    gap: 6,
   },
-  badge: {
+  time: {
+    ...type.caption,
+    fontSize: 11,
+    color: colors.textTertiary,
+  },
+  unread: {
     minWidth: 20,
     height: 20,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xs + 2,
+    paddingHorizontal: 6,
   },
-  badgeText: {
-    ...type.caption,
-    fontSize: 10,
-    fontWeight: "700",
+  unreadText: {
+    ...type.micro,
+    fontSize: 11,
+    lineHeight: 14,
     color: colors.primaryForeground,
     fontVariant: ["tabular-nums"],
   },
-  time: {
+  messageCount: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  messageCountText: {
     ...type.caption,
+    fontSize: 11,
     color: colors.textTertiary,
+    fontVariant: ["tabular-nums"],
   },
 });

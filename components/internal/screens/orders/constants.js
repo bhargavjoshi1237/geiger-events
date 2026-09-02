@@ -63,6 +63,12 @@ export const ORDER_STATUS_FILTER_OPTIONS = [
   { value: "Cancelled", label: "Cancelled" },
 ];
 
+// Receipts only exist for non-cancelled orders, so Billing & Receipts gets the
+// same list minus Cancelled rather than a filter option that can never match.
+export const RECEIPT_STATUS_FILTER_OPTIONS = ORDER_STATUS_FILTER_OPTIONS.filter(
+  (o) => o.value === "all" || o.value !== "Cancelled",
+);
+
 // --- Refunds -----------------------------------------------------------------
 
 export const REFUND_STATUS_MAP = {
@@ -101,6 +107,9 @@ export const methodLabel = (value) =>
   REFUND_METHOD_OPTIONS.find((m) => m.value === value)?.label || "Original payment";
 
 // --- Transactions ------------------------------------------------------------
+
+// Rough gateway fee estimate (Stripe-style 2.9% + $0.30 per successful charge).
+export const estFee = (amount) => amount * 0.029 + 0.3;
 
 export const TRANSACTION_TYPE_MAP = {
   Charge: { label: "Charge", variant: "success", dotClass: "bg-emerald-400" },
@@ -144,6 +153,7 @@ export const ORDER_EVENT_LABELS = {
   receipt_sent: "Receipt sent",
   invoice_generated: "Invoice generated",
   note: "Note",
+  edited: "Order edited",
   status_change: "Status changed",
   disputed: "Dispute opened",
 };

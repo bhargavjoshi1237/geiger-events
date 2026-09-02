@@ -4,23 +4,24 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Copy,
+  Crosshair,
   HandHeart,
+  KeyRound,
   Link2,
   Loader2,
   Pencil,
   Plus,
   RefreshCw,
+  ShieldCheck,
   Trash2,
 } from "lucide-react";
 
-import {
-  MainScreenWrapper,
-  SecondaryScreenWrapper,
-} from "@/components/internal/shared/screen_wrappers";
-import { EditorHeader } from "@/components/internal/shared/editor_shell";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorShell } from "@/components/internal/shared/editor_shell";
 import {
   EmptyState,
   Field,
+  InlineTitleInput,
   ScreenHeader,
   SearchInput,
   SectionCard,
@@ -48,6 +49,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import { listEvents } from "@/lib/supabase/events";
@@ -58,7 +60,7 @@ import {
   updateStaffRole,
   softDeleteStaffRole,
 } from "@/lib/supabase/checkin";
-import { itemLabel } from "./constants";
+import { formatDateTime, itemLabel } from "./constants";
 
 const genCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
@@ -87,6 +89,177 @@ function issueLink(eventId, code) {
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   return `${origin}/issue/${eventId}${code ? `?code=${encodeURIComponent(code)}` : ""}`;
 }
+
+// --- Edit sections ----------------------------------------------------------
+// EditorShell renders each one as an element, never calls it.
+
+function AbilitiesSection({ perms, setPerm }) {
+  return (
+    <SectionCard bare>
+      <SettingsList>
+        <SettingRow
+          title="Issue items"
+          description="Look up an attendee and hand over what they're entitled to."
+          checked={perms.canIssue}
+          onCheckedChange={(v) => setPerm({ canIssue: v })}
+        />
+        <SettingRow
+          title="Undo a hand-out"
+          description="Reverse a mistake — writes a return movement back into stock."
+          checked={perms.canReturn}
+          onCheckedChange={(v) => setPerm({ canReturn: v })}
+        />
+        <SettingRow
+          title="Override & walk-up"
+          description="Issue again after it's already collected, outside a window, or with no attendee attached. Every override is logged."
+          checked={perms.canOverride}
+          onCheckedChange={(v) => setPerm({ canOverride: v })}
+        />
+      </SettingsList>
+    </SectionCard>
+  );
+}
+
+function ScopeSection({ grouped, perms, toggleAllocation }) {
+  return (
+    <SectionCard bare>
+      {!grouped.length ? (
+        <p className="text-xs text-text-tertiary">
+          No allocations yet — create them under Event Allocations.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {grouped.map((g) => (
+            <div key={g.eventId} className="space-y-2">
+              <p className="text-sm font-medium text-foreground">{g.eventName}</p>
+              <div className="flex flex-wrap gap-2">
+                {g.rows.map((a) => {
+                  const on = perms.allocationIds?.includes(a.id);
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => toggleAllocation(a.id)}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-sm transition-colors",
+                        on
+                          ? "border-primary bg-primary/15 text-foreground"
+                          : "border-border bg-surface-card text-text-secondary hover:text-foreground",
+                      )}
+                    >
+                      {a.itemName || "Item"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function AccessCodeSection({ code, setCode, copy }) {
+  return (
+    <SectionCard bare>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="rounded-lg border border-border bg-surface-card px-4 py-2 font-mono text-lg tracking-[0.3em] text-foreground">
+          {code}
+        </span>
+        <Button
+          variant="outline"
+          className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          onClick={() => setCode(genCode())}
+        >
+          <RefreshCw className="h-4 w-4" /> Regenerate
+        </Button>
+        <Button
+          variant="outline"
+          className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          onClick={() => copy(code, "Code")}
+        >
+          <Copy className="h-4 w-4" /> Copy code
+        </Button>
+      </div>
+    </SectionCard>
+  );
+}
+
+function ShareSection({ events, eventId, setEventId, link, copy }) {
+  return (
+    <SectionCard bare>
+      <div className="grid gap-4">
+        <Field
+          label="Event"
+          hint="The desk route runs per event — staff land straight in this event's queue."
+        >
+          <Select value={eventId} onValueChange={setEventId}>
+            <SelectTrigger className="w-full bg-surface-card">
+              <SelectValue placeholder="Pick an event" />
+            </SelectTrigger>
+            <SelectContent>
+              {events.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        {link ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-lg border border-border bg-surface-card px-3 py-2 text-xs text-text-secondary">
+              {link}
+            </code>
+            <Button
+              variant="outline"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={() => copy(link, "Link")}
+            >
+              <Link2 className="h-4 w-4" /> Copy link
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-text-tertiary">
+            No events yet — create one to share the desk.
+          </p>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+const SECTIONS = [
+  {
+    key: "abilities",
+    label: "Abilities",
+    icon: ShieldCheck,
+    desc: "What a device unlocked with this code can do at the issuing desk.",
+    render: AbilitiesSection,
+  },
+  {
+    key: "scope",
+    label: "Scope",
+    icon: Crosshair,
+    desc: "Which allocations this code may issue. With none selected it can issue any of them.",
+    render: ScopeSection,
+  },
+  {
+    key: "access",
+    label: "Access Code",
+    icon: KeyRound,
+    desc: "The PIN staff enter to open the desk. It only opens /issue — scanning and kiosk codes are separate.",
+    render: AccessCodeSection,
+  },
+  {
+    key: "share",
+    label: "Share the Desk",
+    icon: Link2,
+    desc: "Send staff a link that unlocks straight into the desk for one event.",
+    render: ShareSection,
+  },
+];
 
 function RoleEditPage({ role, events, allocations, onBack, onSave }) {
   const [name, setName] = useState(role.name);
@@ -140,167 +313,62 @@ function RoleEditPage({ role, events, allocations, onBack, onSave }) {
     setSaving(false);
   };
 
+  // Shared by every section: each one only pulls the slice it needs.
+  const formProps = {
+    events,
+    grouped,
+    perms,
+    setPerm,
+    toggleAllocation,
+    code,
+    setCode,
+    eventId,
+    setEventId,
+    copy,
+    link,
+  };
+
   return (
-    <SecondaryScreenWrapper>
-      <EditorHeader
-        back={{ label: "Back", onClick: onBack }}
-        title={
-          <>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              aria-label="Role name"
-              className="w-full max-w-md rounded-sm bg-transparent text-2xl font-semibold tracking-tight text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:text-3xl"
-            />
-            <Badge variant="neutral" className="shrink-0">
-              Issuing
-            </Badge>
-          </>
-        }
-        actions={
-          <Button
-            className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={saving}
-            onClick={save}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        }
-      />
-
-      <div className="mt-6 space-y-6">
-        <SectionCard
-          title="Abilities"
-          description="What a device unlocked with this code can do at the issuing desk."
+    <EditorShell
+      back={{ label: "Issuing Staff", onClick: onBack }}
+      title={
+        <InlineTitleInput
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-label="Role name"
+          placeholder="Untitled role"
+          className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
+        />
+      }
+      badges={
+        <>
+          <Badge variant="neutral">Issuing</Badge>
+          <Badge variant="neutral" className="font-mono">
+            {code}
+          </Badge>
+        </>
+      }
+      meta={`${permSummary(perms)}${
+        role.createdAt ? ` · Created ${formatDateTime(role.createdAt)}` : ""
+      }`}
+      actions={
+        <Button
+          className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={saving}
+          onClick={save}
         >
-          <SettingsList>
-            <SettingRow
-              title="Issue items"
-              description="Look up an attendee and hand over what they're entitled to."
-              checked={perms.canIssue}
-              onCheckedChange={(v) => setPerm({ canIssue: v })}
-            />
-            <SettingRow
-              title="Undo a hand-out"
-              description="Reverse a mistake — writes a return movement back into stock."
-              checked={perms.canReturn}
-              onCheckedChange={(v) => setPerm({ canReturn: v })}
-            />
-            <SettingRow
-              title="Override & walk-up"
-              description="Issue again after it's already collected, outside a window, or with no attendee attached. Every override is logged."
-              checked={perms.canOverride}
-              onCheckedChange={(v) => setPerm({ canOverride: v })}
-            />
-          </SettingsList>
-        </SectionCard>
-
-        <SectionCard
-          title="Scope"
-          description="Which allocations this code may issue. None selected = every allocation."
-        >
-          {!grouped.length ? (
-            <p className="text-xs text-text-tertiary">
-              No allocations yet — create them under Event Allocations.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {grouped.map((g) => (
-                <div key={g.eventId} className="space-y-2">
-                  <p className="text-sm font-medium text-foreground">{g.eventName}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {g.rows.map((a) => {
-                      const on = perms.allocationIds?.includes(a.id);
-                      return (
-                        <button
-                          key={a.id}
-                          type="button"
-                          onClick={() => toggleAllocation(a.id)}
-                          className={cn(
-                            "rounded-full border px-3 py-1 text-sm transition-colors",
-                            on
-                              ? "border-primary bg-primary/15 text-foreground"
-                              : "border-border bg-surface-card text-text-secondary hover:text-foreground",
-                          )}
-                        >
-                          {a.itemName || "Item"}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title="Access code"
-          description="Staff enter this PIN to open the issuing desk. It only opens /issue — scanning and kiosk codes are separate."
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-lg border border-border bg-surface-card px-4 py-2 font-mono text-lg tracking-[0.3em] text-foreground">
-              {code}
-            </span>
-            <Button
-              variant="outline"
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              onClick={() => setCode(genCode())}
-            >
-              <RefreshCw className="h-4 w-4" /> Regenerate
-            </Button>
-            <Button
-              variant="outline"
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              onClick={() => copy(code, "Code")}
-            >
-              <Copy className="h-4 w-4" /> Copy code
-            </Button>
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Share the desk"
-          description="The route is per-event. Pick the event and send staff the link — it unlocks straight into the desk."
-        >
-          <div className="space-y-3">
-            <Field label="Event">
-              <Select value={eventId} onValueChange={setEventId}>
-                <SelectTrigger className="bg-surface-card">
-                  <SelectValue placeholder="Pick an event" />
-                </SelectTrigger>
-                <SelectContent>
-                  {events.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            {link ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <code className="min-w-0 flex-1 truncate rounded-lg border border-border bg-surface-card px-3 py-2 text-xs text-text-secondary">
-                  {link}
-                </code>
-                <Button
-                  variant="outline"
-                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                  onClick={() => copy(link, "Link")}
-                >
-                  <Link2 className="h-4 w-4" /> Copy link
-                </Button>
-              </div>
-            ) : (
-              <p className="text-xs text-text-tertiary">
-                No events yet — create one to share the desk.
-              </p>
-            )}
-          </div>
-        </SectionCard>
-      </div>
-    </SecondaryScreenWrapper>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      }
+      nav={SECTIONS}
+      defaultSection={SECTIONS[0].key}
+    >
+      {({ activeItem }) => {
+        const Body = activeItem.render;
+        return <Body {...formProps} />;
+      }}
+    </EditorShell>
   );
 }
 
@@ -351,6 +419,8 @@ export function IssuingStaffScreen() {
     const q = search.trim().toLowerCase();
     return q ? roles.filter((r) => r.name.toLowerCase().includes(q)) : roles;
   }, [roles, search]);
+
+  const pager = usePagination(filtered, { resetKey: search });
 
   const handleCreate = () => {
     const name = draftName.trim();
@@ -464,49 +534,52 @@ export function IssuingStaffScreen() {
           />
         </div>
       ) : (
-        <div className="grid gap-3">
-          {filtered.map((role) => (
-            <div
-              key={role.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setOpenId(role.id)}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter" && e.key !== " ") return;
-                e.preventDefault();
-                setOpenId(role.id);
-              }}
-              className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
-                <HandHeart className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-foreground">{role.name}</span>
-                  <Badge variant="neutral" className="font-mono">
-                    {role.accessCode}
-                  </Badge>
+        <div className="space-y-5">
+          <div className="grid gap-3">
+            {pager.pageItems.map((role) => (
+              <div
+                key={role.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setOpenId(role.id)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  setOpenId(role.id);
+                }}
+                className="group flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+                  <HandHeart className="h-4 w-4" />
                 </div>
-                <p className="mt-0.5 truncate text-xs text-text-secondary">
-                  {permSummary({ ...defaultPermissions(), ...role.permissions })}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-foreground">{role.name}</span>
+                    <Badge variant="neutral" className="font-mono">
+                      {role.accessCode}
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-text-secondary">
+                    {permSummary({ ...defaultPermissions(), ...role.permissions })}
+                  </p>
+                </div>
+                <ActionMenu
+                  label="Role actions"
+                  items={[
+                    { icon: Pencil, label: "Edit", onSelect: () => setOpenId(role.id) },
+                    { separator: true },
+                    {
+                      icon: Trash2,
+                      label: "Delete",
+                      variant: "destructive",
+                      onSelect: () => setDeleteTarget(role),
+                    },
+                  ]}
+                />
               </div>
-              <ActionMenu
-                label="Role actions"
-                items={[
-                  { icon: Pencil, label: "Edit", onSelect: () => setOpenId(role.id) },
-                  { separator: true },
-                  {
-                    icon: Trash2,
-                    label: "Delete",
-                    variant: "destructive",
-                    onSelect: () => setDeleteTarget(role),
-                  },
-                ]}
-              />
-            </div>
-          ))}
+            ))}
+          </div>
+          <ListPagination {...pager} itemLabel="roles" />
         </div>
       )}
 

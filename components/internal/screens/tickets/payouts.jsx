@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Banknote, Percent, Wallet } from "lucide-react";
+import { Banknote, Percent, UserRound, Wallet } from "lucide-react";
 
 import {
   Field,
@@ -128,8 +128,8 @@ function FeesSection({ config, setConfig }) {
             value={config.feesTo || "organizer"}
             onChange={(v) => set({ feesTo: v })}
             options={[
-              { value: "organizer", label: "Absorb fees" },
-              { value: "buyer", label: "Pass to buyer" },
+              { value: "organizer", label: "Absorb fees", icon: Wallet },
+              { value: "buyer", label: "Pass to buyer", icon: UserRound },
             ]}
           />
         }

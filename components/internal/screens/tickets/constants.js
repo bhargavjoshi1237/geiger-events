@@ -129,6 +129,112 @@ export const TRANSFER_POLICY_OPTIONS = [
   { value: "open", label: "Open transfers" },
 ];
 
+// --- Dynamic Pricing (module "pricing_rule") --------------------------------
+// One reusable rule per row, in four kinds. `demand`, `time` and `quantity`
+// MOVE the ticket price (each carries its own trigger + adjustment +
+// guardrails); `resale` caps what a buyer may resell a ticket for — the same
+// ground Anti-scalping & Resale covers, kept so rules already attached to
+// events keep reading. The `demand` and `resale` key names are unchanged from
+// the original screen for that reason.
+
+export const PRICING_DIRECTION_OPTIONS = [
+  { value: "increase", label: "Raise price" },
+  { value: "decrease", label: "Lower price" },
+];
+
+export const PRICING_ADJUSTMENT_OPTIONS = [
+  { value: "percent", label: "Percent of price" },
+  { value: "flat", label: "Flat amount" },
+];
+
+// When a time rule arms itself: relative to the event, or on a fixed date.
+export const TIME_TRIGGER_OPTIONS = [
+  { value: "days_before", label: "Days before the event" },
+  { value: "on_date", label: "On a fixed date" },
+];
+
+// Whether a quantity rule's adjustment lands on every ticket in the order or
+// once against the order total.
+export const QUANTITY_APPLY_OPTIONS = [
+  { value: "ticket", label: "Per ticket" },
+  { value: "order", label: "Once per order" },
+];
+
+// Badge labels for the event editor's "Rules in effect" list.
+export const PRICING_RULE_KIND_LABELS = {
+  demand: "Sell-through",
+  time: "Date & time",
+  quantity: "Quantity",
+  resale: "Resale",
+};
+
+// Sell-through: "+10% once 75% of the allocation is sold".
+export const defaultDemandRuleConfig = () => ({
+  threshold: 75, // % of the allocation sold that arms the rule
+  bump: 10, // % added to the price once armed
+  floor: null, // lowest price this rule may produce; null = no floor
+  ceiling: null, // highest price this rule may produce; null = no cap
+});
+
+// Date & time: "−15% in the final 14 days" or "+10% from 1 Aug 2026".
+export const defaultTimeRuleConfig = () => ({
+  trigger: "days_before", // days_before | on_date
+  daysBefore: 14,
+  at: "", // datetime the rule arms on (trigger === "on_date")
+  direction: "decrease", // increase | decrease
+  adjustment: "percent", // percent | flat
+  value: 15,
+  floor: null,
+  ceiling: null,
+});
+
+// Quantity: "−$5 a ticket once a buyer takes 4 or more".
+export const defaultQuantityRuleConfig = () => ({
+  minQty: 4, // tickets in the order that arms the rule
+  applyPer: "ticket", // ticket | order
+  direction: "decrease",
+  adjustment: "flat",
+  value: 5,
+  floor: null,
+  ceiling: null,
+});
+
+// Resale cap (legacy kind — mirrors Anti-scalping & Resale's own config).
+export const defaultPricingResaleRuleConfig = () => ({
+  maxPricePercent: 100, // % of face value a resale may be listed at
+  transferCap: 2, // times one ticket may change hands
+});
+
+const pricingSign = (direction) => (direction === "decrease" ? "−" : "+");
+
+const pricingValue = (c) =>
+  c.adjustment === "flat" ? currency(c.value ?? 0) : `${c.value ?? 0}%`;
+
+// One line per kind, shared by the Tickets screen's table and the event
+// editor's "Rules in effect" list so the two never drift apart.
+export const pricingRuleSummary = (r) => {
+  const c = r.config || {};
+  const kind = r.kind || "demand";
+
+  if (kind === "demand")
+    return `+${c.bump ?? 10}% once ${c.threshold ?? 75}% sold`;
+
+  if (kind === "time") {
+    const when =
+      c.trigger === "on_date"
+        ? `from ${c.at ? formatDate(c.at) : "a date"}`
+        : `in the final ${c.daysBefore ?? 14} days`;
+    return `${pricingSign(c.direction)}${pricingValue(c)} ${when}`;
+  }
+
+  if (kind === "quantity") {
+    const per = c.applyPer === "order" ? "per order" : "a ticket";
+    return `${pricingSign(c.direction)}${pricingValue(c)} ${per} at ${c.minQty ?? 4}+ tickets`;
+  }
+
+  return `Resale ≤ ${c.maxPricePercent ?? 100}% of face · ${c.transferCap ?? 2} transfers`;
+};
+
 // --- Global settings (events.ticketing_settings, one row per project+module) --
 // Each factory is the default config for a project-global Tickets feature. The
 // screen shows these; individual events override the relevant keys from their

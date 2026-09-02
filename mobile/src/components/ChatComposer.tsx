@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -17,6 +16,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { Icon } from "@/components/ui/icons";
 import { selectionFeedback } from "@/lib/haptics";
 import { colors, radius, spacing, timing, type } from "@/theme/tokens";
 
@@ -83,16 +83,18 @@ export function ChatComposer({
         </View>
       ) : (
         <View style={styles.bar}>
-          <TextInput
-            style={styles.input}
-            value={text}
-            onChangeText={handleChange}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textTertiary}
-            multiline
-            maxLength={4000}
-            accessibilityLabel="Message"
-          />
+          <View style={styles.field}>
+            <TextInput
+              style={styles.input}
+              value={text}
+              onChangeText={handleChange}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textTertiary}
+              multiline
+              maxLength={4000}
+              accessibilityLabel="Message"
+            />
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Send"
@@ -105,7 +107,7 @@ export function ChatComposer({
               {sending ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
-                <Feather name="arrow-up" size={20} color={colors.primaryForeground} />
+                <Icon name="arrow-up" size={20} color={colors.primaryForeground} />
               )}
             </Animated.View>
           </Pressable>
@@ -128,30 +130,33 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: spacing.sm,
-    backgroundColor: colors.surfaceCard,
-    borderWidth: StyleSheet.hairlineWidth,
+    gap: spacing.sm + 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.surfaceActive,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  field: {
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 44,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.xs + 2,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.sm,
+    borderRadius: radius.xl + 2,
+    paddingHorizontal: spacing.lg,
   },
   input: {
-    flex: 1,
-    minHeight: 36,
-    maxHeight: MAX_LINES * type.body.lineHeight + spacing.md,
-    paddingTop: spacing.sm - 2,
-    paddingBottom: spacing.sm - 2,
-    paddingHorizontal: spacing.xs,
+    maxHeight: MAX_LINES * type.body.lineHeight,
+    paddingVertical: spacing.md - 2,
     ...type.body,
     color: colors.foreground,
     textAlignVertical: "center",
   },
   send: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primary,

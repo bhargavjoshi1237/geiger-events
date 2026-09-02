@@ -1,12 +1,18 @@
-import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 
+import { Icon, type IconName } from "@/components/ui/icons";
 import { selectionFeedback } from "@/lib/haptics";
 import { colors, radius, spacing, spring, type } from "@/theme/tokens";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive" | "destructiveGhost";
+type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "destructive"
+  | "destructiveGhost"
+  | "paper";
 type ButtonSize = "sm" | "md";
 
 type ButtonProps = {
@@ -14,7 +20,8 @@ type ButtonProps = {
   onPress?: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
-  icon?: React.ComponentProps<typeof Feather>["name"];
+  icon?: IconName;
+  iconPosition?: "leading" | "trailing";
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
@@ -26,6 +33,7 @@ const VARIANT_TEXT: Record<ButtonVariant, string> = {
   ghost: colors.foreground,
   destructive: colors.primary,
   destructiveGhost: colors.danger,
+  paper: colors.paper,
 };
 
 const VARIANT_BG: Record<ButtonVariant, string | undefined> = {
@@ -34,6 +42,7 @@ const VARIANT_BG: Record<ButtonVariant, string | undefined> = {
   ghost: undefined,
   destructive: colors.destructive,
   destructiveGhost: undefined,
+  paper: colors.paperForeground,
 };
 
 export function Button({
@@ -42,6 +51,7 @@ export function Button({
   variant = "primary",
   size = "md",
   icon,
+  iconPosition = "leading",
   loading = false,
   disabled = false,
   fullWidth = false,
@@ -95,12 +105,15 @@ export function Button({
           />
         ) : (
           <>
-            {icon ? (
-              <Feather name={icon} size={16} color={VARIANT_TEXT[variant]} />
+            {icon && iconPosition === "leading" ? (
+              <Icon name={icon} size={size === "sm" ? 16 : 18} color={VARIANT_TEXT[variant]} />
             ) : null}
             <Text style={[styles.label, size === "sm" && styles.labelSm, { color: VARIANT_TEXT[variant] }]}>
               {title}
             </Text>
+            {icon && iconPosition === "trailing" ? (
+              <Icon name={icon} size={size === "sm" ? 16 : 18} color={VARIANT_TEXT[variant]} />
+            ) : null}
           </>
         )}
       </Animated.View>
@@ -143,11 +156,11 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   label: {
-    ...type.label,
-    fontWeight: "600",
+    ...type.bodyStrong,
+    flexShrink: 0,
   },
   labelSm: {
-    ...type.caption,
+    ...type.labelStrong,
     fontSize: 13,
   },
 });

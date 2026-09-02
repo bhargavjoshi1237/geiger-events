@@ -1,86 +1,101 @@
-import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, {
-  FadeInDown,
-  LinearTransition,
-  runOnJS,
-  useAnimatedReaction,
-  useReducedMotion,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import type { Href } from "expo-router";
+import React, { useMemo } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 
+import { Icon, type IconName } from "@/components/ui/icons";
 import { Countdown } from "@/components/Countdown";
 import { EventCover } from "@/components/EventCover";
+import { ScreenTitle } from "@/components/ScreenTitle";
+import { TicketQr } from "@/components/TicketQr";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { ListRow } from "@/components/ui/ListRow";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { IconButton } from "@/components/ui/IconButton";
+import { IconTile } from "@/components/ui/IconTile";
+import { Perforation } from "@/components/ui/Perforation";
 import { Pill } from "@/components/ui/Pill";
+import { PulseDot } from "@/components/ui/PulseDot";
 import { Screen } from "@/components/ui/Screen";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { buildEventICS, directionsUrl, openDirections, shareEventICS } from "@/lib/calendar";
-import { firstName, fmtDate, fmtDay, greeting, isUpcoming, money } from "@/lib/format";
+import {
+  firstName,
+  fmtDate,
+  fmtShortDay,
+  greeting,
+  isToday,
+  isUpcoming,
+  money,
+  pluralize,
+} from "@/lib/format";
 import { ORDER_STATUS, statusPill } from "@/lib/status";
 import { usePortalData } from "@/state/data";
 import { useSession } from "@/state/session";
 import { colors, radius, spacing, type } from "@/theme/tokens";
-import type { Ticket } from "@/types/portal";
+import type { Entitlement, LiveRoom, Ticket } from "@/types/portal";
 
 const stagger = (i: number) => Math.min(i, 11) * 40;
 
 export default function HomeScreen() {
   const router = useRouter();
   const { member } = useSession();
-  const { data, plans, counts, refreshing, refreshAll } = usePortalData();
+  const { data, live, channels, counts } = usePortalData();
 
   const nextTicket = useMemo(() => {
     const upcoming = (data?.tickets || [])
-      .filter((t) => t.eventDate && isUpcoming(t.eventDate))
+      .filter((t) => t.eventDate && isUpcoming(t.eventDate) && !t.refund)
       .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
     return upcoming[0] || null;
   }, [data]);
 
-  const stats = useMemo(() => {
-    const tickets = data?.tickets || [];
-    const memberships = data?.memberships || [];
-    const orders = data?.orders || [];
-    const upcoming = tickets.filter((t) => isUpcoming(t.eventDate)).length;
-    const activeMemberships = memberships.filter((m) => m.status === "Active").length;
-    const spent = orders
-      .filter((o) => o.status !== "refunded" && o.status !== "cancelled")
-      .reduce((sum, o) => sum + Number(o.total || 0), 0);
-    return { upcoming, tickets: tickets.length, memberships: activeMemberships, spent };
-  }, [data]);
-
-  const availablePlans = useMemo(
-    () => (plans.plans || []).filter((p) => !p.held).length,
-    [plans],
-  );
-
-  const recentOrders = (data?.orders || []).slice(0, 4);
+  const liveRoom = useMemo(() => (live || []).find((r) => r.openNow) || null, [live]);
+  const recentOrders = (data?.orders || []).slice(0, 3);
+  const eventDay = Boolean(nextTicket && isToday(nextTicket.eventDate));
   const loading = data === null;
 
+  // Greet with the name they put on a ticket — that is what staff read at the door.
+  const greetName = useMemo(() => {
+    const onTicket =
+      nextTicket?.buyerName?.trim() ||
+      (data?.tickets || []).find((t) => t.buyerName?.trim())?.buyerName;
+    return firstName(onTicket || member?.name, member?.email);
+  }, [nextTicket, data, member]);
+
+  const chatCount = (channels || []).length;
+  const chatUnread = (channels || []).reduce((sum, c) => sum + (c.unread || 0), 0);
+  const activePlan = (data?.memberships || []).find((m) => m.status === "Active") || null;
+
   return (
-    <Screen scroll refreshing={refreshing} onRefresh={refreshAll}>
-      <View style={styles.headRow}>
-        <View style={styles.headStack}>
-          <Text style={styles.greeting}>{greeting()},</Text>
-          <Text style={styles.name}>{firstName(member?.name, member?.email)}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Notifications"
-          onPress={() => router.push("/notifications")}
-          style={styles.bell}
-        >
-          <Feather name="bell" size={20} color={colors.foreground} />
-          {counts.notifications ? <View style={styles.bellDot} /> : null}
-        </Pressable>
-      </View>
+    <Screen scroll>
+      {eventDay ? (
+        <TodayHeader />
+      ) : (
+        <ScreenTitle
+          eyebrow={`${greeting()},`}
+          title={greetName}
+          right={
+            <>
+              <IconButton
+                icon="bell"
+                label="Notifications"
+                badge={Boolean(counts.notifications)}
+                onPress={() => router.push("/notifications")}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Account"
+                onPress={() => router.push("/account")}
+              >
+                <Avatar name={member?.name} email={member?.email} size={44} />
+              </Pressable>
+            </>
+          }
+        />
+      )}
 
       {loading ? (
         <SkeletonList rows={5} />
@@ -88,89 +103,105 @@ export default function HomeScreen() {
         <Animated.View layout={LinearTransition} style={styles.stack}>
           {nextTicket ? (
             <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
-              <NextEventHero ticket={nextTicket} onOpen={() => router.push(`/tickets/${nextTicket.id}`)} />
+              {eventDay ? (
+                <EventDayPass
+                  ticket={nextTicket}
+                  onOpenPass={() => router.push(`/pass/${nextTicket.id}` as Href)}
+                />
+              ) : (
+                <NextEventHero
+                  ticket={nextTicket}
+                  onShowPass={() => router.push(`/pass/${nextTicket.id}` as Href)}
+                  onOpen={() =>
+                    router.push(
+                      (nextTicket.eventId
+                        ? `/events/${nextTicket.eventId}`
+                        : `/tickets/${nextTicket.id}`) as Href,
+                    )
+                  }
+                />
+              )}
             </Animated.View>
           ) : (
-            <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
-              <Text style={styles.caughtUp}>You&apos;re all caught up — no upcoming events.</Text>
-            </Animated.View>
+            <EmptyState
+              icon="calendar"
+              title="Nothing coming up"
+              message="Tickets you buy show up here with a countdown and a pass."
+              actionLabel="See your tickets"
+              onAction={() => router.push("/tickets")}
+            />
           )}
 
-          <Animated.View entering={FadeInDown.delay(stagger(1)).springify()}>
-            <Card>
-              <View style={styles.statsRow}>
-                <StatCell label="Upcoming" value={stats.upcoming} />
-                <View style={styles.statsDivider} />
-                <StatCell label="Tickets" value={stats.tickets} />
-              </View>
-              <View style={styles.statsRule} />
-              <View style={styles.statsRow}>
-                <StatCell label="Memberships" value={stats.memberships} />
-                <View style={styles.statsDivider} />
-                <StatCell label="Total spent" value={money(stats.spent)} />
-              </View>
-            </Card>
-          </Animated.View>
-
-          {availablePlans > 0 && stats.memberships === 0 ? (
-            <Animated.View entering={FadeInDown.delay(stagger(2)).springify()}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Become a member"
-                onPress={() => router.push("/memberships")}
-                style={({ pressed }) => [styles.memberCard, pressed && styles.pressed]}
-              >
-                <View style={styles.memberIcon}>
-                  <Feather name="star" size={18} color={colors.primary} />
-                </View>
-                <View style={styles.memberText}>
-                  <Text style={styles.memberTitle}>Become a member</Text>
-                  <Text style={styles.memberSub}>
-                    Unlock member pricing and perks — {availablePlans}{" "}
-                    {availablePlans === 1 ? "plan" : "plans"} available.
-                  </Text>
-                </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </Pressable>
+          {liveRoom ? (
+            <Animated.View entering={FadeInDown.delay(stagger(1)).springify()}>
+              <LiveStrip room={liveRoom} onPress={() => router.push(`/live/${liveRoom.id}`)} />
             </Animated.View>
           ) : null}
 
+          {eventDay && nextTicket ? (
+            <Animated.View entering={FadeInDown.delay(stagger(2)).springify()}>
+              <EventDayRows
+                ticket={nextTicket}
+                onOpenTicket={() => router.push(`/tickets/${nextTicket.id}`)}
+              />
+            </Animated.View>
+          ) : null}
+
+          <Animated.View entering={FadeInDown.delay(stagger(3)).springify()}>
+            <Shortcuts
+              chats={chatCount}
+              chatsUnread={chatUnread}
+              watch={counts.watch || 0}
+              plan={activePlan?.planName || null}
+              onGo={(href) => router.push(href as Href)}
+            />
+          </Animated.View>
+
           {recentOrders.length ? (
-            <Animated.View entering={FadeInDown.delay(stagger(3)).springify()}>
+            <Animated.View entering={FadeInDown.delay(stagger(4)).springify()}>
               <SectionTitle
                 action={
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="View all orders"
+                    accessibilityLabel="All orders"
                     onPress={() => router.push("/orders")}
-                    style={styles.viewAll}
                     hitSlop={8}
                   >
-                    <Text style={styles.viewAllText}>View all</Text>
+                    <Text style={styles.viewAll}>All</Text>
                   </Pressable>
                 }
               >
                 Recent orders
               </SectionTitle>
-              <Card style={styles.ordersCard}>
+              <View style={styles.ordersCard}>
                 {recentOrders.map((o, idx) => {
                   const pill = statusPill(ORDER_STATUS, o.status);
                   return (
-                    <ListRow
+                    <Pressable
                       key={o.id}
-                      title={o.eventName}
-                      subtitle={fmtDate(o.createdAt)}
-                      trailing={
-                        <View style={styles.orderTrailing}>
-                          <Pill label={pill.label} tone={pill.tone} />
-                          <Text style={styles.orderTotal}>{money(o.total)}</Text>
-                        </View>
-                      }
-                      divider={idx < recentOrders.length - 1}
-                    />
+                      accessibilityRole="button"
+                      accessibilityLabel={`${o.eventName}, ${pill.label}`}
+                      onPress={() => router.push(`/orders/${o.id}`)}
+                      style={({ pressed }) => [
+                        styles.orderRow,
+                        idx < recentOrders.length - 1 && styles.orderRowDivided,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View style={styles.orderStack}>
+                        <Text style={styles.orderName} numberOfLines={1}>
+                          {o.eventName}
+                        </Text>
+                        <Text style={styles.orderDate}>{fmtDate(o.createdAt)}</Text>
+                      </View>
+                      <View style={styles.orderTrailing}>
+                        <Pill label={pill.label} tone={pill.tone} variant="outline" />
+                        <Text style={styles.orderTotal}>{money(o.total)}</Text>
+                      </View>
+                    </Pressable>
                   );
                 })}
-              </Card>
+              </View>
             </Animated.View>
           ) : null}
         </Animated.View>
@@ -179,19 +210,49 @@ export default function HomeScreen() {
   );
 }
 
-function NextEventHero({ ticket, onOpen }: { ticket: Ticket; onOpen: () => void }) {
+function TodayHeader() {
+  return (
+    <View style={styles.todayRow}>
+      <View style={styles.todayLeft}>
+        <PulseDot size={8} />
+        <Text style={styles.todayTitle}>Today</Text>
+      </View>
+      <View style={styles.offlinePill}>
+        <Icon name="wifi-off" size={13} color={colors.mutedForeground} />
+        <Text style={styles.offlineText}>Offline ready</Text>
+      </View>
+    </View>
+  );
+}
+
+function NextEventHero({
+  ticket,
+  onShowPass,
+  onOpen,
+}: {
+  ticket: Ticket;
+  onShowPass: () => void;
+  onOpen: () => void;
+}) {
   const loc = [ticket.venue, ticket.city].filter(Boolean).join(", ");
-  const hasCalendar = Boolean(buildEventICS(ticket));
-  const hasDirections = Boolean(directionsUrl(ticket));
+  const when = [ticket.eventDate ? fmtShortDay(ticket.eventDate) : "Date TBA", ticket.eventTime]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <View style={styles.hero}>
-      <View>
-        <EventCover uri={ticket.coverUrl} name={ticket.eventName} height={210} radius={0} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${ticket.eventName}`}
+        onPress={onOpen}
+      >
+        <EventCover uri={ticket.coverUrl} name={ticket.eventName} height={170} radius={0} />
+        {/* The poster dissolves into the card body instead of stopping at a hard edge. */}
         <LinearGradient
-          colors={[colors.overlay, "transparent"]}
-          start={{ x: 0, y: 1 }}
-          end={{ x: 0, y: 0 }}
+          colors={["transparent", "rgba(26,26,26,0.55)", colors.surfaceSubtle]}
+          locations={[0.3, 0.72, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
           pointerEvents="none"
           style={StyleSheet.absoluteFill}
         />
@@ -203,27 +264,35 @@ function NextEventHero({ ticket, onOpen }: { ticket: Ticket; onOpen: () => void 
             {ticket.eventName}
           </Text>
           <Text style={styles.heroLine} numberOfLines={1}>
-            {ticket.eventDate ? fmtDay(ticket.eventDate) : "Date TBA"}
-            {ticket.eventTime ? ` · ${ticket.eventTime}` : ""}
+            {[when, loc].filter(Boolean).join(" · ")}
           </Text>
-          {loc ? (
-            <Text style={styles.heroLine} numberOfLines={1}>
-              {loc}
-            </Text>
-          ) : null}
         </View>
-      </View>
+      </Pressable>
       <View style={styles.heroBody}>
         <Countdown dateStr={ticket.eventDate} />
         <View style={styles.heroActions}>
-          <View style={styles.heroPrimaryWrap}>
-            <Button title="View ticket" onPress={onOpen} fullWidth icon="credit-card" />
+          <View style={styles.heroPrimary}>
+            <Button title="Show Pass" icon="qr-code" onPress={onShowPass} fullWidth />
           </View>
-          {hasCalendar ? (
-            <HeroIconButton icon="calendar" label="Add to calendar" onPress={() => void shareEventICS(ticket)} />
+          {buildEventICS(ticket) ? (
+            <IconButton
+              icon="calendar"
+              label="Add to calendar"
+              shape="square"
+              size={48}
+              variant="solid"
+              onPress={() => void shareEventICS(ticket)}
+            />
           ) : null}
-          {hasDirections ? (
-            <HeroIconButton icon="navigation" label="Directions" onPress={() => void openDirections(ticket)} />
+          {directionsUrl(ticket) ? (
+            <IconButton
+              icon="navigation"
+              label="Directions"
+              shape="square"
+              size={48}
+              variant="solid"
+              onPress={() => void openDirections(ticket)}
+            />
           ) : null}
         </View>
       </View>
@@ -231,124 +300,284 @@ function NextEventHero({ ticket, onOpen }: { ticket: Ticket; onOpen: () => void 
   );
 }
 
-function HeroIconButton({
+function EventDayPass({ ticket, onOpenPass }: { ticket: Ticket; onOpenPass: () => void }) {
+  const loc = [ticket.venue, ticket.city].filter(Boolean).join(", ");
+  const line = [
+    `${ticket.ticket || "Admission"}${ticket.quantity > 1 ? ` × ${ticket.quantity}` : ""}`,
+    loc,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <View style={styles.pass}>
+      <Text style={styles.passKicker}>
+        {ticket.eventTime ? `Doors open ${ticket.eventTime}` : "Present at entrance"}
+      </Text>
+      <Text style={styles.passName} numberOfLines={2}>
+        {ticket.eventName}
+      </Text>
+      <Text style={styles.passLine} numberOfLines={2}>
+        {line}
+      </Text>
+
+      <View style={styles.passRule}>
+        <Perforation dashColor={colors.paperDash} notchColor={colors.background} notchSize={20} />
+      </View>
+
+      <View style={styles.passRow}>
+        <TicketQr orderId={ticket.id} size={104} padded={false} />
+        <View style={styles.passMeta}>
+          <Text style={styles.passMetaLabel}>Order</Text>
+          <Text style={styles.passCode}>{ticket.orderCode}</Text>
+          <Text style={[styles.passMetaLabel, styles.passMetaSpaced]}>Attendee</Text>
+          <Text style={styles.passAttendee} numberOfLines={1}>
+            {ticket.buyerName || ticket.buyerEmail}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.passAction}>
+        <Button title="Open full pass" icon="maximize" variant="paper" onPress={onOpenPass} fullWidth />
+      </View>
+    </View>
+  );
+}
+
+function EventDayRows({ ticket, onOpenTicket }: { ticket: Ticket; onOpenTicket: () => void }) {
+  const collectables = (ticket.entitlements || []).filter((e) => e.entitled > 0);
+  const loc = [ticket.venue, ticket.address, ticket.city].filter(Boolean).join(", ");
+
+  return (
+    <View style={styles.rows}>
+      {collectables.length ? (
+        <ActionRow
+          icon="package"
+          title="Collect at the event"
+          subtitle={collectables.map(collectSummary).join(" · ")}
+          onPress={onOpenTicket}
+        />
+      ) : null}
+      {directionsUrl(ticket) ? (
+        <ActionRow
+          icon="navigation"
+          title={ticket.venue || "Venue"}
+          subtitle={loc || "Get directions"}
+          onPress={() => void openDirections(ticket)}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function collectSummary(e: Entitlement): string {
+  return e.remaining <= 0
+    ? `${e.name} · collected`
+    : `${e.name} · ${e.collected} of ${e.entitled}`;
+}
+
+function ActionRow({
   icon,
-  label,
+  title,
+  subtitle,
   onPress,
 }: {
-  icon: React.ComponentProps<typeof Feather>["name"];
-  label: string;
+  icon: IconName;
+  title: string;
+  subtitle: string;
   onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={title}
       onPress={onPress}
-      style={({ pressed }) => [styles.heroIconBtn, pressed && styles.pressed]}
-      hitSlop={4}
+      style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
     >
-      <Feather name={icon} size={18} color={colors.foreground} />
+      <IconTile icon={icon} size={40} />
+      <View style={styles.actionStack}>
+        <Text style={styles.actionTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={styles.actionSub} numberOfLines={1}>
+          {subtitle}
+        </Text>
+      </View>
+      <Icon name="chevron-right" size={18} color={colors.textSecondary} />
     </Pressable>
   );
 }
 
-function StatCell({ label, value }: { label: string; value: number | string }) {
+type Shortcut = {
+  href: string;
+  icon: IconName;
+  label: string;
+  value: string;
+};
+
+// The design brief calls Home "next event, live, shortcuts" — this is the third.
+function Shortcuts({
+  chats,
+  chatsUnread,
+  watch,
+  plan,
+  onGo,
+}: {
+  chats: number;
+  chatsUnread: number;
+  watch: number;
+  plan: string | null;
+  onGo: (href: string) => void;
+}) {
+  const items: Shortcut[] = [
+    {
+      href: "/community",
+      icon: "message-circle",
+      label: "Group chat",
+      value: chatsUnread
+        ? `${chatsUnread} unread`
+        : chats
+          ? `${chats} ${pluralize(chats, "chat", "chats")}`
+          : "No chats yet",
+    },
+    {
+      href: "/watch",
+      icon: "circle-play",
+      label: "Watch",
+      value: watch ? `${watch} ${pluralize(watch, "video", "videos")}` : "Nothing yet",
+    },
+    {
+      href: "/memberships",
+      icon: "award",
+      label: "Membership",
+      value: plan || "Not a member",
+    },
+  ];
+
   return (
-    <View style={styles.statCell}>
-      <Text style={styles.statLabel}>{label}</Text>
-      {typeof value === "number" ? <AnimatedValue target={value} /> : null}
-      {typeof value === "string" ? <Text style={styles.statValueString}>{value}</Text> : null}
+    <View>
+      <SectionTitle>Shortcuts</SectionTitle>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.shortcutScroll}
+        contentContainerStyle={styles.shortcutRow}
+      >
+        {items.map((s) => (
+          <Pressable
+            key={s.href}
+            accessibilityRole="button"
+            accessibilityLabel={`${s.label}, ${s.value}`}
+            onPress={() => onGo(s.href)}
+            style={({ pressed }) => [styles.shortcut, pressed && styles.pressed]}
+          >
+            <IconTile icon={s.icon} size={34} />
+            <View style={styles.shortcutStack}>
+              <Text style={styles.shortcutLabel} numberOfLines={1}>
+                {s.label}
+              </Text>
+              <Text style={styles.shortcutValue} numberOfLines={1}>
+                {s.value}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
-function AnimatedValue({ target }: { target: number }) {
-  const reduced = useReducedMotion();
-  const [shown, setShown] = useState(reduced ? target : 0);
-  const progress = useSharedValue(0);
+function LiveStrip({ room, onPress }: { room: LiveRoom; onPress: () => void }) {
+  const meta = [room.liveNow > 0 ? `${room.liveNow} watching` : null, room.eventName]
+    .filter(Boolean)
+    .join(" · ");
 
-  useEffect(() => {
-    if (reduced) progress.value = target;
-    else progress.value = withTiming(target, { duration: 420 });
-  }, [target, reduced, progress]);
-
-  useAnimatedReaction(
-    () => progress.value,
-    (v) => runOnJS(setShown)(v),
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${room.name} is live`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.liveStrip, pressed && styles.pressed]}
+    >
+      <IconTile icon="radio" size={40} tone="success" />
+      <View style={styles.liveStack}>
+        <View style={styles.liveTitleRow}>
+          <PulseDot size={7} />
+          <Text style={styles.liveTitle} numberOfLines={1}>
+            {room.name} is live
+          </Text>
+        </View>
+        {meta ? (
+          <Text style={styles.liveMeta} numberOfLines={1}>
+            {meta}
+          </Text>
+        ) : null}
+      </View>
+      <Icon name="chevron-right" size={18} color={colors.textSecondary} />
+    </Pressable>
   );
-
-  return <Text style={styles.statValue}>{String(Math.round(shown))}</Text>;
 }
 
 const styles = StyleSheet.create({
   stack: {
     gap: spacing.xl,
   },
-  headRow: {
+  pressed: {
+    opacity: 0.7,
+  },
+  todayRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
-    marginBottom: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg + 2,
   },
-  headStack: {
-    flex: 1,
+  todayLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
-  greeting: {
-    ...type.body,
-    color: colors.textSecondary,
-  },
-  name: {
-    ...type.display,
+  todayTitle: {
+    ...type.title,
+    fontSize: 20,
     color: colors.foreground,
   },
-  bell: {
-    width: 44,
-    height: 44,
+  offlinePill: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceCard,
+    gap: spacing.xs + 2,
     borderWidth: 1,
     borderColor: colors.border,
-    marginTop: spacing.xs,
+    borderRadius: radius.pill,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md - 2,
   },
-  bellDot: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: colors.primary,
-  },
-  caughtUp: {
-    ...type.heading,
-    color: colors.textSecondary,
-    textAlign: "center",
-    paddingVertical: spacing.lg,
+  offlineText: {
+    ...type.micro,
+    color: colors.mutedForeground,
   },
   hero: {
     overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     backgroundColor: colors.surfaceSubtle,
   },
   heroChip: {
     position: "absolute",
-    top: spacing.md,
-    left: spacing.md,
-    backgroundColor: colors.chipScrim,
+    top: 14,
+    left: 14,
+    backgroundColor: colors.scrim,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
     borderRadius: radius.pill,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    paddingHorizontal: spacing.md - 2,
   },
   heroChipText: {
     ...type.kicker,
+    letterSpacing: 0.7,
     textTransform: "uppercase",
     color: colors.primary,
   },
@@ -357,123 +586,225 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    gap: spacing.xs,
+    gap: 6,
     padding: spacing.lg,
   },
   heroName: {
     ...type.title,
+    fontSize: 21,
+    lineHeight: 25,
     color: colors.primary,
   },
   heroLine: {
     ...type.caption,
-    color: colors.primary,
+    fontSize: 13,
+    lineHeight: 18,
+    color: "rgba(255,255,255,0.75)",
   },
   heroBody: {
-    gap: spacing.lg,
+    gap: 14,
     padding: spacing.lg,
   },
   heroActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.md - 2,
   },
-  heroPrimaryWrap: {
+  heroPrimary: {
     flex: 1,
   },
-  heroIconBtn: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceActive,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+  pass: {
+    backgroundColor: colors.paper,
+    borderRadius: radius.xxl,
+    padding: 22,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.45,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 10,
   },
-  pressed: {
-    opacity: 0.6,
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-  },
-  statsDivider: {
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginVertical: spacing.xs,
-  },
-  statsRule: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginVertical: spacing.lg,
-  },
-  statCell: {
-    flex: 1,
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-  },
-  statLabel: {
+  passKicker: {
     ...type.kicker,
     textTransform: "uppercase",
-    color: colors.textTertiary,
+    color: colors.paperSecondary,
   },
-  statValue: {
+  passName: {
     ...type.title,
-    color: colors.foreground,
-    fontVariant: ["tabular-nums"],
+    fontSize: 24,
+    lineHeight: 28,
+    color: colors.paperForeground,
+    marginTop: spacing.sm + 2,
   },
-  statValueString: {
-    ...type.title,
-    color: colors.foreground,
-    fontVariant: ["tabular-nums"],
+  passLine: {
+    ...type.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.paperMuted,
+    marginTop: 6,
   },
-  memberCard: {
+  passRule: {
+    marginVertical: spacing.xl - 4,
+    marginHorizontal: -22,
+  },
+  passRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.lg,
+  },
+  passMeta: {
+    flex: 1,
+    minWidth: 0,
+  },
+  passMetaLabel: {
+    ...type.captionStrong,
+    fontSize: 13,
+    color: colors.paperMuted,
+  },
+  passMetaSpaced: {
+    marginTop: spacing.md,
+  },
+  passCode: {
+    ...type.mono,
+    fontSize: 16,
+    lineHeight: 20,
+    color: colors.paperForeground,
+    marginTop: 2,
+  },
+  passAttendee: {
+    ...type.bodyStrong,
+    color: colors.paperForeground,
+    marginTop: 2,
+  },
+  passAction: {
+    marginTop: spacing.xl - 4,
+  },
+  rows: {
+    gap: spacing.md - 2,
+  },
+  actionRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     borderWidth: 1,
-    borderColor: `${colors.primary}29`,
-    backgroundColor: `${colors.primary}14`,
+    borderColor: colors.border,
     borderRadius: radius.lg,
-    padding: spacing.lg,
+    backgroundColor: colors.surfaceSubtle,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
   },
-  memberIcon: {
-    width: 38,
-    height: 38,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: `${colors.primary}26`,
-    borderRadius: radius.md,
-  },
-  memberText: {
+  actionStack: {
     flex: 1,
-    gap: 2,
+    minWidth: 0,
+    gap: 3,
   },
-  memberTitle: {
+  actionTitle: {
     ...type.label,
-    fontWeight: "600",
     color: colors.foreground,
   },
-  memberSub: {
+  actionSub: {
+    ...type.caption,
+    color: colors.textSecondary,
+  },
+  liveStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: `${colors.success}40`,
+    backgroundColor: `${colors.success}14`,
+    borderRadius: radius.lg,
+    padding: 14,
+  },
+  liveStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  liveTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  liveTitle: {
+    ...type.labelStrong,
+    flexShrink: 1,
+    color: colors.foreground,
+  },
+  liveMeta: {
+    ...type.caption,
+    color: colors.textSecondary,
+  },
+  // Bleed past the screen padding so the row scrolls off both edges.
+  shortcutScroll: {
+    marginHorizontal: -spacing.lg,
+  },
+  shortcutRow: {
+    flexDirection: "row",
+    gap: spacing.md - 2,
+    paddingHorizontal: spacing.lg,
+  },
+  shortcut: {
+    width: 132,
+    gap: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    padding: 14,
+  },
+  shortcutStack: {
+    gap: 2,
+  },
+  shortcutLabel: {
+    ...type.labelStrong,
+    color: colors.foreground,
+  },
+  shortcutValue: {
     ...type.caption,
     color: colors.textSecondary,
   },
   viewAll: {
-    paddingVertical: spacing.xs,
-  },
-  viewAllText: {
-    ...type.label,
-    fontSize: 12,
+    ...type.captionStrong,
+    fontSize: 13,
     color: colors.textSecondary,
   },
   ordersCard: {
-    padding: 0,
-    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    overflow: "hidden",
+  },
+  orderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+  },
+  orderRowDivided: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
+  orderStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  orderName: {
+    ...type.label,
+    color: colors.foreground,
+  },
+  orderDate: {
+    ...type.caption,
+    color: colors.textTertiary,
   },
   orderTrailing: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: spacing.sm + 2,
   },
   orderTotal: {
     ...type.label,

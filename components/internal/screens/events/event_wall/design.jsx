@@ -6,8 +6,12 @@ import {
   Check,
   Globe,
   ImageOff,
+  LayoutGrid,
   Loader2,
+  Moon,
+  Rows3,
   Sparkles,
+  Sun,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -33,7 +37,16 @@ import {
   uploadWallVideo,
 } from "@/lib/supabase/storage";
 import { coverKind } from "@/lib/events/gallery";
-import { Segmented, ColorField } from "../theme_controls";
+import { Segmented, ColorField, withIcons } from "../theme_controls";
+
+// Two-option sets render as an icon+label tab pair, so each needs a glyph.
+// Attached here rather than in the lib data modules they come from, which the
+// public event page also imports.
+const BASE_OPTIONS = withIcons(BASES, { dark: Moon, light: Sun });
+const WALL_VIEW_OPTIONS = withIcons(WALL_VIEWS, {
+  cards: LayoutGrid,
+  list: Rows3,
+});
 import { DEFAULT_FOOTER } from "../page_footer";
 import { ImportBrandDialog } from "../brand_import";
 import { WALL_VIEWS, DEFAULT_LAYOUT } from "./wall_layout";
@@ -322,7 +335,11 @@ export function WallDesignSection({ wall, onWallChange }) {
       >
         <div className="space-y-5">
           <Field label="Base">
-            <Segmented value={resolved.base} onChange={onBase} options={BASES} />
+            <Segmented
+              value={resolved.base}
+              onChange={onBase}
+              options={BASE_OPTIONS}
+            />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <ColorField
@@ -453,7 +470,7 @@ export function WallDesignSection({ wall, onWallChange }) {
             <Segmented
               value={layout.defaultView || "cards"}
               onChange={(v) => setLayoutKey({ defaultView: v })}
-              options={WALL_VIEWS}
+              options={WALL_VIEW_OPTIONS}
             />
           </Field>
           <SettingsList>

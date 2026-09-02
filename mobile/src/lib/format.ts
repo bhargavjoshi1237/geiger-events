@@ -46,6 +46,22 @@ export function fmtTimeAgo(d: string | null | undefined): string {
   return fmtDate(d);
 }
 
+// The tight timestamp the inbox uses: "12m", "11:04", "Yest", "3d", then a date.
+export function fmtCompactTime(d: string | null | undefined): string {
+  if (!d) return "";
+  const then = new Date(d).getTime();
+  if (Number.isNaN(then)) return "";
+  const mins = Math.floor((Date.now() - then) / 6e4);
+  if (mins < 0) return fmtDate(d);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  if (isToday(d)) return fmtClock(d);
+  const days = Math.floor(mins / 1440);
+  if (days <= 1) return "Yest";
+  if (days <= 6) return `${days}d`;
+  return fmtDate(d);
+}
+
 export function initials(
   name: string | null | undefined,
   email: string | null | undefined,
@@ -72,6 +88,51 @@ export function greeting(): string {
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
+}
+
+export const fmtShortDay = (d: string | null | undefined): string =>
+  d
+    ? new Date(d).toLocaleDateString("en-US", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })
+    : "";
+
+export const fmtMonthYear = (d: string | null | undefined): string =>
+  d ? new Date(d).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "";
+
+export const fmtClock = (d: string | null | undefined): string =>
+  d ? new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
+
+export function isToday(dateStr: string | null | undefined): boolean {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+export function daysUntil(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.ceil((d.getTime() - Date.now()) / 864e5);
+}
+
+// "In 28 days" / "Today" / "Tomorrow" — the relative label on ticket and live rows.
+export function relativeDayLabel(dateStr: string | null | undefined): string {
+  if (isToday(dateStr)) return "Today";
+  const days = daysUntil(dateStr);
+  if (days === null) return "";
+  if (days < 0) return fmtDate(dateStr);
+  if (days === 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  return `In ${days} days`;
 }
 
 export function isUpcoming(dateStr: string | null | undefined): boolean {

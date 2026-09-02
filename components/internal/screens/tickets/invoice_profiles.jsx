@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FileText, Receipt } from "lucide-react";
+import { FileText, Hand, Receipt, Zap } from "lucide-react";
 
 import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
 import { Input } from "@geiger/ui/input";
@@ -35,17 +35,18 @@ function InvoicesSection({ config, setConfig }) {
 
   return (
     <SectionCard bare>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4">
         <Field
           label="Generation"
           hint="Issue automatically, or only on request."
         >
           <Segmented
+            className="w-fit"
             value={config.generation || "manual"}
             onChange={(v) => set({ generation: v })}
             options={[
-              { value: "manual", label: "Manual" },
-              { value: "auto", label: "Automatic" },
+              { value: "manual", label: "Manual", icon: Hand },
+              { value: "auto", label: "Automatic", icon: Zap },
             ]}
           />
         </Field>
@@ -54,19 +55,15 @@ function InvoicesSection({ config, setConfig }) {
             value={config.prefix || ""}
             onChange={(e) => set({ prefix: e.target.value })}
             placeholder="INV"
-            className="max-w-[8rem] uppercase"
+            className="w-full uppercase"
           />
         </Field>
-        <Field
-          label="Business / VAT ID"
-          hint="Printed on every invoice."
-          className="sm:col-span-2"
-        >
+        <Field label="Business / VAT ID" hint="Printed on every invoice.">
           <Input
             value={config.businessId || ""}
             onChange={(e) => set({ businessId: e.target.value })}
             placeholder="e.g. GB123456789"
-            className="max-w-sm"
+            className="w-full"
           />
         </Field>
       </div>
