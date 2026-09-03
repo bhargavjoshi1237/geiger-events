@@ -45,6 +45,9 @@ const SELECTION_FEATURES = {
 
 function TicketOption({ ticket, index, selected, setSelected, accent }) {
   const isActive = selected === index;
+  const releaseNote = ticket.releaseNote || "";
+  const releaseSoldOut =
+    ticket.releaseState?.hasReleases && (ticket.releaseState.remaining || 0) <= 0;
   return (
     <button
       type="button"
@@ -55,6 +58,7 @@ function TicketOption({ ticket, index, selected, setSelected, accent }) {
         isActive
           ? "bg-surface-card"
           : "border-border bg-transparent hover:bg-surface-card",
+        releaseSoldOut && "opacity-70",
       )}
     >
       <span
@@ -79,9 +83,14 @@ function TicketOption({ ticket, index, selected, setSelected, accent }) {
         {ticket.note ? (
           <span className="block text-xs text-text-secondary">{ticket.note}</span>
         ) : null}
+        {releaseNote ? (
+          <span className="mt-0.5 block text-[11px] font-medium text-text-tertiary">
+            {releaseNote}
+          </span>
+        ) : null}
       </span>
       <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-        {ticket.price === 0 ? "Free" : `$${ticket.price}`}
+        {releaseSoldOut ? "Paused" : ticket.price === 0 ? "Free" : `$${ticket.price}`}
       </span>
     </button>
   );

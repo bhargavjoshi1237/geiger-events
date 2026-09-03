@@ -32,6 +32,12 @@ export function buildTickets(event, resolved) {
     const groupById = new Map(
       (Array.isArray(event.tickets) ? event.tickets : []).map((t) => [t.id, t.groupId ?? null]),
     );
+    const releasesById = new Map(
+      (Array.isArray(event.tickets) ? event.tickets : []).map((t) => [
+        t.id,
+        Array.isArray(t.releases) ? t.releases : [],
+      ]),
+    );
     return source
       .filter((t) => (t.rules?.visibility || "public") !== "hidden")
       .map((t) => ({
@@ -42,6 +48,10 @@ export function buildTickets(event, resolved) {
         note: t.description || "",
         ticketTypeId: t.ticketTypeId ?? null,
         groupId: t.groupId ?? groupById.get(t.id) ?? null,
+        // Batched releases ride on the ticket entry; the RPC already merges
+        // them (ord.t || rules), but buildTickets must not drop them — the
+        // storefront resolves on-sale tranches from this array.
+        releases: Array.isArray(t.releases) ? t.releases : releasesById.get(t.id) || [],
         rules: t.rules && typeof t.rules === "object" ? t.rules : {},
       }));
   }

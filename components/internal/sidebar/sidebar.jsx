@@ -19,6 +19,7 @@ import { Button } from "@geiger/ui/button";
 import { Skeleton } from "@geiger/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useNavLoading, useVisibleNav } from "@/lib/hooks/use-visible-nav";
+import { useIdleRecenter } from "@/lib/hooks/use-idle-recenter";
 
 const SIDEBAR_SCROLL_ID = "workspace-sidebar-scroll";
 let savedSidebarScroll = 0;
@@ -49,6 +50,7 @@ function SidebarNavSkeleton() {
 export function AppSidebar({ activeTab = "Overview", onTabChange = () => {} }) {
   const { toggleSidebar, state } = useSidebar();
   const [expandedItems, setExpandedItems] = React.useState({});
+  const { ref: navRef } = useIdleRecenter(activeTab);
 
   React.useLayoutEffect(() => {
     const el = document.getElementById(SIDEBAR_SCROLL_ID);
@@ -75,6 +77,7 @@ export function AppSidebar({ activeTab = "Overview", onTabChange = () => {} }) {
     >
       <MobileSidebarHeader />
       <SidebarContent
+        ref={navRef}
         id={SIDEBAR_SCROLL_ID}
         onScroll={handleSidebarScroll}
         className="py-1 space-y-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

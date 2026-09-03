@@ -106,7 +106,13 @@ export function EventPublicPageContent({
     tierQty > 0
       ? Math.max(0, tierQty - (Number(tierSold[selectedTicket?.id]) || 0))
       : Infinity;
-  const remaining = Math.min(eventRemaining, tierRemaining);
+  // Batched releases cap the buyable qty to the unlocked tranches (FIFO).
+  const releaseRemaining = selectedTicket?.releaseState?.hasReleases
+    ? (Number.isFinite(selectedTicket.releaseState.remaining)
+        ? selectedTicket.releaseState.remaining
+        : Infinity)
+    : Infinity;
+  const remaining = Math.min(eventRemaining, tierRemaining, releaseRemaining);
   const soldOut = Number.isFinite(remaining) && remaining <= 0;
   const checkoutRemaining = Number.isFinite(remaining) ? remaining : 9999;
   const showRemaining = event.regSettings?.showRemaining !== false;

@@ -14,12 +14,14 @@ import {
 import { PanelLeft } from "lucide-react";
 import { SidebarOption } from "../sidebar_option";
 import { MobileSidebarHeader } from "./mobile_sidebar_header";
+import { useIdleRecenter } from "@/lib/hooks/use-idle-recenter";
 import { projectNav, settingsNav } from "./sidebar_data";
 import { Button } from "@geiger/ui/button";
 
 export function ProjectSidebar({ activeTab = "Overview", onTabChange = () => {} }) {
   const { toggleSidebar, state } = useSidebar();
   const [expandedItems, setExpandedItems] = useState({});
+  const { ref: navRef } = useIdleRecenter(activeTab);
 
   const toggleExpand = (title) => {
     setExpandedItems((prev) => ({
@@ -36,7 +38,9 @@ export function ProjectSidebar({ activeTab = "Overview", onTabChange = () => {} 
       <MobileSidebarHeader />
       <SidebarContent className="space-y-2 relative flex-1 overflow-hidden bg-sidebar">
         <div className="absolute inset-0 w-full h-full bg-sidebar translate-x-0">
-          <div className="h-full overflow-y-auto overflow-x-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div
+            ref={navRef}
+            className="h-full overflow-y-auto overflow-x-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>

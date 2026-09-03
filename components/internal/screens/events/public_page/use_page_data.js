@@ -6,6 +6,10 @@ import { toast } from "sonner";
 import { validateEventAccessCode } from "@/lib/supabase/access_codes";
 import { gatedTicketIds } from "@/lib/events/access_codes";
 import { eventBundles, bundlePrice, bundleTicketCount } from "@/lib/events/bundles";
+import {
+  resolveTicketReleases,
+  releaseSummaryForTicket,
+} from "@/lib/events/ticket_releases";
 import { listEventTicketsResolved } from "@/lib/supabase/ticketing";
 import { getVenue } from "@/lib/supabase/venues";
 import { getWallByProject } from "@/lib/supabase/event_wall";
@@ -48,13 +52,37 @@ export function usePageData({ event, live }) {
   const priceById = Object.fromEntries(
     (Array.isArray(event.tickets) ? event.tickets : []).map((t) => [String(t.id), Number(t.price) || 0]),
   );
+  const soldMap =
+    event.ticketSold && typeof event.ticketSold === "object" ? event.ticketSold : {};
+  const soldOutAtMap =
+    event.releaseSoldOutAt && typeof event.releaseSoldOutAt === "object"
+      ? event.releaseSoldOutAt
+      : {};
   const baseTickets = buildTickets(event, resolvedTickets)
     .filter((t) => !gatedIds.has(String(t.id)) || unlockedCodes[String(t.id)])
     .map((t) =>
       gatedIds.has(String(t.id)) && unlockedCodes[String(t.id)]
         ? { ...t, accessCode: unlockedCodes[String(t.id)] }
         : t,
-    );
+    )
+    // Attach each ticket's release resolution so cards + checkout can show
+    // "Release 2 on sale · 34 left" / "Next release 1 Oct" and cap quantity.
+    .map((t) => {
+      const sold = Number(soldMap[t.id]) || 0;
+      const releaseState = resolveTicketReleases(t, {
+        sold,
+        soldOutAtMap,
+        now: now || new Date(),
+      });
+      return {
+        ...t,
+        sold,
+        releaseState,
+        releaseNote: releaseState.hasReleases
+          ? releaseSummaryForTicket(t, { sold, soldOutAtMap, now: now || new Date() })
+          : "",
+      };
+    });
   const bundleOptions = eventBundles(event).map((b) => ({
     id: null,
     bundleId: b.id,

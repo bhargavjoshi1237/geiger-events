@@ -86,6 +86,7 @@ export function SidebarOption({
               <Button
                 type="button"
                 variant="ghost"
+                data-active={activeSubTab === sub.title ? "true" : undefined}
                 onClick={(e) => {
                   e.preventDefault();
                   onClick(sub.title);
@@ -123,6 +124,7 @@ export function SidebarOption({
                   <Button
                     type="button"
                     variant="ghost"
+                    data-active={activeSubTab === sub.title ? "true" : undefined}
                     onClick={(e) => {
                       e.preventDefault();
                       onClick(sub.title);

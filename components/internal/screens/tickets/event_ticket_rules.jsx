@@ -8,6 +8,7 @@ import {
   Armchair,
   Users,
   Package,
+  Layers,
   ArrowRight,
 } from "lucide-react";
 
@@ -69,6 +70,13 @@ const RULES = [
     icon: Package,
     title: "Bundles",
     description: "Sell several tickets together as one purchase.",
+  },
+  {
+    key: "releases",
+    tab: "releases",
+    icon: Layers,
+    title: "Batched releases",
+    description: "Split tickets into waves — on dates, after sell-outs, or by hand.",
   },
 ];
 

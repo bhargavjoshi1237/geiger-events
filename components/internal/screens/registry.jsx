@@ -38,6 +38,7 @@ import { DynamicPricingScreen } from "./tickets/dynamic_pricing";
 import { OrdersAttendeesScreen } from "./tickets/orders_attendees";
 import { InvoiceProfilesScreen } from "./tickets/invoice_profiles";
 import { BundlesScreen } from "./tickets/bundles";
+import { BatchedReleasesScreen } from "./tickets/releases";
 import { MultiCurrencyScreen } from "./tickets/multi_currency";
 import { AntiScalpingScreen } from "./tickets/anti_scalping";
 import { EarlybirdSalesScreen } from "./tickets/earlybird";
@@ -132,7 +133,21 @@ import { QaThreadsScreen } from "./community/qa_threads";
 import { AdCampaignsScreen, BudgetsScreen } from "./advertising/screens";
 import { ConnectionsScreen } from "./advertising/connections";
 import { InsightsScreen } from "./advertising/insights";
-import { ScheduledReportsScreen } from "./analytics/screens";
+import {
+  ScheduledReportsScreen,
+  SalesDashboardScreen,
+  AttendanceDashboardScreen,
+  CrossEventDashboardScreen,
+  TrafficDashboardScreen,
+  EmailDashboardScreen,
+  EngagementDashboardScreen,
+  SponsorDashboardScreen,
+  RealtimeDashboardScreen,
+  FunnelDashboardScreen,
+  ForecastDashboardScreen,
+  SurveysDashboardScreen,
+  DemographicsDashboardScreen,
+} from "./analytics/screens";
 import { SegmentationScreen } from "./campaigns/segmentation";
 import { EmailTemplateBuilderScreen } from "./campaigns/email_template_builder";
 import { DripSequencesScreen } from "./campaigns/drip_sequences";
@@ -198,6 +213,7 @@ export const SCREEN_REGISTRY = {
   Payouts: PayoutsScreen,
   "Dynamic Pricing": DynamicPricingScreen,
   Bundles: BundlesScreen,
+  "Batched Releases": BatchedReleasesScreen,
   "Multi-currency": MultiCurrencyScreen,
   "Anti-scalping & Resale": AntiScalpingScreen,
   "Early-bird Sales": EarlybirdSalesScreen,
@@ -394,9 +410,21 @@ export const SCREEN_REGISTRY = {
   Navigation: NavigationSettingsScreen,
   "Add-ons": AddonsSettingsScreen,
 
-  // Analytics area — only Scheduled Reports is a record set
-  // (events.analytics_records); the rest are dashboards (ComingSoon).
+  // Analytics area — Scheduled Reports is a record set
+  // (events.analytics_records); the rest are ECharts dashboards over demo data.
+  Sales: SalesDashboardScreen,
+  Attendance: AttendanceDashboardScreen,
+  "Cross-event Reporting": CrossEventDashboardScreen,
+  "Traffic & Sources": TrafficDashboardScreen,
+  "Email Performance": EmailDashboardScreen,
+  Engagement: EngagementDashboardScreen,
+  "Sponsor ROI": SponsorDashboardScreen,
+  "Real-time Dashboards": RealtimeDashboardScreen,
   "Scheduled Reports": ScheduledReportsScreen,
+  "Conversion Funnels": FunnelDashboardScreen,
+  "Revenue Forecasting": ForecastDashboardScreen,
+  "Surveys & NPS": SurveysDashboardScreen,
+  Demographics: DemographicsDashboardScreen,
 
   // Advertising area — the layman-friendly wrapper over the ad platforms. Ad
   // Campaigns and Budgets are record managers (events.advertising_records,

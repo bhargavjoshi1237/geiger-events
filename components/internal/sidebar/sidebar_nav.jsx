@@ -219,6 +219,7 @@ export const workspaceNav = [
       { title: "Ticket Tiers", icon: Layers },
       { title: "Discounts & Codes", icon: Percent },
       { title: "Bundles", icon: Package },
+      { title: "Batched Releases", icon: Layers },
       { title: "Early-bird Sales", icon: Timer },
       { title: "Donations", icon: Heart },
       { title: "Group Purchasing", icon: Users },

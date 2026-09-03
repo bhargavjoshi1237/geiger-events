@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
   EditorSectionHeader,
-  SearchInput,
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
+import { ExpandableSearch } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useIdleRecenter } from "@/lib/hooks/use-idle-recenter";
@@ -112,6 +112,10 @@ function NavItem({ item, active, onSelect }) {
   );
 }
 
+// Library collapse animation runs 200ms (transition-[width] duration-200);
+// the post-reset glide starts once the field is closed.
+const SEARCH_COLLAPSE_MS = 220;
+
 // The section nav that sits to the right of the editor body.
 function EditorNav({
   groups,
@@ -120,9 +124,12 @@ function EditorNav({
   query,
   onQueryChange,
   search,
+  searchOpen,
+  onSearchOpenChange,
+  navRef,
   fullHeight,
 }) {
-  const navRef = useIdleRecenter(active);  return (
+  return (
     <aside
       className={cn(
         "order-1 lg:order-2",
@@ -131,11 +138,16 @@ function EditorNav({
     >
       {search ? (
         <div className="mb-3 lg:shrink-0">
-          <SearchInput
+          <ExpandableSearch
             value={query}
             onChange={onQueryChange}
             placeholder="Search screens…"
-            aria-label="Search screens"
+            label="Search screens"
+            open={searchOpen}
+            onOpenChange={onSearchOpenChange}
+            expandedWidth="16rem"
+            className="ml-auto"
+            inputClassName="[&::-webkit-search-cancel-button]:appearance-none"
           />
         </div>
       ) : null}
@@ -254,6 +266,34 @@ export function EditorSections({
 
   const [localSection, setLocalSection] = useState(fallback);
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const clearTimer = useRef(null);
+  const glideTimer = useRef(null);
+
+  useEffect(
+    () => () => {
+      if (clearTimer.current) clearTimeout(clearTimer.current);
+      if (glideTimer.current) clearTimeout(glideTimer.current);
+    },
+    [],
+  );
+
+  const cancelPendingReset = () => {
+    if (clearTimer.current) {
+      clearTimeout(clearTimer.current);
+      clearTimer.current = null;
+    }
+    if (glideTimer.current) {
+      clearTimeout(glideTimer.current);
+      glideTimer.current = null;
+    }
+  };
+
+  const handleQueryChange = (value) => {
+    // User is actively searching — never auto-clear under them.
+    cancelPendingReset();
+    setQuery(value);
+  };
 
   const controlled = activeProp !== undefined;
   const rawActive = controlled
@@ -267,9 +307,27 @@ export function EditorSections({
     [groups],
   );
   const active = known.has(rawActive) ? rawActive : fallback;
+  const { ref: navRef, recenter } = useIdleRecenter(active);
 
   const setActive = (key) => {
+    // A selection from filtered results keeps the filter visible for 15s so
+    // the result context stays on screen, then closes the field (animated)
+    // and glides the selected screen back to center. A plain nav click (no
+    // active filter) never touches the search.
+    const hadFilter = normalize(query).trim().length > 0;
     onActiveChange?.(key);
+    if (hadFilter) {
+      cancelPendingReset();
+      clearTimer.current = setTimeout(() => {
+        clearTimer.current = null;
+        setQuery("");
+        setSearchOpen(false);
+        glideTimer.current = setTimeout(() => {
+          glideTimer.current = null;
+          recenter();
+        }, SEARCH_COLLAPSE_MS);
+      }, 15000);
+    }
     if (controlled) return;
     if (syncToUrl) url.setSection(key);
     else setLocalSection(key);
@@ -343,8 +401,11 @@ export function EditorSections({
         active={active}
         onSelect={setActive}
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={handleQueryChange}
         search={showSearch}
+        searchOpen={searchOpen}
+        onSearchOpenChange={setSearchOpen}
+        navRef={navRef}
         fullHeight={fullHeight}
       />
     </div>

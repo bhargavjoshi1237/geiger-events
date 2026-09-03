@@ -249,6 +249,14 @@ export const defaultEarlybirdConfig = () => ({
   note: "",
 });
 
+// Batched Releases (module "release").
+export const defaultReleaseConfig = () => ({
+  enabled: false,
+  defaultQty: 100, // tranche size suggested when an event splits a ticket
+  defaultDelayDays: 0, // days after sell-out the next wave opens (0 = immediately)
+  note: "",
+});
+
 // Donations (module "donation").
 export const defaultDonationConfig = () => ({
   enabled: false,

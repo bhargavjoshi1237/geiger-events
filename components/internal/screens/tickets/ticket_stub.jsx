@@ -16,6 +16,7 @@ export function TicketStub({
   qty,
   typeName,
   visibilityLabel,
+  releaseBadge,
   codes,
   onEdit,
   menu,
@@ -27,6 +28,7 @@ export function TicketStub({
   // in place of separate badges. Falls back to a muted "No rules applied" hint.
   const metaItems = [
     { label: qtyLabel },
+    releaseBadge ? { label: releaseBadge } : null,
     typeName ? { label: typeName } : null,
     visibilityLabel
       ? { label: visibilityLabel }

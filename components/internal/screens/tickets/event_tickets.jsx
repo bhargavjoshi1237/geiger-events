@@ -55,6 +55,7 @@ import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listRecords } from "@/lib/supabase/ticketing";
 import { getDietaryConfig } from "@/lib/supabase/dietary";
+import { getTicketReleases } from "@/lib/events/ticket_releases";
 
 import { TicketStub } from "./ticket_stub";
 import { DiscountCodeChips, DiscountCodePicker } from "./discount_code_picker";
@@ -85,7 +86,8 @@ function visibilityLabel(type) {
 }
 
 // Dialog for creating/editing a single event ticket's identity, applied type,
-// and the discount codes that may be redeemed against it.
+// and the discount codes that may be redeemed against it. (Batched waves live
+// in the event editor's Batched Releases section, not here.)
 function TicketEditDialog({ ticket, types, groups, coupons, onClose, onSave }) {
   const [draft, setDraft] = useState(() => ({ ...ticket }));
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
@@ -217,7 +219,7 @@ function TicketEditDialog({ ticket, types, groups, coupons, onClose, onSave }) {
           >
             <div className="py-1.5">
               <DiscountCodePicker
-                coupons={orderedCoupons}
+                coupons={coupons}
                 value={draft.discountIds || []}
                 onChange={(ids) => set({ discountIds: ids })}
               />
@@ -444,6 +446,7 @@ export function EventTicketsSection({ event, headerItem }) {
         ticketTypeId: null,
         groupId,
         discountIds: [],
+        releases: [],
       },
     ]);
     setEditingId(id);
@@ -493,6 +496,10 @@ export function EventTicketsSection({ event, headerItem }) {
   const renderTickets = (section) =>
     section.map((t, pos) => {
       const type = t.ticketTypeId ? typeById.get(t.ticketTypeId) : null;
+      const rel = getTicketReleases(t);
+      const releaseBadge = rel.length
+        ? `${rel.length} wave${rel.length > 1 ? "s" : ""} · ${rel.reduce((s, r) => s + (Number(r.qty) || 0), 0)} total`
+        : null;
       return (
         <TicketStub
           key={t.id}
@@ -502,6 +509,7 @@ export function EventTicketsSection({ event, headerItem }) {
           description={t.description}
           typeName={type?.name || null}
           visibilityLabel={type ? visibilityLabel(type) : null}
+          releaseBadge={releaseBadge}
           codes={
             <DiscountCodeChips
               coupons={orderedCoupons}

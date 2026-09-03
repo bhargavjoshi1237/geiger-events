@@ -51,6 +51,7 @@ import {
   MousePointerClick,
   Gem,
   MessageSquareWarning,
+  Layers,
 } from "lucide-react";
 
 import {
@@ -93,6 +94,7 @@ import { TicketSelectionSection } from "./ticket_selection";
 import { EventExpoSection } from "./event_expo";
 import { EventGroupSection } from "./event_group";
 import { EventBundlesSection } from "./event_bundles";
+import { EventReleasesSection } from "./event_releases";
 import { PaymentsSection } from "./payments";
 import { RsvpOptionsSection } from "./rsvp";
 import { CoHostsAdminsSection } from "./people";
@@ -402,6 +404,13 @@ export const NAV_GROUPS = [
         showIf: (e) => !!e.ticketRules?.groupPurchase,
       },
       {
+        key: "releases",
+        label: "Batched Releases",
+        icon: Layers,
+        desc: "Split this event's tickets into waves — per ticket, or across several tickets at once.",
+        ownHeader: true,
+      },
+      {
         key: "memberships",
         label: "Memberships",
         icon: BadgeCheck,
@@ -670,6 +679,7 @@ export const SECTIONS = {
   expo: EventExpoSection,
   group: EventGroupSection,
   bundles: EventBundlesSection,
+  releases: EventReleasesSection,
   payments: PaymentsSection,
   orders: EventOrdersSection,
   invoices: EventInvoicesSection,

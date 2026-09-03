@@ -6,6 +6,7 @@ import { checkoutBranding } from "@/lib/stripe/branding";
 import { validateEventDiscount, discountBase } from "@/lib/supabase/discounts";
 import { earlybirdReduction } from "@/lib/events/earlybird";
 import { groupDiscountAmount } from "@/lib/events/group";
+import { resolveTicketReleases } from "@/lib/events/ticket_releases";
 
 export async function POST(request) {
   if (!isStripeConfigured()) {
@@ -76,6 +77,34 @@ export async function POST(request) {
   }
 
   const currency = paymentsCfg.currency || "usd";
+
+  // Batched releases: refuse to start Stripe when the unlocked tranches can't
+  // cover the basket (buy_ticket re-checks this under lock — this is the early,
+  // buyer-friendly error before they pay).
+  if (ticketId != null && !bundleId) {
+    const entry = (Array.isArray(event.tickets) ? event.tickets : []).find(
+      (t) => String(t.id) === String(ticketId),
+    );
+    if (entry && Array.isArray(entry.releases) && entry.releases.length) {
+      const sold = Number(event.ticketSold?.[String(ticketId)]) || 0;
+      const st = resolveTicketReleases(entry, {
+        sold,
+        soldOutAtMap: event.releaseSoldOutAt || {},
+        now: new Date(),
+      });
+      if (!st.unlimitedUnlocked && sold + qty > st.unlockedQty) {
+        const next = st.nextRelease;
+        return NextResponse.json(
+          {
+            error: next?.unlocksAt
+              ? `This wave is sold out — the next wave opens ${next.unlocksAt}.`
+              : "This wave is sold out — the next wave isn't open yet.",
+          },
+          { status: 409 },
+        );
+      }
+    }
+  }
 
   const ebPerUnit = bundleId ? 0 : earlybirdReduction(event, price);
   const effUnit = Math.max(0, price - ebPerUnit);

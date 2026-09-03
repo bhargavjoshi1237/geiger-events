@@ -19,6 +19,7 @@ import {
   groupDiscountAmount,
 } from "@/lib/events/group";
 import { ticketAvailable } from "@/lib/events/reserved";
+import { ticketReleaseAvailable } from "@/lib/events/ticket_releases";
 
 const optionPrice = (offering, id) => {
   const opt = offering.options.find((x) => x.id === id);
@@ -125,9 +126,22 @@ export function derivePricing({
   const isFree = total === 0;
   const hardMax = groupOn ? (gCfg.maxSeats > 0 ? gCfg.maxSeats : 50) : 10;
   const availCap = ticketAvailable(event, { id: ticketId, qty: ticket?.qty }, event.ticketSold || {});
+  // Batched releases narrow the cap to the unlocked tranches.
+  const releaseCap = ticket?.releaseState?.hasReleases
+    ? ticketReleaseAvailable(
+        ticket,
+        {
+          sold: Number(event.ticketSold?.[ticketId]) || 0,
+          soldOutAtMap: event.releaseSoldOutAt || {},
+          reserved: 0,
+          now: new Date(),
+        },
+      )
+    : Infinity;
   const maxQty = Math.min(
     Math.max(1, remaining || 1),
     Number.isFinite(availCap) ? Math.max(1, availCap) : hardMax,
+    Number.isFinite(releaseCap) ? Math.max(1, releaseCap) : hardMax,
     hardMax,
   );
 
