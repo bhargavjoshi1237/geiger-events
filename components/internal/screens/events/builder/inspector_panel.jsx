@@ -9,6 +9,7 @@ import {
   BASE_BREAKPOINT,
   COMPONENT_BACKGROUND_OPTIONS,
   MAX_WIDTH_OPTIONS,
+  OFFSET_LIMIT,
   RADIUS_OPTIONS,
   SHADOW_OPTIONS,
   SPACE_OPTIONS,
@@ -96,6 +97,32 @@ const STYLE_SCHEMA = {
   ],
 };
 
+const NUDGE_FIELDS = [
+  {
+    group: "style",
+    key: "offsetX",
+    label: "Nudge across",
+    type: "range",
+    min: -OFFSET_LIMIT,
+    max: OFFSET_LIMIT,
+    step: 4,
+    default: 0,
+    suffix: "px",
+  },
+  {
+    group: "style",
+    key: "offsetY",
+    label: "Nudge down",
+    type: "range",
+    min: -OFFSET_LIMIT,
+    max: OFFSET_LIMIT,
+    step: 4,
+    default: 0,
+    suffix: "px",
+    hint: "Shifts this visually without moving anything around it. Set it per device — a nudge that works on desktop rarely works on a phone.",
+  },
+];
+
 const ADVANCED_SCHEMA = [
   {
     group: "advanced",
@@ -114,6 +141,7 @@ const ADVANCED_SCHEMA = [
 ];
 
 const HAS_BACKGROUND = { section: true, column: true };
+const CAN_NUDGE = { section: true, column: true, component: true };
 
 function OverrideBadge({ active, onClear }) {
   if (!active) return null;
@@ -243,6 +271,9 @@ export function InspectorPanel({
   if (!node) return <EmptyInspector />;
 
   const resolved = resolveAt(node, bp);
+  const nudged = !!(
+    Number(resolved.style?.offsetX) || Number(resolved.style?.offsetY)
+  );
   const meta = kind === "component" ? getComponentMeta(node.type) : null;
   const styleFields = STYLE_SCHEMA[kind] || [];
   const layoutFields = LAYOUT_SCHEMA[kind] || [];
@@ -328,6 +359,29 @@ export function InspectorPanel({
         {layoutFields.map((field) => (
           <SchemaControl key={field.key} field={field} {...schemaProps} />
         ))}
+        {CAN_NUDGE[kind] ? (
+          <div className="space-y-4 border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-text-secondary">Nudge</span>
+              {nudged ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSet("style", "offsetX", 0);
+                    onSet("style", "offsetY", 0);
+                  }}
+                  className="flex items-center gap-1 rounded px-1 text-[0.6rem] font-medium text-primary hover:bg-primary/10"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  clear
+                </button>
+              ) : null}
+            </div>
+            {NUDGE_FIELDS.map((field) => (
+              <SchemaControl key={field.key} field={field} {...schemaProps} />
+            ))}
+          </div>
+        ) : null}
       </div>
     ),
     advanced: (

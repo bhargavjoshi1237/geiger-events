@@ -7,6 +7,8 @@ import {
   Table,
   Share2,
   Box,
+  Megaphone,
+  PanelBottom,
   Check,
   Star,
   Heart,
@@ -22,6 +24,7 @@ import {
   Car,
 } from "lucide-react";
 
+import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 import { useExternalResources } from "@/lib/events/custom_code";
 
@@ -215,7 +218,187 @@ function Container({ props, children }) {
   );
 }
 
+const MARQUEE_SIZES = {
+  md: "text-4xl sm:text-6xl",
+  lg: "text-5xl sm:text-8xl",
+  xl: "text-6xl sm:text-[10rem]",
+};
+
+// Two identical tracks slide left by exactly one track width, so the seam never
+// shows however long the phrase is. Duplicated rather than looped in JS so it
+// keeps running with scripts off in the editor canvas.
+function Marquee({ props, accent }) {
+  const scope = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const name = `evmq${scope}`;
+  const text = props.text || "";
+  if (!text.trim()) {
+    return (
+      <div className="flex min-h-[6rem] items-center justify-center gap-2 rounded-xl border border-dashed border-border text-sm text-text-tertiary">
+        <Megaphone className="h-4 w-4" /> Add a phrase to scroll.
+      </div>
+    );
+  }
+
+  const repeat = Math.min(8, Math.max(2, Number(props.repeat) || 4));
+  const seconds = Math.min(120, Math.max(6, Number(props.speed) || 24));
+  const separator = props.separator ?? "✦";
+  const track = Array.from({ length: repeat }).map((_, i) => (
+    <span key={i} className="flex shrink-0 items-center gap-8 pr-8">
+      <span>{text}</span>
+      {separator ? (
+        <span aria-hidden style={{ color: accent.color }}>
+          {separator}
+        </span>
+      ) : null}
+    </span>
+  ));
+
+  return (
+    <div
+      className={cn(
+        "relative flex w-full select-none overflow-hidden py-2",
+        props.border !== false && "border-y border-border",
+      )}
+    >
+      <style>{`
+        @keyframes ${name}{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+        .${name}{animation:${name} ${seconds}s linear infinite}
+        @media (prefers-reduced-motion: reduce){.${name}{animation:none}}
+      `}</style>
+      {[0, 1].map((copy) => (
+        <div
+          key={copy}
+          aria-hidden={copy === 1}
+          className={cn(
+            name,
+            "flex shrink-0 items-center whitespace-nowrap font-bold uppercase leading-none tracking-tight",
+            MARQUEE_SIZES[props.size] || MARQUEE_SIZES.lg,
+          )}
+          style={
+            props.outline
+              ? {
+                  color: "transparent",
+                  WebkitTextStroke: `1.5px ${accent.color}`,
+                }
+              : undefined
+          }
+        >
+          {track}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// The thumb-reach buy bar. Fixed to the viewport on the live page; inside the
+// editor it pins to the bottom of the canvas, which is the same reading.
+function StickyCta({ props, accent }) {
+  const top = props.position === "top";
+  return (
+    <div
+      className={cn(
+        "fixed inset-x-0 z-40 border-border bg-surface-subtle/95 backdrop-blur",
+        top ? "top-0 border-b" : "bottom-0 border-t",
+      )}
+    >
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground">
+            {props.title}
+          </p>
+          {props.note ? (
+            <p className="truncate text-xs text-text-secondary">{props.note}</p>
+          ) : null}
+        </div>
+        {props.label ? (
+          <Button
+            asChild
+            size="lg"
+            style={{ backgroundColor: accent.color, color: accent.text }}
+            className="hover:opacity-90"
+          >
+            <a href={props.url || "#tickets"}>{props.label}</a>
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export const STRUCTURE_COMPONENTS = [
+  {
+    type: "marquee",
+    label: "Marquee band",
+    icon: Megaphone,
+    category: "custom",
+    defaultProps: {
+      text: "{{event.name}}",
+      size: "lg",
+      speed: 24,
+      repeat: 4,
+      separator: "✦",
+      outline: false,
+      border: true,
+    },
+    fields: [
+      { key: "text", label: "Phrase", type: "text", bindable: true },
+      {
+        key: "size",
+        label: "Size",
+        type: "select",
+        options: [
+          { key: "md", label: "Large" },
+          { key: "lg", label: "Huge" },
+          { key: "xl", label: "Enormous" },
+        ],
+      },
+      {
+        key: "speed",
+        label: "Seconds per loop",
+        type: "range",
+        min: 6,
+        max: 120,
+        step: 2,
+        default: 24,
+        suffix: "s",
+        hint: "Longer is slower. The animation stops for visitors who ask for reduced motion.",
+      },
+      { key: "separator", label: "Separator", type: "text" },
+      { key: "outline", label: "Outlined type", type: "switch" },
+      { key: "border", label: "Rules above and below", type: "switch" },
+    ],
+    render: Marquee,
+  },
+  {
+    type: "sticky-cta",
+    label: "Sticky buy bar",
+    icon: PanelBottom,
+    category: "custom",
+    singleton: true,
+    defaultProps: {
+      title: "{{event.name}}",
+      note: "{{event.startsAt | date:medium}}",
+      label: "Get tickets",
+      url: "#tickets",
+      position: "bottom",
+    },
+    fields: [
+      { key: "title", label: "Title", type: "text", bindable: true },
+      { key: "note", label: "Note", type: "text", bindable: true },
+      { key: "label", label: "Button label", type: "text", bindable: true },
+      { key: "url", label: "Button link", type: "text" },
+      {
+        key: "position",
+        label: "Sticks to",
+        type: "select",
+        options: [
+          { key: "bottom", label: "Bottom of the screen" },
+          { key: "top", label: "Top of the screen" },
+        ],
+      },
+    ],
+    render: StickyCta,
+  },
   {
     type: "raw-html",
     label: "Raw HTML",

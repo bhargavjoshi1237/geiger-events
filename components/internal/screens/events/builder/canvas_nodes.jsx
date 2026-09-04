@@ -101,6 +101,35 @@ function ResizeHandle({ onPointerDown }) {
   );
 }
 
+// The scale handles on a selected node: drag the bottom edge of a section to
+// change its padding, the right edge of a row or block to change its gap or
+// width. Each walks a named scale rather than setting free pixels, so what you
+// drag out stays inside the design system.
+function ScaleHandle({ axis, label, onPointerDown }) {
+  const vertical = axis === "y";
+  return (
+    <span
+      onPointerDown={onPointerDown}
+      role="separator"
+      aria-label={label}
+      title={label}
+      className={cn(
+        "ev-chrome z-40 flex items-center justify-center",
+        vertical
+          ? "inset-x-0 -bottom-2 h-4 cursor-ns-resize"
+          : "inset-y-0 -right-2 w-4 cursor-ew-resize",
+      )}
+    >
+      <span
+        className={cn(
+          "rounded-full bg-primary/30 transition-colors hover:bg-primary",
+          vertical ? "h-1 w-12" : "h-12 w-1",
+        )}
+      />
+    </span>
+  );
+}
+
 function buildIndex(tree) {
   const map = new Map();
   walk(tree, (node, path, kind) => {
@@ -120,12 +149,19 @@ function buildIndex(tree) {
   return map;
 }
 
+const SCALE_HANDLE = {
+  section: { axis: "y", label: "Drag to change this section's padding" },
+  row: { axis: "x", label: "Drag to change the gap between columns" },
+  component: { axis: "x", label: "Drag to change this block's width" },
+};
+
 export function useEditingChrome({
   tree,
   selectedId,
   onSelect,
   onDragStart,
   onResize,
+  onScale,
   onDuplicate,
   onDelete,
   onAddInto,
@@ -140,8 +176,17 @@ export function useEditingChrome({
       const isLastColumn =
         kind === "column" && entry.index === (entry.siblingCount || 1) - 1;
 
+      const scale = selected ? SCALE_HANDLE[kind] : null;
+
       const overlays = (
         <React.Fragment key="ev-chrome">
+          {scale ? (
+            <ScaleHandle
+              axis={scale.axis}
+              label={scale.label}
+              onPointerDown={(e) => onScale(e, { kind, id: node.id })}
+            />
+          ) : null}
           {selected ? (
             <NodeToolbar
               kind={kind}
@@ -182,7 +227,17 @@ export function useEditingChrome({
         overlays,
       );
     },
-    [index, selectedId, tree.sections.length, onSelect, onDragStart, onResize, onDuplicate, onDelete],
+    [
+      index,
+      selectedId,
+      tree.sections.length,
+      onSelect,
+      onDragStart,
+      onResize,
+      onScale,
+      onDuplicate,
+      onDelete,
+    ],
   );
 
   const renderColumnAffordance = useCallback(
@@ -208,6 +263,20 @@ export function useEditingChrome({
   return useMemo(
     () => ({ wrapNode, renderColumnAffordance }),
     [wrapNode, renderColumnAffordance],
+  );
+}
+
+// Follows the cursor while a scale handle is being dragged, so the value being
+// changed is readable without looking away at the inspector.
+export function ScaleReadout({ scaling }) {
+  if (!scaling) return null;
+  return (
+    <div
+      className="pointer-events-none fixed z-[80] rounded-md border border-border bg-surface-subtle px-2 py-1 text-xs font-medium tabular-nums text-foreground shadow-lg"
+      style={{ left: scaling.x + 14, top: scaling.y + 14 }}
+    >
+      {scaling.label}
+    </div>
   );
 }
 

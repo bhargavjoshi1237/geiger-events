@@ -72,6 +72,11 @@ import {
 } from "@/lib/events/theme";
 import { useCan } from "@/context/rbac-context";
 import { hasTree } from "@/lib/events/page_migrate";
+import {
+  designFromBlank,
+  designWithPreset,
+  designWithSavedLayout,
+} from "@/lib/events/page_presets";
 import { Segmented, ColorField, withIcons } from "./theme_controls";
 
 // Two-option sets render as an icon+label tab pair, so each needs a glyph.
@@ -86,7 +91,7 @@ const SIDEBAR_OPTIONS = withIcons(SIDEBAR_SIDES, {
   right: PanelRight,
   left: PanelLeft,
 });
-import { LayoutPicker } from "./layout_picker";
+import { LayoutGallery } from "./layout_gallery";
 import { FooterEditor, DEFAULT_FOOTER } from "./page_footer";
 import { ImportBrandDialog, BrandLogoSection } from "./brand_import";
 import {
@@ -262,6 +267,9 @@ export {
 const PageBuilder = lazy(() =>
   import("./builder/page_builder").then((m) => ({ default: m.PageBuilder })),
 );
+
+const PRESET_HELP =
+  "Pick an arrangement, then make it yours. Presets open in the page builder, where every section, column and block can be moved, resized and nudged. Your colours, type and content come along unchanged.";
 
 function moveItem(arr, index, dir) {
   const ni = index + dir;
@@ -649,6 +657,9 @@ export function PageDesignSection({
   const isImported = design.mode === "imported";
 
   const built = hasTree(design);
+  // A tree can exist without rendering — it is kept as the way back when the
+  // page steps out of Custom mode. Only this combination is actually on screen.
+  const rendersTree = isCustom && built;
   const canUseCustomCode = useCan("events.page.customcode");
 
   const saveFromBuilder = async ({ tree, customCode }) => {
@@ -660,6 +671,25 @@ export function PageDesignSection({
 
   const theme = resolveTheme(design);
   const setTheme = (patch) => set({ theme: { ...theme, ...patch } });
+
+  // Layouts from the gallery replace the page's structure wholesale, so they
+  // hand back a whole design rather than patching one key. The legacy block
+  // arrays ride along untouched — they are the way back to Themed mode.
+  const applyLayoutPreset = (preset) =>
+    onChange(designWithPreset(design, preset, theme));
+  const applySavedLayout = (layout) =>
+    onChange(designWithSavedLayout(design, layout, theme));
+  // Classic layouts only render when the page isn't built from a tree, so
+  // picking one steps back out of custom mode. The tree stays in the design —
+  // switching back to Custom brings it straight back.
+  const applyClassic = (key) => {
+    const nextTheme = { ...theme, layout: key };
+    if (nextTheme.hero === "none") nextTheme.hero = "classic";
+    const next = { ...design, theme: nextTheme };
+    if (design.mode === "custom") next.mode = "themed";
+    onChange(next);
+  };
+  const startBlank = () => onChange(designFromBlank(design, theme));
   const setColors = (patch) => setTheme({ colors: { ...theme.colors, ...patch } });
   const setFont = (patch) => setTheme({ font: { ...theme.font, ...patch } });
   const onBase = (base) =>
@@ -987,13 +1017,17 @@ export function PageDesignSection({
           </TabsContent>
 
           <TabsContent value="layout" className="space-y-4">
-            <SectionCard
-              title="Page layout"
-              description="How the page is arranged — where the cover, the sections and the ticket panel sit, and how big each one gets. Your colors, type and content stay exactly as they are."
-            >
-              <LayoutPicker
-                value={theme.layout}
-                onChange={(v) => setTheme({ layout: v })}
+            <SectionCard title="Page layout" description={PRESET_HELP}>
+              <LayoutGallery
+                design={design}
+                theme={theme}
+                event={event}
+                built={rendersTree}
+                onApplyPreset={applyLayoutPreset}
+                onApplySavedLayout={applySavedLayout}
+                onApplyClassic={applyClassic}
+                onStartBlank={startBlank}
+                onOpenBuilder={() => setBuilderOpen(true)}
               />
             </SectionCard>
 

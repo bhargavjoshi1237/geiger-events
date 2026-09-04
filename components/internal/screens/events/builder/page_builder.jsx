@@ -9,13 +9,18 @@ import {
 } from "react";
 import { toast } from "sonner";
 import {
+  Bookmark,
   Code2,
   ExternalLink,
   Layers,
+  LayoutTemplate,
   Loader2,
+  Maximize2,
+  Minus,
   Monitor,
   Plus,
   Redo2,
+  Rows3,
   Smartphone,
   Tablet,
   Undo2,
@@ -26,6 +31,8 @@ import { Button } from "@geiger/ui/button";
 import {
   BASE_BREAKPOINT,
   BREAKPOINTS,
+  MAX_WIDTH_OPTIONS,
+  SPACE_OPTIONS,
   createSection,
   duplicateNode,
   insertNode,
@@ -34,6 +41,7 @@ import {
   moveNode,
   removeNode,
   resizeColumn,
+  resolveAt,
   setNodeValue,
   clearNodeOverride,
   treeStats,
@@ -46,16 +54,31 @@ import { resolveTheme, themeAccent, themeStyle } from "@/lib/events/theme";
 import { cn } from "@/lib/utils";
 import { PageTree } from "../page_render";
 import { BuilderCanvas } from "./builder_canvas";
-import { DropIndicator, EDITING_CSS, useEditingChrome } from "./canvas_nodes";
+import {
+  DropIndicator,
+  EDITING_CSS,
+  ScaleReadout,
+  useEditingChrome,
+} from "./canvas_nodes";
 import { CustomCodeDialog } from "./custom_code_dialog";
 import { InspectorPanel } from "./inspector_panel";
 import { LayersPanel } from "./layers_panel";
+import { LayoutsPanel } from "./layouts_panel";
+import { OutlinePanel } from "./outline_panel";
 import { PalettePanel } from "./palette_panel";
-import { useColumnResize, useDragEngine } from "./use_drag";
+import { SaveLayoutDialog } from "./save_layout_dialog";
+import { useDragEngine, useScaleDrag } from "./use_drag";
+import { useFitZoom } from "./use_fit_zoom";
 import { createComponentOfType, getComponentMeta } from "./components";
 
 const DEVICE_ICON = { lg: Monitor, md: Tablet, sm: Smartphone };
 const HISTORY_LIMIT = 50;
+
+const ZOOM_STEPS = [0.25, 0.4, 0.5, 0.65, 0.8, 1];
+const SPACE_KEYS = SPACE_OPTIONS.map((o) => o.key);
+const WIDTH_KEYS = MAX_WIDTH_OPTIONS.map((o) => o.key);
+
+const clampIndex = (i, list) => Math.min(list.length - 1, Math.max(0, i));
 
 function useTreeHistory(initial) {
   const [state, setState] = useState({ past: [], present: initial, future: [] });
@@ -121,12 +144,15 @@ export function PageBuilder({
     normalizeCustomCode(design?.customCode),
   );
   const [codeOpen, setCodeOpen] = useState(false);
+  const [saveLayoutOpen, setSaveLayoutOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [bp, setBp] = useState(BASE_BREAKPOINT);
   const [tab, setTab] = useState("content");
   const [leftTab, setLeftTab] = useState("add");
   const [saving, setSaving] = useState(false);
   const [codeDirty, setCodeDirty] = useState(false);
+  // null = fit to the available room; a number pins the zoom.
+  const [zoomOverride, setZoomOverride] = useState(null);
 
   const frameRef = useRef(null);
   const treeRef = useRef(tree);
@@ -153,6 +179,25 @@ export function PageBuilder({
   }, [tree]);
 
   const device = BREAKPOINTS.find((b) => b.key === bp) || BREAKPOINTS[0];
+  const { attach: attachCanvasArea, fit } = useFitZoom(device.width);
+  const zoom = zoomOverride ?? fit;
+
+  const stepZoom = useCallback(
+    (dir) => {
+      setZoomOverride((current) => {
+        const from = current ?? fit;
+        const index = ZOOM_STEPS.findIndex((z) => z > from + 0.001);
+        const next =
+          dir > 0
+            ? ZOOM_STEPS[index === -1 ? ZOOM_STEPS.length - 1 : index]
+            : ZOOM_STEPS[
+                Math.max(0, (index === -1 ? ZOOM_STEPS.length : index) - 2)
+              ];
+        return next ?? from;
+      });
+    },
+    [fit],
+  );
 
   const setValue = useCallback(
     (group, key, value) => {
@@ -270,15 +315,125 @@ export function PageBuilder({
   const { drag, startDrag } = useDragEngine({
     getFrame: () => frameRef.current,
     getTree: () => treeRef.current,
+    zoom,
     onDrop: insertPayload,
   });
 
-  const { startResize } = useColumnResize({
+  const { scaling, startScale } = useScaleDrag({
     getFrame: () => frameRef.current,
-    onResize: (rowId, index, delta) => {
-      commit(resizeColumn(treeRef.current, rowId, index, delta));
-    },
+    zoom,
   });
+
+  // Column split. The step is one twelfth of the row, measured at pointer-down.
+  const startResize = useCallback(
+    (event, rowId, index) => {
+      const rowEl = frameRef.current?.contentDocument?.querySelector(
+        `[data-ev="${rowId}"]`,
+      );
+      if (!rowEl) return;
+      const unit = rowEl.getBoundingClientRect().width / 12;
+
+      const spans = () => {
+        const hit = locate(treeRef.current, rowId);
+        return hit?.node?.columns?.map((c) => c.span) || [];
+      };
+
+      startScale(event, {
+        axis: "x",
+        stepPx: unit,
+        step: (delta) => {
+          if (delta) commit(resizeColumn(treeRef.current, rowId, index, delta));
+          const cols = spans();
+          return cols.length ? `${cols.join(" / ")} of 12` : "";
+        },
+      });
+    },
+    [commit, startScale],
+  );
+
+  // Section padding, row gap and block width all walk a named scale. The index
+  // is tracked in the closure so a fast drag can't read a stale tree.
+  const startScaleHandle = useCallback(
+    (event, { kind, id }) => {
+      const hit = locate(treeRef.current, id);
+      if (!hit) return;
+      const resolved = resolveAt(hit.node, bp);
+
+      const spec = {
+        section: {
+          group: "layout",
+          key: "paddingY",
+          keys: SPACE_KEYS,
+          options: SPACE_OPTIONS,
+          current: resolved.layout?.paddingY,
+          axis: "y",
+          name: "Padding",
+        },
+        row: {
+          group: "layout",
+          key: "gap",
+          keys: SPACE_KEYS,
+          options: SPACE_OPTIONS,
+          current: resolved.layout?.gap,
+          axis: "x",
+          name: "Gap",
+        },
+        component: {
+          group: "style",
+          key: "maxWidth",
+          keys: WIDTH_KEYS,
+          options: MAX_WIDTH_OPTIONS,
+          current: resolved.style?.maxWidth,
+          axis: "x",
+          name: "Width",
+        },
+      }[kind];
+      if (!spec) return;
+
+      let index = clampIndex(spec.keys.indexOf(spec.current), spec.keys);
+
+      startScale(event, {
+        axis: spec.axis,
+        step: (delta) => {
+          if (delta) {
+            index = clampIndex(index + delta, spec.keys);
+            commit(
+              setNodeValue(treeRef.current, id, bp, spec.group, spec.key, spec.keys[index]),
+            );
+          }
+          return `${spec.name} · ${spec.options[index].label}`;
+        },
+      });
+    },
+    [bp, commit, startScale],
+  );
+
+  const reorderSection = useCallback(
+    (from, to) => {
+      const sections = treeRef.current.sections;
+      const moving = sections[from];
+      if (!moving) return;
+      const anchor = to >= sections.length ? sections[sections.length - 1] : sections[to];
+      if (!anchor || anchor.id === moving.id) return;
+      commit(
+        moveNode(treeRef.current, moving.id, {
+          id: anchor.id,
+          position: to >= sections.length ? "after" : "before",
+        }),
+      );
+    },
+    [commit],
+  );
+
+  const applyLayout = useCallback(
+    (nextTree) => {
+      if (!nextTree?.sections?.length) return;
+      commit(nextTree);
+      setSelectedId(null);
+      toast.success("Layout applied — undo if it isn't right.");
+    },
+    [commit],
+  );
 
   const addFromPalette = useCallback(
     (payload) => {
@@ -304,6 +459,7 @@ export function PageBuilder({
     onSelect: setSelectedId,
     onDragStart: startDrag,
     onResize: startResize,
+    onScale: startScaleHandle,
     onDuplicate: duplicate,
     onDelete: remove,
     onAddInto: (columnId) => {
@@ -402,27 +558,62 @@ export function PageBuilder({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface-card p-0.5">
-          {BREAKPOINTS.map((b) => {
-            const Icon = DEVICE_ICON[b.key];
-            return (
-              <button
-                key={b.key}
-                type="button"
-                onClick={() => setBp(b.key)}
-                aria-label={b.label}
-                title={`${b.label} · ${b.width}px`}
-                className={cn(
-                  "rounded-md px-2.5 py-1.5 transition-colors",
-                  bp === b.key
-                    ? "bg-surface-active text-foreground"
-                    : "text-text-secondary hover:text-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface-card p-0.5">
+            {BREAKPOINTS.map((b) => {
+              const Icon = DEVICE_ICON[b.key];
+              return (
+                <button
+                  key={b.key}
+                  type="button"
+                  onClick={() => setBp(b.key)}
+                  aria-label={b.label}
+                  title={`${b.label} · ${b.width}px`}
+                  className={cn(
+                    "rounded-md px-2.5 py-1.5 transition-colors",
+                    bp === b.key
+                      ? "bg-surface-active text-foreground"
+                      : "text-text-secondary hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface-card p-0.5">
+            <button
+              type="button"
+              onClick={() => stepZoom(-1)}
+              aria-label="Zoom out"
+              className="rounded-md px-1.5 py-1.5 text-text-secondary transition-colors hover:text-foreground"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoomOverride(null)}
+              title="Fit the page to the canvas"
+              className={cn(
+                "flex items-center gap-1 rounded-md px-1.5 py-1 text-[0.7rem] font-medium tabular-nums transition-colors",
+                zoomOverride === null
+                  ? "bg-surface-active text-foreground"
+                  : "text-text-secondary hover:text-foreground",
+              )}
+            >
+              <Maximize2 className="h-3 w-3" />
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={() => stepZoom(1)}
+              aria-label="Zoom in"
+              className="rounded-md px-1.5 py-1.5 text-text-secondary transition-colors hover:text-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -445,6 +636,15 @@ export function PageBuilder({
             className="text-text-secondary hover:bg-surface-active hover:text-foreground disabled:opacity-30"
           >
             <Redo2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSaveLayoutOpen(true)}
+            title="Save this arrangement for other events in the project"
+            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+          >
+            <Bookmark className="h-4 w-4" /> Save as layout
           </Button>
           {canUseCustomCode ? (
             <Button
@@ -485,14 +685,17 @@ export function PageBuilder({
           <div className="flex border-b border-border">
             {[
               { key: "add", label: "Add", icon: Plus },
+              { key: "outline", label: "Outline", icon: Rows3 },
               { key: "layers", label: "Layers", icon: Layers },
+              { key: "layouts", label: "Layouts", icon: LayoutTemplate },
             ].map((t) => (
               <button
                 key={t.key}
                 type="button"
                 onClick={() => setLeftTab(t.key)}
+                title={t.label}
                 className={cn(
-                  "-mb-px flex flex-1 items-center justify-center gap-1.5 border-b-2 py-2.5 text-xs font-medium transition-colors",
+                  "-mb-px flex flex-1 flex-col items-center justify-center gap-1 border-b-2 py-2 text-[0.65rem] font-medium transition-colors",
                   leftTab === t.key
                     ? "border-primary text-foreground"
                     : "border-transparent text-text-secondary hover:text-foreground",
@@ -511,6 +714,17 @@ export function PageBuilder({
                 onDragItem={startDrag}
                 onAddItem={addFromPalette}
               />
+            ) : leftTab === "outline" ? (
+              <OutlinePanel
+                tree={tree}
+                selectedId={selectedId}
+                accent={accent?.color}
+                onSelect={setSelectedId}
+                onReorder={reorderSection}
+                onToggleVisible={toggleVisible}
+              />
+            ) : leftTab === "layouts" ? (
+              <LayoutsPanel accent={accent?.color} onApply={applyLayout} />
             ) : (
               <LayersPanel
                 tree={tree}
@@ -524,12 +738,14 @@ export function PageBuilder({
         </aside>
 
         <main
+          ref={attachCanvasArea}
           className="min-w-0 flex-1 overflow-hidden bg-surface-strong p-4"
           onClick={() => setSelectedId(null)}
         >
           <div className="mx-auto h-full overflow-hidden rounded-xl border border-border bg-background shadow-lg">
             <BuilderCanvas
               width={device.width}
+              zoom={zoom}
               frameRef={frameRef}
               onDocument={setCanvasDoc}
               className="h-full"
@@ -585,6 +801,16 @@ export function PageBuilder({
       </div>
 
       {drag ? <DropIndicator hit={drag.hit} /> : null}
+      <ScaleReadout scaling={scaling} />
+
+      <SaveLayoutDialog
+        key={saveLayoutOpen ? "open" : "closed"}
+        open={saveLayoutOpen}
+        onOpenChange={setSaveLayoutOpen}
+        tree={tree}
+        theme={theme}
+        defaultName={event?.name}
+      />
 
       <CustomCodeDialog
         open={codeOpen}

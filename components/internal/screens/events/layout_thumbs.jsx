@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Check } from "lucide-react";
-
-import { PAGE_LAYOUTS, PAGE_LAYOUT_CATEGORIES } from "@/lib/events/theme";
 import { cn } from "@/lib/utils";
+
+// Wireframes for the layout gallery. Two kinds: hand-drawn glyphs for the built
+// in code layouts, and a generic one derived from a builder tree — which means
+// presets and anything a user saves get an honest thumbnail for free.
 
 const Fill = ({ className }) => (
   <div className={cn("rounded-[2px] bg-foreground/15", className)} />
@@ -23,7 +23,7 @@ const Lines = ({ n = 3, className }) => (
   </div>
 );
 
-const THUMBS = {
+export const CLASSIC_THUMBS = {
   classic: () => (
     <div className="flex h-full gap-1.5">
       <div className="flex flex-1 flex-col gap-1.5">
@@ -262,84 +262,117 @@ const THUMBS = {
   ),
 };
 
-function LayoutCard({ layout, active, onChange }) {
-  const Thumb = THUMBS[layout.key];
+// How each block type reads in a wireframe: its height, and whether it is a
+// "buy" surface that should carry the brand colour.
+const BLOCK_HEIGHT = {
+  "hero-banner": 22,
+  "hero-split": 18,
+  "hero-centered": 16,
+  gallery: 18,
+  image: 14,
+  video: 14,
+  speakers: 12,
+  testimonials: 10,
+  pricing: 14,
+  register: 16,
+  table: 10,
+  schedule: 12,
+  marquee: 7,
+  divider: 2,
+  spacer: 4,
+  titlebar: 5,
+  "sticky-cta": 5,
+  "checkout-button": 5,
+  stats: 6,
+  "logo-wall": 6,
+  urgency: 4,
+  countdown: 8,
+};
+
+const BRANDED = new Set([
+  "pricing",
+  "register",
+  "checkout-button",
+  "cta",
+  "sticky-cta",
+  "email-capture",
+  "urgency",
+  "countdown",
+  "buttons",
+]);
+
+const GRIDDED = { gallery: 6, speakers: 4, testimonials: 3, "logo-wall": 4 };
+
+function ThumbBlock({ node, accent }) {
+  const height = BLOCK_HEIGHT[node.type] ?? 8;
+  const cells = GRIDDED[node.type];
+
+  if (cells) {
+    return (
+      <div className="grid grid-cols-3 gap-[2px]" style={{ height }}>
+        {Array.from({ length: cells }).map((_, i) => (
+          <div key={i} className="rounded-[1px] bg-foreground/20" />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <button
-      type="button"
-      onClick={() => onChange(layout.key)}
-      aria-pressed={active}
-      className={cn(
-        "flex flex-col gap-3 rounded-xl border p-3 text-left transition-colors",
-        active
-          ? "border-primary bg-primary/10"
-          : "border-border bg-surface-subtle hover:bg-surface-active",
-      )}
-    >
-      <div className="aspect-[16/10] w-full rounded-lg border border-border bg-surface-card p-2">
-        {Thumb ? <Thumb /> : null}
-      </div>
-      <div className="space-y-1">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-          {layout.label}
-          {active ? <Check className="h-3.5 w-3.5 shrink-0 text-primary" /> : null}
-        </p>
-        <p className="text-xs leading-relaxed text-text-secondary">
-          {layout.desc}
-        </p>
-      </div>
-    </button>
+    <div
+      className="rounded-[2px]"
+      style={{
+        height,
+        backgroundColor: BRANDED.has(node.type)
+          ? accent
+          : "color-mix(in srgb, currentColor 16%, transparent)",
+        opacity: BRANDED.has(node.type) ? 0.85 : 1,
+      }}
+    />
   );
 }
 
-export function LayoutPicker({ value, onChange }) {
-  const current = value || "classic";
-  const [filter, setFilter] = useState("all");
-  const shown = PAGE_LAYOUT_CATEGORIES.filter(
-    (c) => filter === "all" || c.key === filter,
-  );
-
-  const chip = (key, label) => (
-    <button
-      key={key}
-      type="button"
-      onClick={() => setFilter(key)}
-      className={cn(
-        "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-        filter === key
-          ? "border-primary bg-surface-active text-foreground"
-          : "border-border text-text-secondary hover:bg-surface-active hover:text-foreground",
-      )}
-    >
-      {label}
-    </button>
-  );
+// A wireframe of a real builder tree: sections stacked, columns weighted by
+// their span, blocks drawn at a height that hints at what they are.
+export function TreeThumb({ tree, accent = "currentColor", maxSections = 7 }) {
+  const sections = (tree?.sections || []).slice(0, maxSections);
+  if (!sections.length) {
+    return (
+      <div className="flex h-full items-center justify-center text-[0.6rem] text-text-tertiary">
+        Empty page
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">
-        {chip("all", `All ${PAGE_LAYOUTS.length}`)}
-        {PAGE_LAYOUT_CATEGORIES.map((c) => chip(c.key, c.label))}
-      </div>
-
-      {shown.map((cat) => (
-        <div key={cat.key} className="space-y-3">
-          <div>
-            <p className="text-sm font-medium text-foreground">{cat.label}</p>
-            <p className="text-xs text-text-secondary">{cat.desc}</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {PAGE_LAYOUTS.filter((l) => l.category === cat.key).map((l) => (
-              <LayoutCard
-                key={l.key}
-                layout={l}
-                active={current === l.key}
-                onChange={onChange}
-              />
+    <div className="flex h-full flex-col gap-1 overflow-hidden text-foreground">
+      {sections.map((section) => {
+        const tinted = section.style?.background?.type !== "none";
+        return (
+          <div
+            key={section.id}
+            className={cn(
+              "flex flex-col gap-1 rounded-[2px] px-1 py-1",
+              tinted && "bg-foreground/[0.06]",
+            )}
+          >
+            {(section.rows || []).slice(0, 3).map((row) => (
+              <div key={row.id} className="flex gap-1">
+                {(row.columns || []).map((column) => (
+                  <div
+                    key={column.id}
+                    className="flex min-w-0 flex-col gap-[3px]"
+                    style={{ flexGrow: column.span || 12, flexBasis: 0 }}
+                  >
+                    {(column.components || []).slice(0, 4).map((node) => (
+                      <ThumbBlock key={node.id} node={node} accent={accent} />
+                    ))}
+                  </div>
+                ))}
+              </div>
             ))}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

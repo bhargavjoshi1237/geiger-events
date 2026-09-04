@@ -109,7 +109,9 @@ function TextControl({ field, value, onChange, multiline, mono }) {
 }
 
 function RangeControl({ field, value, onChange }) {
-  const current = Number(value ?? field.min ?? 0);
+  // Signed ranges need an explicit rest position — falling back to `min` would
+  // park an un-set nudge at its most negative value.
+  const current = Number(value ?? field.default ?? field.min ?? 0);
   return (
     <Field label={field.label} hint={field.hint}>
       <div className="flex items-center gap-3">

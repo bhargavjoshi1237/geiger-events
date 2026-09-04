@@ -172,34 +172,40 @@ export function useDragEngine({ getFrame, getTree, zoom = 1, onDrop }) {
   return { drag, startDrag };
 }
 
-export function useColumnResize({ getFrame, zoom = 1, onResize }) {
-  const [resizing, setResizing] = useState(null);
+// How far the pointer travels before a scaled value steps to the next bucket.
+const SCALE_STEP_PX = 28;
 
-  const startResize = useCallback(
-    (event, rowId, index) => {
+// Dragging a handle to walk a value along a scale — section padding, row gap,
+// block width. The caller owns the value: `step(delta)` moves it and returns the
+// label to show, so the hook never has to know what is being resized.
+export function useScaleDrag({ getFrame, zoom = 1 }) {
+  const [scaling, setScaling] = useState(null);
+
+  const startScale = useCallback(
+    (event, { axis = "y", invert = false, stepPx = SCALE_STEP_PX, step }) => {
       if (event.button != null && event.button !== 0) return;
       event.preventDefault();
       event.stopPropagation();
 
       const frame = getFrame();
-      const doc = frame?.contentDocument;
-      const rowEl = doc?.querySelector(`[data-ev="${rowId}"]`);
-      if (!rowEl) return;
-
-      const unit = (rowEl.getBoundingClientRect().width * zoom) / 12;
-      const startX = event.clientX;
+      const origin = axis === "x" ? event.clientX : event.clientY;
       let applied = 0;
+      let label = step(0) ?? "";
 
       if (frame) frame.style.pointerEvents = "none";
       document.body.style.userSelect = "none";
-      document.body.style.cursor = "col-resize";
-      setResizing({ rowId, index });
+      document.body.style.cursor = axis === "x" ? "ew-resize" : "ns-resize";
+      setScaling({ label, x: event.clientX, y: event.clientY });
 
       const onMove = (e) => {
-        const steps = Math.round((e.clientX - startX) / unit);
-        if (steps === applied) return;
-        onResize(rowId, index, steps - applied);
-        applied = steps;
+        const travelled =
+          ((axis === "x" ? e.clientX : e.clientY) - origin) / (stepPx * zoom);
+        const steps = Math.round(invert ? -travelled : travelled);
+        if (steps !== applied) {
+          label = step(steps - applied) ?? label;
+          applied = steps;
+        }
+        setScaling({ label, x: e.clientX, y: e.clientY });
       };
 
       const stop = () => {
@@ -209,15 +215,15 @@ export function useColumnResize({ getFrame, zoom = 1, onResize }) {
         if (frame) frame.style.pointerEvents = "";
         document.body.style.userSelect = "";
         document.body.style.cursor = "";
-        setResizing(null);
+        setScaling(null);
       };
 
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", stop);
       window.addEventListener("pointercancel", stop);
     },
-    [getFrame, zoom, onResize],
+    [getFrame, zoom],
   );
 
-  return { resizing, startResize };
+  return { scaling, startScale };
 }

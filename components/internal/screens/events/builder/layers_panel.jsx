@@ -11,6 +11,7 @@ import {
   Square,
 } from "lucide-react";
 
+import { hasOffset } from "@/lib/events/page_tree";
 import { getComponentMeta } from "./components";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,14 @@ function LayerRow({
       <span className={cn("min-w-0 flex-1 truncate", hidden && "line-through opacity-50")}>
         {labelFor(node, kind)}
       </span>
+      {hasOffset(node) ? (
+        <span
+          title="Nudged out of position — check it on tablet and mobile"
+          className="shrink-0 rounded bg-primary/15 px-1 text-[0.55rem] font-medium text-primary"
+        >
+          nudged
+        </span>
+      ) : null}
       <button
         type="button"
         onClick={(e) => {

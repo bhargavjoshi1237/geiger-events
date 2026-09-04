@@ -81,7 +81,10 @@ export function BuilderCanvas({
       width,
       height: zoom === 1 ? "100%" : `${100 / zoom}%`,
       transform: zoom === 1 ? undefined : `scale(${zoom})`,
-      transformOrigin: "top center",
+      // Must be top-left: the wrapper below is width*zoom wide, and the drag
+      // engine maps pointer coordinates from the frame's visual top-left.
+      // Scaling about the centre offsets the canvas by width*(1-zoom)/2.
+      transformOrigin: "top left",
     }),
     [width, zoom],
   );
