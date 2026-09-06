@@ -18,14 +18,14 @@ export default function AppLayout() {
       <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
         <Tabs.Screen name="home" options={{ title: "Home" }} />
         <Tabs.Screen name="tickets" options={{ title: "Tickets" }} />
-        <Tabs.Screen name="live" options={{ title: "Live" }} />
+        <Tabs.Screen name="memberships" options={{ title: "Memberships" }} />
         <Tabs.Screen name="inbox" options={{ title: "Inbox" }} />
         <Tabs.Screen name="more" options={{ title: "More" }} />
 
+        <Tabs.Screen name="live" options={{ href: null }} />
         <Tabs.Screen name="watch" options={{ href: null }} />
         <Tabs.Screen name="community" options={{ href: null }} />
         <Tabs.Screen name="orders" options={{ href: null }} />
-        <Tabs.Screen name="memberships" options={{ href: null }} />
         <Tabs.Screen name="messages" options={{ href: null }} />
         <Tabs.Screen name="notifications" options={{ href: null }} />
         <Tabs.Screen name="account" options={{ href: null }} />

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -29,15 +29,50 @@ type SheetProps = {
 
 export function Sheet({ visible, onClose, title, children, snapToContent = true }: SheetProps) {
   const insets = useSafeAreaInsets();
+  // Remount the gesture subtree on every open so drag offsets start fresh.
+  const [openCount, setOpenCount] = useState(0);
+  const wasVisible = useRef(false);
+  useEffect(() => {
+    if (visible && !wasVisible.current) setOpenCount((c) => c + 1);
+    wasVisible.current = visible;
+  }, [visible]);
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      {visible ? (
+        <SheetBody
+          key={openCount}
+          onClose={onClose}
+          title={title}
+          bottomPad={insets.bottom + spacing.lg}
+          snapToContent={snapToContent}
+        >
+          {children}
+        </SheetBody>
+      ) : null}
+    </Modal>
+  );
+}
+
+type SheetBodyProps = {
+  onClose: () => void;
+  title?: string;
+  bottomPad: number;
+  snapToContent: boolean;
+  children: React.ReactNode;
+};
+
+function SheetBody({ onClose, title, bottomPad, snapToContent, children }: SheetBodyProps) {
   const translateYRef = useSharedValue(0);
   const overlayOpacityRef = useSharedValue(1);
 
   const pan = Gesture.Pan()
-    .activeOffsetY([-10, 10])
+    .activeOffsetY([-12, 12])
+    .failOffsetX([-15, 15])
     .onUpdate((e) => {
       if (e.translationY > 0) translateYRef.value = e.translationY;
       overlayOpacityRef.value = interpolate(
-        e.translationY,
+        Math.max(0, e.translationY),
         [0, DISMISS_DISTANCE],
         [1, 0],
         Extrapolation.CLAMP,
@@ -45,6 +80,8 @@ export function Sheet({ visible, onClose, title, children, snapToContent = true 
     })
     .onEnd((e) => {
       if (e.translationY > DISMISS_DISTANCE || e.velocityY > DISMISS_VELOCITY) {
+        translateYRef.value = withTiming(DISMISS_DISTANCE * 2, { duration: timing.fast });
+        overlayOpacityRef.value = withTiming(0, { duration: timing.fast });
         runOnJS(onClose)();
       } else {
         translateYRef.value = withSpring(0, spring);
@@ -60,7 +97,7 @@ export function Sheet({ visible, onClose, title, children, snapToContent = true 
   }));
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <GestureDetector gesture={pan}>
       <View style={styles.fill}>
         <Animated.View entering={FadeIn.duration(timing.base)} style={[styles.overlay, overlayStyle]}>
           <Pressable
@@ -70,23 +107,21 @@ export function Sheet({ visible, onClose, title, children, snapToContent = true 
             onPress={onClose}
           />
         </Animated.View>
-        <GestureDetector gesture={pan}>
-          <Animated.View
-            entering={FadeInUp.duration(timing.slow)}
-            style={[
-              styles.sheet,
-              !snapToContent && styles.fixedHeight,
-              sheetStyle,
-              { paddingBottom: insets.bottom + spacing.lg },
-            ]}
-          >
-            <View style={styles.handle} />
-            {title ? <Text style={styles.title}>{title}</Text> : null}
-            {children}
-          </Animated.View>
-        </GestureDetector>
+        <Animated.View
+          entering={FadeInUp.duration(timing.slow)}
+          style={[
+            styles.sheet,
+            !snapToContent && styles.fixedHeight,
+            sheetStyle,
+            { paddingBottom: bottomPad },
+          ]}
+        >
+          <View style={styles.handle} />
+          {title ? <Text style={styles.title}>{title}</Text> : null}
+          {children}
+        </Animated.View>
       </View>
-    </Modal>
+    </GestureDetector>
   );
 }
 
@@ -107,7 +142,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheet: {
-    backgroundColor: colors.surfaceDialog,
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.lg,

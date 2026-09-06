@@ -42,7 +42,7 @@ export function RefundSheet({ visible, onClose, orderId }: RefundSheetProps) {
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} title="Request A Refund">
+    <Sheet visible={visible} onClose={onClose} title="Request a refund">
       <View style={styles.form}>
         <Text style={styles.hint}>
           The organiser reviews this. You keep your ticket until they approve it.

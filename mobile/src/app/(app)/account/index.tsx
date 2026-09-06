@@ -237,6 +237,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   formCard: {
+    borderWidth: 0,
     paddingVertical: spacing.lg,
     gap: spacing.md,
   },

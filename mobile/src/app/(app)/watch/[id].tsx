@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -10,12 +10,12 @@ import { Pill } from "@/components/ui/Pill";
 import { Screen } from "@/components/ui/Screen";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { fmtDate } from "@/lib/format";
+import { goBack } from "@/lib/nav_history";
 import { usePortalData } from "@/state/data";
 import { colors, spacing, type } from "@/theme/tokens";
 import type { WatchItem } from "@/types/portal";
 
 export default function WatchDetailScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { watch, loading } = usePortalData();
 
@@ -38,7 +38,7 @@ export default function WatchDetailScreen() {
           title="Recording not found"
           message="This recording isn't on your account anymore."
           actionLabel="Go back"
-          onAction={() => router.back()}
+          onAction={() => goBack()}
         />
       </Screen>
     );

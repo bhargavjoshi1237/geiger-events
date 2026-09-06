@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Perforation } from "@/components/ui/Perforation";
 import { fmtShortDay, money, pluralize } from "@/lib/format";
 import { tapFeedback } from "@/lib/haptics";
+import { REFUND_STATUS, statusPill } from "@/lib/status";
 import { usePortalData } from "@/state/data";
 import { useSession } from "@/state/session";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -55,11 +56,6 @@ export default function PassScreen() {
   if (status === "guest") return <Redirect href="/(auth)/sign-in" />;
 
   const ticket = data?.tickets?.find((t) => t.id === id);
-  // The pass never scrolls, so the QR has to shrink to whatever height is left.
-  const qrSize = Math.max(
-    QR_MIN,
-    Math.min(QR_MAX, width - 96, height - insets.top - insets.bottom - QR_RESERVED_HEIGHT),
-  );
 
   const sheetInset = {
     marginTop: insets.top + SHEET_GAP,
@@ -86,6 +82,23 @@ export default function PassScreen() {
   const when = [ticket.eventDate ? fmtShortDay(ticket.eventDate) : null, ticket.eventTime]
     .filter(Boolean)
     .join(" · ");
+  // Refunded passes stamp their status under the order code; normal tickets show nothing.
+  const refundState = ticket.refund?.status?.toLowerCase();
+  const showRefundStatus = refundState === "requested" || refundState === "refunded";
+  const refundLabel = showRefundStatus
+    ? statusPill(REFUND_STATUS, ticket.refund?.status).label.toUpperCase()
+    : null;
+  // Stamp takes its colour from the status: requested is yellow, refunded is red.
+  const refundColor = refundState === "refunded" ? colors.danger : colors.warning;
+  // The pass never scrolls, so the QR has to shrink to whatever height is left.
+  const qrSize = Math.max(
+    QR_MIN,
+    Math.min(
+      QR_MAX,
+      width - 96,
+      height - insets.top - insets.bottom - QR_RESERVED_HEIGHT - (showRefundStatus ? 48 : 0),
+    ),
+  );
   const gate = [ticket.ticket || "Admission", ticket.quantity > 1 ? `× ${ticket.quantity}` : null]
     .filter(Boolean)
     .join(" ");
@@ -116,6 +129,9 @@ export default function PassScreen() {
           <TicketQr orderId={ticket.id} size={qrSize} padded={false} />
         </View>
         <Text style={styles.code}>{ticket.orderCode}</Text>
+        {showRefundStatus ? (
+          <Text style={[styles.refundStatus, { color: refundColor }]}>{refundLabel}</Text>
+        ) : null}
 
         <View style={styles.stubWrap}>
           <Perforation
@@ -248,6 +264,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: colors.paperForeground,
     marginTop: spacing.lg + 2,
+    marginBottom: spacing.lg + 2,
+  },
+  // Big capital stamp for refund-requested/refunded passes; normal tickets render nothing.
+  refundStatus: {
+    ...type.title,
+    textTransform: "uppercase",
+    textAlign: "center",
     marginBottom: spacing.lg + 2,
   },
   // The tear line and stub run edge to edge, so the notches bite into the card's sides.

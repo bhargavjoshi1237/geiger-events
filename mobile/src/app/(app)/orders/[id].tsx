@@ -1,8 +1,10 @@
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/ui/icons";
 import { DetailRow } from "@/components/DetailRow";
@@ -16,6 +18,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { fmtDate, fmtDateTime, money } from "@/lib/format";
+import { goBack } from "@/lib/nav_history";
 import { ORDER_STATUS, REFUND_STATUS, statusPill } from "@/lib/status";
 import { usePortalData } from "@/state/data";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -50,6 +53,12 @@ export default function OrderDetailScreen() {
 
   const order = data?.orders?.find((o) => o.id === id);
   const loading = data === null;
+  const { height: winHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  // Full-width landing banner: 20% of the viewport height, clamped for small/large screens.
+  const heroHeight = Math.max(160, Math.min(240, Math.round(winHeight * 0.2)));
+  // Pull the hero under the status bar so the cover extends to the top edge.
+  const bleedTop = insets.top + spacing.md;
 
   if (loading) {
     return (
@@ -69,7 +78,7 @@ export default function OrderDetailScreen() {
           title="Order not found"
           message="This receipt isn't on your account anymore."
           actionLabel="Go back"
-          onAction={() => router.back()}
+          onAction={() => goBack()}
         />
       </Screen>
     );
@@ -85,26 +94,42 @@ export default function OrderDetailScreen() {
 
   return (
     <Screen scroll>
-      <ScreenHeader title="Receipt" subtitle={order.eventName} />
-
-      <View style={styles.head}>
-        <View style={styles.headCover}>
-          {order.coverUrl ? (
-            <Image
-              source={{ uri: order.coverUrl }}
-              contentFit="cover"
-              transition={200}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : (
+      <View
+        style={[
+          styles.hero,
+          { height: heroHeight + bleedTop + 56, marginTop: -bleedTop, paddingTop: bleedTop },
+        ]}
+      >
+        {order.coverUrl ? (
+          <Image
+            source={{ uri: order.coverUrl }}
+            contentFit="cover"
+            contentPosition="center"
+            transition={200}
+            style={[StyleSheet.absoluteFill, styles.heroImage]}
+          />
+        ) : null}
+        {/* Top scrim keeps the back button legible; bottom fades into the page. */}
+        <LinearGradient
+          colors={[colors.scrim, "transparent", colors.scrim, colors.background]}
+          locations={[0, 0.35, 0.62, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Transparent nav over the cover so the image runs edge to edge. */}
+        <View style={styles.heroNav}>
+          <ScreenHeader title="Receipt" subtitle={order.eventName} />
+        </View>
+        <View style={styles.heroContent} pointerEvents="none">
+          {order.coverUrl ? null : (
             <Icon name="file-text" size={19} color={colors.mutedForeground} />
           )}
-        </View>
-        <View style={styles.headText}>
-          <Text style={styles.headName} numberOfLines={1}>
+          <Text style={styles.heroName} numberOfLines={2}>
             {order.eventName}
           </Text>
-          <Text style={styles.headCode}>{order.orderCode}</Text>
+          <Text style={styles.heroCode}>{order.orderCode}</Text>
         </View>
       </View>
 
@@ -225,12 +250,12 @@ export default function OrderDetailScreen() {
         </View>
       ) : canRefund ? (
         <View style={[styles.card, styles.cardPadded]}>
-          <Text style={styles.refundTitle}>Request A Refund</Text>
+          <Text style={styles.refundTitle}>Request a refund</Text>
           <Text style={styles.refundHint}>
             The organiser reviews this. You keep your ticket until they approve it.
           </Text>
           <Button
-            title="Request Refund"
+            title="Request refund"
             variant="secondary"
             icon="rotate-ccw"
             onPress={() => setRefunding(true)}
@@ -240,7 +265,7 @@ export default function OrderDetailScreen() {
       ) : null}
 
       <Button
-        title="Message organiser"
+        title="Message Organiser"
         variant="secondary"
         icon="message-square"
         onPress={() => pushMessage(router, order)}
@@ -274,34 +299,38 @@ function DashedRule() {
 }
 
 const styles = StyleSheet.create({
-  head: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
+  hero: {
+    alignSelf: "stretch",
+    overflow: "hidden",
+    marginHorizontal: -spacing.lg,
     marginBottom: spacing.lg + 2,
+    backgroundColor: colors.background,
   },
-  headCover: {
-    width: 44,
-    height: 44,
+  heroImage: {
+    opacity: 0.4,
+  },
+  // Restores the page padding the full-bleed hero escapes, so the nav
+  // sits exactly where it does on every other pushed screen.
+  heroNav: {
+    paddingHorizontal: spacing.lg,
+  },
+  heroContent: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
-    backgroundColor: colors.surfaceActive,
-    borderRadius: radius.md,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
-  headText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
+  heroName: {
+    ...type.title,
+    textAlign: "center",
+    color: colors.primary,
   },
-  headName: {
-    ...type.bodyStrong,
-    fontSize: 16,
-    color: colors.foreground,
-  },
-  headCode: {
+  heroCode: {
     ...type.monoSmall,
-    color: colors.textTertiary,
+    textAlign: "center",
+    color: colors.mutedForeground,
   },
   receipt: {
     borderWidth: 1,
@@ -309,6 +338,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.surfaceCard,
     overflow: "hidden",
+    marginTop: -spacing.xl - 4,
     marginBottom: spacing.lg + 2,
   },
   receiptHead: {

@@ -114,8 +114,17 @@ export function EventMembershipsSection({ event, headerItem }) {
                       on ? "" : "opacity-60",
                     )}
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
-                      <BadgeCheck className="h-4 w-4" />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-subtle text-muted-foreground">
+                      {p.config?.posterUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.config.posterUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <BadgeCheck className="h-4 w-4" />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-foreground">

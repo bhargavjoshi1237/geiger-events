@@ -114,8 +114,14 @@ export function AnimatedSplash({ ready, onFinish }: AnimatedSplashProps) {
       <Animated.View style={[styles.brandWrap, brandStyle]}>
         <BrandMark size={56} />
       </Animated.View>
-      <Animated.Text style={[styles.wordmark, wordmarkStyle]}>
-        Geiger Events
+      {/* No adjustsFontSizeToFit: Android's autosize pass ignores letterSpacing,
+          so it shrinks against a mismeasured width and drops the last word. */}
+      <Animated.Text
+        style={[styles.wordmark, wordmarkStyle]}
+        numberOfLines={1}
+        allowFontScaling={false}
+      >
+        Geiger Studios
       </Animated.Text>
       <Animated.View style={[styles.rule, ruleStyle]} />
     </Animated.View>
@@ -140,6 +146,8 @@ const styles = StyleSheet.create({
     ...type.title,
     color: colors.foreground,
     letterSpacing: 0.5,
+    textAlign: "center",
+    paddingHorizontal: spacing.xl,
   },
   rule: {
     height: 1,

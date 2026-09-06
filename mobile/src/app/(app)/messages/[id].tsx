@@ -119,7 +119,7 @@ export default function ThreadDetailScreen() {
     return (
       <Screen>
         <ScreenHeader title="Message" />
-        <SkeletonList rows={5} />
+        <SkeletonList rows={5} variant="chat" />
       </Screen>
     );
   }

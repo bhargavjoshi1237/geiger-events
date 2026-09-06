@@ -48,7 +48,7 @@ export function TicketPassCard({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${name}, ${timing}`}
+      accessibilityLabel={`${name}, ${status ? status.label : timing}`}
       onPressIn={pressIn}
       onPressOut={pressOut}
       onPress={() => {
@@ -77,14 +77,7 @@ export function TicketPassCard({
             <Text style={styles.ticketLine} numberOfLines={1}>
               {ticketLine}
             </Text>
-            {status ? (
-              <View style={styles.statusRow}>
-                <View style={[styles.statusDot, { backgroundColor: TONE_COLORS[status.tone] }]} />
-                <Text style={[styles.statusText, { color: TONE_COLORS[status.tone] }]} numberOfLines={1}>
-                  {status.label}
-                </Text>
-              </View>
-            ) : venue ? (
+            {venue ? (
               <Text style={styles.venue} numberOfLines={1}>
                 {venue}
               </Text>
@@ -95,7 +88,14 @@ export function TicketPassCard({
         <Perforation notchColor={colors.background} />
 
         <View style={styles.stub}>
-          <Pill label={timing} tone={muted ? "neutral" : "success"} dot={false} />
+          <View>
+            {/* Status takes the timing slot when present: same footprint, date stays in the head. */}
+            {status ? (
+              <Pill label={status.label} tone={status.tone} />
+            ) : (
+              <Pill label={timing} tone={muted ? "neutral" : "success"} dot={false} />
+            )}
+          </View>
           <Text style={styles.price}>{price}</Text>
           {onShowPass ? (
             <Pressable
@@ -113,7 +113,7 @@ export function TicketPassCard({
               ]}
             >
               <Icon
-                name="maximize"
+                name="qr-code"
                 size={15}
                 color={muted ? colors.foreground : colors.primaryForeground}
               />
@@ -126,25 +126,14 @@ export function TicketPassCard({
   );
 }
 
-const TONE_COLORS: Record<Tone, string> = {
-  success: colors.success,
-  danger: colors.danger,
-  info: colors.info,
-  warning: colors.warning,
-  neutral: colors.mutedForeground,
-};
-
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.xl - 2,
     overflow: "hidden",
   },
   cardMuted: {
     backgroundColor: colors.surfaceSubtle,
-    borderColor: colors.surfaceHover,
   },
   head: {
     flexDirection: "row",
@@ -186,20 +175,6 @@ const styles = StyleSheet.create({
   venue: {
     ...type.caption,
     color: colors.textTertiary,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    ...type.captionStrong,
-    flexShrink: 1,
   },
   stub: {
     flexDirection: "row",

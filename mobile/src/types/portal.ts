@@ -83,6 +83,7 @@ export type Membership = {
   price: number;
   billingPeriod: string;
   discountPercent: number;
+  posterUrl: string;
   status: string;
   startedAt: string | null;
   expiresAt: string | null;
@@ -106,6 +107,7 @@ export type Plan = {
   benefits: string[];
   included: IncludedSummary[];
   description: string;
+  posterUrl: string;
   held: boolean;
 };
 

@@ -23,6 +23,7 @@ import Funnel from "lucide-react-native/icons/funnel";
 import House from "lucide-react-native/icons/house";
 import Inbox from "lucide-react-native/icons/inbox";
 import Info from "lucide-react-native/icons/info";
+import Link from "lucide-react-native/icons/link";
 import LogOut from "lucide-react-native/icons/log-out";
 import Mail from "lucide-react-native/icons/mail";
 import MapPin from "lucide-react-native/icons/map-pin";
@@ -39,6 +40,7 @@ import Radio from "lucide-react-native/icons/radio";
 import RotateCcw from "lucide-react-native/icons/rotate-ccw";
 import Search from "lucide-react-native/icons/search";
 import Send from "lucide-react-native/icons/send";
+import Share from "lucide-react-native/icons/share";
 import Shield from "lucide-react-native/icons/shield";
 import ShoppingBag from "lucide-react-native/icons/shopping-bag";
 import Smartphone from "lucide-react-native/icons/smartphone";
@@ -83,6 +85,7 @@ export const ICONS = {
   house: House,
   inbox: Inbox,
   info: Info,
+  link: Link,
   "log-out": LogOut,
   mail: Mail,
   "map-pin": MapPin,
@@ -99,6 +102,7 @@ export const ICONS = {
   "rotate-ccw": RotateCcw,
   search: Search,
   send: Send,
+  share: Share,
   shield: Shield,
   "shopping-bag": ShoppingBag,
   smartphone: Smartphone,

@@ -19,7 +19,7 @@ export function DetailRow({ label, value, icon, mono = false, divider = true }: 
         {icon ? <Icon name={icon} size={15} color={colors.textSecondary} /> : null}
         <Text style={styles.label}>{label}</Text>
       </View>
-      <Text style={[styles.value, mono && styles.mono]} numberOfLines={2}>
+      <Text style={[styles.value, mono && styles.mono]} numberOfLines={1}>
         {value}
       </Text>
     </View>

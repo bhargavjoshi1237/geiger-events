@@ -1,15 +1,16 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import type { Href } from "expo-router";
-import React, { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import { BackHandler, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/ui/icons";
 import { DetailRow } from "@/components/DetailRow";
-import { EventCover } from "@/components/EventCover";
 import { RefundSheet } from "@/components/RefundSheet";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { ShareTicketSheet } from "@/components/ShareTicketSheet";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconButton } from "@/components/ui/IconButton";
@@ -18,8 +19,9 @@ import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { Screen } from "@/components/ui/Screen";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { buildEventICS, directionsUrl, openDirections, shareEventICS } from "@/lib/calendar";
+import { directionsUrl, openDirections } from "@/lib/calendar";
 import { fmtDateTime, fmtShortDay, money } from "@/lib/format";
+import { goBack } from "@/lib/nav_history";
 import { REFUND_STATUS, statusPill } from "@/lib/status";
 import { usePortalData } from "@/state/data";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -46,9 +48,29 @@ export default function TicketDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data } = usePortalData();
   const [refunding, setRefunding] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const ticket = data?.tickets?.find((t) => t.id === id);
   const loading = data === null;
+  const { height: winHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  // Same landing banner as the receipt: 20% of the viewport, clamped for small/large screens.
+  const heroHeight = Math.max(160, Math.min(240, Math.round(winHeight * 0.2)));
+  // Pull the hero under the status bar so the cover extends to the top edge.
+  const bleedTop = insets.top + spacing.md;
+
+  // Hardware back should match the in-app back: ticket list, not the previous tab.
+  // Let open sheets close themselves first (Modal onRequestClose).
+  useFocusEffect(
+    useCallback(() => {
+      if (refunding || sharing) return;
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        goBack("/(app)/tickets" as Href);
+        return true;
+      });
+      return () => sub.remove();
+    }, [refunding, sharing]),
+  );
 
   if (loading) {
     return (
@@ -68,7 +90,7 @@ export default function TicketDetailScreen() {
           title="Ticket not found"
           message="This ticket isn't on your account anymore."
           actionLabel="Go back"
-          onAction={() => router.back()}
+          onAction={() => goBack()}
         />
       </Screen>
     );
@@ -83,25 +105,46 @@ export default function TicketDetailScreen() {
 
   return (
     <Screen scroll>
-      <ScreenHeader
-        title={ticket.eventName}
-        subtitle={`${ticket.ticket || "Admission"}${ticket.quantity > 1 ? ` × ${ticket.quantity}` : ""} · ${ticket.buyerName || ticket.buyerEmail}`}
-      />
-
-      <View style={styles.coverWrap}>
-        <EventCover uri={ticket.coverUrl} name={ticket.eventName} height={170} radius={0} />
+      <View
+        style={[
+          styles.hero,
+          { height: heroHeight + bleedTop + 56, marginTop: -bleedTop, paddingTop: bleedTop },
+        ]}
+      >
+        {ticket.coverUrl ? (
+          <Image
+            source={{ uri: ticket.coverUrl }}
+            contentFit="cover"
+            contentPosition="center"
+            transition={200}
+            style={[StyleSheet.absoluteFill, styles.heroImage]}
+          />
+        ) : null}
+        {/* Top scrim keeps the back button legible; bottom fades into the page. */}
         <LinearGradient
-          colors={["rgba(0,0,0,0.85)", "transparent"]}
-          start={{ x: 0, y: 1 }}
-          end={{ x: 0, y: 0.4 }}
+          colors={[colors.scrim, "transparent", colors.scrim, colors.background]}
+          locations={[0, 0.35, 0.62, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
           pointerEvents="none"
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.coverText} pointerEvents="none">
-          <Text style={styles.coverName} numberOfLines={2}>
+        {/* Transparent nav over the cover so the image runs edge to edge. */}
+        <View style={styles.heroNav}>
+          <ScreenHeader
+            title="Ticket"
+            subtitle={`${ticket.ticket || "Admission"}${ticket.quantity > 1 ? ` × ${ticket.quantity}` : ""} · ${ticket.buyerName || ticket.buyerEmail}`}
+            onBack={() => goBack("/(app)/tickets" as Href)}
+          />
+        </View>
+        <View style={styles.heroContent} pointerEvents="none">
+          {ticket.coverUrl ? null : (
+            <Icon name="file-text" size={19} color={colors.mutedForeground} />
+          )}
+          <Text style={styles.heroName} numberOfLines={2}>
             {ticket.eventName}
           </Text>
-          <Text style={styles.coverMeta} numberOfLines={1}>
+          <Text style={styles.heroMeta} numberOfLines={1}>
             {when}
           </Text>
         </View>
@@ -111,21 +154,19 @@ export default function TicketDetailScreen() {
         <View style={styles.primary}>
           <Button
             title="Show pass"
-            icon="maximize"
+            icon="qr-code"
             onPress={() => router.push(`/pass/${ticket.id}` as Href)}
             fullWidth
           />
         </View>
-        {buildEventICS(ticket) ? (
-          <IconButton
-            icon="calendar"
-            label="Add to calendar"
-            shape="square"
-            size={48}
-            variant="solid"
-            onPress={() => void shareEventICS(ticket)}
-          />
-        ) : null}
+        <IconButton
+          icon="share"
+          label="Share"
+          shape="square"
+          size={48}
+          variant="solid"
+          onPress={() => setSharing(true)}
+        />
         {directionsUrl(ticket) ? (
           <IconButton
             icon="navigation"
@@ -212,7 +253,7 @@ export default function TicketDetailScreen() {
       <View style={styles.footerActions}>
         <View style={styles.footerHalf}>
           <Button
-            title="Message Organiser"
+            title="Message"
             variant="secondary"
             icon="message-square"
             onPress={() => pushMessage(router, ticket)}
@@ -233,6 +274,7 @@ export default function TicketDetailScreen() {
       </View>
 
       <RefundSheet visible={refunding} onClose={() => setRefunding(false)} orderId={ticket.id} />
+      <ShareTicketSheet ticket={ticket} visible={sharing} onClose={() => setSharing(false)} />
     </Screen>
   );
 }
@@ -265,34 +307,44 @@ function EntitlementRow({ e }: { e: Entitlement }) {
 
 // Refund status colour comes from the Pill; this screen only owns layout.
 const styles = StyleSheet.create({
-  coverWrap: {
+  hero: {
+    alignSelf: "stretch",
     overflow: "hidden",
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginHorizontal: -spacing.lg,
     marginBottom: spacing.lg + 2,
+    backgroundColor: colors.background,
   },
-  coverText: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    gap: 6,
-    padding: spacing.lg,
+  heroImage: {
+    opacity: 0.4,
   },
-  coverName: {
+  // Restores the page padding the full-bleed hero escapes, so the nav
+  // sits exactly where it does on every other pushed screen.
+  heroNav: {
+    paddingHorizontal: spacing.lg,
+  },
+  heroContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
+  },
+  heroName: {
     ...type.title,
+    textAlign: "center",
     color: colors.primary,
   },
-  coverMeta: {
+  heroMeta: {
     ...type.caption,
-    fontSize: 13,
-    color: "rgba(255,255,255,0.75)",
+    textAlign: "center",
+    color: colors.mutedForeground,
   },
   actions: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md - 2,
+    marginTop: -spacing.xl - 4,
     marginBottom: spacing.lg + 4,
   },
   primary: {

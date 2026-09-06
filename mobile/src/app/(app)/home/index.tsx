@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import type { Href } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 
@@ -9,6 +9,7 @@ import { Icon, type IconName } from "@/components/ui/icons";
 import { Countdown } from "@/components/Countdown";
 import { EventCover } from "@/components/EventCover";
 import { ScreenTitle } from "@/components/ScreenTitle";
+import { ShareTicketSheet } from "@/components/ShareTicketSheet";
 import { TicketQr } from "@/components/TicketQr";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -20,9 +21,10 @@ import { Pill } from "@/components/ui/Pill";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { Screen } from "@/components/ui/Screen";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { SkeletonList } from "@/components/ui/Skeleton";
-import { buildEventICS, directionsUrl, openDirections, shareEventICS } from "@/lib/calendar";
+import { HomeSkeleton } from "@/components/ui/Skeleton";
+import { directionsUrl, openDirections } from "@/lib/calendar";
 import {
+  capitalize,
   firstName,
   fmtDate,
   fmtShortDay,
@@ -62,12 +64,13 @@ export default function HomeScreen() {
     const onTicket =
       nextTicket?.buyerName?.trim() ||
       (data?.tickets || []).find((t) => t.buyerName?.trim())?.buyerName;
-    return firstName(onTicket || member?.name, member?.email);
+    return capitalize(firstName(onTicket || member?.name, member?.email));
   }, [nextTicket, data, member]);
 
   const chatCount = (channels || []).length;
   const chatUnread = (channels || []).reduce((sum, c) => sum + (c.unread || 0), 0);
   const activePlan = (data?.memberships || []).find((m) => m.status === "Active") || null;
+  const [sharingTicket, setSharingTicket] = useState<Ticket | null>(null);
 
   return (
     <Screen scroll>
@@ -98,7 +101,7 @@ export default function HomeScreen() {
       )}
 
       {loading ? (
-        <SkeletonList rows={5} />
+        <HomeSkeleton />
       ) : (
         <Animated.View layout={LinearTransition} style={styles.stack}>
           {nextTicket ? (
@@ -112,6 +115,7 @@ export default function HomeScreen() {
                 <NextEventHero
                   ticket={nextTicket}
                   onShowPass={() => router.push(`/pass/${nextTicket.id}` as Href)}
+                  onShare={() => setSharingTicket(nextTicket)}
                   onOpen={() =>
                     router.push(
                       (nextTicket.eventId
@@ -165,13 +169,15 @@ export default function HomeScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="All orders"
                     onPress={() => router.push("/orders")}
-                    hitSlop={8}
+                    hitSlop={12}
+                    style={({ pressed }) => [styles.viewAllHit, pressed && styles.pressed]}
                   >
                     <Text style={styles.viewAll}>All</Text>
+                    <Icon name="arrow-right" size={12} color={colors.primary} />
                   </Pressable>
                 }
               >
-                Recent orders
+                Recent Orders
               </SectionTitle>
               <View style={styles.ordersCard}>
                 {recentOrders.map((o, idx) => {
@@ -206,6 +212,13 @@ export default function HomeScreen() {
           ) : null}
         </Animated.View>
       )}
+      {sharingTicket ? (
+        <ShareTicketSheet
+          ticket={sharingTicket}
+          visible
+          onClose={() => setSharingTicket(null)}
+        />
+      ) : null}
     </Screen>
   );
 }
@@ -228,10 +241,12 @@ function TodayHeader() {
 function NextEventHero({
   ticket,
   onShowPass,
+  onShare,
   onOpen,
 }: {
   ticket: Ticket;
   onShowPass: () => void;
+  onShare: () => void;
   onOpen: () => void;
 }) {
   const loc = [ticket.venue, ticket.city].filter(Boolean).join(", ");
@@ -272,18 +287,16 @@ function NextEventHero({
         <Countdown dateStr={ticket.eventDate} />
         <View style={styles.heroActions}>
           <View style={styles.heroPrimary}>
-            <Button title="Show Pass" icon="qr-code" onPress={onShowPass} fullWidth />
+            <Button title="Show pass" icon="qr-code" onPress={onShowPass} fullWidth />
           </View>
-          {buildEventICS(ticket) ? (
-            <IconButton
-              icon="calendar"
-              label="Add to calendar"
-              shape="square"
-              size={48}
-              variant="solid"
-              onPress={() => void shareEventICS(ticket)}
-            />
-          ) : null}
+          <IconButton
+            icon="share"
+            label="Share"
+            shape="square"
+            size={48}
+            variant="solid"
+            onPress={onShare}
+          />
           {directionsUrl(ticket) ? (
             <IconButton
               icon="navigation"
@@ -764,10 +777,16 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: colors.textSecondary,
   },
+  viewAllHit: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingLeft: spacing.sm,
+  },
   viewAll: {
     ...type.captionStrong,
-    fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.primary,
   },
   ordersCard: {
     borderWidth: 1,

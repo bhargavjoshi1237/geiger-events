@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -13,6 +13,7 @@ import { Screen } from "@/components/ui/Screen";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
 import { fmtDateTime } from "@/lib/format";
+import { goBack } from "@/lib/nav_history";
 import { usePoll } from "@/lib/use_poll";
 import { useLivePlayer } from "@/state/live_player";
 import { useSession } from "@/state/session";
@@ -22,7 +23,6 @@ import type { LiveRoom } from "@/types/portal";
 const POLL_MS = 30_000;
 
 export default function LiveRoomScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token } = useSession();
   const { dock, clear } = useLivePlayer();
@@ -62,7 +62,7 @@ export default function LiveRoomScreen() {
           title="Room not found"
           message="This room isn't available anymore."
           actionLabel="Go back"
-          onAction={() => router.back()}
+          onAction={() => goBack()}
         />
       </Screen>
     );
@@ -75,7 +75,7 @@ export default function LiveRoomScreen() {
         subtitle={[room.eventName, room.planName].filter(Boolean).join(" · ")}
         onBack={() => {
           clear();
-          router.back();
+          goBack();
         }}
         right={
           room.openNow ? (

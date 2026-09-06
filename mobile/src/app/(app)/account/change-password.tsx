@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -9,11 +8,11 @@ import { Input } from "@/components/ui/Input";
 import { Screen } from "@/components/ui/Screen";
 import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
+import { goBack } from "@/lib/nav_history";
 import { useSession } from "@/state/session";
 import { spacing } from "@/theme/tokens";
 
 export default function ChangePasswordScreen() {
-  const router = useRouter();
   const { token } = useSession();
   const { success, error } = useToast();
   const [current, setCurrent] = useState("");
@@ -34,7 +33,7 @@ export default function ChangePasswordScreen() {
     setBusy(false);
     if (!res.ok) return error(res.error || "Couldn't update your password.");
     success("Password updated.");
-    router.back();
+    goBack();
   };
 
   return (

@@ -2,6 +2,7 @@ import { Stack, router } from "expo-router";
 import type { Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import * as SystemUI from "expo-system-ui";
 import React, { useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -17,6 +18,7 @@ import {
 import { PortalDataProvider } from "@/state/data";
 import { LivePlayerProvider } from "@/state/live_player";
 import { SessionProvider, useSession } from "@/state/session";
+import { NavHistoryRecorder } from "@/lib/nav_history";
 import { useAppFonts } from "@/theme/load_fonts";
 import { colors } from "@/theme/tokens";
 
@@ -48,6 +50,8 @@ function RootNavigator() {
 
   useEffect(() => {
     void SplashScreen.hideAsync();
+    // Paint the Android system bars the app canvas colour instead of black.
+    void SystemUI.setBackgroundColorAsync(colors.background).catch(() => undefined);
   }, []);
 
   useEffect(
@@ -62,6 +66,7 @@ function RootNavigator() {
   return (
     <>
       <StatusBar style="light" />
+      <NavHistoryRecorder />
       <Stack
         screenOptions={{
           headerShown: false,

@@ -1,9 +1,20 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { BadgeCheck, CircleDollarSign, Gift, SquarePen } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import {
+  BadgeCheck,
+  CircleDollarSign,
+  Gift,
+  ImagePlus,
+  Loader2,
+  SquarePen,
+  Trash2,
+  UploadCloud,
+} from "lucide-react";
 
 import { Field } from "@/components/internal/shared/screen_kit";
+import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Switch } from "@geiger/ui/switch";
 import { Textarea } from "@geiger/ui/textarea";
@@ -18,6 +29,11 @@ import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listSeries } from "@/lib/supabase/series";
+import {
+  pathFromPublicUrl,
+  removeEventImage,
+  uploadMembershipImage,
+} from "@/lib/supabase/storage";
 import {
   ENTITLEMENT_ITEMS,
   entitlementSummary,
@@ -238,15 +254,174 @@ function BenefitsSection({ config, setConfig }) {
 }
 
 function DetailsSection({ config, setConfig }) {
+  const { projectId } = useProject();
+  const [busy, setBusy] = useState(false);
+  const fileInput = useRef(null);
+  const poster = config.posterUrl || "";
+  const [urlDraft, setUrlDraft] = useState(poster);
+
+  // Keep the link box in sync when the poster changes via upload/remove —
+  // same render-time reset pattern as the gallery link dialog.
+  const [prevPoster, setPrevPoster] = useState(poster);
+  if (poster !== prevPoster) {
+    setPrevPoster(poster);
+    setUrlDraft(poster);
+  }
+
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    setBusy(true);
+    const res = await uploadMembershipImage(projectId, file);
+    setBusy(false);
+    if (!res?.url) {
+      toast.error("Upload failed — please try again.");
+      return;
+    }
+    const old = poster;
+    setConfig({ ...config, posterUrl: res.url });
+    toast.success("Poster background updated. Save to keep it.");
+    const oldPath = pathFromPublicUrl(old);
+    if (oldPath) removeEventImage(oldPath);
+  };
+
+  const removePoster = () => {
+    const path = pathFromPublicUrl(poster);
+    setConfig({ ...config, posterUrl: "" });
+    toast.success("Poster removed. Save to keep it.");
+    if (path) removeEventImage(path);
+  };
+
+  // A pasted link is saved as-is and used directly as the poster's src —
+  // no upload, no copy. Only previously-uploaded storage files are cleaned
+  // up on replace (pathFromPublicUrl returns null for remote URLs).
+  const applyUrl = () => {
+    const value = urlDraft.trim();
+    if (!value) {
+      toast.error("Paste an image link first.");
+      return;
+    }
+    if (!/^https?:\/\/.+/i.test(value)) {
+      toast.error("Paste a full http(s) link.");
+      return;
+    }
+    if (value === poster) return;
+    const old = poster;
+    setConfig({ ...config, posterUrl: value });
+    toast.success("Poster background updated. Save to keep it.");
+    const oldPath = pathFromPublicUrl(old);
+    if (oldPath) removeEventImage(oldPath);
+  };
+
   return (
-    <Field label="Summary" hint="Shown to prospective members.">
-      <Textarea
-        rows={3}
-        value={config.description || ""}
-        onChange={(e) => setConfig({ ...config, description: e.target.value })}
-        placeholder="e.g. Annual membership with perks across every event."
-      />
-    </Field>
+    <div className="space-y-6">
+      <Field
+        label="Poster background"
+        hint="Upload an image or paste an image link — shown on the plan card in the members portal. 16:9 works best."
+      >
+        <div className="space-y-3">
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onFile}
+          />
+          {poster ? (
+            <div className="space-y-3">
+              <div className="relative overflow-hidden rounded-xl border border-border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={poster}
+                  alt="Membership plan poster"
+                  className="aspect-[16/9] w-full object-cover"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => fileInput.current?.click()}
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                >
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <UploadCloud className="h-4 w-4" />
+                  )}
+                  Replace
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={removePoster}
+                  className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                >
+                  <Trash2 className="h-4 w-4" /> Remove
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => fileInput.current?.click()}
+              className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-card text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground disabled:opacity-60"
+            >
+              {busy ? (
+                <Loader2 className="h-7 w-7 animate-spin" />
+              ) : (
+                <ImagePlus className="h-7 w-7" />
+              )}
+              <span className="text-sm font-medium text-muted-foreground">
+                {busy ? "Uploading…" : "Click to upload a poster background"}
+              </span>
+              <span className="text-xs">16:9 · images optimized automatically</span>
+            </button>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={urlDraft}
+              onChange={(e) => setUrlDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyUrl();
+                }
+              }}
+              placeholder="…or paste an image link (https://…)"
+              inputMode="url"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={applyUrl}
+              className="shrink-0 border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            >
+              Use link
+            </Button>
+          </div>
+        </div>
+      </Field>
+      <Field label="Summary" hint="Shown to prospective members.">
+        <Textarea
+          rows={3}
+          value={config.description || ""}
+          onChange={(e) => setConfig({ ...config, description: e.target.value })}
+          placeholder="e.g. Annual membership with perks across every event."
+        />
+      </Field>
+    </div>
   );
 }
 

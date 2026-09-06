@@ -11,7 +11,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { Screen } from "@/components/ui/Screen";
 import { Segmented } from "@/components/ui/Segmented";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { TicketsSkeleton } from "@/components/ui/Skeleton";
 import { fmtDate, fmtShortDay, isUpcoming, money, relativeDayLabel } from "@/lib/format";
 import { ORDER_STATUS, REFUND_STATUS, statusPill } from "@/lib/status";
 import { usePortalData } from "@/state/data";
@@ -99,7 +99,7 @@ export default function TicketsScreen() {
 
       {loading ? (
         <View style={styles.list}>
-          <SkeletonList rows={4} />
+          <TicketsSkeleton />
         </View>
       ) : !list.length ? (
         <EmptyState

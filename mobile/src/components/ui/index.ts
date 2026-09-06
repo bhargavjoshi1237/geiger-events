@@ -17,6 +17,6 @@ export { Screen } from "@/components/ui/Screen";
 export { SectionTitle } from "@/components/ui/SectionTitle";
 export { Segmented } from "@/components/ui/Segmented";
 export { Sheet } from "@/components/ui/Sheet";
-export { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+export { EventDetailSkeleton, HomeSkeleton, InboxSkeleton, Skeleton, SkeletonList, TicketsSkeleton, WatchSkeleton } from "@/components/ui/Skeleton";
 export { Switch, SwitchPlaceholder } from "@/components/ui/Switch";
 export { ToastProvider, useToast } from "@/components/ui/Toast";

@@ -6,12 +6,12 @@ import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated"
 
 import { Icon } from "@/components/ui/icons";
 import { EventCover } from "@/components/EventCover";
-import { ScreenTitle } from "@/components/ScreenTitle";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { Screen } from "@/components/ui/Screen";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { WatchSkeleton } from "@/components/ui/Skeleton";
 import { fmtDate, fmtDateTime, pluralize } from "@/lib/format";
 import { usePortalData } from "@/state/data";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -89,7 +89,7 @@ export default function WatchScreen() {
       ) : null}
 
       {loading.watch && watch === null ? (
-        <SkeletonList rows={4} />
+        <WatchSkeleton />
       ) : !watch?.length ? (
         <EmptyState
           icon="circle-play"
@@ -144,7 +144,7 @@ export default function WatchScreen() {
 
 function ScreenHeaderRow({ searching, onToggle }: { searching: boolean; onToggle: () => void }) {
   return (
-    <ScreenTitle
+    <ScreenHeader
       title="Watch"
       right={
         <IconButton

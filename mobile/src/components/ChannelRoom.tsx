@@ -197,7 +197,7 @@ export function ChannelRoom({ channelId }: ChannelRoomProps) {
     return (
       <Screen>
         <ScreenHeader title="Chat" />
-        <SkeletonList rows={5} />
+        <SkeletonList rows={5} variant="chat" />
       </Screen>
     );
   }

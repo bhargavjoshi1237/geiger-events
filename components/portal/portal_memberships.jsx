@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- portal renders remote Supabase poster URLs; next/image adds no value here */
 
 import React from "react";
 import { BadgeCheck, Check, CalendarClock, Loader2, Sparkles } from "lucide-react";
@@ -53,7 +54,17 @@ function Included({ items }) {
 
 function HeldCard({ m }) {
   return (
-    <Card>
+    <Card className="overflow-hidden">
+      {m.posterUrl ? (
+        <div className="-m-4 mb-4">
+          <img
+            src={m.posterUrl}
+            alt=""
+            loading="lazy"
+            className="aspect-[16/9] w-full object-cover"
+          />
+        </div>
+      ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{m.planName}</p>
@@ -102,7 +113,17 @@ function PlanCard({ plan, paymentsEnabled, busy, onBuy }) {
       : `Join — ${money(plan.price)}${periodSuffix(plan.billingPeriod)}`;
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col overflow-hidden">
+      {plan.posterUrl ? (
+        <div className="-m-4 mb-4">
+          <img
+            src={plan.posterUrl}
+            alt=""
+            loading="lazy"
+            className="aspect-[16/9] w-full object-cover"
+          />
+        </div>
+      ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{plan.name}</p>

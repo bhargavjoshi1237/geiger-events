@@ -405,6 +405,7 @@ export const defaultMembershipPlanConfig = () => ({
   discountPercent: 0, // member discount on tickets
   applyToAllEvents: false, // on = discount applies to every event; off = per-event opt-in
   description: "",
+  posterUrl: "", // plan poster background shown on the portal card
   entitlements: defaultEntitlements(),
 });
 

@@ -1,9 +1,9 @@
-import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Icon } from "@/components/ui/icons";
 import { tapFeedback } from "@/lib/haptics";
+import { goBack } from "@/lib/nav_history";
 import { colors, spacing, type } from "@/theme/tokens";
 
 type ScreenHeaderProps = {
@@ -32,7 +32,7 @@ export function ScreenHeader({
         onPress={() => {
           tapFeedback();
           if (onBack) onBack();
-          else router.back();
+          else goBack();
         }}
         style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       >
@@ -79,6 +79,8 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     gap: 2,
+    // Optical: text ink sits high in its line box next to the geometric chevron.
+    paddingTop: 2,
   },
   title: {
     ...type.heading,

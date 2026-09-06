@@ -1,14 +1,14 @@
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { Href } from "expo-router";
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/ui/icons";
 import { Countdown } from "@/components/Countdown";
 import { DetailRow } from "@/components/DetailRow";
-import { EventCover } from "@/components/EventCover";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -18,15 +18,14 @@ import { Pill } from "@/components/ui/Pill";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { Screen } from "@/components/ui/Screen";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { EventDetailSkeleton } from "@/components/ui/Skeleton";
 import { buildEventICS, directionsUrl, openDirections, shareEventICS } from "@/lib/calendar";
 import { fmtShortDay, isUpcoming, money, pluralize } from "@/lib/format";
+import { goBack } from "@/lib/nav_history";
 import { REFUND_STATUS, statusPill } from "@/lib/status";
 import { usePortalData } from "@/state/data";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { Entitlement, Ticket } from "@/types/portal";
-
-const stagger = (i: number) => Math.min(i, 11) * 40;
 
 // Live rooms and recordings only carry an event name, not an id.
 const sameEvent = (a: string, b: string) =>
@@ -57,6 +56,12 @@ export default function EventDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, live, watch, channels } = usePortalData();
+  const { height: winHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  // Same landing banner as ticket and receipt: 20% of the viewport, clamped for small/large screens.
+  const heroHeight = Math.max(160, Math.min(240, Math.round(winHeight * 0.2)));
+  // Pull the hero under the status bar so the cover extends to the top edge.
+  const bleedTop = insets.top + spacing.md;
 
   const tickets = useMemo(
     () => (data?.tickets || []).filter((t) => t.eventId === id),
@@ -83,7 +88,7 @@ export default function EventDetailScreen() {
     return (
       <Screen scroll>
         <ScreenHeader title="Event" />
-        <SkeletonList rows={5} />
+        <EventDetailSkeleton />
       </Screen>
     );
   }
@@ -97,7 +102,7 @@ export default function EventDetailScreen() {
           title="Event not found"
           message="You don't have a ticket for this event anymore."
           actionLabel="Go back"
-          onAction={() => router.back()}
+          onAction={() => goBack()}
         />
       </Screen>
     );
@@ -114,41 +119,54 @@ export default function EventDetailScreen() {
 
   return (
     <Screen scroll>
-      <ScreenHeader title={event.eventName} subtitle={when} />
-
-      <Animated.View entering={FadeInDown.delay(stagger(0)).springify()} style={styles.hero}>
-        <EventCover uri={event.coverUrl} name={event.eventName} height={180} radius={0} />
+      <View
+        style={[
+          styles.hero,
+          { height: heroHeight + bleedTop + 56, marginTop: -bleedTop, paddingTop: bleedTop },
+        ]}
+      >
+        {event.coverUrl ? (
+          <Image
+            source={{ uri: event.coverUrl }}
+            contentFit="cover"
+            contentPosition="center"
+            transition={200}
+            style={[StyleSheet.absoluteFill, styles.heroImage]}
+          />
+        ) : null}
+        {/* Top scrim keeps the back button legible; bottom fades into the page. */}
         <LinearGradient
-          colors={["transparent", "rgba(26,26,26,0.55)", colors.surfaceSubtle]}
-          locations={[0.3, 0.72, 1]}
+          colors={[colors.scrim, "transparent", colors.scrim, colors.background]}
+          locations={[0, 0.35, 0.62, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           pointerEvents="none"
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.heroText} pointerEvents="none">
+        {/* Transparent nav over the cover so the image runs edge to edge. */}
+        <View style={styles.heroNav}>
+          <ScreenHeader title="Event" subtitle={when} />
+        </View>
+        <View style={styles.heroContent} pointerEvents="none">
+          {event.coverUrl ? null : (
+            <Icon name="calendar" size={19} color={colors.mutedForeground} />
+          )}
           <Text style={styles.heroName} numberOfLines={2}>
             {event.eventName}
           </Text>
           {loc ? (
-            <Text style={styles.heroLine} numberOfLines={1}>
+            <Text style={styles.heroMeta} numberOfLines={1}>
               {loc}
             </Text>
           ) : null}
         </View>
-      </Animated.View>
-
-      {upcoming ? (
-        <View style={styles.countdown}>
-          <Countdown dateStr={event.eventDate} />
-        </View>
-      ) : null}
+      </View>
 
       <View style={styles.actions}>
         <View style={styles.primary}>
           <Button
             title="Show pass"
-            icon="maximize"
+            icon="qr-code"
             onPress={() => router.push(`/pass/${passTicket.id}` as Href)}
             fullWidth
           />
@@ -174,6 +192,12 @@ export default function EventDetailScreen() {
           />
         ) : null}
       </View>
+
+      {upcoming ? (
+        <View style={styles.countdown}>
+          <Countdown dateStr={event.eventDate} />
+        </View>
+      ) : null}
 
       <View style={styles.card}>
         <DetailRow icon="calendar" label="When" value={when} />
@@ -354,7 +378,7 @@ export default function EventDetailScreen() {
 
       <View style={styles.footer}>
         <Button
-          title="Message Organiser"
+          title="Message organiser"
           variant="secondary"
           icon="message-square"
           onPress={() =>
@@ -376,38 +400,47 @@ export default function EventDetailScreen() {
 
 const styles = StyleSheet.create({
   hero: {
+    alignSelf: "stretch",
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
-    backgroundColor: colors.surfaceSubtle,
+    marginHorizontal: -spacing.lg,
+    marginBottom: spacing.lg + 2,
+    backgroundColor: colors.background,
   },
-  heroText: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    gap: 6,
-    padding: spacing.lg,
+  heroImage: {
+    opacity: 0.4,
+  },
+  // Restores the page padding the full-bleed hero escapes, so the nav
+  // sits exactly where it does on every other pushed screen.
+  heroNav: {
+    paddingHorizontal: spacing.lg,
+  },
+  heroContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   heroName: {
     ...type.title,
+    textAlign: "center",
     color: colors.primary,
   },
-  heroLine: {
+  heroMeta: {
     ...type.caption,
-    fontSize: 13,
-    color: "rgba(255,255,255,0.75)",
+    textAlign: "center",
+    color: colors.mutedForeground,
   },
   countdown: {
-    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
   },
   actions: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md - 2,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xl,
+    marginTop: -spacing.xl - 4,
+    marginBottom: spacing.lg + 4,
   },
   primary: {
     flex: 1,

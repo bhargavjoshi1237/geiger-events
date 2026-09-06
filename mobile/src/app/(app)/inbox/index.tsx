@@ -12,7 +12,7 @@ import { FilterChips } from "@/components/ui/FilterChips";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
 import { Screen } from "@/components/ui/Screen";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { InboxSkeleton } from "@/components/ui/Skeleton";
 import { fmtCompactTime } from "@/lib/format";
 import { tapFeedback } from "@/lib/haptics";
 import { usePoll } from "@/lib/use_poll";
@@ -154,7 +154,7 @@ export default function InboxScreen() {
       </View>
 
       {first && empty ? (
-        <SkeletonList rows={5} />
+        <InboxSkeleton />
       ) : !items.length ? (
         <EmptyState
           icon="inbox"
@@ -243,8 +243,21 @@ function InboxRow({
             {item.preview}
           </Text>
         ) : null}
+      </View>
+
+      <View style={styles.trailing}>
+        {item.unread > 1 ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{item.unread > 99 ? "99+" : item.unread}</Text>
+          </View>
+        ) : unreadish ? (
+          <View style={styles.dot} />
+        ) : null}
         {item.tag ? (
           <View
+            accessible
+            accessibilityLabel={item.tag.label}
+            accessibilityRole="image"
             style={[
               styles.tag,
               item.tag.tone === "neutral"
@@ -256,20 +269,9 @@ function InboxRow({
             ]}
           >
             <Icon name={item.tag.icon} size={11} color={TAG_TINTS[item.tag.tone]} />
-            <Text style={[styles.tagText, { color: TAG_TINTS[item.tag.tone] }]} numberOfLines={1}>
-              {item.tag.label}
-            </Text>
           </View>
         ) : null}
       </View>
-
-      {item.unread > 1 ? (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{item.unread > 99 ? "99+" : item.unread}</Text>
-        </View>
-      ) : unreadish ? (
-        <View style={styles.dot} />
-      ) : null}
     </Pressable>
   );
 }
@@ -324,33 +326,35 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.mutedForeground,
   },
+  trailing: {
+    alignSelf: "stretch",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    paddingTop: 2,
+    paddingBottom: 1,
+  },
   tag: {
-    alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
+    flexShrink: 0,
     gap: 5,
     borderWidth: 1,
     borderRadius: radius.pill,
     paddingVertical: 3,
     paddingHorizontal: spacing.sm,
-    marginTop: 1,
   },
   tagNeutral: {
     backgroundColor: colors.surfaceActive,
     borderColor: colors.surfaceActive,
     borderRadius: radius.sm - 2,
   },
-  tagText: {
-    ...type.micro,
-    fontSize: 10,
-    lineHeight: 13,
-  },
   dot: {
     width: 9,
     height: 9,
     borderRadius: 4.5,
     backgroundColor: colors.primary,
-    marginTop: 6,
+    marginTop: 5,
   },
   badge: {
     minWidth: 20,
@@ -360,7 +364,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
     paddingHorizontal: 6,
-    marginTop: 2,
   },
   badgeText: {
     ...type.micro,

@@ -90,6 +90,12 @@ export function greeting(): string {
   return "Good evening";
 }
 
+// Names come from tickets and sign-up input, so casing is unreliable.
+export function capitalize(word: string | null | undefined): string {
+  const w = (word || "").trim();
+  return w ? w[0].toUpperCase() + w.slice(1) : w;
+}
+
 export const fmtShortDay = (d: string | null | undefined): string =>
   d
     ? new Date(d).toLocaleDateString("en-US", {

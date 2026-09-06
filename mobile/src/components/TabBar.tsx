@@ -9,14 +9,13 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Icon, type IconName } from "@/components/ui/icons";
-import { PulseDot } from "@/components/ui/PulseDot";
 import { selectionFeedback } from "@/lib/haptics";
 import { usePortalData } from "@/state/data";
 import { colors, fonts, spacing, spring, type } from "@/theme/tokens";
 
 export const TAB_BAR_HEIGHT = 62;
 
-const TAB_ORDER = ["home", "tickets", "live", "inbox", "more"] as const;
+const TAB_ORDER = ["home", "tickets", "memberships", "inbox", "more"] as const;
 
 const TAB_META: Record<
   string,
@@ -24,7 +23,7 @@ const TAB_META: Record<
 > = {
   home: { label: "Home", icon: "house" },
   tickets: { label: "Tickets", icon: "credit-card" },
-  live: { label: "Live", icon: "radio" },
+  memberships: { label: "Memberships", icon: "award" },
   inbox: { label: "Inbox", icon: "inbox" },
   more: { label: "More", icon: "menu" },
 };
@@ -64,7 +63,6 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
               icon={meta.icon}
               focused={tab === activeTab}
               badge={tab === "inbox" ? counts.inbox || 0 : 0}
-              live={tab === "live" && Boolean(counts.liveNow)}
               onPress={() => onTabPress(route.name)}
             />
           );
@@ -79,11 +77,10 @@ type TabButtonProps = {
   icon: IconName;
   focused: boolean;
   badge: number;
-  live: boolean;
   onPress: () => void;
 };
 
-function TabButton({ label, icon, focused, badge, live, onPress }: TabButtonProps) {
+function TabButton({ label, icon, focused, badge, onPress }: TabButtonProps) {
   const scale = useSharedValue(1);
   useEffect(() => {
     scale.value = withSpring(focused ? 1.1 : 1, spring);
@@ -105,7 +102,6 @@ function TabButton({ label, icon, focused, badge, live, onPress }: TabButtonProp
     >
       <Animated.View style={[styles.iconWrap, iconStyle]}>
         <Icon name={icon} size={22} color={tint} />
-        {live ? <PulseDot size={7} style={styles.liveDot} /> : null}
         {badge > 0 ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText} numberOfLines={1}>
@@ -153,11 +149,6 @@ const styles = StyleSheet.create({
   iconWrap: {
     alignItems: "center",
     justifyContent: "center",
-  },
-  liveDot: {
-    position: "absolute",
-    top: -1,
-    right: -3,
   },
   badge: {
     position: "absolute",

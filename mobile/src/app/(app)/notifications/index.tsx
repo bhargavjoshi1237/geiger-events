@@ -79,6 +79,7 @@ function NotificationCard({ n }: { n: NotificationItem }) {
 const styles = StyleSheet.create({
   list: {
     gap: spacing.md,
+    marginTop: spacing.md,
   },
   card: {
     flexDirection: "row",

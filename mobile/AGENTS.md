@@ -46,10 +46,11 @@ Supabase directly except for the chat Realtime subscription.
 
 ## Navigation
 
-Five tabs: **Home, Tickets, Live, Inbox, More**. Inbox is one merged list over
+Five tabs: **Home, Tickets, Memberships, Inbox, More**. Inbox is one merged list over
 four sources (organiser threads, announcements, event chats, Q&A) with filter
 chips; the per-source screens still exist as pushed routes for deep links.
-Orders, Memberships, Watch and Account hang off More. `/pass/[id]` lives outside
+Live stays reachable from Home's live strip and deep links. Orders, Memberships,
+Watch and Account hang off More. `/pass/[id]` lives outside
 the tabs so the QR fills the screen with no chrome.
 
 ## Layout
