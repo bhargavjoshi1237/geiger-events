@@ -186,8 +186,8 @@ export function VisibilitySection({ event, headerItem, onPatch, onCommit }) {
 }
 
 const REDIRECTS = [
-  { id: "r1", from: "/summer-launch", to: "/summer-product-launch", status: "On sale" },
-  { id: "r2", from: "/ama", to: "/founder-ama-live", status: "On sale" },
+  { id: "r1", from: "/summer-launch", to: "/summer-product-launch", status: "On Sale" },
+  { id: "r2", from: "/ama", to: "/founder-ama-live", status: "On Sale" },
 ];
 
 export function CustomUrlSection({ event, headerItem }) {

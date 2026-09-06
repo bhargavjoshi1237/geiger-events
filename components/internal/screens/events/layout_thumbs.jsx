@@ -260,6 +260,19 @@ export const CLASSIC_THUMBS = {
       <Fill className="h-3" />
     </div>
   ),
+  luma: () => (
+    <div className="flex h-full gap-1.5">
+      <div className="flex w-2/5 flex-col gap-1">
+        <Fill className="h-10" />
+        <Lines n={2} />
+      </div>
+      <div className="flex flex-1 flex-col gap-1">
+        <Line className="w-2/3 bg-foreground/50" />
+        <Solid className="h-6" />
+        <Lines n={2} />
+      </div>
+    </div>
+  ),
 };
 
 // How each block type reads in a wireframe: its height, and whether it is a

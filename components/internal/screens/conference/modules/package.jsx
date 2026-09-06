@@ -48,7 +48,7 @@ export const PACKAGE_MODULE = {
     { label: "Packages", value: String(records.length), footer: "All Statuses" },
     { label: "Total value", value: currency(sum(records, (r) => (Number(r.config.price) || 0) * (Number(r.config.slots) || 0))), footer: "If fully sold" },
     { label: "Slots sold", value: String(sum(records, (r) => r.config.sold)), footer: "Across packages" },
-    { label: "Available", value: String(count(records, (r) => r.status === "Available")), footer: "On sale" },
+    { label: "Available", value: String(count(records, (r) => r.status === "Available")), footer: "On Sale" },
   ],
   defaults: {
     status: "Draft",

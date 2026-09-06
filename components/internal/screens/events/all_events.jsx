@@ -71,7 +71,7 @@ import { EventDetailScreen } from "./event_detail";
 
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All Statuses" },
-  { value: "On sale", label: "On sale" },
+  { value: "On Sale", label: "On Sale" },
   { value: "Sold out", label: "Sold out" },
   { value: "Scheduled", label: "Scheduled" },
   { value: "Draft", label: "Draft" },
@@ -142,7 +142,7 @@ function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl bg-background">
         <DialogHeader>
-          <DialogTitle>Create event</DialogTitle>
+          <DialogTitle>Create Event</DialogTitle>
           <DialogDescription>
             Set the essentials now — you can flesh out tickets, the page, and
             settings in the Event Builder.
@@ -257,7 +257,7 @@ function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={submit}
           >
-            Create event
+            Create Event
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -323,7 +323,7 @@ export function AllEventsScreen() {
 
   const stats = useMemo(() => {
     const live = events.filter((e) =>
-      ["On sale", "Sold out"].includes(e.status),
+      ["On Sale", "Sold out"].includes(e.status),
     ).length;
     const sold = events.reduce((s, e) => s + e.sold, 0);
     const revenue = events.reduce((s, e) => s + e.revenue, 0);
@@ -525,7 +525,7 @@ export function AllEventsScreen() {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setCreateOpen(true)}
           >
-            <Plus className="h-4 w-4" /> Create event
+            <Plus className="h-4 w-4" /> Create Event
           </Button>
         }
       />
@@ -585,7 +585,7 @@ export function AllEventsScreen() {
                       className="bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={() => setCreateOpen(true)}
                     >
-                      <Plus className="h-4 w-4" /> Create event
+                      <Plus className="h-4 w-4" /> Create Event
                     </Button>
                   }
                 />

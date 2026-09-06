@@ -112,7 +112,7 @@ export function RunManyEventsDemo() {
               className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-white text-[11px] font-medium text-zinc-950 transition-colors hover:bg-white/90"
             >
               <Plus className="h-3 w-3" />
-              Create event
+              Create Event
             </button>
           </div>
         </div>

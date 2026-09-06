@@ -75,7 +75,7 @@ const VIEW_TABS = [
 
 const EVENT_STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All Statuses" },
-  { value: "On sale", label: "On sale" },
+  { value: "On Sale", label: "On Sale" },
   { value: "Sold out", label: "Sold out" },
   { value: "Scheduled", label: "Scheduled" },
   { value: "Draft", label: "Draft" },

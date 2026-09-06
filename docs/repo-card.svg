@@ -34,7 +34,7 @@
   <text x="170" y="121" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="600" letter-spacing="0.2" fill="#e7e7e7">Geiger Events</text>
 
   <!-- headline -->
-  <text x="88" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-1.5" fill="url(#head)">Create events. Sell tickets.</text>
+  <text x="88" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-1.5" fill="url(#head)">Create Events. Sell tickets.</text>
   <text x="88" y="340" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-1.5" fill="url(#head)">Run the door.</text>
 
   <!-- tagline -->

@@ -734,7 +734,7 @@ export function EventAllocationsScreen() {
       prev.map((e) => (e.id === event.id ? { ...e, purchasables: next } : e)),
     );
     setSellTarget(null);
-    toast.success("On sale at checkout.");
+    toast.success("On Sale at checkout.");
   };
 
   const handleUnpublish = async () => {

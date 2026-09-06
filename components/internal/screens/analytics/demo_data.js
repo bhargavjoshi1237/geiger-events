@@ -39,11 +39,11 @@ export const TICKET_MIX = [
 ];
 
 export const SALES_BY_EVENT = [
-  { event: "Summer Product Launch", revenue: 98400, sold: 3120, capacity: 4000, status: "On sale" },
-  { event: "SaaS Growth Summit", revenue: 72400, sold: 1840, capacity: 2500, status: "On sale" },
+  { event: "Summer Product Launch", revenue: 98400, sold: 3120, capacity: 4000, status: "On Sale" },
+  { event: "SaaS Growth Summit", revenue: 72400, sold: 1840, capacity: 2500, status: "On Sale" },
   { event: "Local Music Night", revenue: 54000, sold: 3000, capacity: 3000, status: "Sold out" },
-  { event: "Founder AMA — Live", revenue: 31200, sold: 1280, capacity: 1500, status: "On sale" },
-  { event: "Design Systems Workshop", revenue: 21600, sold: 540, capacity: 800, status: "On sale" },
+  { event: "Founder AMA — Live", revenue: 31200, sold: 1280, capacity: 1500, status: "On Sale" },
+  { event: "Design Systems Workshop", revenue: 21600, sold: 540, capacity: 800, status: "On Sale" },
   { event: "Indie Film Screening", revenue: 14800, sold: 740, capacity: 1200, status: "Draft" },
 ];
 

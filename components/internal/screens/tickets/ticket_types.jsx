@@ -77,14 +77,14 @@ function AvailabilitySection({ config, setConfig }) {
           />
           {sales.mode === "window" ? (
             <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
-              <Field label="On sale from">
+              <Field label="On Sale from">
                 <Input
                   type="datetime-local"
                   value={sales.startAt || ""}
                   onChange={(e) => setSales({ startAt: e.target.value })}
                 />
               </Field>
-              <Field label="On sale until">
+              <Field label="On Sale until">
                 <Input
                   type="datetime-local"
                   value={sales.endAt || ""}
@@ -199,7 +199,7 @@ function AccessSection({ config, setConfig }) {
             </Select>
           </Field>
           {config.visibility === "scheduled" ? (
-            <Field label="On sale from">
+            <Field label="On Sale from">
               <Input
                 type="datetime-local"
                 value={config.onSaleAt || ""}

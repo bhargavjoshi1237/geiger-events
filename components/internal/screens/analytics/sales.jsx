@@ -189,7 +189,7 @@ export function SalesScreen() {
         );
       },
     },
-    { key: "status", header: "Status", render: (r) => <StatusPill status={r.status} map={{ "On sale": { label: "On sale", variant: "success" }, "Sold out": { label: "Sold out", variant: "warning" }, Draft: { label: "Draft", variant: "neutral" } }} /> },
+    { key: "status", header: "Status", render: (r) => <StatusPill status={r.status} map={{ "On Sale": { label: "On Sale", variant: "success" }, "Sold out": { label: "Sold out", variant: "warning" }, Draft: { label: "Draft", variant: "neutral" } }} /> },
   ];
 
   return (

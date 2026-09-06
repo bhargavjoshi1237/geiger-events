@@ -7,6 +7,7 @@ import { BentoLayout } from "./bento";
 import { BoxOfficeLayout } from "./boxoffice";
 import { CheckoutLayout } from "./checkout";
 import { ClassicLayout } from "./classic";
+import { LumaLayout } from "./luma";
 import { GalleryLayout } from "./gallery";
 import { GlassLayout } from "./glass";
 import { LandingLayout } from "./landing";
@@ -21,6 +22,7 @@ import { ZigzagLayout } from "./zigzag";
 
 const LAYOUTS = {
   classic: ClassicLayout,
+  luma: LumaLayout,
   anchored: AnchoredLayout,
   agenda: AgendaLayout,
   appshell: AppShellLayout,

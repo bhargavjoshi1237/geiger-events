@@ -53,7 +53,7 @@ import {
   formatDate,
 } from "./sample_data";
 
-const OVERVIEW_STATUS = ["Draft", "Scheduled", "On sale", "Sold out", "Ended"];
+const OVERVIEW_STATUS = ["Draft", "Scheduled", "On Sale", "Sold out", "Ended"];
 const OVERVIEW_VISIBILITY = ["Public", "Unlisted", "Private"];
 
 function daysUntilEvent(dateStr) {

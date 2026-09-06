@@ -1,5 +1,5 @@
 export const EVENT_STATUS_MAP = {
-  "On sale": { label: "On sale", variant: "success", dotClass: "bg-emerald-400" },
+  "On Sale": { label: "On Sale", variant: "success", dotClass: "bg-emerald-400" },
   "Sold out": { label: "Sold out", variant: "info", dotClass: "bg-sky-400" },
   Draft: { label: "Draft", variant: "neutral", dotClass: "bg-[#737373]" },
   Scheduled: { label: "Scheduled", variant: "purple", dotClass: "bg-violet-300" },
@@ -63,7 +63,7 @@ export const EVENTS = [
   {
     id: "7b1c0e9a-4d2f-4a1b-9c3e-1f5a8d6b2c01",
     name: "Summer Product Launch",
-    status: "On sale",
+    status: "On Sale",
     type: "Hybrid",
     date: "2026-06-18",
     time: "18:00",
@@ -101,7 +101,7 @@ export const EVENTS = [
   {
     id: "c3e5079b-2c4d-4e6f-9a01-3b4c5d6e7f03",
     name: "Founder AMA — Live",
-    status: "On sale",
+    status: "On Sale",
     type: "Online",
     date: "2026-06-20",
     time: "16:00",
@@ -141,7 +141,7 @@ export const EVENTS = [
   {
     id: "e50729bd-4e6f-4081-bc23-5d6e7f809105",
     name: "Indie Film Screening",
-    status: "On sale",
+    status: "On Sale",
     type: "In-person",
     date: "2026-06-28",
     time: "19:30",
@@ -199,7 +199,7 @@ export const EVENTS = [
   {
     id: "183a52e0-7192-43b4-ef56-8091a2b3c408",
     name: "Pottery Masterclass",
-    status: "On sale",
+    status: "On Sale",
     type: "In-person",
     date: "2026-07-05",
     time: "14:00",
@@ -367,7 +367,7 @@ export const SERIES_CADENCE_OPTIONS = [
 export const SERIES_STATUS_OPTIONS = [
   { value: "Draft", label: "Draft" },
   { value: "Scheduled", label: "Scheduled" },
-  { value: "On sale", label: "On sale" },
+  { value: "On Sale", label: "On Sale" },
   { value: "Ended", label: "Ended" },
 ];
 
@@ -387,7 +387,7 @@ export const EVENT_SERIES = [
     id: "22222222-2222-4222-8222-000000000001",
     name: "Founder Sessions",
     description: "A monthly run of founder AMAs and live customer webinars.",
-    status: "On sale",
+    status: "On Sale",
     cadence: "Monthly",
     visibility: "Public",
     settings: {
@@ -401,7 +401,7 @@ export const EVENT_SERIES = [
     id: "22222222-2222-4222-8222-000000000002",
     name: "Hands-on Workshops",
     description: "Practical, limited-seat workshops across design and craft.",
-    status: "On sale",
+    status: "On Sale",
     cadence: "Monthly",
     visibility: "Public",
     settings: {

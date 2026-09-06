@@ -93,7 +93,7 @@ function dotClassFor(status) {
 function summaryFor(ticket, state) {
   if (!state.hasReleases) {
     const qty = Number(ticket.qty) || 0;
-    return qty > 0 ? `All ${qty} tickets on sale at once.` : "On sale now — no waves yet.";
+    return qty > 0 ? `All ${qty} tickets on sale at once.` : "On Sale now — no waves yet.";
   }
   const parts = [];
   const live = state.activeReleases[0];

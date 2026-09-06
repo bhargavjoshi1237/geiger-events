@@ -233,10 +233,10 @@ function TicketEditForm({ config, setConfig }) {
         </Field>
         {sales.mode === "window" ? (
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="On sale from">
+            <Field label="On Sale from">
               <Input type="datetime-local" value={sales.startAt || ""} onChange={(e) => setSales({ startAt: e.target.value })} />
             </Field>
-            <Field label="On sale until">
+            <Field label="On Sale until">
               <Input type="datetime-local" value={sales.endAt || ""} onChange={(e) => setSales({ endAt: e.target.value })} />
             </Field>
           </div>
@@ -256,7 +256,7 @@ function TicketEditForm({ config, setConfig }) {
             </Select>
           </Field>
           {config.visibility === "scheduled" ? (
-            <Field label="On sale from">
+            <Field label="On Sale from">
               <Input type="datetime-local" value={config.onSaleAt || ""} onChange={(e) => set({ onSaleAt: e.target.value })} />
             </Field>
           ) : null}

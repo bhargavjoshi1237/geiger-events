@@ -98,7 +98,7 @@ export function EventsHomeScreen() {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setTab("All Events")}
           >
-            <CalendarPlus className="h-4 w-4" /> Create event
+            <CalendarPlus className="h-4 w-4" /> Create Event
           </Button>
         }
       />

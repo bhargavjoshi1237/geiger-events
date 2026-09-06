@@ -128,11 +128,11 @@ const DEMO_SELL_THROUGH = { value: 78, sold: 1544, capacity: 1980 };
 const DEMO_ATTENDANCE = { value: 82, attended: 962, registered: 1173 };
 
 const DEMO_TOP_EVENTS = [
-  { id: "demo-1", name: "Summer Product Launch", status: "On sale", revenue: 9840, sold: 312, capacity: 400, momentum: "fast" },
+  { id: "demo-1", name: "Summer Product Launch", status: "On Sale", revenue: 9840, sold: 312, capacity: 400, momentum: "fast" },
   { id: "demo-2", name: "Local Music Night", status: "Sold out", revenue: 5400, sold: 300, capacity: 300, momentum: "track" },
-  { id: "demo-3", name: "Founder AMA — Live", status: "On sale", revenue: 3120, sold: 128, capacity: 150, momentum: "fast" },
+  { id: "demo-3", name: "Founder AMA — Live", status: "On Sale", revenue: 3120, sold: 128, capacity: 150, momentum: "fast" },
   { id: "demo-4", name: "Design Systems Workshop", status: "Draft", revenue: 2160, sold: 54, capacity: 80, momentum: "slow" },
-  { id: "demo-5", name: "Indie Film Screening", status: "On sale", revenue: 1480, sold: 74, capacity: 120, momentum: "slow" },
+  { id: "demo-5", name: "Indie Film Screening", status: "On Sale", revenue: 1480, sold: 74, capacity: 120, momentum: "slow" },
 ];
 
 const MOMENTUM_META = {

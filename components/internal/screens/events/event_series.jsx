@@ -244,7 +244,7 @@ export function EventSeriesScreen() {
       0,
     );
     const live = seriesList.filter((s) =>
-      ["On sale", "Scheduled"].includes(s.status),
+      ["On Sale", "Scheduled"].includes(s.status),
     ).length;
     return [
       { label: "Series", value: String(seriesList.length), footer: `${live} active` },

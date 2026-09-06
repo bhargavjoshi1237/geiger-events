@@ -121,7 +121,7 @@ export function RecurringEventsSection({ event }) {
       }).map((date, i) => ({
         id: i,
         date,
-        status: i === 0 ? "On sale" : "Scheduled",
+        status: i === 0 ? "On Sale" : "Scheduled",
       })),
     [freq, interval, days, count, previewSeed],
   );

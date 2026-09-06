@@ -33,7 +33,7 @@ import {
 
 // "When does this wave open?" — the gate in front of the wave.
 export const GATE_META = {
-  now: { icon: Zap, title: "On sale now" },
+  now: { icon: Zap, title: "On Sale now" },
   date: { icon: CalendarClock, title: "On a date" },
   after_stockout: { icon: Flame, title: "After sell-out" },
   manual: { icon: Hand, title: "I'll open it" },
@@ -85,7 +85,7 @@ export function statusBadge(per, list) {
   if (per.soldOut) return { label: "Sold out", className: STATUS_TONE.soldout };
   switch (per.status) {
     case "live":
-      return { label: "On sale", className: STATUS_TONE.live };
+      return { label: "On Sale", className: STATUS_TONE.live };
     case "scheduled":
       return {
         label: per.unlocksAt ? `Opens ${formatReleaseDate(per.unlocksAt)}` : "Scheduled",
@@ -332,7 +332,7 @@ function WaveNode({ r, idx, list, per, total, patchRelease, removeRelease, moveR
         {/* The gate — when this wave opens */}
         <div className="space-y-2">
           <p className="text-[11px] font-medium uppercase tracking-wide text-text-secondary">
-            {idx === 0 ? "On sale" : "Opens"}
+            {idx === 0 ? "On Sale" : "Opens"}
           </p>
           <GatePicker r={r} idx={idx} onPick={setGate} />
 
