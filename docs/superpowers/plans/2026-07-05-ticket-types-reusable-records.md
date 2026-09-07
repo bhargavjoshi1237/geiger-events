@@ -30,7 +30,7 @@
 - Produces: `defaultTicketConfig()` → fresh config object (Task 2, 3 consume it); `VISIBILITY_OPTIONS` (already exported, reused by Task 2).
 - Produces: `listRecordsByIds(ids: string[])` → `Promise<Record[] | null>` (Task 5 consumes it).
 
-- [ ] **Step 1: Add ticket config defaults to `constants.js`**
+- [ ] **Step 1: Add Ticket config defaults to `constants.js`**
 
 Replace the `--- Ticket Types inner rules (metadata.ticketRules) ---` block (the `DEFAULT_TICKET_RULES` export) and keep `VISIBILITY_OPTIONS`. The file's `currency` and `formatDate` formatters stay untouched. New content for that section:
 

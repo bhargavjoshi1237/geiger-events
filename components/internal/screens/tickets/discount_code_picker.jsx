@@ -15,6 +15,7 @@ import { couponSummary, normalizeCoupon } from "@/lib/events/discount_rules";
 // inside the ticket dialog, and seeing every code at once is the point.
 export function DiscountCodePicker({ coupons, value, onChange, className }) {
   const selected = Array.isArray(value) ? value.map(String) : [];
+  const list = Array.isArray(coupons) ? coupons : [];
 
   const toggle = (id, on) => {
     const next = on
@@ -23,7 +24,7 @@ export function DiscountCodePicker({ coupons, value, onChange, className }) {
     onChange(next);
   };
 
-  if (!coupons.length) {
+  if (!list.length) {
     return (
       <div
         className={cn(
@@ -48,7 +49,7 @@ export function DiscountCodePicker({ coupons, value, onChange, className }) {
       )}
     >
       <div className="max-h-52 divide-y divide-border overflow-y-auto">
-        {coupons.map((c) => {
+        {list.map((c) => {
           const id = String(c.id);
           const on = selected.includes(id);
           return (
@@ -110,17 +111,21 @@ export function DiscountCodeChips({ coupons, value, className }) {
   const ids = (Array.isArray(value) ? value : []).map(String);
   if (!ids.length) return null;
 
-  const byId = new Map(coupons.map((c) => [String(c.id), c]));
-  const codes = ids.map((id) => {
-    const c = byId.get(id);
-    if (!c) return null;
-    const cfg = normalizeCoupon(c.config);
-    return {
-      id,
-      label: cfg.code || c.name || "code",
-      off: c.active === false,
-    };
-  });
+  const list = Array.isArray(coupons) ? coupons : [];
+  const byId = new Map(list.map((c) => [String(c?.id), c]));
+  const codes = ids
+    .map((id) => {
+      const c = byId.get(id);
+      if (!c) return null;
+      const cfg = normalizeCoupon(c.config);
+      return {
+        id,
+        label: cfg.code || c.name || "code",
+        off: c.active === false,
+      };
+    })
+    .filter(Boolean);
+  if (!codes.length) return null;
 
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-1", className)}>

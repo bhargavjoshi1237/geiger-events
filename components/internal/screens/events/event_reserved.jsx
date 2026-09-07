@@ -118,7 +118,7 @@ export function EventReservedSection({ event, headerItem }) {
         <EmptyState
           icon={Armchair}
           title="No tickets yet"
-          description="Add ticket types in the Tickets tab first — reserved allocation holds back inventory from those tiers."
+          description="Add Ticket types in the Tickets tab first — reserved allocation holds back inventory from those tiers."
         />
       )}
     </div>

@@ -540,7 +540,7 @@ export function EventTicketsSection({ event, headerItem }) {
           variant="outline"
           className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
         >
-          <Layers className="h-4 w-4" /> Add group <ChevronDown className="h-4 w-4" />
+          <Layers className="h-4 w-4" /> Add Group <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52 border-border bg-surface-card shadow-xl">
@@ -586,7 +586,7 @@ export function EventTicketsSection({ event, headerItem }) {
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => addTicket(null)}
             >
-              <Plus className="h-4 w-4" /> Add ticket
+              <Plus className="h-4 w-4" /> Add Ticket
             </Button>
           </div>
         }
@@ -613,7 +613,7 @@ export function EventTicketsSection({ event, headerItem }) {
                     onClick={() => addTicket(g.tierId)}
                     className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
                   >
-                    <Plus className="h-4 w-4" /> Add ticket
+                    <Plus className="h-4 w-4" /> Add Ticket
                   </Button>
                   <Button
                     size="icon-sm"
@@ -648,7 +648,7 @@ export function EventTicketsSection({ event, headerItem }) {
                     onClick={() => addTicket(null)}
                     className="ml-auto text-muted-foreground hover:bg-surface-active hover:text-foreground"
                   >
-                    <Plus className="h-4 w-4" /> Add ticket
+                    <Plus className="h-4 w-4" /> Add Ticket
                   </Button>
                 </div>
               ) : null}
@@ -673,7 +673,7 @@ export function EventTicketsSection({ event, headerItem }) {
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={() => addTicket(null)}
                 >
-                  <Plus className="h-4 w-4" /> Add ticket
+                  <Plus className="h-4 w-4" /> Add Ticket
                 </Button>
                 <Button
                   variant="outline"

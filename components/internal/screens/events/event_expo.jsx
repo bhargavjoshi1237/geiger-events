@@ -307,7 +307,7 @@ export function EventExpoSection({ event, headerItem }) {
         >
           {tickets.length === 0 ? (
             <p className="text-sm text-text-secondary">
-              Add tickets on the Tickets tab first, then map them to booths here.
+              Add Tickets on the Tickets tab first, then map them to booths here.
             </p>
           ) : (
             <ul className="max-h-96 divide-y divide-border overflow-y-auto">

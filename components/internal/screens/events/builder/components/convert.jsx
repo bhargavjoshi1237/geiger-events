@@ -115,7 +115,7 @@ function PricingTable({ props, event, accent }) {
   if (!tiers.length) {
     return (
       <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-text-tertiary">
-        Add ticket types under Tickets and they will appear here.
+        Add Ticket types under Tickets and they will appear here.
       </p>
     );
   }
