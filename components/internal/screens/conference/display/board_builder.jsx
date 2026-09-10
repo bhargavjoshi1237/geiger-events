@@ -5,11 +5,13 @@ import { toast } from "sonner";
 import {
   ArrowDown,
   ArrowUp,
+  Box,
   Copy,
   Download,
   ExternalLink,
   LayoutList,
   Loader2,
+  Monitor,
   Network,
   Plus,
   Presentation,
@@ -48,8 +50,15 @@ import { boardDurationMs, preloadImages, exportBoardVideo, supportsExport } from
 import { BoardCanvas } from "./board_canvas";
 import { BoardPreview } from "./board_preview";
 import { SlideInspector } from "./slide_inspector";
+import { VenuePreview } from "./venue/venue_preview";
 
 const newSlideId = () => `slide_${crypto.randomUUID()}`;
+
+// Preview toggle: the flat 16:9 wall output, or the board simulated in a venue.
+const PREVIEW_TABS = [
+  { value: "screen", label: "Screen", icon: Monitor },
+  { value: "venue", label: "In venue", icon: Box },
+];
 
 const SAVE_DEBOUNCE_MS = 700;
 
@@ -169,6 +178,7 @@ function SlideList({ slides, selectedId, onSelect, onMove, onDelete, onAdd }) {
 export function BoardBuilder({ board, event, sessions, onBack, onPersist, onDelete }) {
   const [config, setConfig] = useState(() => board.config || {});
   const [view, setView] = useState("canvas");
+  const [previewMode, setPreviewMode] = useState("screen");
   const [selectedId, setSelectedId] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -386,15 +396,35 @@ export function BoardBuilder({ board, event, sessions, onBack, onPersist, onDele
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-6">
-          <BoardPreview
-            slides={slides}
-            event={event}
-            sessions={sessions}
-            theme={theme}
-            speed={speed}
-            selectedId={selectedId}
-            onSelectSlide={setSelectedId}
-          />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <SegmentedTabs tabs={PREVIEW_TABS} value={previewMode} onChange={setPreviewMode} />
+              <span className="hidden text-xs text-text-tertiary sm:inline">
+                {previewMode === "venue"
+                  ? "The live board, simulated on real venue screens."
+                  : "Exactly what the wall renders."}
+              </span>
+            </div>
+            {previewMode === "venue" ? (
+              <VenuePreview
+                slides={slides}
+                event={event}
+                sessions={sessions}
+                theme={theme}
+                speed={speed}
+              />
+            ) : (
+              <BoardPreview
+                slides={slides}
+                event={event}
+                sessions={sessions}
+                theme={theme}
+                speed={speed}
+                selectedId={selectedId}
+                onSelectSlide={setSelectedId}
+              />
+            )}
+          </div>
 
           <div className="flex items-center justify-between gap-3">
             <ViewToggle view={view} onChange={setView} />
