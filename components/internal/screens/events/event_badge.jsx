@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@geiger/ui/select";
+import { cn } from "@/lib/utils";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useEventConfig } from "@/lib/events/use-event-config";
@@ -110,37 +111,85 @@ export function PassShowcasePanel({
   );
 }
 
-export function EventPassShowcase({ event, badge, ...panel }) {
-  const { enabled, template, qrSettings, loading } = useEventPass(event, badge);
-  if (loading || !enabled) return null;
+// The same pass again, as a watermark behind a whole screen. Scenery only: it
+// takes no pointer events, is hidden from assistive tech, and steps aside under
+// prefers-reduced-motion because it never stops drifting.
+//
+// Drop it as the first child of a `relative isolate` wrapper and let the screen's
+// own content follow it — the negative z-index puts it behind that content
+// without needing a z-index on the content itself.
+const BACKDROP = {
+  // Low enough to read text over, high enough that the strap's white mark and
+  // the steel clip still register. This is the dial to turn if it reads wrong.
+  opacity: 0.22,
+  height: "64svh",
+  width: 640,
+  // No hard edge to fight the cards sitting on top of it.
+  mask: "radial-gradient(58% 52% at 50% 48%, #000 0%, rgba(0,0,0,0.6) 55%, transparent 100%)",
+};
+
+export function PassBackdrop({ event, template, qrSettings, className }) {
+  if (!template) return null;
+
   return (
-    <PassShowcasePanel
-      event={event}
-      template={template}
-      qrSettings={qrSettings}
-      {...panel}
-    />
+    <div
+      aria-hidden
+      className={cn(
+        // No `overflow-hidden` here: it would make this box the sticky child's
+        // scroll container and pin the watermark to the top of the screen. The
+        // editor pane already clips.
+        "pointer-events-none absolute inset-0 -z-10 motion-reduce:hidden",
+        className,
+      )}
+    >
+      {/* Sticky, so the watermark stays with the reader instead of scrolling
+          off the top of a long screen. The box is a full viewport tall while the
+          pane it sticks in starts below the editor header, so the bottom padding
+          lifts the pass back onto the pane's optical centre. */}
+      <div className="sticky top-0 flex h-[100svh] items-center justify-center pb-[12svh]">
+        <div
+          className="w-full"
+          style={{
+            opacity: BACKDROP.opacity,
+            maskImage: BACKDROP.mask,
+            WebkitMaskImage: BACKDROP.mask,
+          }}
+        >
+          <LanyardBadge
+            decorative
+            template={template}
+            event={event}
+            attendee={SAMPLE_ATTENDEE}
+            qrSettings={qrSettings}
+            height={BACKDROP.height}
+            maxWidth={BACKDROP.width}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
-export function EventBadgeSection({ event, headerItem }) {
+export function EventBadgeSection({ event, headerItem, onPatch }) {
   const { openEventInTab } = useWorkspaceUrl();
   const [cfg, , save] = useEventConfig(event, "badge", DEFAULT_BADGE);
   const { template, templates, qrSettings, loading } = useEventPass(event, cfg);
 
   const openDesigner = () => openEventInTab(event.id, DESIGNER_TAB);
 
-  const setEnabled = (enabled) =>
-    save(
-      { ...cfg, enabled },
-      { successMsg: enabled ? "Badges on for this event." : "Badges off for this event." },
-    );
+  const saveBadge = async (next, successMsg) => {
+    if (await save(next, { successMsg })) onPatch?.({ badge: next });
+  };
 
-  const setTemplate = (value) =>
-    save(
-      { ...cfg, templateId: value === PROJECT_DEFAULT ? "" : value },
-      { successMsg: "Pass design updated." },
-    );
+  const setEnabled = (enabled) => saveBadge(
+    { ...cfg, enabled },
+    enabled ? "Badges on for this event." : "Badges off for this event.",
+  );
+
+  const setTemplate = (value) => saveBadge(
+    { ...cfg, templateId: value === PROJECT_DEFAULT ? "" : value },
+    "Pass design updated.",
+  );
 
   return (
     <div className="space-y-6">

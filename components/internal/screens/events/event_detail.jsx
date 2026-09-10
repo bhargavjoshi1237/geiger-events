@@ -11,6 +11,7 @@ import { useAddons } from "@/context/addons-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { EVENT_STATUS_MAP, formatDate } from "./sample_data";
 import { EventPublicPage } from "./event_public_page";
+import { EventCardViewerButton } from "./event_card_viewer";
 import { PageDesignSection, defaultPageDesign } from "./page_design";
 import { NAV_GROUPS, SECTIONS } from "./event_sections";
 import { updateEventMeta } from "@/lib/supabase/events";
@@ -77,6 +78,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
       }
       actions={
         <>
+          <EventCardViewerButton key={form.id} event={form} />
           <Button
             variant="outline"
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"

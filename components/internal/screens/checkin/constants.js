@@ -91,6 +91,9 @@ export const defaultRfid = () => ({
   medium: "wristband", // wristband | card | badge
   range: "short", // short (NFC/HF tap) | long (UHF)
   checksum: true,
+  // Default currency preselected when creating a paid entry point. Points
+  // snapshot their own currency, so changing this never rewrites history.
+  billingCurrency: "usd",
 });
 
 export const defaultSelfCheckin = () => ({
@@ -188,6 +191,63 @@ export const KIOSK_MODE_OPTIONS = [
   { value: "kiosk", label: "Kiosk (scanner)" },
   { value: "tablet", label: "Tablet (self-service)" },
 ];
+
+// --- NFC paid entry (entry points + pass-based billing) --------------------
+// An entry point is a physical scanning device/spot with its own price. A tap
+// resolves the NFC UID to an attendee and files a ledger row (nfc_taps) that
+// snapshots the point's amount at tap time — the "pending bill".
+
+export const NFC_BILLING_MODES = [
+  { value: "paid_every_tap", label: "Charge every tap" },
+  { value: "paid_once", label: "Charge once per guest" },
+  { value: "free", label: "Free entry (no charge)" },
+];
+
+export const NFC_BILLING_MODE_HINTS = {
+  paid_every_tap: "Every tap adds a charge — bar items, per-ride fees.",
+  paid_once: "First tap charges; re-taps admit free — paid zones, activities.",
+  free: "Admits and logs presence without charging — gates, sessions.",
+};
+
+export const NFC_CURRENCY_OPTIONS = [
+  { value: "usd", label: "USD ($)" },
+  { value: "eur", label: "EUR (€)" },
+  { value: "gbp", label: "GBP (£)" },
+  { value: "inr", label: "INR (₹)" },
+  { value: "aed", label: "AED (د.إ)" },
+  { value: "cad", label: "CAD ($)" },
+  { value: "aud", label: "AUD ($)" },
+  { value: "sgd", label: "SGD ($)" },
+];
+
+export const NFC_TAP_STATUS_MAP = {
+  pending: { label: "Pending", variant: "warning", dotClass: "bg-amber-400" },
+  settled: { label: "Settled", variant: "success", dotClass: "bg-emerald-400" },
+  void: { label: "Void", variant: "neutral", dotClass: "bg-zinc-400" },
+  free: { label: "Free", variant: "info", dotClass: "bg-sky-400" },
+};
+
+// Minor units (cents) + ISO currency -> "€5.00". Falls back to a plain
+// code-prefixed amount when Intl lacks the currency.
+export const formatMoney = (cents, currency = "usd") => {
+  const code = String(currency || "usd").toUpperCase();
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+    }).format((Number(cents) || 0) / 100);
+  } catch {
+    return `${code} ${((Number(cents) || 0) / 100).toFixed(2)}`;
+  }
+};
+
+// A device secret the organizer pastes onto the hardware reader. 32 hex chars
+// (a UUID without dashes) — unguessable, typable, QR-encodable.
+export const genDeviceKey = () =>
+  (typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+  ).replace(/-/g, "");
 
 // --- Pass design presets -----------------------------------------------------
 // Seeds for a new saved template, not a fixed set of four. `design` is a partial

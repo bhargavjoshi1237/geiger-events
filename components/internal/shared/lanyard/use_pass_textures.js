@@ -78,19 +78,56 @@ export function usePassTexture({ template, event, attendee, qrSettings }) {
   return texture;
 }
 
-// The lanyard strap: the Geiger mark in white on black, tiled along the band.
-// It never varies with the design, so it is built once per showcase.
+// The lanyard strap: the Geiger mark and wordmark in white on black, tiled
+// along the band.
+//
+// `flipY` must be off, or the print comes out mirrored. The ribbon runs its
+// `u` along the strap and its `v` across the width, and `v = 1` falls on the
+// screen-left edge — so the strap's own mapping already reflects the tile once.
+// The default upload flip reflects it a second time in the same axis, which is
+// what leaves the print back-to-front instead of merely turned.
+function ribbonTexture() {
+  const built = new THREE.CanvasTexture(ribbonTileCanvas({ fontFamily: titleFont() }));
+  built.colorSpace = THREE.SRGBColorSpace;
+  built.wrapS = THREE.RepeatWrapping;
+  built.wrapT = THREE.RepeatWrapping;
+  built.flipY = false;
+  built.anisotropy = 8;
+  return built;
+}
+
+// The family the topbar sets `logo | Events` in. The body carries `font-sans`
+// and the topbar inherits it, so the resolved family is read straight off the
+// document — next/font mints a generated name per build, and the theme token it
+// hides behind is inlined into utilities rather than published as a variable.
+function titleFont() {
+  const inherited = getComputedStyle(document.body).fontFamily?.trim();
+  if (inherited) return inherited;
+  const token = getComputedStyle(document.body)
+    .getPropertyValue("--font-geist-sans")
+    .trim();
+  return [token, "ui-sans-serif", "system-ui", "sans-serif"].filter(Boolean).join(", ");
+}
+
 export function useRibbonTexture() {
-  const texture = useMemo(() => {
-    const built = new THREE.CanvasTexture(ribbonTileCanvas());
-    built.colorSpace = THREE.SRGBColorSpace;
-    built.wrapS = THREE.RepeatWrapping;
-    built.wrapT = THREE.RepeatWrapping;
-    built.anisotropy = 8;
-    return built;
+  // Drawn once up front so the band is never handed a null map, then drawn
+  // again once the webfont has actually landed — `measureText` sizes the tile,
+  // so a fallback face would leave the wordmark mis-spaced for good.
+  const initial = useMemo(() => ribbonTexture(), []);
+  const [refined, setRefined] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    document.fonts?.ready.then(() => {
+      if (alive) setRefined(ribbonTexture());
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  useEffect(() => () => texture.dispose(), [texture]);
+  useEffect(() => () => initial.dispose(), [initial]);
+  useEffect(() => () => refined?.dispose(), [refined]);
 
-  return texture;
+  return refined || initial;
 }

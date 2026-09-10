@@ -89,6 +89,7 @@ import {
   Captions,
   Activity,
   Download,
+  Palette,
   StickyNote,
   PencilRuler,
   Box,
@@ -468,6 +469,7 @@ export const workspaceNav = [
       { title: "Recordings & Replay", icon: Video },
       { title: "Captions & Transcription", icon: Captions },
       { title: "Mobile Event App", icon: Smartphone },
+      { title: "Branded App", icon: Palette },
     ],
   },
 

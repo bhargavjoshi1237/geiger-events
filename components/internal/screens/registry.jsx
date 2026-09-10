@@ -159,6 +159,7 @@ import { CustomDomainsScreen } from "./settings/custom_domains";
 import { NotificationsSettingsScreen } from "./settings/notifications";
 import { AddonsSettingsScreen } from "./settings/addons_settings";
 import { NavigationSettingsScreen } from "./settings/navigation_settings";
+import { BrandedAppScreen } from "./branded/branded_app";
 import { createAddonScreen } from "./addon_screen_host";
 import { ADDON_SCREEN_BY_TITLE, ADDON_SECTION_SCREEN } from "@/addons";
 
@@ -389,6 +390,7 @@ export const SCREEN_REGISTRY = {
   "Assign Agenda": AssignAgendaScreen,
   "Floor Plan & Booths": FloorPlanScreen,
   "Mobile Event App": MobileAppScreen,
+  "Branded App": BrandedAppScreen,
 
   // Community area — engagement records (events.community_records) + live chat.
   "Event Chat": EventChatScreen,

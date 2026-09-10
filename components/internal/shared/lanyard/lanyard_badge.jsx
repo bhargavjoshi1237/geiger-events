@@ -88,6 +88,13 @@ export function LanyardBadge({
   // space either side of the badge. Capping the width to about the height keeps
   // the framing the same everywhere it is dropped in.
   maxWidth = 420,
+  // Backdrop use: the pass is scenery, so it must not swallow clicks meant for
+  // the screen in front of it, and it renders at a lower pixel ratio because a
+  // full-width decorative canvas is a lot of pixels to shade every frame.
+  decorative = false,
+  zoom = 1,
+  facing = "front",
+  fitToViewport = false,
 }) {
   // The probe needs a real canvas, so the server gets the optimistic answer and
   // React re-renders with the real one after hydration.
@@ -99,7 +106,11 @@ export function LanyardBadge({
 
   return (
     <div
-      className={cn("relative mx-auto w-full touch-none select-none", className)}
+      className={cn(
+        "relative mx-auto w-full touch-none select-none",
+        decorative && "pointer-events-none",
+        className,
+      )}
       style={{ height, maxWidth }}
     >
       {!template ? (
@@ -113,6 +124,10 @@ export function LanyardBadge({
             event={event}
             attendee={attendee}
             qrSettings={qrSettings}
+            zoom={zoom}
+            facing={facing}
+            fitToViewport={fitToViewport}
+            dpr={decorative ? [1, 1.5] : [1, 2]}
           />
         </SceneBoundary>
       )}

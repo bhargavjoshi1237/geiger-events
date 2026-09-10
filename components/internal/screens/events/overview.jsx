@@ -9,7 +9,6 @@ import {
   CalendarClock,
   UserCog,
   ExternalLink,
-  IdCard,
   MapPin,
   Plus,
   Trash2,
@@ -45,7 +44,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getEventNotes, saveEventNotes } from "@/lib/supabase/notes";
 import { EventDatePicker } from "./date_time_fields";
-import { EventPassShowcase } from "./event_badge";
+import { PassBackdrop, useEventPass } from "./event_badge";
 import {
   EVENT_STATUS_MAP,
   EVENT_TYPE_MAP,
@@ -308,6 +307,11 @@ export function OverviewSection({
 }) {
   const commit = onCommit || onPatch || (() => {});
 
+  // One resolve for both places the pass appears on this screen — the watermark
+  // behind it and the panel within it.
+  const pass = useEventPass(event);
+  const passTemplate = pass.enabled && !pass.loading ? pass.template : null;
+
   const capacity = event.capacity || 0;
   const sold = event.sold || 0;
   const revenue = event.revenue || 0;
@@ -344,111 +348,96 @@ export function OverviewSection({
   };
 
   return (
-    <div className="space-y-6">
-      <StatGrid stats={stats} />
-
-      <SectionCard
-        bare
-        title="Status & sharing"
-        description="Control how this event is published and who can find it."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Status">
-            <Select value={event.status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {OVERVIEW_STATUS.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          EVENT_STATUS_MAP[s]?.dotClass || "bg-current",
-                        )}
-                      />
-                      {s}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field label="Visibility">
-            <Select value={event.visibility} onValueChange={setVisibility}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {OVERVIEW_VISIBILITY.map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {v}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        bare
-        title="At a glance"
-        className="pt-4"
-        action={
-          <div className="flex items-center gap-2">
-            <Badge variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}>
-              {event.type}
-            </Badge>
-            <StatusPill status={event.status} map={EVENT_STATUS_MAP} />
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              onClick={onViewLive}
-            >
-              <ExternalLink className="h-4 w-4" /> Live
-            </Button>
-          </div>
-        }
-      >
-        <div className="grid grid-cols-1 gap-x-6 gap-y-2.5 text-sm sm:grid-cols-2">
-          <GlanceRow
-            icon={CalendarClock}
-            label={
-              [formatDate(event.date), event.time].filter(Boolean).join(" · ") ||
-              "No date set"
-            }
-          />
-          <GlanceRow
-            icon={Users}
-            label={`${capacity.toLocaleString("en-US")} capacity`}
-          />
-          <GlanceRow
-            icon={MapPin}
-            label={`${event.venue}${event.city && event.city !== "Remote" ? `, ${event.city}` : ""}`}
-          />
-          <GlanceRow icon={UserCog} label={event.organizer} />
-        </div>
-      </SectionCard>
-
-      <EventPassShowcase
+    <div className="relative isolate">
+      <PassBackdrop
         event={event}
-        className="pt-4"
-        action={
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => onNavigate?.("badge")}
-          >
-            <IdCard className="h-4 w-4" /> Badge printing
-          </Button>
-        }
+        template={passTemplate}
+        qrSettings={pass.qrSettings}
       />
 
-      <PreLaunchNotes eventId={event.id} className="border-t border-border pt-6" />
+      <div className="space-y-6">
+        <StatGrid stats={stats} />
+
+        <SectionCard
+          bare
+          title="Status & sharing"
+          description="Control how this event is published and who can find it."
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Status">
+              <Select value={event.status} onValueChange={setStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {OVERVIEW_STATUS.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            EVENT_STATUS_MAP[s]?.dotClass || "bg-current",
+                          )}
+                        />
+                        {s}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Visibility">
+              <Select value={event.visibility} onValueChange={setVisibility}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {OVERVIEW_VISIBILITY.map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          bare
+          title="At a glance"
+          className="pt-4"
+          action={
+            <div className="flex items-center gap-2">
+              <Badge variant={EVENT_TYPE_MAP[event.type]?.variant || "neutral"}>
+                {event.type}
+              </Badge>
+              <StatusPill status={event.status} map={EVENT_STATUS_MAP} />
+            </div>
+          }
+        >
+          <div className="grid grid-cols-1 gap-x-6 gap-y-2.5 text-sm sm:grid-cols-2">
+            <GlanceRow
+              icon={CalendarClock}
+              label={
+                [formatDate(event.date), event.time].filter(Boolean).join(" · ") ||
+                "No date set"
+              }
+            />
+            <GlanceRow
+              icon={Users}
+              label={`${capacity.toLocaleString("en-US")} capacity`}
+            />
+            <GlanceRow
+              icon={MapPin}
+              label={`${event.venue}${event.city && event.city !== "Remote" ? `, ${event.city}` : ""}`}
+            />
+            <GlanceRow icon={UserCog} label={event.organizer} />
+          </div>
+        </SectionCard>
+
+        <PreLaunchNotes eventId={event.id} className="border-t border-border pt-6" />
+      </div>
     </div>
   );
 }
