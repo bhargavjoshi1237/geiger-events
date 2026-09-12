@@ -33,7 +33,7 @@ import FilterDropdown from "@/components/internal/screens/overview/filter_dropdo
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Badge } from "@geiger/ui/badge";
-import { ActionMenu } from "@geiger/ui";
+import { ActionMenu, LogoLoading } from "@geiger/ui";
 import {
   Dialog,
   DialogContent,
@@ -506,7 +506,7 @@ export function StaffScanningRolesScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading roles…
+          <LogoLoading size={40} /> Loading roles…
         </div>
       ) : (
         <div className="space-y-5">

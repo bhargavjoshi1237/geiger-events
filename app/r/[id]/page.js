@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   Clock,
-  Loader2,
   Mic,
   PlayCircle,
   Share2,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
+import { LogoLoading } from "@geiger/ui";
 import { conferenceApi } from "@/lib/supabase/conference";
 import { toEmbed } from "@/lib/video-embed";
 
@@ -84,7 +84,7 @@ export default function PublicRecordingPage() {
     if (loading) {
       return (
         <div className="flex min-h-[100dvh] items-center justify-center gap-2 bg-background text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading recording…
+          <LogoLoading size={80} /> Loading recording…
         </div>
       );
     }

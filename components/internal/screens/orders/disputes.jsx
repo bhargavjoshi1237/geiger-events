@@ -2,16 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  CheckCircle2,
-  Hourglass,
-  Loader2,
-  MessageSquareWarning,
-  Plus,
-  Scale,
-  Trash2,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, Hourglass, MessageSquareWarning, Plus, Scale, Trash2, XCircle } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -65,6 +56,7 @@ import {
   orderRef,
 } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 const DISPUTE_STATUSES = ["Needs response", "Under review", "Won", "Lost"];
 
 // One icon per outcome so the row menu can be scanned, not read.
@@ -413,7 +405,7 @@ export function DisputesScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading disputes…
         </div>
       ) : (

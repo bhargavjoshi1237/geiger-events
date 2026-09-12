@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, Maximize, MonitorX } from "lucide-react";
+import { Maximize, MonitorX } from "lucide-react";
 
+import { LogoLoading } from "@geiger/ui";
 import { getPublicBoard } from "@/lib/supabase/display_boards";
 import { BOARD_H, BOARD_W } from "@/lib/display/constants";
 import { BoardPlayer, preloadImages } from "@/lib/display/renderer";
@@ -107,7 +108,7 @@ export default function PublicDisplayBoardPage() {
   if (state.status === "loading") {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center gap-2 bg-black text-sm text-zinc-400">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading board…
+        <LogoLoading size={80} /> Loading board…
       </div>
     );
   }

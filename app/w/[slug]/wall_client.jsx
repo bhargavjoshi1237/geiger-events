@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CalendarX2, Loader2 } from "lucide-react";
+import { ArrowLeft, CalendarX2 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Button } from "@geiger/ui/button";
+import { LogoLoading } from "@geiger/ui";
 import { WallPublicPageContent } from "@/components/internal/screens/events/event_wall/wall_public_page";
 import { getWallBySlug } from "@/lib/supabase/event_wall";
 import { listListableEvents } from "@/lib/supabase/events";
@@ -55,7 +56,7 @@ export default function WallClient({ slug }) {
     return (
       <WallShell>
         <div className="flex min-h-[calc(100dvh-3rem)] items-center justify-center gap-2 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={80} /> Loading…
         </div>
       </WallShell>
     );

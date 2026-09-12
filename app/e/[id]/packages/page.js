@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { CalendarX2, Loader2, ArrowLeft } from "lucide-react";
+import { CalendarX2, ArrowLeft } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
+import { LogoLoading } from "@geiger/ui";
 import { findEventById } from "@/components/internal/screens/events/sample_data";
 import { PackagesPublicPage } from "@/components/internal/screens/events/packages_page/packages_public_page";
 import { TicketCheckout } from "@/components/internal/screens/events/public_page/checkout/ticket_checkout";
@@ -47,7 +48,7 @@ export default function PublishedPackagesPage() {
     if (loading) {
       return (
         <div className="flex min-h-[100dvh] items-center justify-center gap-2 bg-background text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading packages…
+          <LogoLoading size={80} /> Loading packages…
         </div>
       );
     }

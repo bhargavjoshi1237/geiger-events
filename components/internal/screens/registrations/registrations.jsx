@@ -2,15 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  CalendarDays,
-  ChevronRight,
-  Download,
-  Inbox,
-  Loader2,
-  UserPlus,
-  Users,
-} from "lucide-react";
+import { CalendarDays, ChevronRight, Download, Inbox, UserPlus, Users } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -50,6 +42,7 @@ import {
 import { EventRegistrationsDetail } from "./event_registrations";
 import { downloadCsv } from "./csv";
 
+import { LogoLoading } from "@geiger/ui";
 const PAGE_EVENTS = 60;
 const PAGE_PEOPLE = 100;
 
@@ -422,7 +415,7 @@ export function RegistrationsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading registrations…
         </div>
       ) : view === "events" ? (

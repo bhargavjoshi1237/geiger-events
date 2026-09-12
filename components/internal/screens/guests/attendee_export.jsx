@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ClipboardCopy, Download, Loader2, Users } from "lucide-react";
+import { ClipboardCopy, Download, Users } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -30,6 +30,7 @@ import {
   todayISO,
 } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 // Exportable columns. `default` seeds the initial field selection; `group`
 // buckets them under a label in the picker (export order still follows this
 // array).
@@ -221,7 +222,7 @@ export function AttendeeExportScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading attendees…
+          <LogoLoading size={40} /> Loading attendees…
         </div>
       ) : (
         <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">

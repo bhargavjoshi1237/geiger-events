@@ -50,6 +50,7 @@ import {
   normalizeMessage,
 } from "@/lib/supabase/chat";
 
+import { LogoLoading } from "@geiger/ui";
 const MODE_FILTER = [
   { value: "all", label: "All Types" },
   { value: "open", label: "Open discussion" },
@@ -473,7 +474,7 @@ export function EventChatScreen() {
 
       {loadingList ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} /> Loading…
         </div>
       ) : !channels.length ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

@@ -2,15 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  CalendarPlus,
-  Copy,
-  ExternalLink,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { CalendarPlus, Copy, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -69,6 +61,7 @@ import { useProject } from "@/context/project-context";
 import { useDefaultOrganizer } from "@/lib/events/use-default-organizer";
 import { EventDetailScreen } from "./event_detail";
 
+import { LogoLoading } from "@geiger/ui";
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "On Sale", label: "On Sale" },
@@ -556,7 +549,7 @@ export function AllEventsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading Events…
         </div>
       ) : (

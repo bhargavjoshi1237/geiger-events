@@ -2,8 +2,8 @@
 
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Info } from "lucide-react";
-import { NavVisibilitySettings, navVisibilityModel } from "@geiger/ui";
+import { Info } from "lucide-react";
+import { NavVisibilitySettings, navVisibilityModel, LogoLoading } from "@geiger/ui";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { ScreenHeader, StatsBar } from "@/components/internal/shared/screen_kit";
@@ -89,7 +89,7 @@ export function NavigationSettingsScreen() {
       <MainScreenWrapper>
         {header}
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading your navigation…
         </div>
       </MainScreenWrapper>

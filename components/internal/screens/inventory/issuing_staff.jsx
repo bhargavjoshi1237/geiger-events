@@ -62,6 +62,7 @@ import {
 } from "@/lib/supabase/checkin";
 import { formatDateTime, itemLabel } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 const genCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const defaultPermissions = () => ({
@@ -511,7 +512,7 @@ export function IssuingStaffScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading roles…
+          <LogoLoading size={40} /> Loading roles…
         </div>
       ) : !filtered.length ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

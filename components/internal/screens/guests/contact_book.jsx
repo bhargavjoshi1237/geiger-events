@@ -2,19 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  ChevronDown,
-  Contact,
-  Download,
-  Loader2,
-  Merge,
-  Pencil,
-  ShieldBan,
-  ShieldCheck,
-  Trash2,
-  Upload,
-  UserPlus,
-} from "lucide-react";
+import { ChevronDown, Contact, Download, Merge, Pencil, ShieldBan, ShieldCheck, Trash2, Upload, UserPlus } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -79,6 +67,7 @@ import { ContactDrawer } from "./contact_drawer";
 import { GuestImportScreen } from "./guest_import";
 import { DedupeMergeScreen } from "./dedupe_merge";
 
+import { LogoLoading } from "@geiger/ui";
 const EMPTY_DRAFT = {
   name: "",
   email: "",
@@ -568,7 +557,7 @@ export function ContactBookScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading contacts…
+          <LogoLoading size={40} /> Loading contacts…
         </div>
       ) : (
         <DataTable

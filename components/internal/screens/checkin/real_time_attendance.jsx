@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Activity, Loader2, RefreshCw, MapPin, Clock } from "lucide-react";
+import { Activity, RefreshCw, MapPin, Clock } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -23,6 +23,7 @@ import { listAttendanceByProject } from "@/lib/supabase/checkin";
 import { DEMO_ATTENDANCE } from "./demo_attendance";
 import { ATTENDANCE_STATUS_FILTER_OPTIONS, ATTENDANCE_STATUS_MAP, formatDate } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 const REFRESH_MS = 15000;
 
 export function RealTimeAttendanceScreen({ demo = false }) {
@@ -255,7 +256,7 @@ export function RealTimeAttendanceScreen({ demo = false }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading attendance…
+          <LogoLoading size={40} /> Loading attendance…
         </div>
       ) : (
         <div className="space-y-5">

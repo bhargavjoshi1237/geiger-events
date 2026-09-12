@@ -23,6 +23,7 @@ import { useProject } from "@/context/project-context";
 import { getCheckinSettings, updateCheckinSettings } from "@/lib/supabase/checkin";
 import { withDefaults } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 // Shared scaffold for the nine Check-in settings screens. Loads the project's
 // checkin_settings row, hands the merged feature slice + a `set(patch)` updater
 // to a render-prop body, and persists the whole slice on Save (explicit save,
@@ -98,7 +99,7 @@ export function CheckinSettingsScreen({
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading settings…
         </div>
       ) : (

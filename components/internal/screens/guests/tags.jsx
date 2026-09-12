@@ -2,14 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  Loader2,
-  Merge,
-  Pencil,
-  Plus,
-  Tag as TagIcon,
-  Trash2,
-} from "lucide-react";
+import { Merge, Pencil, Plus, Tag as TagIcon, Trash2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -61,6 +54,7 @@ import { listContacts } from "@/lib/supabase/contacts";
 import { getUser } from "@/lib/supabase/user";
 import { SEGMENT_COLOR_MAP, SEGMENT_COLOR_OPTIONS, initials } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 const TAG_SORT_OPTIONS = [
   { value: "count-desc", label: "Most used" },
   { value: "count-asc", label: "Least used" },
@@ -384,7 +378,7 @@ export function TagsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading tags…
+          <LogoLoading size={40} /> Loading tags…
         </div>
       ) : (
         <DataTable

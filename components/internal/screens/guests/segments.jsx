@@ -2,15 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  ListChecks,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-  Users,
-  X,
-} from "lucide-react";
+import { ListChecks, Pencil, Plus, Trash2, Users, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -70,6 +62,7 @@ import {
   initials,
 } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 const FIELD_BY_VALUE = Object.fromEntries(
   SEGMENT_RULE_FIELDS.map((f) => [f.value, f]),
 );
@@ -323,7 +316,7 @@ export function SegmentsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading segments…
+          <LogoLoading size={40} /> Loading segments…
         </div>
       ) : (
         <div className="space-y-5">

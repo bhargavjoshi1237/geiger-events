@@ -18,6 +18,7 @@ import { useProject } from "@/context/project-context";
 import { listContacts, mergeContacts } from "@/lib/supabase/contacts";
 import { CONTACT_STATUS_MAP, formatDateTime, initials } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 const norm = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
 const completeness = (c) =>
   ["name", "email", "phone", "company", "title", "location"].filter(
@@ -131,7 +132,7 @@ export function DedupeMergeScreen({ onBack } = {}) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Scanning for duplicates…
+          <LogoLoading size={40} /> Scanning for duplicates…
         </div>
       ) : groups.length ? (
         <div className="space-y-4">

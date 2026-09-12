@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   CalendarX2,
-  Loader2,
   Moon,
   RotateCw,
   Share2,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
+import { LogoLoading } from "@geiger/ui";
 import { findEventById } from "@/components/internal/screens/events/sample_data";
 import {
   EventPublicPageContent,
@@ -214,7 +214,7 @@ export default function PublishedEventPage({ id, initialEvent = null }) {
     if (loading) {
       return (
         <div className="flex min-h-[100dvh] items-center justify-center gap-2 bg-background text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading Event…
+          <LogoLoading size={80} /> Loading Event…
         </div>
       );
     }

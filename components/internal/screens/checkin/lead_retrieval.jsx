@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Contact, Loader2, Download } from "lucide-react";
+import { Contact, Download } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -27,6 +27,7 @@ import { listLeadsByProject } from "@/lib/supabase/checkin";
 import { downloadCsv } from "@/components/internal/screens/registrations/csv";
 import { formatDate } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 export function LeadRetrievalScreen() {
   const { projectId } = useProject();
   const [events, setEvents] = useState([]);
@@ -162,7 +163,7 @@ export function LeadRetrievalScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading leads…
+          <LogoLoading size={40} /> Loading leads…
         </div>
       ) : (
         <DataTable

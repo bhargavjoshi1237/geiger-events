@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Download, Loader2, UserCheck, UserPlus } from "lucide-react";
+import { Download, UserCheck, UserPlus } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -30,6 +30,7 @@ import {
 } from "./constants";
 import { ContactDrawer } from "./contact_drawer";
 
+import { LogoLoading } from "@geiger/ui";
 // The latest (most recent) status wins for a guest's pill.
 function latestStatus(guest) {
   const sorted = [...(guest.events || [])].sort((a, b) =>
@@ -317,7 +318,7 @@ export function GuestListScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading guests…
+          <LogoLoading size={40} /> Loading guests…
         </div>
       ) : (
         <DataTable

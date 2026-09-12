@@ -2,18 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  Sparkles,
-  Plus,
-  ArrowUpRight,
-  Check,
-  Pencil,
-  Copy,
-  Trash2,
-  LayoutTemplate,
-  Loader2,
-  X,
-} from "lucide-react";
+import { Sparkles, Plus, ArrowUpRight, Check, Pencil, Copy, Trash2, LayoutTemplate, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -64,6 +53,7 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
 import { useDefaultOrganizer } from "@/lib/events/use-default-organizer";
 
+import { LogoLoading } from "@geiger/ui";
 // Sentinel value for the "add a category" row inside the category Select.
 const NEW_CATEGORY = "__new_category__";
 
@@ -522,7 +512,7 @@ export function TemplatesScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading templates…
         </div>
       ) : filtered.length === 0 ? (

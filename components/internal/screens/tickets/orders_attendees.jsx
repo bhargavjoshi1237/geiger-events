@@ -1,16 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Loader2,
-  Repeat,
-  RotateCcw,
-  ScrollText,
-  Settings2,
-  ShoppingBag,
-  UserCheck,
-  Zap,
-} from "lucide-react";
+import { Repeat, RotateCcw, ScrollText, Settings2, ShoppingBag, UserCheck, Zap } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
@@ -39,6 +30,7 @@ import { RecordsScreen } from "./records_kit";
 import { Segmented, NumField as Num } from "./controls";
 import { currency, formatDate } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 // --- Order policies (attachable) ---------------------------------------------
 
 const KINDS = [
@@ -271,7 +263,7 @@ function OrdersListView({ tabs }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading orders…
         </div>
       ) : (

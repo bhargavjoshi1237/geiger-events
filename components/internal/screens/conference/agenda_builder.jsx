@@ -2,23 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  AlignLeft,
-  CalendarClock,
-  CalendarDays,
-  CalendarRange,
-  Clock,
-  LayoutGrid,
-  LayoutList,
-  Loader2,
-  MapPin,
-  Mic,
-  Pencil,
-  Plus,
-  Timer,
-  Trash2,
-  Type,
-} from "lucide-react";
+import { AlignLeft, CalendarClock, CalendarDays, CalendarRange, Clock, LayoutGrid, LayoutList, MapPin, Mic, Pencil, Plus, Timer, Trash2, Type } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { EditorHeader } from "@/components/internal/shared/editor_shell";
@@ -32,26 +16,7 @@ import {
   Toolbar,
   SegmentedTabs,
 } from "@/components/internal/shared/screen_kit";
-import {
-  ActionMenu,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Textarea,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  cn,
-} from "@geiger/ui";
+import { ActionMenu, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsList, TabsTrigger, cn, LogoLoading } from "@geiger/ui";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { IconInput } from "@/components/internal/shared/icon_input";
 import { EventTimeField } from "@/components/internal/screens/events/date_time_fields";
@@ -810,7 +775,7 @@ export function AgendaBuilderScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading events…
         </div>
       ) : filteredEvents.length === 0 ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeftRight, Eye, Loader2 } from "lucide-react";
+import { ArrowLeftRight, Eye } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -35,6 +35,7 @@ import {
   methodLabel,
 } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 export function TransactionsScreen() {
   const { projectId } = useProject();
   const [orders, setOrders] = useState([]);
@@ -271,7 +272,7 @@ export function TransactionsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading transactions…
         </div>
       ) : (

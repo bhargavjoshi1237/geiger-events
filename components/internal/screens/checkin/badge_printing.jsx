@@ -52,6 +52,7 @@ import { PassCanvas } from "./badge/canvas";
 import { printPasses } from "./badge/print";
 import { exportPassPng, exportPassesZip } from "./badge/export";
 
+import { LogoLoading } from "@geiger/ui";
 const isUpcoming = (e) =>
   !e.date || new Date(e.date) >= new Date(new Date().toDateString());
 
@@ -374,7 +375,7 @@ export function BadgePrintingScreen() {
       <MainScreenWrapper>
         {header}
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading designs…
+          <LogoLoading size={40} /> Loading designs…
         </div>
       </MainScreenWrapper>
     );

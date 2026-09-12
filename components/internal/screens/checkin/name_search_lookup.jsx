@@ -31,6 +31,7 @@ import {
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 
+import { LogoLoading } from "@geiger/ui";
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All statuses" },
   { value: "Confirmed", label: "Confirmed" },
@@ -220,7 +221,7 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
 
       {loadingEvents ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} /> Loading…
         </div>
       ) : !eventId ? (
         <div className="rounded-xl border border-border bg-surface-subtle">
@@ -228,7 +229,7 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
         </div>
       ) : loadingList ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading attendees…
+          <LogoLoading size={40} /> Loading attendees…
         </div>
       ) : results.length ? (
         <div className="space-y-3">

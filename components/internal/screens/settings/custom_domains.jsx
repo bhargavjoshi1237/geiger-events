@@ -54,6 +54,7 @@ import {
 } from "@/lib/supabase/domains";
 import { DOMAIN_STATUS_MAP } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 // Root domain the subdomain sits under (matches geiger-dash env var).
 const ROOT_DOMAIN =
   typeof process !== "undefined" && process.env?.NEXT_PUBLIC_ROOT_DOMAIN
@@ -302,7 +303,7 @@ export function CustomDomainsScreen() {
       <MainScreenWrapper>
         {header}
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading domain settings…
         </div>
       </MainScreenWrapper>

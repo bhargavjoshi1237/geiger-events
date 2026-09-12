@@ -49,6 +49,7 @@ import {
   formatDateTime,
 } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 function monogram(name, email) {
   const src = (name || "").trim() || (email || "").trim();
   return (src ? src[0] : "?").toUpperCase();
@@ -168,7 +169,7 @@ function ThreadDetail({ threadId, onBack, onChanged }) {
     return (
       <MainScreenWrapper>
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} /> Loading…
         </div>
       </MainScreenWrapper>
     );
@@ -459,7 +460,7 @@ export function OrganiserInboxScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} /> Loading…
         </div>
       ) : !threads.length ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

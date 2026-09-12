@@ -2,15 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- portal renders remote Supabase cover URLs; next/image adds no value here */
 
 import React, { useMemo, useState } from "react";
-import {
-  BadgeCheck,
-  Clock,
-  Loader2,
-  Mic,
-  PlayCircle,
-  Search,
-  VideoOff,
-} from "lucide-react";
+import { BadgeCheck, Clock, Mic, PlayCircle, Search, VideoOff } from "lucide-react";
 
 import { EmptyState, ScreenHeader, SearchInput } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
@@ -25,6 +17,7 @@ import { toEmbed } from "@/lib/video-embed";
 import { usePresenceHeartbeat } from "@/lib/hooks/use-presence-heartbeat";
 import { fmtDate } from "./portal_kit";
 
+import { LogoLoading } from "@geiger/ui";
 // The member's on-demand library — every recording their memberships unlock,
 // with the plan that granted it and when that access ends. Geiger never hosts
 // the video; the organiser's external link is embedded client-side, same as the
@@ -137,7 +130,7 @@ export function PortalWatch({ items = [], loading = false }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading your library…
+          <LogoLoading size={40} /> Loading your library…
         </div>
       ) : items.length ? (
         <>

@@ -54,6 +54,7 @@ import {
 import { ItemThumb } from "./item_image";
 import { formatDateTime, itemLabel, qty } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 const REDEMPTION_STATUS_MAP = {
   issued: { label: "Issued", variant: "success", dotClass: "bg-emerald-400" },
   returned: { label: "Undone", variant: "neutral", dotClass: "bg-zinc-400" },
@@ -541,7 +542,7 @@ export function IssuingDeskScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading hand-outs…
+          <LogoLoading size={40} /> Loading hand-outs…
         </div>
       ) : !rows.length ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

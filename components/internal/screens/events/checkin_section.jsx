@@ -21,6 +21,7 @@ import { newId } from "./sample_data";
 import { EventDatePicker, EventTimeField } from "./date_time_fields";
 import { withDefaults } from "../checkin/constants";
 
+import { LogoLoading } from "@geiger/ui";
 function useCheckinGlobals() {
   const { projectId } = useProject();
   const [config, setConfig] = useState(null);
@@ -451,7 +452,7 @@ export function DoorKioskSection({ event, headerItem }) {
 function SectionLoading() {
   return (
     <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-      <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+      <LogoLoading size={40} /> Loading…
     </div>
   );
 }

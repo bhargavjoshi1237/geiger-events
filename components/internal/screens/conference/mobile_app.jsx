@@ -2,19 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  Bell,
-  CalendarDays,
-  Check,
-  Handshake,
-  Loader2,
-  Map as MapIcon,
-  Mic,
-  Radio,
-  Smartphone,
-  Users,
-  Wifi,
-} from "lucide-react";
+import { Bell, CalendarDays, Check, Handshake, Map as MapIcon, Mic, Radio, Smartphone, Users, Wifi } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -25,7 +13,7 @@ import {
   SettingRow,
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
-import { Button, Input, Textarea, cn } from "@geiger/ui";
+import { Button, Input, Textarea, cn, LogoLoading } from "@geiger/ui";
 import { ChipsInput } from "@/components/internal/shared/records/record_fields";
 import { useOptionalProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
@@ -227,7 +215,7 @@ export function MobileAppScreen({ demo = false }) {
       <MainScreenWrapper>
         <ScreenHeader title="Mobile Event App" description="Configure the attendee app and preview it live." />
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading app config…
+          <LogoLoading size={40} /> Loading app config…
         </div>
       </MainScreenWrapper>
     );

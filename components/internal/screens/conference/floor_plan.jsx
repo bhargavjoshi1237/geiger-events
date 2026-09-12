@@ -2,15 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  LayoutGrid,
-  Loader2,
-  Move,
-  Plus,
-  Store,
-  Trash2,
-  X,
-} from "lucide-react";
+import { LayoutGrid, Move, Plus, Store, Trash2, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -20,23 +12,7 @@ import {
   StatsBar,
   StatusPill,
 } from "@/components/internal/shared/screen_kit";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Textarea,
-  cn,
-} from "@geiger/ui";
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, cn, LogoLoading } from "@geiger/ui";
 import { useOptionalProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
 import { currency } from "@/components/internal/shared/records/builders";
@@ -435,7 +411,7 @@ export function FloorPlanScreen({ demo = false }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading floor…
+          <LogoLoading size={40} /> Loading floor…
         </div>
       ) : !demo && !hallId ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

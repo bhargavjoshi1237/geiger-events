@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Chrome, Facebook, DollarSign, Store, Loader2, Plug, Link2 } from "lucide-react";
+import { Chrome, Facebook, DollarSign, Store, Plug, Link2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -11,16 +11,7 @@ import {
   StatusPill,
   Field,
 } from "@/components/internal/shared/screen_kit";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  cn,
-} from "@geiger/ui";
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, cn, LogoLoading } from "@geiger/ui";
 import { Input } from "@geiger/ui/input";
 import { useProject } from "@/context/project-context";
 import { getUser } from "@/lib/supabase/user";
@@ -136,7 +127,7 @@ export function ConnectionsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <LogoLoading size={40} />
           Loading connections…
         </div>
       ) : (
