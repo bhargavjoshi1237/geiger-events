@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 
 import { SidebarProvider, SidebarInset } from "@geiger/ui/sidebar";
 import { portalFetch } from "@/lib/portal/portal_fetch";
@@ -20,6 +19,7 @@ import PortalCommunity from "./portal_community";
 import PortalQa from "./portal_qa";
 import PortalAccount from "./portal_account";
 
+import { LogoLoading } from "@geiger/ui";
 export function PortalShell({ member: initialMember }) {
   const [member, setMember] = useState(initialMember);
   const [tab, setTab] = useState(() => {
@@ -233,7 +233,7 @@ export function PortalShell({ member: initialMember }) {
     if (!data) {
       return (
         <div className="flex items-center justify-center gap-2 py-24 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} />
         </div>
       );
     }

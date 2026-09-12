@@ -38,6 +38,7 @@ import {
 } from "@/lib/supabase/discovery";
 import { formatDate } from "@/components/internal/screens/events/sample_data";
 
+import { LogoLoading } from "@geiger/ui";
 // Fields that count toward the profile "completeness" stat.
 const COMPLETENESS_FIELDS = [
   "displayName",
@@ -266,7 +267,7 @@ export function OrganiserProfileScreen() {
     return (
       <MainScreenWrapper>
         <div className="flex h-64 items-center justify-center gap-2 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} />
         </div>
       </MainScreenWrapper>
     );

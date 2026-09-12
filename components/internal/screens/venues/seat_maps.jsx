@@ -2,15 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  Armchair,
-  Loader2,
-  LucideFlag,
-  LucidePencil,
-  LucideTrash,
-  Pen,
-  Plus,
-} from "lucide-react";
+import { Armchair, LucideFlag, LucidePencil, LucideTrash, Pen, Plus } from "lucide-react";
 
 import {
   EmptyState,
@@ -28,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  LogoLoading,
   Select,
   SelectContent,
   SelectItem,
@@ -219,7 +212,7 @@ export function SeatMapsSection({ venue }) {
   if (loading) {
     return (
       <div className="flex h-40 items-center justify-center text-text-secondary">
-        <Loader2 className="h-5 w-5 animate-spin" />
+        <LogoLoading size={40} />
       </div>
     );
   }

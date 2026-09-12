@@ -48,7 +48,7 @@ export default function PublishedPackagesPage() {
     if (loading) {
       return (
         <div className="flex min-h-[100dvh] items-center justify-center gap-2 bg-background text-sm text-text-secondary">
-          <LogoLoading size={80} /> Loading packages…
+          <LogoLoading size={80} label="Loading packages" />
         </div>
       );
     }

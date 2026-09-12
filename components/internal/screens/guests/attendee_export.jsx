@@ -222,7 +222,7 @@ export function AttendeeExportScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} /> Loading attendees…
+          <LogoLoading size={40} label="Loading attendees" />
         </div>
       ) : (
         <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">

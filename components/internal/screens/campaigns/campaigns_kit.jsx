@@ -81,7 +81,7 @@ export function CampaignSettingsScreen({ title, description, feature, children }
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} /> Loading settings…
+          <LogoLoading size={40} label="Loading settings" />
         </div>
       ) : (
         <div className="space-y-6">{children({ slice, set })}</div>

@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
-import { CameraOff, Loader2 } from "lucide-react";
+import { CameraOff } from "lucide-react";
 
+import { LogoLoading } from "@geiger/ui";
 export function QrScanner({ onDecode, paused = false }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -106,10 +107,7 @@ export function QrScanner({ onDecode, paused = false }) {
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-white/80">
           {status === "starting" ? (
-            <>
-              <Loader2 className="h-6 w-6 animate-spin" />
-              <p className="text-sm">Starting camera…</p>
-            </>
+            <LogoLoading size={40} label="Starting camera" />
           ) : (
             <>
               <CameraOff className="h-7 w-7" />

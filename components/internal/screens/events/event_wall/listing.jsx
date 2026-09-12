@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Loader2, Star, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Star, X } from "lucide-react";
 
 import {
   Field,
@@ -22,6 +22,7 @@ import { useWallConfig } from "@/lib/events/use-wall-config";
 import { listListableEvents } from "@/lib/supabase/events";
 import { formatDate } from "../sample_data";
 
+import { LogoLoading } from "@geiger/ui";
 const STATUS_OPTIONS = [
   { value: "upcoming", label: "Upcoming only" },
   { value: "all", label: "All listable events" },
@@ -132,8 +133,8 @@ export function WallEventsSection({ wall }) {
         description="Pinned to the top of the wall, in this order, ahead of everything else."
       >
         {loading ? (
-          <div className="flex items-center gap-2 py-6 text-sm text-text-secondary">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading Events…
+          <div className="flex items-center py-6">
+            <LogoLoading size={40} label="Loading Events" />
           </div>
         ) : (
           <div className="space-y-4">

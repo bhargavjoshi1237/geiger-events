@@ -132,7 +132,7 @@ export function DedupeMergeScreen({ onBack } = {}) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} /> Scanning for duplicates…
+          <LogoLoading size={40} label="Scanning for duplicates" />
         </div>
       ) : groups.length ? (
         <div className="space-y-4">

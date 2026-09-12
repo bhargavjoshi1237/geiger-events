@@ -7,6 +7,7 @@ import { EmptyState, ScreenHeader } from "@/components/internal/shared/screen_ki
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { Card, fmtDateTime } from "./portal_kit";
 
+import { LoadingArea } from "@geiger/ui";
 export function PortalNotifications({ items = [], loading }) {
   return (
     <MainScreenWrapper>
@@ -16,7 +17,7 @@ export function PortalNotifications({ items = [], loading }) {
       />
 
       {loading ? (
-        <div className="py-16 text-center text-sm text-text-secondary">Loading…</div>
+        <LoadingArea />
       ) : items.length ? (
         <div className="space-y-3">
           {items.map((n) => (

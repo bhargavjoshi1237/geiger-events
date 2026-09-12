@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@geiger/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
+import { LogoLoading, Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
 import {
   Select,
   SelectContent,
@@ -440,7 +440,7 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
 
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading history…
+              <LogoLoading size={40} label="Loading history" />
             </div>
           ) : movements.length ? (
             <div className="divide-y divide-border rounded-lg border border-border bg-surface-card">
@@ -481,7 +481,7 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
         <TabsContent value="allocations" className="space-y-3 pt-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading allocations…
+              <LogoLoading size={40} label="Loading allocations" />
             </div>
           ) : allocations.length ? (
             <div className="divide-y divide-border rounded-lg border border-border bg-surface-card">

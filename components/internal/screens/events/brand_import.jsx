@@ -32,6 +32,7 @@ import { LOGO_HEIGHTS } from "@/lib/events/theme";
 import { uploadEventFont, uploadEventImage } from "@/lib/supabase/storage";
 import { Segmented } from "./theme_controls";
 
+import { LogoLoading } from "@geiger/ui";
 const CATEGORIES = [
   { key: "logo", label: "Logo", hint: "Brand mark for the header and footer" },
   { key: "colors", label: "Colors", hint: "Brand, background, text, and borders" },
@@ -323,9 +324,11 @@ export function ImportBrandDialog({
           ) : null}
 
           {status === "loading" ? (
-            <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-card py-10 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Reading {url.replace(/^https?:\/\//, "")}…
+            <div className="flex items-center justify-center rounded-xl border border-border bg-surface-card py-10">
+              <LogoLoading
+                size={40}
+                label={`Reading ${url.replace(/^https?:\/\//, "")}`}
+              />
             </div>
           ) : null}
 

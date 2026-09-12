@@ -13,6 +13,7 @@ import { Card, fmtDateTime } from "./portal_kit";
 
 import { portalFetch, portalPostJson } from "@/lib/portal/portal_fetch";
 
+import { LogoLoading } from "@geiger/ui";
 // basePath-aware portal API helpers (see lib/portal/portal_fetch.js).
 const postJson = portalPostJson;
 function Composer({ initial, onCancel, onCreated }) {
@@ -119,7 +120,7 @@ function ThreadView({ threadId, onBack, onChanged }) {
   if (!thread) {
     return (
       <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        <LogoLoading size={40} />
       </div>
     );
   }
@@ -266,7 +267,7 @@ export function PortalMessages({ threads = [], loading, initialCompose, onRefres
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} />
         </div>
       ) : threads.length ? (
         <div className="space-y-3">

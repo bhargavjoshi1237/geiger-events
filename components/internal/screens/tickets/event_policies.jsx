@@ -1,29 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  Coins,
-  FileText,
-  Gauge,
-  Hash,
-  IdCard,
-  Landmark,
-  Loader2,
-  Percent,
-  Plus,
-  Receipt,
-  Repeat,
-  RotateCcw,
-  Settings2,
-  ShieldAlert,
-  ShoppingBag,
-  Ticket,
-  TrendingUp,
-  UserCheck,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { ArrowRight, Coins, FileText, Gauge, Hash, IdCard, Landmark, Percent, Plus, Receipt, Repeat, RotateCcw, Settings2, ShieldAlert, ShoppingBag, Ticket, TrendingUp, UserCheck, Users, Wallet } from "lucide-react";
 
 import {
   EditorSectionHeader,
@@ -40,6 +18,7 @@ import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listRecords } from "@/lib/supabase/ticketing";
 import { listOrders } from "@/lib/supabase/orders";
+import { LoadingArea } from "@geiger/ui";
 import {
   currency,
   formatDate,
@@ -104,13 +83,8 @@ function useModuleRecords(event, module, tab) {
   };
 }
 
-function LoadingBlock({ label = "Loading records…" }) {
-  return (
-    <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-10 text-sm text-text-secondary">
-      <Loader2 className="h-4 w-4 animate-spin" />
-      {label}
-    </div>
-  );
+function LoadingBlock({ label = "Loading records" }) {
+  return <LoadingArea panel className="py-10" label={label} />;
 }
 
 function RecordPill({ record, on, onToggle }) {

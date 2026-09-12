@@ -215,7 +215,7 @@ export function MobileAppScreen({ demo = false }) {
       <MainScreenWrapper>
         <ScreenHeader title="Mobile Event App" description="Configure the attendee app and preview it live." />
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} /> Loading app config…
+          <LogoLoading size={40} label="Loading app config" />
         </div>
       </MainScreenWrapper>
     );

@@ -35,6 +35,7 @@ import {
 import { pollVoterCount } from "@/lib/chat/poll";
 import { cn } from "@/lib/utils";
 
+import { LogoLoading } from "@geiger/ui";
 // Shared, prop-driven chat surface for the Community area. Adapted from
 // geiger-chat's presentational components (same Tailwind semantic tokens), but
 // self-contained and fed by geiger-events view-models. Used by both the event
@@ -579,7 +580,7 @@ export function ChatThread({
       ) : null}
       {loading ? (
         <div className="flex flex-1 items-center justify-center gap-2 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} />
         </div>
       ) : (
         <MessageList

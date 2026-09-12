@@ -214,7 +214,7 @@ export default function PublishedEventPage({ id, initialEvent = null }) {
     if (loading) {
       return (
         <div className="flex min-h-[100dvh] items-center justify-center gap-2 bg-background text-sm text-text-secondary">
-          <LogoLoading size={80} /> Loading Event…
+          <LogoLoading size={80} label="Loading Event" />
         </div>
       );
     }

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Copy, ExternalLink, LayoutGrid, Loader2 } from "lucide-react";
+import { Copy, ExternalLink, LayoutGrid } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { EditorShell } from "@/components/internal/shared/editor_shell";
@@ -12,6 +12,7 @@ import { useProject } from "@/context/project-context";
 import { getWall } from "@/lib/supabase/event_wall";
 import { NAV_GROUPS, SECTIONS } from "./wall_sections";
 
+import { LogoLoading } from "@geiger/ui";
 export function EventWallScreen() {
   const { projectId } = useProject();
   const [wall, setWall] = useState(null);
@@ -51,7 +52,7 @@ export function EventWallScreen() {
     return (
       <MainScreenWrapper>
         <div className="flex h-64 items-center justify-center gap-2 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} />
         </div>
       </MainScreenWrapper>
     );

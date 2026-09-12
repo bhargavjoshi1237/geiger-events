@@ -62,6 +62,7 @@ import {
 } from "@/lib/supabase/event_team";
 import { uploadEventImage } from "@/lib/supabase/storage";
 
+import { LogoLoading } from "@geiger/ui";
 const ROLE_ICONS = { Crown, ShieldCheck, Users, ScanLine, Eye };
 const FALLBACK_ROLE = EVENT_TEAM_ROLE_MAP.Viewer;
 
@@ -439,7 +440,7 @@ export function CoHostsAdminsSection({ event, headerItem }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-10 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading team…
+          <LogoLoading size={40} label="Loading team" />
         </div>
       ) : members.length ? (
         <div className="space-y-3">

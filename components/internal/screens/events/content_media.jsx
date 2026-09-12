@@ -83,6 +83,7 @@ import {
 } from "@/lib/events/gallery";
 import { Segmented, withIcons } from "./theme_controls";
 
+import { LogoLoading } from "@geiger/ui";
 // Two-option sets render as an icon+label tab pair, so each needs a glyph.
 // Attached here rather than in lib/events/gallery.js, which the public event
 // page also imports.
@@ -793,7 +794,7 @@ export function CoverMediaSection({ event, onCommit }) {
             })}
             {galleryBusy ? (
               <div className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-border bg-surface-card text-text-tertiary">
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <LogoLoading size={40} />
               </div>
             ) : null}
           </div>

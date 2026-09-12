@@ -7,6 +7,7 @@ import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { validateCheckinCode } from "@/lib/supabase/checkin";
 
+import { LogoLoading } from "@geiger/ui";
 const codeKey = (eventId) => `checkin:code:${eventId}`;
 const roleKey = (eventId) => `checkin:role:${eventId}`;
 
@@ -98,7 +99,7 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, co
   if (booting) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center gap-2 bg-background text-sm text-text-secondary">
-        <Loader2 className="h-4 w-4 animate-spin" /> Checking access…
+        <LogoLoading size={80} label="Checking access" />
       </div>
     );
   }

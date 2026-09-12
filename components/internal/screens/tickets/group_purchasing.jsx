@@ -2,13 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  Inbox,
-  Loader2,
-  SlidersHorizontal,
-  Trash2,
-  Users,
-} from "lucide-react";
+import { Inbox, SlidersHorizontal, Trash2, Users } from "lucide-react";
 
 import {
   SectionCard,
@@ -27,6 +21,7 @@ import {
 
 import { SettingsScreen } from "./settings_kit";
 import { NumField as Num } from "./controls";
+import { LogoLoading } from "@geiger/ui";
 import {
   currency,
   formatDate,
@@ -74,7 +69,7 @@ function GroupPurchasesList() {
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-8 text-sm text-text-secondary">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading group purchases…
+        <LogoLoading size={40} label="Loading group purchases" />
       </div>
     );
   }

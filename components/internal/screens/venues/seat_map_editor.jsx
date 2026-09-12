@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  LogoLoading,
   Select,
   SelectContent,
   SelectItem,
@@ -1020,7 +1021,7 @@ export function SeatMapEditor({ mapId, onBack }) {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-text-secondary">
-        <Loader2 className="h-5 w-5 animate-spin" />
+        <LogoLoading size={40} />
       </div>
     );
   }

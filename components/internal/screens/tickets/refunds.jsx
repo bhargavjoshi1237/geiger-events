@@ -30,6 +30,7 @@ import {
 
 import { SettingsScreen } from "./settings_kit";
 import { NumField as Num } from "./controls";
+import { LogoLoading } from "@geiger/ui";
 import {
   currency,
   formatDate,
@@ -78,8 +79,8 @@ function RefundRequestsList() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-8 text-sm text-text-secondary">
-        <RotateCcw className="h-4 w-4 animate-spin" /> Loading requests…
+      <div className="flex items-center justify-center py-8">
+        <LogoLoading size={40} label="Loading requests" />
       </div>
     );
   }

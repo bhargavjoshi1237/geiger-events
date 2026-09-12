@@ -108,7 +108,7 @@ export default function PublicDisplayBoardPage() {
   if (state.status === "loading") {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center gap-2 bg-black text-sm text-zinc-400">
-        <LogoLoading size={80} /> Loading board…
+        <LogoLoading size={80} label="Loading board" />
       </div>
     );
   }

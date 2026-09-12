@@ -221,7 +221,7 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
 
       {loadingEvents ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} /> Loading…
+          <LogoLoading size={40} />
         </div>
       ) : !eventId ? (
         <div className="rounded-xl border border-border bg-surface-subtle">
@@ -229,7 +229,7 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
         </div>
       ) : loadingList ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} /> Loading attendees…
+          <LogoLoading size={40} label="Loading attendees" />
         </div>
       ) : results.length ? (
         <div className="space-y-3">

@@ -21,6 +21,7 @@ import {
 import { listPackageEnquiries } from "@/lib/supabase/package_enquiries";
 import { PageDesignSection, defaultPageDesign } from "./page_design";
 
+import { LogoLoading } from "@geiger/ui";
 function PackageEnquiries({ eventId }) {
   const [rows, setRows] = React.useState(null);
 
@@ -48,7 +49,7 @@ function PackageEnquiries({ eventId }) {
     >
       {rows === null ? (
         <div className="flex items-center justify-center gap-2 py-8 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading enquiries…
+          <LogoLoading size={40} label="Loading enquiries" />
         </div>
       ) : rows?.length ? (
         <div className="space-y-2">

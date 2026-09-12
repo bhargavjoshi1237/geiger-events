@@ -45,6 +45,7 @@ import { listOrderEvents, addOrderEvent } from "@/lib/supabase/order_events";
 import { listAssignments } from "@/lib/supabase/seating";
 import { listRefundsForOrder, issueRefund } from "@/lib/supabase/order_refunds";
 import { cancelOrder } from "@/lib/supabase/orders";
+import { LogoLoading } from "@geiger/ui";
 import {
   ORDER_STATUS_MAP,
   ORDER_EVENT_LABELS,
@@ -678,8 +679,8 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                   Timeline
                 </p>
                 {loading ? (
-                  <div className="flex items-center gap-2 py-4 text-sm text-text-secondary">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+                  <div className="flex items-center py-4">
+                    <LogoLoading size={40} />
                   </div>
                 ) : events.length ? (
                   <ol className="space-y-3">

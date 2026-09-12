@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Loader2, Plus } from "lucide-react";
+import { BadgeCheck, Plus } from "lucide-react";
 
 import { EditorSectionHeader } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
@@ -13,6 +13,7 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listRecordsByModules } from "@/lib/supabase/ticketing";
 import { currency } from "../tickets/constants";
 
+import { LogoLoading } from "@geiger/ui";
 function priceLabel(config) {
   const price = Number(config.price) || 0;
   if (price === 0) return "Free";
@@ -75,8 +76,7 @@ export function EventMembershipsSection({ event, headerItem }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-12 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading plans…
+          <LogoLoading size={40} label="Loading plans" />
         </div>
       ) : plans.length === 0 ? (
         <div className="flex flex-col items-start gap-2 rounded-xl border border-dashed border-border bg-surface-card px-6 py-10">

@@ -2,9 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Timer } from "lucide-react";
+import { Timer } from "lucide-react";
 
-import { Button } from "@geiger/ui";
+import { Button, LogoLoading } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 import { currency } from "@/components/internal/screens/tickets/constants";
 import { buildPriceBands } from "@/lib/seating/price_tiers";
@@ -198,7 +198,7 @@ export function BoothPicker({ event, expo, tickets = [], maxBooths = 0, onChange
   if (loading) {
     return (
       <div className="flex h-48 items-center justify-center text-text-secondary">
-        <Loader2 className="h-5 w-5 animate-spin" />
+        <LogoLoading size={40} />
       </div>
     );
   }

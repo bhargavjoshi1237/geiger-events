@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Percent, Plus, Ticket, ShoppingCart, Loader2 } from "lucide-react";
+import { Percent, Plus, Ticket, ShoppingCart } from "lucide-react";
 
 import {
   EditorSectionHeader,
@@ -24,6 +24,7 @@ import { listRecords } from "@/lib/supabase/ticketing";
 import { DiscountStub } from "@/components/internal/screens/tickets/discount_stub";
 import { ticketDiscountIds } from "@/lib/events/discount_rules";
 
+import { LogoLoading } from "@geiger/ui";
 const DEFAULT_SETTINGS = { enabled: true, appliesTo: "order" };
 
 export function EventDiscountsSection({ event, headerItem }) {
@@ -161,7 +162,7 @@ export function EventDiscountsSection({ event, headerItem }) {
 
           {loading ? (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-10 text-sm text-text-secondary">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading codes…
+              <LogoLoading size={40} label="Loading codes" />
             </div>
           ) : coupons.length ? (
             <div className="space-y-3">

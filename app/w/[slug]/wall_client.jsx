@@ -56,7 +56,7 @@ export default function WallClient({ slug }) {
     return (
       <WallShell>
         <div className="flex min-h-[calc(100dvh-3rem)] items-center justify-center gap-2 text-sm text-text-secondary">
-          <LogoLoading size={80} /> Loading…
+          <LogoLoading size={80} />
         </div>
       </WallShell>
     );

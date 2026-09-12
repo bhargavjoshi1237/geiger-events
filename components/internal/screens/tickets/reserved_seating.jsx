@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Armchair, CalendarDays, Loader2, SlidersHorizontal } from "lucide-react";
+import { Armchair, CalendarDays, SlidersHorizontal } from "lucide-react";
 
 import {
   SectionCard,
@@ -19,6 +19,7 @@ import { SettingsScreen } from "./settings_kit";
 import { NumField as Num } from "./controls";
 import { defaultReservedSeatingConfig, formatDate } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 const SEAT_STATUS_MAP = {
   on: { label: "Reserved seating", dotClass: "bg-emerald-400" },
   off: { label: "General admission", dotClass: "bg-slate-400", variant: "neutral" },
@@ -58,7 +59,7 @@ function EventsReservedSeatingList() {
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-8 text-sm text-text-secondary">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading Events…
+        <LogoLoading size={40} label="Loading Events" />
       </div>
     );
   }

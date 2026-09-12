@@ -6,6 +6,7 @@ import { IdCard, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+import { LogoLoading } from "@geiger/ui";
 // The event pass, hanging from its lanyard and draggable. Everything three.js
 // lives behind this boundary: the scene is client-only and code-split, so a
 // screen that never enables badges pays nothing for it.
@@ -18,14 +19,23 @@ import { cn } from "@/lib/utils";
 
 const LanyardScene = dynamic(() => import("./lanyard_scene"), {
   ssr: false,
-  loading: () => <Placeholder icon={Loader2} label="Preparing the pass…" spin />,
+  loading: () => <Placeholder icon={Loader2} label="Preparing the pass" spin />,
 });
 
+// Doubles as the loading state and the no-WebGL notice. While loading (`spin`)
+// the animated mark carries the message on its own; the notice path keeps its
+// icon and copy, since that one has something to say.
 function Placeholder({ icon: Icon, label, spin }) {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-text-tertiary">
-      <Icon className={cn("h-5 w-5", spin && "animate-spin")} />
-      <p className="text-xs">{label}</p>
+      {spin ? (
+        <LogoLoading size={40} label={label} />
+      ) : (
+        <>
+          <Icon className="h-5 w-5" />
+          <p className="text-xs">{label}</p>
+        </>
+      )}
     </div>
   );
 }

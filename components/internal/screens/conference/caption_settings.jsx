@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  LogoLoading,
   Select,
   SelectContent,
   SelectItem,
@@ -257,7 +258,7 @@ export function CaptionSettings({ api, projectId }) {
 
           {loading ? (
             <div className="flex items-center justify-center gap-2 px-5 py-16 text-sm text-text-secondary">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading settings…
+              <LogoLoading size={40} label="Loading settings" />
             </div>
           ) : (
             <div className="max-h-[60vh] divide-y divide-border overflow-y-auto">

@@ -986,8 +986,7 @@ export function SuppliersPurchaseOrdersScreen() {
         <TabsContent value="orders" className="min-w-0 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-              <LogoLoading size={40} />
-              Loading purchase orders…
+              <LogoLoading size={40} label="Loading purchase orders" />
             </div>
           ) : (
             <DataTable
@@ -1018,8 +1017,7 @@ export function SuppliersPurchaseOrdersScreen() {
         <TabsContent value="suppliers" className="min-w-0 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-              <LogoLoading size={40} />
-              Loading suppliers…
+              <LogoLoading size={40} label="Loading suppliers" />
             </div>
           ) : (
             <DataTable

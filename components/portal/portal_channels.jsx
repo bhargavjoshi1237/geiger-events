@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, MessagesSquare } from "lucide-react";
+import { ArrowLeft, MessagesSquare } from "lucide-react";
 
 import { EmptyState, ScreenHeader } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
@@ -11,6 +11,7 @@ import { subscribeMemberChannel, normalizePortalMessage } from "@/lib/portal/cha
 
 import { portalGetJson, portalPostJson } from "@/lib/portal/portal_fetch";
 
+import { LogoLoading } from "@geiger/ui";
 // basePath-aware portal API helpers (see lib/portal/portal_fetch.js).
 const getJson = portalGetJson;
 const postJson = portalPostJson;
@@ -158,7 +159,7 @@ export function PortalChannels({
 
       {loadingList ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} />
         </div>
       ) : !channels.length ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

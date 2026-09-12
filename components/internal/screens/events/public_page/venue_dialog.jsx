@@ -1,18 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Check,
-  ExternalLink,
-  Globe,
-  Loader2,
-  Mail,
-  MapPin,
-  Navigation,
-  Phone,
-  SquareParking,
-  Users,
-} from "lucide-react";
+import { Check, ExternalLink, Globe, Mail, MapPin, Navigation, Phone, SquareParking, Users } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
@@ -33,6 +22,7 @@ import {
 
 import { AMENITY_ICON } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 function CapacityTile({ label, value }) {
   return (
     <div className="rounded-xl border border-border bg-surface-subtle p-4">
@@ -109,7 +99,7 @@ export function VenueDetailsDialog({ open, onClose, venueId, fallback, accent })
         <div className="flex-1 space-y-5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {!loaded && !venue ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading venue…
+              <LogoLoading size={40} label="Loading venue" />
             </div>
           ) : (
             <>

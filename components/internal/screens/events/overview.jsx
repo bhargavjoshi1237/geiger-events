@@ -2,18 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
-import {
-  Ticket,
-  Wallet,
-  Users,
-  CalendarClock,
-  UserCog,
-  ExternalLink,
-  MapPin,
-  Plus,
-  Trash2,
-  Loader2,
-} from "lucide-react";
+import { Ticket, Wallet, Users, CalendarClock, UserCog, ExternalLink, MapPin, Plus, Trash2 } from "lucide-react";
 
 import {
   Field,
@@ -45,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { getEventNotes, saveEventNotes } from "@/lib/supabase/notes";
 import { EventDatePicker } from "./date_time_fields";
 import { PassBackdrop, useEventPass } from "./event_badge";
+import { LogoLoading } from "@geiger/ui";
 import {
   EVENT_STATUS_MAP,
   EVENT_TYPE_MAP,
@@ -230,7 +220,7 @@ function PreLaunchNotes({ eventId, className }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-6 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading checklist…
+          <LogoLoading size={40} label="Loading checklist" />
         </div>
       ) : notes.length ? (
         <ScrollArea className="h-[148px]">

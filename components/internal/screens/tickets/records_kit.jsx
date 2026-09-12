@@ -64,7 +64,7 @@ import {
   softDeleteRecord,
 } from "@/lib/supabase/ticketing";
 
-import { LogoLoading } from "@geiger/ui";
+import { LoadingArea } from "@geiger/ui";
 const TICKETING_DATA = {
   list: listRecords,
   create: createRecord,
@@ -505,10 +505,7 @@ export function RecordsScreen({
       </Toolbar>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} />
-          Loading…
-        </div>
+        <LoadingArea panel />
       ) : (
         <div className="space-y-5">
           <DataTable

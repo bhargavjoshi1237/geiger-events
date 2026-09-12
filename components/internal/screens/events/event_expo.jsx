@@ -13,6 +13,7 @@ import {
 import {
   Button,
   Input,
+  LogoLoading,
   Select,
   SelectContent,
   SelectItem,
@@ -189,7 +190,7 @@ export function EventExpoSection({ event, headerItem }) {
   if (loadingMaps) {
     return (
       <div className="flex h-40 items-center justify-center text-text-secondary">
-        <Loader2 className="h-5 w-5 animate-spin" />
+        <LogoLoading size={40} />
       </div>
     );
   }
@@ -385,7 +386,7 @@ export function EventExpoSection({ event, headerItem }) {
             </div>
           ) : (
             <div className="flex h-32 items-center justify-center text-text-secondary">
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <LogoLoading size={40} />
             </div>
           )}
         </SectionCard>

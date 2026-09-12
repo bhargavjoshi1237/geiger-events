@@ -2,43 +2,18 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  CalendarDays,
-  Check,
-  Copy,
-  ExternalLink,
-  Globe,
-  Linkedin,
-  Link2,
-  Loader2,
-  Mail,
-  Mic,
-  Phone,
-  PlayCircle,
-  Search,
-  Star,
-  Twitter,
-  Contact,
-  FileText,
-  Image as ImageIcon,
-  Presentation,
-  ClipboardCheck,
-  CalendarCheck,
-  Users,
-  Clock,
-  ListChecks,
-  Target,
-} from "lucide-react";
+import { CalendarDays, Check, Copy, ExternalLink, Globe, Linkedin, Link2, Mail, Mic, Phone, PlayCircle, Search, Star, Twitter, Contact, FileText, Image as ImageIcon, Presentation, ClipboardCheck, CalendarCheck, Users, Clock, ListChecks, Target } from "lucide-react";
 
 import {
   Button,
   Input,
-  Switch,
+  LogoLoading,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   cn,
 } from "@geiger/ui";
 import { SectionCard, StatusPill } from "@/components/internal/shared/screen_kit";
@@ -90,8 +65,8 @@ function EventMeta({ event }) {
 
 function LoadingEvents() {
   return (
-    <div className="flex items-center gap-2 py-4 text-sm text-text-secondary">
-      <Loader2 className="h-4 w-4 animate-spin" /> Loading Events…
+    <div className="flex items-center py-4">
+      <LogoLoading size={40} label="Loading Events" />
     </div>
   );
 }
@@ -639,8 +614,8 @@ export function SessionMultiField({ record, commit, configKey = "sessionIds" }) 
 
   if (sessions === null) {
     return (
-      <div className="flex items-center gap-2 py-4 text-sm text-text-secondary">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading sessions…
+      <div className="flex items-center py-4">
+        <LogoLoading size={40} label="Loading sessions" />
       </div>
     );
   }

@@ -31,7 +31,7 @@ import {
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
+import { LogoLoading, Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
@@ -1443,7 +1443,7 @@ export function PageDesignSection({
         <Suspense
           fallback={
             <div className="fixed inset-0 z-50 flex items-center justify-center gap-2 bg-background text-sm text-text-secondary">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading the builder…
+              <LogoLoading size={80} label="Loading the builder" />
             </div>
           }
         >

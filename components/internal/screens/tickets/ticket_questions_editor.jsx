@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { GripVertical, HelpCircle, Loader2, Plus, Trash2 } from "lucide-react";
+import { GripVertical, HelpCircle, Plus, Trash2 } from "lucide-react";
 
 import {
   EmptyState,
@@ -28,6 +28,7 @@ import {
 } from "@/lib/supabase/ticket_questions";
 import { QUESTION_TYPE_OPTIONS } from "./constants";
 
+import { LogoLoading } from "@geiger/ui";
 // Editor for a ticket type's questions (asked per attendee at checkout, before
 // paying). Questions are normalized rows in events.ticket_questions; the ticket
 // only stores an ordered array of their ids in config.questionIds. Rows persist
@@ -119,7 +120,7 @@ export function TicketQuestionsEditor({ config, setConfig }) {
     >
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-8 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading questions…
+          <LogoLoading size={40} label="Loading questions" />
         </div>
       ) : questions.length ? (
         <div className="space-y-3">

@@ -32,6 +32,7 @@ import {
 } from "@/lib/supabase/issuing";
 import { blockLabel, redeemLabel } from "@/lib/inventory/entitlements";
 
+import { LogoLoading } from "@geiger/ui";
 const qty = (n) => {
   const v = Number(n || 0);
   return Number.isInteger(v) ? String(v) : v.toFixed(2);
@@ -232,7 +233,7 @@ function EntitlementsView({ subject, entitlements, loading, onIssue, onBack, can
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Checking entitlements…
+          <LogoLoading size={40} label="Checking entitlements" />
         </div>
       ) : !entitlements.length ? (
         <Notice tone="muted">Nothing to collect for this attendee.</Notice>
@@ -475,7 +476,7 @@ function WalkupView({ allocations, loading, onPick, onBack }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading allocations…
+          <LogoLoading size={40} label="Loading allocations" />
         </div>
       ) : !allocations.length ? (
         <Notice tone="muted">No open allocations for this event.</Notice>

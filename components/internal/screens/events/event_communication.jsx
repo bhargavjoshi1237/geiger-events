@@ -15,6 +15,7 @@ import { Button } from "@geiger/ui/button";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getEventChannel, ensureEventChat, updateChannel } from "@/lib/supabase/chat";
 
+import { LogoLoading } from "@geiger/ui";
 export function EventCommunicationSection({ event, headerItem }) {
   const { setTab } = useWorkspaceUrl();
   const [channel, setChannel] = useState(null);
@@ -91,7 +92,7 @@ export function EventCommunicationSection({ event, headerItem }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <LogoLoading size={40} />
         </div>
       ) : !channel ? (
         <SectionCard

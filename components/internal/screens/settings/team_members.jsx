@@ -29,6 +29,7 @@ import MemberDrawer from "./team/member_drawer";
 import InviteDialog from "./team/invite_dialog";
 import GroupDialog from "./team/group_dialog";
 
+import { LoadingArea } from "@geiger/ui";
 const TABS = [
   { key: "members", label: "Members" },
   { key: "invitations", label: "Invitations" },
@@ -215,9 +216,7 @@ export function TeamMembersScreen() {
 
       {loading ? (
         <SectionCard>
-          <div className="py-16 text-center text-sm text-text-secondary">
-            Loading team…
-          </div>
+          <LoadingArea label="Loading team" />
         </SectionCard>
       ) : tab === "members" ? (
         <MembersTab

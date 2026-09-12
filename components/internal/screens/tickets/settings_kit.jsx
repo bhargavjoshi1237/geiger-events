@@ -11,7 +11,7 @@ import { Button } from "@geiger/ui/button";
 import { useProject } from "@/context/project-context";
 import { getSetting, upsertSetting } from "@/lib/supabase/ticketing_settings";
 
-import { LogoLoading } from "@geiger/ui";
+import { LoadingArea } from "@geiger/ui";
 // A reusable project-global settings screen for a single Tickets module. Fetches
 // the module's config on mount, holds it locally, and persists the whole config
 // bag on Save. Each feature supplies its default config + a Form render-prop.
@@ -98,10 +98,7 @@ export function SettingsScreen({
       />
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} />
-          Loading…
-        </div>
+        <LoadingArea panel />
       ) : sections?.length ? (
         <EditorSections nav={sections} defaultSection={sections[0].key}>
           {({ activeItem }) => {

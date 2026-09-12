@@ -2,19 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Loader2,
-  MessagesSquare,
-  MessageSquare,
-  Users,
-  Volume2,
-  VolumeX,
-  UserMinus,
-  Radio,
-  Megaphone,
-  Archive,
-} from "lucide-react";
+import { ArrowLeft, MessagesSquare, MessageSquare, Users, Volume2, VolumeX, UserMinus, Radio, Megaphone, Archive } from "lucide-react";
 
 import {
   EmptyState,
@@ -197,7 +185,7 @@ function ParticipantsDialog({ open, onOpenChange, channelId }) {
         </DialogHeader>
         {rows === null ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <LogoLoading size={40} />
           </div>
         ) : !members.length ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
@@ -474,7 +462,7 @@ export function EventChatScreen() {
 
       {loadingList ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} /> Loading…
+          <LogoLoading size={40} />
         </div>
       ) : !channels.length ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

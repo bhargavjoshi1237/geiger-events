@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Handshake, Loader2, Mic, Plus } from "lucide-react";
+import { Handshake, Mic, Plus } from "lucide-react";
 
 import { EditorSectionHeader, StatusPill } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
@@ -15,6 +15,7 @@ import { conferenceApi } from "@/lib/supabase/conference";
 import { SPEAKER_STATUS_MAP } from "../conference/constants";
 import { initials } from "./sample_data";
 
+import { LoadingArea } from "@geiger/ui";
 function AttachRecordsSection({
   event,
   headerItem,
@@ -77,10 +78,7 @@ function AttachRecordsSection({
       />
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-12 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading {tabTitle.toLowerCase()}…
-        </div>
+        <LoadingArea panel label={`Loading ${tabTitle.toLowerCase()}`} />
       ) : records.length === 0 ? (
         <div className="flex flex-col items-start gap-2 rounded-xl border border-dashed border-border bg-surface-card px-6 py-10">
           <p className="text-sm text-text-secondary capitalize">

@@ -463,8 +463,7 @@ export function AllWorkflowsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} />
-          Loading workflows…
+          <LogoLoading size={40} label="Loading workflows" />
         </div>
       ) : (
         <DataTable

@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Box, Info, Loader2, Maximize, Minimize, Orbit, RotateCcw, Sparkles } from "lucide-react";
 
-import { Button, cn } from "@geiger/ui";
+import { Button, LogoLoading, cn } from "@geiger/ui";
 import { slideLabel } from "@/lib/display/constants";
 import { DEFAULT_PLACEMENT, PLACEMENTS, placementEntry } from "@/lib/display/placements";
 
@@ -13,14 +13,23 @@ import { DEFAULT_PLACEMENT, PLACEMENTS, placementEntry } from "@/lib/display/pla
 
 const VenueScene = dynamic(() => import("./venue_scene"), {
   ssr: false,
-  loading: () => <Placeholder icon={Loader2} label="Building the venue…" spin />,
+  loading: () => <Placeholder icon={Loader2} label="Building the venue" spin />,
 });
 
+// Doubles as the loading state and the no-WebGL notice. While loading (`spin`)
+// the animated mark carries the message on its own; the notice path keeps its
+// icon and copy, since that one has something to say.
 function Placeholder({ icon: Icon, label, spin }) {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-white/50">
-      <Icon className={cn("h-5 w-5", spin && "animate-spin")} />
-      <p className="text-xs">{label}</p>
+      {spin ? (
+        <LogoLoading size={40} label={label} />
+      ) : (
+        <>
+          <Icon className="h-5 w-5" />
+          <p className="text-xs">{label}</p>
+        </>
+      )}
     </div>
   );
 }
