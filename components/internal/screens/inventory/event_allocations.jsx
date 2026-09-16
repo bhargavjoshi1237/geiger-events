@@ -87,7 +87,6 @@ import {
   qty,
 } from "./constants";
 
-import { LogoLoading } from "@geiger/ui";
 // One icon per status so the "Mark …" entries in the row menu can be scanned
 // rather than read — they're generated from ALLOCATION_STATUS_OPTIONS, so they
 // had none until now.
@@ -951,7 +950,8 @@ export function EventAllocationsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading allocations" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading allocations…
         </div>
       ) : (
         <div className="space-y-5">

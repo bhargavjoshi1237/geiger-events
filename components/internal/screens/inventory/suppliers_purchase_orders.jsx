@@ -25,7 +25,7 @@ import {
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
-import { ActionMenu, Tabs, TabsContent, TabsList, TabsTrigger, LogoLoading } from "@geiger/ui";
+import { ActionMenu, Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
 import {
   Dialog,
   DialogContent,
@@ -986,7 +986,8 @@ export function SuppliersPurchaseOrdersScreen() {
         <TabsContent value="orders" className="min-w-0 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-              <LogoLoading size={40} label="Loading purchase orders" />
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading purchase orders…
             </div>
           ) : (
             <DataTable
@@ -1017,7 +1018,8 @@ export function SuppliersPurchaseOrdersScreen() {
         <TabsContent value="suppliers" className="min-w-0 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-              <LogoLoading size={40} label="Loading suppliers" />
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading suppliers…
             </div>
           ) : (
             <DataTable

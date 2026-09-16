@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Accessibility, Check, CheckCheck, ChevronRight, Utensils, X } from "lucide-react";
+import { Accessibility, Check, CheckCheck, ChevronRight, Utensils, X, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { EditorHeader } from "@/components/internal/shared/editor_shell";
@@ -35,7 +35,6 @@ import { useProject } from "@/context/project-context";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { formatDate, formatDateTime, initials } from "./constants";
 
-import { LogoLoading } from "@geiger/ui";
 const PAGE_EVENTS = 60;
 const PAGE_CARDS = 40;
 
@@ -416,7 +415,8 @@ export function ApprovalGatesScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading approvals" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading approvals…
         </div>
       ) : listShown.length ? (
         <>

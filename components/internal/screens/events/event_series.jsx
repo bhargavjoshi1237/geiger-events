@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Layers, Settings2, Trash2 } from "lucide-react";
+import { Plus, Layers, Settings2, Trash2, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -66,7 +66,6 @@ import { useProject } from "@/context/project-context";
 import { useDefaultOrganizer } from "@/lib/events/use-default-organizer";
 import { SeriesDetailScreen } from "./series_detail";
 
-import { LogoLoading } from "@geiger/ui";
 const todayISO = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -498,7 +497,8 @@ export function EventSeriesScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading series" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading series…
         </div>
       ) : (
         <DataTable

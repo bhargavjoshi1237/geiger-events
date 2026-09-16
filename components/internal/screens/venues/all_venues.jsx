@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { Building2, Copy, Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -56,7 +56,6 @@ import {
 } from "./constants";
 import { VenueDetailScreen } from "./venue_detail";
 
-import { LogoLoading } from "@geiger/ui";
 const EMPTY_DRAFT = { name: "", type: "Indoor", city: "" };
 
 function CreateVenueDialog({ open, onOpenChange, onCreate }) {
@@ -391,7 +390,8 @@ export function VenuesScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading venues" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading venues…
         </div>
       ) : (
         <DataTable

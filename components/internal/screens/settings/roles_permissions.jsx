@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, ShieldCheck, Copy, Trash2, Pencil, Users, Lock, Check, Search, Info, SlidersHorizontal } from "lucide-react";
+import { Plus, ShieldCheck, Copy, Trash2, Pencil, Users, Lock, Check, Search, Info, SlidersHorizontal, Loader2 } from "lucide-react";
 import { expandPatterns, matchesAny } from "@geiger/rbac";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
@@ -68,7 +68,6 @@ import {
 import { logActivity } from "@/lib/supabase/team";
 import { PERMISSION_GROUPS } from "./constants";
 
-import { LogoLoading } from "@geiger/ui";
 const EMPTY_DRAFT = {
   name: "",
   description: "",
@@ -466,7 +465,8 @@ export function RolesPermissionsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading roles" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading roles…
         </div>
       ) : tab === "roles" ? (
         <RolesTab

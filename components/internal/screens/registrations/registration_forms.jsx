@@ -67,7 +67,6 @@ import {
   formatDate,
 } from "./constants";
 
-import { LogoLoading } from "@geiger/ui";
 const DEFAULT_CONFIRMATION = {
   title: "You're in!",
   body: "Thanks for registering — we've emailed your confirmation.",
@@ -795,7 +794,8 @@ export function RegistrationFormsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading forms" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading forms…
         </div>
       ) : (
         <DataTable

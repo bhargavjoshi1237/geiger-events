@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -23,7 +23,6 @@ import {
   ctr,
 } from "./constants";
 
-import { LogoLoading } from "@geiger/ui";
 const num = (r, key) => Number(r.config?.[key]) || 0;
 
 export function InsightsScreen({ demo = false }) {
@@ -97,7 +96,8 @@ export function InsightsScreen({ demo = false }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading insights" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading insights…
         </div>
       ) : campaigns.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

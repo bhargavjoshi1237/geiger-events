@@ -38,7 +38,6 @@ import FilterDropdown from "@/components/internal/screens/overview/filter_dropdo
 import { countRegs, PipelineBar } from "./pipeline";
 import { formatDate, formatDateTime, initials } from "./constants";
 
-import { LogoLoading } from "@geiger/ui";
 const PAGE_EVENTS = 60;
 const PAGE_ROWS = 100;
 const DEFAULT_RULES = { autoPromote: false, claimWindowHours: 24, notify: true };
@@ -424,7 +423,8 @@ export function WaitlistScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading waitlists" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading waitlists…
         </div>
       ) : listShown.length ? (
         <>

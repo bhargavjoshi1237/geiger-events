@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Eye, FileText, Receipt } from "lucide-react";
+import { Eye, FileText, Receipt, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -34,7 +34,6 @@ import {
   orderRef,
 } from "./constants";
 
-import { LogoLoading } from "@geiger/ui";
 export function BillingReceiptsScreen() {
   const { projectId } = useProject();
   const [orders, setOrders] = useState([]);
@@ -229,7 +228,8 @@ export function BillingReceiptsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading receipts" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading receipts…
         </div>
       ) : (
         <div className="space-y-5">

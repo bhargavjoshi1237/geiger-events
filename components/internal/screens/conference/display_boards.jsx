@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Copy, MonitorPlay, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, MonitorPlay, Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -14,7 +14,7 @@ import {
   StatusPill,
   Toolbar,
 } from "@/components/internal/shared/screen_kit";
-import { ActionMenu, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, LogoLoading } from "@geiger/ui";
+import { ActionMenu, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
@@ -374,7 +374,8 @@ export function DisplayBoardsScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading boards" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading boards…
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface-subtle">

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Send, Shuffle, Square, Timer, Users } from "lucide-react";
 
-import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, LogoLoading } from "@geiger/ui";
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui";
 import { SectionCard } from "@/components/internal/shared/screen_kit";
 import { useProject } from "@/context/project-context";
 import { conferenceApi } from "@/lib/supabase/conference";
@@ -168,7 +168,8 @@ export function BreakoutAssign({ record }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-        <LogoLoading size={40} label="Loading rooms" />
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading rooms…
       </div>
     );
   }

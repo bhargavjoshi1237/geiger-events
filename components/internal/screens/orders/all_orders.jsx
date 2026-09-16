@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Ban, Eye, Pencil, RotateCcw, ShoppingBag } from "lucide-react";
+import { Ban, Eye, Pencil, RotateCcw, ShoppingBag, Loader2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -43,7 +43,6 @@ import {
   orderRef,
 } from "./constants";
 
-import { LogoLoading } from "@geiger/ui";
 export function AllOrdersScreen() {
   const { projectId } = useProject();
   const [orders, setOrders] = useState([]);
@@ -315,7 +314,8 @@ export function AllOrdersScreen() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <LogoLoading size={40} label="Loading orders" />
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading orders…
         </div>
       ) : (
         <div className="space-y-5">
