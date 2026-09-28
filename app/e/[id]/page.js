@@ -29,6 +29,13 @@ async function fetchEventRow(id) {
   }
 }
 
+// ISR: each event page renders on its first visit and is then served from the CDN, refreshed in the background on the same window as the event read.
+export const revalidate = 10;
+
+export async function generateStaticParams() {
+  return [];
+}
+
 export default async function PublishedEventRoute({ params }) {
   const { id } = await params;
   const row = await fetchEventRow(id);

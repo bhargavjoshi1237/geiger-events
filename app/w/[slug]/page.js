@@ -1,5 +1,11 @@
 import WallClient from "./wall_client";
 
+// ISR: the shell and metadata render on first visit and are served from the CDN; the event list itself loads client-side.
+export const revalidate = 300;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 async function fetchWallMeta(slug) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
