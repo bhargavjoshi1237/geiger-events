@@ -16,6 +16,7 @@ import { formatScheduleTime } from "@/lib/events/schedule_items";
 import { videoEmbed } from "@/lib/events/gallery";
 import { ClipContent } from "@/components/internal/shared/web_clip/clip_content";
 import { isClipFilled } from "@/lib/clip/model";
+import { SponsorsBlock } from "./sponsorship/sponsors_block";
 function SectionTitle({ icon: Icon, children }) {
     return (<h2 className="flex items-center gap-2 text-xl font-semibold text-foreground">
       {Icon ? <Icon className="h-5 w-5 text-text-secondary"/> : null}
@@ -1065,6 +1066,7 @@ export const BLOCK_RENDERERS = {
     location: LocationBlock,
     whosgoing: WhosGoingBlock,
     guests: GuestsBlock,
+    sponsors: SponsorsBlock,
     faq: FaqBlock,
     heading: HeadingBlock,
     text: TextBlock,

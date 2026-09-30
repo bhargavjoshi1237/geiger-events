@@ -393,6 +393,30 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   }
 }
 
+/* Sponsor strip "Scrolling" layout — the track holds its logos twice, so sliding by half loops seamlessly. */
+@keyframes ev-sponsor-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ev-sponsor-marquee {
+  animation: ev-sponsor-marquee var(--marquee-duration, 30s) linear infinite;
+}
+
+.ev-sponsor-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ev-sponsor-marquee {
+    animation: none;
+  }
+}
+
 .leaflet-container {
   background: var(--surface-card);
   font-family: inherit;

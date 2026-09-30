@@ -15,6 +15,7 @@ export const SECTION_NOTE_TARGETS = {
   location: "Location",
   whosgoing: "Who's going",
   guests: "Guests",
+  sponsors: "Sponsors",
   faq: "FAQ",
   infographics: "Infographics",
   register: "Tickets card",

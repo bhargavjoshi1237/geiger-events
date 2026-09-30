@@ -52,6 +52,8 @@ import {
   Gem,
   MessageSquareWarning,
   Layers,
+  Inbox,
+  LayoutTemplate,
 } from "lucide-react";
 
 import {
@@ -119,10 +121,11 @@ import { EventTicketsSection } from "../tickets/event_tickets";
 import { TicketRulesSection } from "../tickets/event_ticket_rules";
 import { EventMembershipsSection } from "./event_memberships";
 import { EventCommunicationSection } from "./event_communication";
-import {
-  EventSpeakersSection,
-  EventSponsorsSection,
-} from "./event_conference";
+import { EventSpeakersSection } from "./event_conference";
+import { EventSponsorSpotsSection } from "./sponsorship/spots_section";
+import { EventSponsorEnquiriesSection } from "./sponsorship/enquiries_section";
+import { EventSponsorPageSection } from "./sponsorship/page_section";
+import { EventSponsorDisplaySection } from "./sponsorship/display_section";
 import {
   CheckinOptionsSection,
   GatesZonesSection,
@@ -233,13 +236,6 @@ export const NAV_GROUPS = [
         label: "Speakers",
         icon: Mic,
         desc: "Attach speakers from your Conference roster to this event's line-up.",
-        ownHeader: true,
-      },
-      {
-        key: "sponsors",
-        label: "Sponsors",
-        icon: Handshake,
-        desc: "Attach the sponsors backing this event — shown on the page and in reporting.",
         ownHeader: true,
       },
       {
@@ -483,6 +479,39 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    group: "Sponsorship",
+    items: [
+      {
+        key: "sponsors",
+        label: "Sponsor Spots",
+        icon: Handshake,
+        desc: "The sponsorship spots this event offers, and who has taken them — filled by hand as deals close.",
+        ownHeader: true,
+      },
+      {
+        key: "sponsorenquiries",
+        label: "Sponsor Enquiries",
+        icon: Inbox,
+        desc: "Interest from your sponsorship page. Talk it through off-platform, then fill the spot here.",
+        ownHeader: true,
+      },
+      {
+        key: "sponsorpage",
+        label: "Sponsor Page",
+        icon: Globe,
+        desc: "A shareable prospectus: your open spots, how to reach you, and an interest form you design.",
+        ownHeader: true,
+      },
+      {
+        key: "sponsordisplay",
+        label: "Sponsor Display",
+        icon: LayoutTemplate,
+        desc: "How sponsors appear on your event page, and whether it invites new ones.",
+        ownHeader: true,
+      },
+    ],
+  },
+  {
     group: "Registration",
     items: [
       {
@@ -658,7 +687,10 @@ export const SECTIONS = {
   infographics: InfographicsSection,
   guests: GuestsSection,
   speakers: EventSpeakersSection,
-  sponsors: EventSponsorsSection,
+  sponsors: EventSponsorSpotsSection,
+  sponsorenquiries: EventSponsorEnquiriesSection,
+  sponsorpage: EventSponsorPageSection,
+  sponsordisplay: EventSponsorDisplaySection,
   location: LocationTimeSection,
   map: MapDirectionsSection,
   guidelines: GuidelinesSection,

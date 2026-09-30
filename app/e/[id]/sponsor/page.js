@@ -1,18 +1,18 @@
 import { findEventById } from "@/components/internal/screens/events/sample_data";
 import { normalizeEvent } from "@/lib/supabase/events";
 import { fetchEventRow } from "@/lib/events/fetch_event_row";
-import PublishedEventPage from "./published_event_page";
+import { SponsorProspectusPage } from "@/components/internal/screens/events/sponsorship/prospectus/prospectus_page";
 
-// ISR: each event page renders on its first visit and is then served from the CDN, refreshed in the background on the same window as the event read.
+// The event's sponsorship prospectus, served via ISR like the event page itself.
 export const revalidate = 10;
 
 export async function generateStaticParams() {
   return [];
 }
 
-export default async function PublishedEventRoute({ params }) {
+export default async function SponsorProspectusRoute({ params }) {
   const { id } = await params;
   const row = await fetchEventRow(id);
   const event = (row && normalizeEvent(row)) || findEventById(id);
-  return <PublishedEventPage id={id} initialEvent={event} />;
+  return <SponsorProspectusPage event={event} />;
 }

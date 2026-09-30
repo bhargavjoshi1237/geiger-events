@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Handshake, Mic, Plus } from "lucide-react";
+import { Mic, Plus } from "lucide-react";
 
 import { EditorSectionHeader, StatusPill } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
@@ -179,23 +179,6 @@ export function EventSpeakersSection({ event, headerItem }) {
       fallbackTitle="Speakers"
       fallbackDesc="Attach speakers from your Conference roster to this event's line-up."
       subtitle={(r) => [r.config?.title, r.config?.company].filter(Boolean).join(" · ")}
-    />
-  );
-}
-
-export function EventSponsorsSection({ event, headerItem }) {
-  return (
-    <AttachRecordsSection
-      event={event}
-      headerItem={headerItem}
-      module="sponsor"
-      metaKey="sponsorIds"
-      shape="square"
-      icon={Handshake}
-      tabTitle="Sponsors"
-      fallbackTitle="Sponsors"
-      fallbackDesc="Attach sponsors backing this event — shown on the event page and in sponsor reporting."
-      subtitle={(r) => r.config?.description || r.config?.contactName || ""}
     />
   );
 }

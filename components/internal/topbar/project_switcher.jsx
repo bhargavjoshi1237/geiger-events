@@ -2,9 +2,7 @@
 
 import React, { useState } from "react";
 import { Check, ChevronsUpDown, Plus, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@geiger/ui/button";
-import { Input } from "@geiger/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,40 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@geiger/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@geiger/ui/dialog";
-import { Field } from "@/components/internal/shared/screen_kit";
 import { useProject } from "@/context/project-context";
+import { CreateProjectDialog } from "./create_project_dialog";
 
 export function ProjectSwitcher() {
-  const { project, projects, loading, setActiveProject, createProject } =
-    useProject();
+  const { project, projects, loading, setActiveProject } = useProject();
   const [createOpen, setCreateOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const submit = async () => {
-    if (!name.trim()) {
-      toast.error("Give your project a name.");
-      return;
-    }
-    setSaving(true);
-    const created = await createProject(name);
-    setSaving(false);
-    if (created) {
-      toast.success(`Switched to "${created.name}".`);
-      setName("");
-      setCreateOpen(false);
-    } else {
-      toast.error("Couldn't create the project.");
-    }
-  };
 
   return (
     <>
@@ -109,48 +79,7 @@ export function ProjectSwitcher() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md bg-background">
-          <DialogHeader>
-            <DialogTitle>Create project</DialogTitle>
-            <DialogDescription>
-              A project scopes its events, tickets, registrations, and
-              automations. You&apos;ll be switched to it once created.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <Field label="Project name" htmlFor="project-name">
-              <Input
-                id="project-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Acme Events"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !saving) submit();
-                }}
-              />
-            </Field>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-              onClick={() => setCreateOpen(false)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={submit}
-              disabled={saving}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Create project
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
     </>
   );
 }

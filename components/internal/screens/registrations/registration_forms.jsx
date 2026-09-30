@@ -4,11 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   Copy,
   FileText,
-  GripVertical,
   ListChecks,
   Loader2,
   Plus,
@@ -34,7 +31,6 @@ import {
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
-import { Switch } from "@geiger/ui/switch";
 import { ActionMenu } from "@geiger/ui/action-menu";
 import {
   Dialog,
@@ -44,14 +40,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@geiger/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { FormFieldsEditor } from "@/components/internal/shared/form_fields_editor";
 import {
   listForms,
   createForm,
@@ -63,7 +53,6 @@ import { useProject } from "@/context/project-context";
 import {
   FORM_STATUS_MAP,
   FORM_STATUS_FILTER_OPTIONS,
-  FIELD_TYPE_OPTIONS,
   formatDate,
 } from "./constants";
 
@@ -83,10 +72,6 @@ const DEFAULT_SETTINGS = {
   closesAt: "",
   confirmation: DEFAULT_CONFIRMATION,
 };
-
-function shortId() {
-  return `f_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 const BUILDER_NAV = [
   {
@@ -171,7 +156,7 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
       {({ active: tab }) => (
         <>
           {tab === "fields" ? (
-            <FieldsSection fields={fields} setFields={setFields} />
+            <FormFieldsEditor fields={fields} setFields={setFields} />
           ) : null}
 
           {tab === "access" ? (
@@ -187,217 +172,6 @@ function FormBuilder({ form, onBack, onSave, onStatusChange }) {
         </>
       )}
     </EditorShell>
-  );
-}
-
-function FieldsSection({ fields, setFields }) {
-  const addField = () =>
-    setFields((f) => [
-      ...f,
-      { id: shortId(), label: "Untitled question", type: "text", required: false },
-    ]);
-
-  const updateField = (id, patch) =>
-    setFields((f) => f.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-
-  const removeField = (id) => setFields((f) => f.filter((x) => x.id !== id));
-
-  const moveField = (index, dir) =>
-    setFields((f) => {
-      const next = [...f];
-      const j = index + dir;
-      if (j < 0 || j >= next.length) return f;
-      [next[index], next[j]] = [next[j], next[index]];
-      return next;
-    });
-
-  // Only earlier-or-other questions can gate this one.
-  const fieldOptions = (currentId) => fields.filter((f) => f.id !== currentId);
-
-  return (
-    <div className="space-y-4">
-      <SectionCard
-        title="Questions"
-        description="Drag-free reorder with the arrows. Add a 'show when' rule to make a question conditional."
-        action={
-          <Button
-            size="sm"
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={addField}
-          >
-            <Plus className="h-4 w-4" /> Add question
-          </Button>
-        }
-      >
-        {fields.length ? (
-          <div className="space-y-3">
-            {fields.map((field, i) => (
-              <div
-                key={field.id}
-                className="rounded-lg border border-border bg-surface-card p-3"
-              >
-                <div className="flex items-start gap-2">
-                  <div className="mt-7 flex flex-col items-center gap-0.5 text-text-tertiary">
-                    <button
-                      type="button"
-                      aria-label="Move question up"
-                      className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-                      disabled={i === 0}
-                      onClick={() => moveField(i, -1)}
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </button>
-                    <GripVertical className="h-4 w-4 opacity-60" aria-hidden />
-                    <button
-                      type="button"
-                      aria-label="Move question down"
-                      className="rounded p-0.5 transition-colors hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-                      disabled={i === fields.length - 1}
-                      onClick={() => moveField(i, 1)}
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  <div className="grid flex-1 gap-3">
-                    <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
-                      <Field label="Question label">
-                        <Input
-                          value={field.label}
-                          onChange={(e) =>
-                            updateField(field.id, { label: e.target.value })
-                          }
-                        />
-                      </Field>
-                      <Field label="Type">
-                        <Select
-                          value={field.type}
-                          onValueChange={(v) => updateField(field.id, { type: v })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {FIELD_TYPE_OPTIONS.map((o) => (
-                              <SelectItem key={o.value} value={o.value}>
-                                {o.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                    </div>
-
-                    {field.type === "select" ? (
-                      <Field
-                        label="Options"
-                        hint="Comma-separated choices for the dropdown."
-                      >
-                        <Input
-                          value={(field.options || []).join(", ")}
-                          onChange={(e) =>
-                            updateField(field.id, {
-                              options: e.target.value
-                                .split(",")
-                                .map((s) => s.trim())
-                                .filter(Boolean),
-                            })
-                          }
-                          placeholder="e.g. Small, Medium, Large"
-                        />
-                      </Field>
-                    ) : null}
-
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                      <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Switch
-                          checked={!!field.required}
-                          onCheckedChange={(v) =>
-                            updateField(field.id, { required: v })
-                          }
-                        />
-                        Required
-                      </label>
-
-                      <div className="flex flex-1 items-center gap-2">
-                        <span className="text-sm text-text-secondary">
-                          Show when
-                        </span>
-                        <Select
-                          value={field.showWhen?.fieldId || "always"}
-                          onValueChange={(v) =>
-                            updateField(field.id, {
-                              showWhen:
-                                v === "always"
-                                  ? undefined
-                                  : {
-                                      fieldId: v,
-                                      equals: field.showWhen?.equals || "",
-                                    },
-                            })
-                          }
-                        >
-                          <SelectTrigger className="h-8 w-44">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="always">Always shown</SelectItem>
-                            {fieldOptions(field.id).map((f) => (
-                              <SelectItem key={f.id} value={f.id}>
-                                {f.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {field.showWhen ? (
-                          <Input
-                            value={field.showWhen.equals}
-                            onChange={(e) =>
-                              updateField(field.id, {
-                                showWhen: {
-                                  ...field.showWhen,
-                                  equals: e.target.value,
-                                },
-                              })
-                            }
-                            placeholder="equals…"
-                            className="h-8 w-32"
-                          />
-                        ) : null}
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Remove question"
-                        className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
-                        onClick={() => removeField(field.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={FileText}
-            title="No questions yet"
-            description="Add the fields you want to collect at registration."
-            action={
-              <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={addField}
-              >
-                <Plus className="h-4 w-4" /> Add question
-              </Button>
-            }
-          />
-        )}
-      </SectionCard>
-    </div>
   );
 }
 

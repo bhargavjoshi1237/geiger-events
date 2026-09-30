@@ -32,7 +32,7 @@ const CTA_CLASS =
 // Email-first members auth. Steps: email -> password | setup-prompt -> check-email;
 // a ?setup= token enters at set-password. First password / reset always goes
 // through a one-time emailed link (ownership proof).
-export function AuthFlow({ initialSetupToken = null, workspace = false }) {
+export function AuthFlow({ initialSetupToken = null }) {
   const [step, setStep] = useState(initialSetupToken ? "set-password" : "email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,9 +40,7 @@ export function AuthFlow({ initialSetupToken = null, workspace = false }) {
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-  // Where a successful sign-in lands: back to the internal workspace when the
-  // visitor came from there, otherwise the members portal.
-  const successUrl = `${basePath}${workspace ? "/project" : "/members"}`;
+  const successUrl = `${basePath}/members`;
 
   const submitEmail = async (e) => {
     e.preventDefault();
@@ -109,9 +107,7 @@ export function AuthFlow({ initialSetupToken = null, workspace = false }) {
         {step === "email" && (
           <>
             <p className="mt-4 max-w-[21rem] text-[15px] leading-relaxed text-text-secondary">
-              {workspace
-                ? "Sign in to open your workspace."
-                : "Sign in with the email you bought with — your account already exists."}
+              Sign in with the email you bought with — your account already exists.
             </p>
             <form onSubmit={submitEmail} className="mt-7 space-y-5">
               <div className="relative">
@@ -256,8 +252,8 @@ export function AuthFlow({ initialSetupToken = null, workspace = false }) {
       {/* Pinned to the bottom of the layout viewport (main's flex-1 pushes it
           there). With interactiveWidget=resizes-visual on /login the keyboard
           covers it instead of pushing it up, so it never shifts while typing.
-          Skipped in workspace context and emailed set-up links. */}
-      {!workspace && !initialSetupToken ? (
+          Skipped for emailed set-up links. */}
+      {!initialSetupToken ? (
         <footer className="mx-auto w-full max-w-sm shrink-0 px-6 pb-[calc(1.75rem+env(safe-area-inset-bottom))]">
           <ul className="space-y-3">
             {FEATURES.map((f) => (

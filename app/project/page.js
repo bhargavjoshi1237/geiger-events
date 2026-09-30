@@ -7,7 +7,7 @@ import {
   useProject,
   pickDefaultProjectId,
 } from "@/context/project-context";
-import { LoadingArea } from "@/components/internal/workspace/workspace_states";
+import { LoadingArea, NoProjectsState } from "@/components/internal/workspace/workspace_states";
 
 function ProjectResolver() {
   const router = useRouter();
@@ -15,14 +15,11 @@ function ProjectResolver() {
 
   useEffect(() => {
     if (loading) return;
-    if (projects.length === 0) {
-      router.replace("/login?workspace=1");
-      return;
-    }
     const id = pickDefaultProjectId(projects);
     if (id) router.replace(`/project/${id}`);
   }, [loading, projects, router]);
 
+  if (!loading && projects.length === 0) return <NoProjectsState />;
   return <LoadingArea />;
 }
 

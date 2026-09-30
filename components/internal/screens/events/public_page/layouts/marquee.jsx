@@ -19,6 +19,7 @@ const WIDE = new Set([
   "schedule",
   "location",
   "guests",
+  "sponsors",
   "whosgoing",
   "infographics",
   "columns",

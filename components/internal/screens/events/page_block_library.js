@@ -20,6 +20,7 @@ import {
   Info,
   ClipboardList,
   Accessibility,
+  Handshake,
 } from "lucide-react";
 
 export const PAGE_MODES = [
@@ -108,6 +109,7 @@ export const BLOCK_LIBRARY = [
   { type: "location", label: "Location & directions", icon: MapPin, category: "event", singleton: true },
   { type: "whosgoing", label: "Who's going", icon: Users, category: "event", singleton: true },
   { type: "guests", label: "Guests", icon: Users, category: "event", singleton: true },
+  { type: "sponsors", label: "Sponsors", icon: Handshake, category: "event", singleton: true },
   { type: "faq", label: "FAQ", icon: HelpCircle, category: "event", singleton: true },
   {
     type: "heading",
@@ -264,6 +266,7 @@ export const DEFAULT_BLOCK_TYPES = [
   "location",
   "whosgoing",
   "guests",
+  "sponsors",
   "faq",
 ];
 

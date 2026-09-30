@@ -34,15 +34,8 @@ export const FORM_STATUS_MAP = {
   Draft: { label: "Draft", variant: "neutral", dotClass: "bg-[#737373]" },
 };
 
-// Field types offered by the form builder.
-export const FIELD_TYPE_OPTIONS = [
-  { value: "text", label: "Short text" },
-  { value: "email", label: "Email" },
-  { value: "textarea", label: "Paragraph" },
-  { value: "select", label: "Dropdown" },
-  { value: "checkbox", label: "Checkbox" },
-  { value: "number", label: "Number" },
-];
+// Field types offered by the form builder — shared with sponsor enquiry forms.
+export { FIELD_TYPE_OPTIONS } from "@/lib/forms/fields";
 
 // Filter option lists — an "all" sentinel first, matching the events pattern.
 export const STATUS_FILTER_OPTIONS = [

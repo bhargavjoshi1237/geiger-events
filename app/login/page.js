@@ -14,9 +14,8 @@ export const viewport = {
 
 export default async function LoginPage({ searchParams }) {
   const sp = await searchParams;
-  const workspace = sp?.workspace === "1" || sp?.workspace === "true";
   const member = await getSessionMember();
-  if (member && !workspace) redirect("/members");
+  if (member) redirect("/members");
   const setupToken = typeof sp?.setup === "string" ? sp.setup : null;
-  return <LoginScreen setupToken={setupToken} workspace={workspace} />;
+  return <LoginScreen setupToken={setupToken} />;
 }

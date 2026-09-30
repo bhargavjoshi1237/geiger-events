@@ -15,7 +15,7 @@ import {
   priceLabel,
 } from "./shared";
 
-const WIDE = new Set(["schedule", "location", "guests", "whosgoing", "infographics", "columns"]);
+const WIDE = new Set(["schedule", "location", "guests", "sponsors", "whosgoing", "infographics", "columns"]);
 
 export function ShowcaseLayout({ ctx }) {
   const {

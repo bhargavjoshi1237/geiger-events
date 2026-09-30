@@ -7,25 +7,21 @@ import { getScreen } from "@/components/internal/screens/registry";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject, pickDefaultProjectId } from "@/context/project-context";
-import { LoadingArea } from "@/components/internal/workspace/workspace_states";
+import { LoadingArea, NoProjectsState } from "@/components/internal/workspace/workspace_states";
 
 function ScreenArea({ activeItem, Screen }) {
   const router = useRouter();
   const { project, projects, loading } = useProject();
 
   useEffect(() => {
-    if (loading) return;
-    if (projects.length === 0) {
-      router.replace("/login?workspace=1");
-      return;
-    }
-    if (project) return;
+    if (loading || project) return;
     const fallback = pickDefaultProjectId(projects);
     if (fallback) router.replace(`/project/${fallback}`);
   }, [loading, project, projects, router]);
 
   if (loading) return <LoadingArea />;
-  if (projects.length === 0 || !project) return <LoadingArea />;
+  if (projects.length === 0) return <NoProjectsState />;
+  if (!project) return <LoadingArea />;
 
   return (
     <div key={project.id} className="h-full">
