@@ -139,6 +139,19 @@ try {
   assert.equal((await queryOne("select revision from events.ops_entities where id = $1", [record.id])).revision, 2);
   assert.equal((await queryOne("select count(*)::int as count from events.ops_command_receipts where request_hash = 'audit-fail'")).count, 0);
 
+  const disabled = modules.map((item) => ({ ...item, enabled: false }));
+  await db.query("select events.ops_save_workspace_draft($1,$2,$3,$4,$5)",
+    [project, event, actor, 2, disabled]);
+  const archivedModule = (await queryOne("select events.ops_publish_workspace($1,$2,$3,$4,$5,$6,$7) as value",
+    [project, event, actor, 3, disabled,
+      "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", "publish-disabled"])).value;
+  assert.equal(archivedModule.publishedVersion, 2);
+  assert.equal((await queryOne("select count(*)::int as count from events.ops_workspace_versions where event_id=$1", [event])).count, 2);
+  assert.equal((await db.query("select * from events.ops_list_records($1,$2,'vendor-inspection',null,null,null,25,false)",
+    [project, event])).rows.length, 0);
+  assert.equal((await db.query("select * from events.ops_list_records($1,$2,'vendor-inspection',null,null,null,25,true)",
+    [project, event])).rows.length, 1);
+
   await db.query("select events.ops_save_workspace_draft($1,$2,$3,$4,$5)",
     [otherProject, otherEvent, actor, 0, modules]);
   await db.query("select events.ops_publish_workspace($1,$2,$3,$4,$5,$6,$7)",

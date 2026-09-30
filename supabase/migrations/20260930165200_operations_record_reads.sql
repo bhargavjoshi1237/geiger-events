@@ -23,8 +23,12 @@ create or replace function events.ops_list_records(
   from events.ops_entities e
   join events.ops_custom_records r on r.project_id=e.project_id
     and r.event_id=e.event_id and r.entity_id=e.id
+  join events.ops_module_instances instance on instance.project_id=e.project_id
+    and instance.event_id=e.event_id and instance.module_key=e.module_key
   where e.project_id=p_project_id and e.event_id=p_event_id
-    and e.module_key=p_module_key and (e.archived_at is not null)=p_archived
+    and e.module_key=p_module_key and
+      (case when p_archived then e.archived_at is not null or not instance.enabled
+        else e.archived_at is null and instance.enabled end)
     and (p_state is null or e.state=p_state)
     and (p_before_at is null or (e.created_at,e.id) < (p_before_at,p_before_id))
   order by e.created_at desc,e.id desc limit least(greatest(p_limit,1),51);
