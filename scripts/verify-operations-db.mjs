@@ -25,6 +25,9 @@ const queryOne = async (sql, params = []) => (await db.query(sql, params)).rows[
 const sql = await readFile(new URL(
   "../supabase/migrations/20260930160740_operations_foundation.sql", import.meta.url,
 ), "utf8");
+const permissionsSql = await readFile(new URL(
+  "../supabase/migrations/20260930163920_operations_permission_backfill.sql", import.meta.url,
+), "utf8");
 
 try {
   await db.exec(`
@@ -38,6 +41,18 @@ try {
   await db.query("insert into events.events (id, project_id) values ($1, $2), ($3, $4)",
     [event, project, otherEvent, otherProject]);
   await db.exec(sql.split("-- @up")[1].split("-- @down")[0]);
+  await db.exec(`create table public.roles (
+    id uuid primary key, key text, is_system boolean, deleted_at timestamptz, permissions text[]
+  );
+  insert into public.roles (id,key,is_system,permissions) values
+    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','manager',true,array['events.event.edit']),
+    ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','member',true,array['events.event.edit']),
+    ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','custom',false,array['events.event.edit']);`);
+  await db.exec(permissionsSql.split("-- @up")[1].split("-- @down")[0]);
+  const permissions = await db.query("select key,permissions from public.roles order by key");
+  assert.equal(permissions.rows.find((r) => r.key === "manager").permissions.includes("events.operations.configure"), true);
+  assert.equal(permissions.rows.find((r) => r.key === "member").permissions.includes("events.operations.view"), false);
+  assert.equal(permissions.rows.find((r) => r.key === "custom").permissions.includes("events.operations.view"), false);
 
   for (const role of ["anon", "authenticated"]) {
     await db.exec(`set role ${role}`);

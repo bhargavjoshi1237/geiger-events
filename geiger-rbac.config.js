@@ -56,6 +56,15 @@ const addonPermissions = (ADDON_PERMISSIONS || [])
   }));
 
 const operationPermissions = [
+  ...[
+    ["view", "View event operations"],
+    ["configure", "Configure event operations"],
+    ["records.create", "Create operation records"],
+    ["records.update", "Update operation records"],
+    ["records.archive", "Archive operation records"],
+  ].map(([action, label]) => ({
+    key: `events.operations.${action}`, label, group: "Event operations", scopeBy: "event",
+  })),
   {
     key: "events.event.edit",
     label: "Edit an event",
@@ -153,6 +162,10 @@ const systemRoles = [
       "events.team.assign",
       "events.role.manage",
       "events.settings.manage",
+      "events.operations.configure",
+      "events.operations.records.create",
+      "events.operations.records.update",
+      "events.operations.records.archive",
     ],
     sort: 1,
   }),
@@ -168,6 +181,10 @@ const systemRoles = [
       "events.order.refund",
       "events.team.invite",
       "events.team.assign",
+      "events.operations.configure",
+      "events.operations.records.create",
+      "events.operations.records.update",
+      "events.operations.records.archive",
     ],
     sort: 2,
   }),
