@@ -38,7 +38,7 @@ export function SetupPanel({ eventId, onSetup }) {
           <Layers3 className="h-5 w-5" />
         </div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Event operations</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">Build your organiser workspace</h2>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">Set up workspace</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           Set up private modules to track the people, items and work behind this event. Start with a reference pack or a blank workspace, then change every label and field before publishing.
         </p>

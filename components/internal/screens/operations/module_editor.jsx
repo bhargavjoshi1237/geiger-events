@@ -98,7 +98,9 @@ export function ModuleEditor({ eventId, definition, modules, published, dirty, o
         <p className="mt-1 text-muted-foreground">{impact.recordCount} records will remain in private history. Normal module access will stop.</p>
         {impact.dependents.length ? <p className="mt-1 text-amber-600">Dependent modules: {impact.dependents.join(", ")}. Remove these dependencies first.</p> : null}
         <div className="mt-3 flex gap-2"><Button type="button" variant="outline" onClick={() => setImpact(null)}>Cancel</Button>
-          <Button type="button" disabled={impact.dependents.length > 0} onClick={onArchive}>Archive module</Button></div>
+          <Button type="button" disabled={impact.dependents.length > 0} onClick={async () => {
+            const result = await onArchive(); if (!result?.error) setImpact(null);
+          }}>Archive module</Button></div>
       </div> : null}
     </div>
     <div className="rounded-xl border border-border bg-surface-card p-5">

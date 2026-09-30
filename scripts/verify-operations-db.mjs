@@ -119,6 +119,8 @@ try {
     [project, event, actor, update])).value;
   assert.equal(updated.revision, 2);
   assert.equal(updated.values.name, "Vendor B");
+  assert.equal((await queryOne("select changes from events.ops_audit where action='update'", [])).changes.values.name,
+    "Vendor B");
   const listed = await db.query("select * from events.ops_list_records($1,$2,'vendor-inspection',null,null,null,25,false)",
     [project, event]);
   assert.equal(listed.rows.length, 1);
@@ -157,9 +159,20 @@ try {
   await db.query("select events.ops_publish_workspace($1,$2,$3,$4,$5,$6,$7)",
     [otherProject, otherEvent, actor, 1, modules,
       "cccccccc-cccc-4ccc-8ccc-cccccccccccc", "publish-other"]);
+  assert.equal((await queryOne("select count(*)::int as count from events.ops_entities where event_id=$1",
+    [otherEvent])).count, 0);
+  const breaking = modules.map((item) => ({ ...item, fields: [{ ...item.fields[0], type: "textarea" }] }));
+  await db.query("select events.ops_save_workspace_draft($1,$2,$3,$4,$5)",
+    [otherProject, otherEvent, actor, 2, breaking]);
+  // A create can arrive after a service precheck saw zero records but before publish.
   const other = (await queryOne("select events.ops_mutate_record($1,$2,$3,$4) as value",
     [otherProject, otherEvent, actor, { ...create,
       commandId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", requestHash: "other" }])).value;
+  await assert.rejects(db.query("select events.ops_publish_workspace($1,$2,$3,$4,$5,$6,$7)",
+    [otherProject, otherEvent, actor, 3, breaking,
+      "ffffffff-ffff-4fff-8fff-ffffffffffff", "breaking"]), { code: "P7001" });
+  assert.equal((await queryOne("select published_version from events.ops_workspaces where event_id=$1",
+    [otherEvent])).published_version, 1);
   await assert.rejects(db.query("insert into events.ops_entity_links (project_id,event_id,source_entity_id,target_entity_id,field_id) values ($1,$2,$3,$4,'owner')",
     [project, event, record.id, other.id]), { code: "23503" });
   await assert.rejects(db.query("insert into events.ops_entities (id,project_id,event_id,module_key,definition_version,title,state) values ($1,$2,$3,'vendor-inspection',1,'Duplicate','new')",

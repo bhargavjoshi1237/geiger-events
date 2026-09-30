@@ -172,6 +172,32 @@ begin
 end;
 $$;
 
+create or replace function events.ops_definition_breaking(p_before jsonb, p_after jsonb)
+returns boolean language plpgsql immutable set search_path = '' as $$
+declare v_old jsonb; v_new jsonb;
+begin
+  if p_after is null then return true; end if;
+  for v_old in select value from jsonb_array_elements(p_before->'fields') loop
+    select value into v_new from jsonb_array_elements(p_after->'fields')
+      where value->>'id'=v_old->>'id';
+    if not found then return true; end if;
+    if (v_old - 'label' - 'id') is distinct from (v_new - 'label' - 'id') then
+      return true;
+    end if;
+  end loop;
+  for v_new in select value from jsonb_array_elements(p_after->'fields') loop
+    if v_new->>'required'='true' and not exists (
+      select 1 from jsonb_array_elements(p_before->'fields') as old_field
+      where old_field->>'id'=v_new->>'id') then return true; end if;
+  end loop;
+  for v_old in select value from jsonb_array_elements(p_before->'states') loop
+    if not exists (select 1 from jsonb_array_elements(p_after->'states') as new_state
+      where new_state->>'key'=v_old->>'key') then return true; end if;
+  end loop;
+  return false;
+end;
+$$;
+
 create or replace function events.ops_publish_workspace(
   p_project_id uuid, p_event_id uuid, p_actor_id uuid, p_expected_revision bigint,
   p_modules jsonb, p_command_id uuid, p_request_hash text
@@ -181,6 +207,8 @@ declare
   v_receipt events.ops_command_receipts%rowtype;
   v_version integer;
   v_response jsonb;
+  v_old_module jsonb;
+  v_new_module jsonb;
 begin
   if p_actor_id is null or p_command_id is null or nullif(p_request_hash,'') is null or
     jsonb_typeof(p_modules) is distinct from 'array' then
@@ -201,6 +229,23 @@ begin
   if not found then raise exception 'Workspace not found' using errcode='23503'; end if;
   if v_workspace.revision <> p_expected_revision then
     raise exception 'Workspace revision changed' using errcode='40001';
+  end if;
+  if v_workspace.published_version is not null then
+    for v_old_module in select value from events.ops_workspace_versions versions
+      cross join lateral jsonb_array_elements(versions.modules)
+      where versions.project_id=p_project_id and versions.event_id=p_event_id
+        and versions.version=v_workspace.published_version loop
+      if exists (select 1 from events.ops_entities entity
+        where entity.project_id=p_project_id and entity.event_id=p_event_id
+          and entity.module_key=v_old_module->>'key') then
+        v_new_module := null;
+        select value into v_new_module from jsonb_array_elements(p_modules)
+          where value->>'key'=v_old_module->>'key';
+        if events.ops_definition_breaking(v_old_module,v_new_module) then
+          raise exception 'Explicit record migration required' using errcode='P7001';
+        end if;
+      end if;
+    end loop;
   end if;
   v_version := coalesce(v_workspace.published_version,0)+1;
   insert into events.ops_workspace_versions (project_id,event_id,version,modules,created_by)
@@ -370,7 +415,13 @@ begin
   insert into events.ops_audit
     (project_id,event_id,actor_id,command_id,action,entity_id,changes)
     values (p_project_id,p_event_id,p_actor_id,v_command_id,v_action,v_record_id,
-      jsonb_build_object('revision',v_entity.revision,'moduleKey',v_module_key));
+      jsonb_build_object('revision',v_entity.revision,'moduleKey',v_module_key)
+      || case when v_action in ('create','update') then
+        jsonb_build_object('title',v_entity.title,'values',p_command->'values',
+          'references',p_command->'references')
+        when v_action = 'transition' then
+        jsonb_build_object('state',v_entity.state)
+        else jsonb_build_object('archivedAt',v_entity.archived_at) end);
   insert into events.ops_command_receipts
     (project_id,event_id,actor_id,command_id,request_hash,response)
     values (p_project_id,p_event_id,p_actor_id,v_command_id,v_hash,v_response);
@@ -378,7 +429,8 @@ begin
 end;
 $$;
 
-revoke all on function events.ops_require_event(uuid,uuid),
+revoke all on function events.ops_definition_breaking(jsonb,jsonb),
+  events.ops_require_event(uuid,uuid),
   events.ops_save_workspace_draft(uuid,uuid,uuid,bigint,jsonb),
   events.ops_publish_workspace(uuid,uuid,uuid,bigint,jsonb,uuid,text),
   events.ops_record_response(uuid,uuid,uuid),

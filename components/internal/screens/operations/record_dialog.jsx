@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader,
   DialogTitle, Input, Textarea,
 } from "@geiger/ui";
 import { operationsClient } from "@/lib/operations/client";
+import { selectSubmission } from "./submission_state";
 
 const inputClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground";
 
@@ -17,6 +18,9 @@ export function RecordDialog({ eventId, definition, record, open, onOpenChange, 
   const [suggestions, setSuggestions] = useState({});
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [baseRecord, setBaseRecord] = useState(record);
+  const [latest, setLatest] = useState(null);
+  const pending = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -35,11 +39,25 @@ export function RecordDialog({ eventId, definition, record, open, onOpenChange, 
   const save = async (event) => {
     event.preventDefault();
     setSaving(true); setError(null);
-    const result = await onSave({ title, values,
-      references: Object.entries(references).filter(([, id]) => id).map(([fieldId, targetId]) => ({ fieldId, targetId })) });
+    const draft = { title, values,
+      references: Object.entries(references).filter(([, id]) => id).map(([fieldId, targetId]) => ({ fieldId, targetId })) };
+    const selected = selectSubmission(pending.current,
+      { ...draft, expectedRevision: baseRecord?.revision ?? null }, () => crypto.randomUUID());
+    pending.current = selected;
+    const result = await onSave(draft, selected.commandId, baseRecord?.revision);
     setSaving(false);
-    if (result?.error) { setError(result.error); return; }
+    if (result?.error) {
+      if (!["network_error", "request_failed", "internal_error"].includes(result.error.code)) pending.current = null;
+      setError(result.error); return;
+    }
+    pending.current = null;
     onOpenChange(false);
+  };
+
+  const inspectLatest = async () => {
+    const result = await onReload();
+    if (result?.error) setError(result.error);
+    else setLatest(result.data);
   };
 
   return <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,10 +94,18 @@ export function RecordDialog({ eventId, definition, record, open, onOpenChange, 
         })}
         {error ? <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error.message || "Could not save this record."}
-          {error.code === "revision_conflict" ? <p className="mt-1 text-xs">Your edits are still here. Reload the list to compare before retrying with a new command.</p> : null}
+          {error.code === "revision_conflict" ? <p className="mt-1 text-xs">Your edits are still here. {record ? "Load the latest record to compare, then choose its revision before retrying." : "Reload the module configuration before trying a new create command."}</p> : null}
+        </div> : null}
+        {latest ? <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+          <p className="font-medium text-foreground">Latest record: {latest.title} · {latest.state} · revision {latest.revision}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Your form remains unchanged. Review it against the latest values before applying this revision.</p>
+          <pre className="mt-2 max-h-24 overflow-auto rounded bg-background p-2 text-xs text-muted-foreground">{JSON.stringify(latest.values, null, 2)}</pre>
+          <Button type="button" variant="outline" className="mt-2" onClick={() => {
+            setBaseRecord(latest); setLatest(null); setError(null); pending.current = null;
+          }}>Use latest revision with my edits</Button>
         </div> : null}
         <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          {error?.code === "revision_conflict" ? <Button type="button" variant="outline" onClick={onReload}>Reload list</Button> : null}
+          {record && error?.code === "revision_conflict" ? <Button type="button" variant="outline" onClick={inspectLatest}>Compare latest</Button> : null}
           <Button type="submit" disabled={saving}>{saving ? "Saving…" : record ? "Save record" : "Create record"}</Button></DialogFooter>
       </form>
     </DialogContent>

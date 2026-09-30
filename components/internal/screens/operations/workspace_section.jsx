@@ -31,12 +31,18 @@ export function WorkspaceSection({ event, headerItem }) {
   const archive = async (moduleKey) => {
     const result = await workspace.archiveModule(moduleKey, workspace.data.revision);
     if (!result.error) await workspace.load();
+    return result;
   };
   const updateModule = (definition) => workspace.setDraft(draft.map((item) =>
     item.key === definition.key ? definition : item));
   const removeModule = (moduleKey) => workspace.setDraft(draft.filter((item) => item.key !== moduleKey));
   const selectedDraft = draft.find((item) => item.key === effectiveKey);
   const selectedPublished = published.find((item) => item.key === effectiveKey);
+  const differsFromPublished = JSON.stringify(draft) !== JSON.stringify(published);
+  const restorePublished = async () => {
+    const result = await workspace.saveDraft(published, workspace.data.revision);
+    if (!result.error) await workspace.load();
+  };
 
   return <div className="space-y-6">
     <EditorSectionHeader title={headerItem?.label || "Operations workspace"}
@@ -58,7 +64,9 @@ export function WorkspaceSection({ event, headerItem }) {
         {tab === "configure" ? <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">{workspace.dirty ? "Unsaved changes" : "Draft saved"} · {draft.length} modules</p>
-            <div className="flex gap-2"><Button variant="outline" onClick={save} disabled={!workspace.dirty}><Save className="mr-1 h-4 w-4" /> Save draft</Button>
+            <div className="flex gap-2">{workspace.data.publishedVersion && differsFromPublished ?
+              <Button variant="ghost" onClick={restorePublished} title="Discard draft changes and restore the published configuration">Restore published</Button> : null}
+              <Button variant="outline" onClick={save} disabled={!workspace.dirty}><Save className="mr-1 h-4 w-4" /> Save draft</Button>
               <Button onClick={publish} disabled={workspace.dirty}>Publish workspace</Button></div>
           </div>
           <p className="text-xs text-muted-foreground">Save changes, then publish. Published versions and record history are kept for audit. Changes to populated fields may require a deliberate data migration.</p>

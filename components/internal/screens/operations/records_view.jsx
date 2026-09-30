@@ -69,12 +69,16 @@ export function RecordsView({ eventId, definition }) {
   }, [eventId, definition.key, stateFilter, archived, filterKey]);
 
   const refresh = () => { setLoading(true); return load(); };
-  const save = async (draft) => {
-    const commandId = crypto.randomUUID();
+  const save = async (draft, commandId, baseRevision) => {
     const result = dialogRecord
       ? await operationsClient.updateRecord(eventId, definition.key, dialogRecord.id,
-        { ...draft, expectedRevision: dialogRecord.revision, commandId })
+        { ...draft, expectedRevision: baseRevision, commandId })
       : await operationsClient.createRecord(eventId, definition.key, { ...draft, commandId });
+    if (!result.error) await refresh();
+    return result;
+  };
+  const reloadDialogRecord = async () => {
+    const result = await operationsClient.readRecord(eventId, definition.key, dialogRecord.id);
     if (!result.error) await refresh();
     return result;
   };
@@ -130,6 +134,6 @@ export function RecordsView({ eventId, definition }) {
     </div> : null}
     {dialogRecord !== undefined ? <RecordDialog key={dialogRecord?.id ?? "new"} eventId={eventId} definition={definition}
       record={dialogRecord} open onOpenChange={(open) => { if (!open) setDialogRecord(undefined); }}
-      onSave={save} onReload={refresh} /> : null}
+      onSave={save} onReload={reloadDialogRecord} /> : null}
   </div>;
 }
