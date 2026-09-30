@@ -28,6 +28,9 @@ const sql = await readFile(new URL(
 const permissionsSql = await readFile(new URL(
   "../supabase/migrations/20260930163920_operations_permission_backfill.sql", import.meta.url,
 ), "utf8");
+const recordReadsSql = await readFile(new URL(
+  "../supabase/migrations/20260930165200_operations_record_reads.sql", import.meta.url,
+), "utf8");
 
 try {
   await db.exec(`
@@ -41,6 +44,7 @@ try {
   await db.query("insert into events.events (id, project_id) values ($1, $2), ($3, $4)",
     [event, project, otherEvent, otherProject]);
   await db.exec(sql.split("-- @up")[1].split("-- @down")[0]);
+  await db.exec(recordReadsSql.split("-- @up")[1].split("-- @down")[0]);
   await db.exec(`create table public.roles (
     id uuid primary key, key text, is_system boolean, deleted_at timestamptz, permissions text[]
   );
@@ -60,6 +64,8 @@ try {
     await assert.rejects(db.query("select * from events.ops_entities"), { code: "42501" });
     await assert.rejects(db.query("select events.ops_publish_workspace($1,$2,$3,$4,$5,$6,$7)",
       [project, event, actor, 0, modules, commandId, "hash"]), { code: "42501" });
+    await assert.rejects(db.query("select * from events.ops_list_records($1,$2,'vendor-inspection',null,null,null,25,false)",
+      [project, event]), { code: "42501" });
     await db.exec("reset role");
   }
   await db.exec("set role service_role");
@@ -113,6 +119,10 @@ try {
     [project, event, actor, update])).value;
   assert.equal(updated.revision, 2);
   assert.equal(updated.values.name, "Vendor B");
+  const listed = await db.query("select * from events.ops_list_records($1,$2,'vendor-inspection',null,null,null,25,false)",
+    [project, event]);
+  assert.equal(listed.rows.length, 1);
+  assert.equal(listed.rows[0].ops_list_records.values.name, "Vendor B");
 
   await db.exec("reset role");
   await db.exec(`
