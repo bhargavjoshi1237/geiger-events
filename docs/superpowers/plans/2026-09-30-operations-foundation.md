@@ -256,7 +256,7 @@ if (error || !data.user) throw new OperationsError("unauthenticated", 401, "Sign
 return { kind: "staff", id: data.user.id };
 ```
 
-- [x] Add event-scoped permission keys: `events.operations.view`, `events.operations.configure`, `events.operations.records.create`, `events.operations.records.update`, `events.operations.records.archive`. Add explicit permissions to appropriate trusted system-role templates, not to every existing project member by default.
+- [x] Add event-scoped permission keys: `events.operations.view`, `events.operations.configure`, `events.operations.record_create`, `events.operations.record_update`, `events.operations.record_archive`. Add explicit permissions to appropriate trusted system-role templates, not to every existing project member by default.
 - [x] Load roles/grants fresh server-side with `adminClient()` only after verified identity. Reuse `@geiger/rbac`'s `evaluate` API with the verified actor and event scope. Confirm project membership independently. No process-wide cached grant snapshot; revocation applies on the next command.
 - [ ] Require manager scope for A1 custom records; never suggest evaluator/volunteer restricted access is delivered here. Resolve suite role-write prerequisites before enabling this in a pilot. Do not silently trust UI-only role editing. (Implementation restricts A1 to Owner/Admin/Manager; deployed role-write policy verification remains a pilot gate.)
 - [x] Run focused tests and commit `feat: enforce server-side operations action access`.

@@ -6,7 +6,7 @@ import { withRecordRoute } from "@/lib/operations/server/record_route";
 export async function GET(request, { params }) {
   const query = new URL(request.url).searchParams;
   const archived = query.get("archived") === "true";
-  const permission = archived ? "events.operations.records.archive" : "events.operations.view";
+  const permission = archived ? "events.operations.record_archive" : "events.operations.view";
   return withRecordRoute(request, params, permission, (context, { moduleKey }) => {
     if ([...query.keys()].some((key) => !["cursor", "limit", "state", "archived"].includes(key)) ||
       (query.has("archived") && !["true", "false"].includes(query.get("archived")))) {
@@ -18,6 +18,6 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
-  return withRecordRoute(request, params, "events.operations.records.create", async (context, { moduleKey }) =>
+  return withRecordRoute(request, params, "events.operations.record_create", async (context, { moduleKey }) =>
     createRecord(context, { ...await readOperationsJson(request), moduleKey }));
 }

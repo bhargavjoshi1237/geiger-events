@@ -9,6 +9,7 @@ Apply the ORM migrations in filename order:
 1. `20260930160740_operations_foundation.sql` — private workspaces, immutable published versions, module instances, event-scoped entities, links, audit and idempotent command receipts.
 2. `20260930163920_operations_permission_backfill.sql` — adds the new action keys to existing system Admin/Manager roles. It does not widen Member or custom roles.
 3. `20260930165200_operations_record_reads.sql` — private, event-scoped paginated reads.
+4. `20260930192748_operations_record_permission_keys.sql` — converts the original invalid four-segment record permission keys to the three-segment format required by RBAC, preserving each role's existing actions.
 
 The service-role key stays server-side. Tables and routines deny `anon` and `authenticated` direct access; authenticated clients use the staff API after Supabase `auth.getUser` verification, project membership and a fresh `@geiger/rbac` decision. Portal sessions do not confer staff access. Verify the deployed suite's `public.roles` and `events.role_grants` write policies with pilot accounts before inviting a team; role template updates do not replace role-write policy verification.
 
@@ -16,7 +17,7 @@ The entry is available in the event editor, but no event receives a workspace au
 
 ## Model and access
 
-The five event-scoped action keys are `events.operations.view`, `events.operations.configure`, `events.operations.records.create`, `events.operations.records.update`, and `events.operations.records.archive`. Owner wildcard and the Admin/Manager templates can use them. A1 has no evaluator, reviewer, volunteer or participant write surface. The archive key also gates private history reads. Disabling a module blocks normal reads and mutations, while its records remain accessible in manager history. Archiving a record retains its audit and values.
+The five event-scoped action keys are `events.operations.view`, `events.operations.configure`, `events.operations.record_create`, `events.operations.record_update`, and `events.operations.record_archive`. Owner wildcard and the Admin/Manager templates can use them. A1 has no evaluator, reviewer, volunteer or participant write surface. The archive key also gates private history reads. Disabling a module blocks normal reads and mutations, while its records remain accessible in manager history. Archiving a record retains its audit and values.
 
 A module uses a stable key, a version, a source kind (`native` or `custom`), a display label, fields, states, transitions and table/board views. Field and state IDs are stable while labels may change. A1 supports text, textarea, email, number, boolean, select, date and event-scoped reference fields. At most 30 modules, 40 fields per module, 100 select options and 50 records per page are accepted. Request JSON is capped at 256 KiB. Only `records` and `forms` capabilities are implemented; scheduling, assignments, attendance, evaluation, notifications and reporting capability names remain unavailable.
 

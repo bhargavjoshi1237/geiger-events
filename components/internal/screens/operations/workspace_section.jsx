@@ -8,13 +8,16 @@ import { ModuleEditor, NewModuleForm } from "./module_editor";
 import { RecordsView } from "./records_view";
 import { SetupPanel } from "./setup_panel";
 import { useWorkspace } from "./use_workspace";
+import { WorkflowPanel } from "./workflow_panel";
+import { isWorkflowModuleKey } from "@/lib/operations/modules/registry";
 
 export function WorkspaceSection({ event, headerItem }) {
   const workspace = useWorkspace(event.id);
   const [tab, setTab] = useState("records");
   const [selectedKey, setSelectedKey] = useState(null);
   const draft = workspace.draft ?? [];
-  const published = workspace.data?.modules ?? [];
+  const allPublished = workspace.data?.modules ?? [];
+  const published = allPublished.filter((item) => !isWorkflowModuleKey(item.key));
   const pool = tab === "configure" ? draft : published;
   const effectiveKey = pool.some((item) => item.key === selectedKey) ? selectedKey : pool[0]?.key;
 
@@ -38,9 +41,9 @@ export function WorkspaceSection({ event, headerItem }) {
   const removeModule = (moduleKey) => workspace.setDraft(draft.filter((item) => item.key !== moduleKey));
   const selectedDraft = draft.find((item) => item.key === effectiveKey);
   const selectedPublished = published.find((item) => item.key === effectiveKey);
-  const differsFromPublished = JSON.stringify(draft) !== JSON.stringify(published);
+  const differsFromPublished = JSON.stringify(draft) !== JSON.stringify(allPublished);
   const restorePublished = async () => {
-    const result = await workspace.saveDraft(published, workspace.data.revision);
+    const result = await workspace.saveDraft(allPublished, workspace.data.revision);
     if (!result.error) await workspace.load();
   };
 
@@ -59,9 +62,10 @@ export function WorkspaceSection({ event, headerItem }) {
             <div><p className="font-semibold text-foreground">Event workspace</p>
               <p className="text-xs text-muted-foreground">{workspace.data.status === "active" ? `Published version ${workspace.data.publishedVersion}` : "Draft setup"} · revision {workspace.data.revision}</p></div></div>
           <div className="flex gap-2"><Button variant={tab === "records" ? "secondary" : "ghost"} size="sm" onClick={() => setTab("records")}><LayoutGrid className="mr-1 h-4 w-4" /> Records</Button>
+            <Button variant={tab === "workflow" ? "secondary" : "ghost"} size="sm" onClick={() => setTab("workflow")}><Layers3 className="mr-1 h-4 w-4" /> Workflow</Button>
             <Button variant={tab === "configure" ? "secondary" : "ghost"} size="sm" onClick={() => setTab("configure")}><Archive className="mr-1 h-4 w-4" /> Configure</Button></div>
         </div>
-        {tab === "configure" ? <>
+        {tab === "workflow" ? <WorkflowPanel key={event.id} eventId={event.id} onWorkspaceChange={workspace.load} workspaceDirty={workspace.dirty} /> : tab === "configure" ? <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">{workspace.dirty ? "Unsaved changes" : "Draft saved"} · {draft.length} modules</p>
             <div className="flex gap-2">{workspace.data.publishedVersion && differsFromPublished ?
@@ -72,8 +76,11 @@ export function WorkspaceSection({ event, headerItem }) {
           <p className="text-xs text-muted-foreground">Save changes, then publish. Published versions and record history are kept for audit. Changes to populated fields may require a deliberate data migration.</p>
           <div className="flex flex-wrap gap-2">{draft.map((item) => <Button key={item.key} size="sm" variant={effectiveKey === item.key ? "secondary" : "outline"}
             onClick={() => setSelectedKey(item.key)}>{item.label}{item.enabled === false ? " · archived" : ""}</Button>)}</div>
-          {selectedDraft ? <ModuleEditor key={selectedDraft.key} eventId={event.id} definition={selectedDraft} modules={draft}
-            published={published.some((item) => item.key === selectedDraft.key)} dirty={workspace.dirty}
+          {selectedDraft && isWorkflowModuleKey(selectedDraft.key) ? <div className="rounded-xl border border-border bg-surface-card p-5">
+            <h3 className="font-semibold text-foreground">{selectedDraft.label}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Manage these native records in Workflow. Their core fields keep scheduling, assignments and access consistent. Add a custom module for additional forms and records.</p>
+          </div> : selectedDraft ? <ModuleEditor key={selectedDraft.key} eventId={event.id} definition={selectedDraft} modules={draft}
+            published={allPublished.some((item) => item.key === selectedDraft.key)} dirty={workspace.dirty}
             onChange={updateModule} onRemove={() => removeModule(selectedDraft.key)} onArchive={() => archive(selectedDraft.key)} /> : null}
           <NewModuleForm modules={draft} onAdd={(definition) => { workspace.setDraft([...draft, definition]); setSelectedKey(definition.key); }} />
         </> : published.length ? <>

@@ -7,12 +7,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EVENT_POSTERS } from "./event_posters";
 
-// Closing call to action, set against a scattered field of coded event posters.
-// The scatter is hand-authored rather than randomised so SSR and the client
-// agree, and so the middle of the band stays clear for the copy.
-//
-// `d` is the depth layer: 1 is furthest (small, blurred, faint), 3 is nearest.
-// `m` keeps the card on mobile, where only the top and bottom bands have room.
+// Closing CTA over a hand-placed (SSR-stable) poster scatter; `d` is depth 1 (far) to 3 (near), `m` keeps the card on mobile.
 const POSITIONS = [
   // Left flank
   { x: 8, y: 12, d: 2, r: -7, m: true },
@@ -38,8 +33,7 @@ const POSITIONS = [
   { x: 66, y: 90, d: 1, r: -3, m: false },
 ];
 
-// Per-layer size, parallax travel, and atmosphere. Far cards move least and sit
-// furthest back, which is what sells the depth.
+// Per-layer size, parallax travel and atmosphere; far cards move least.
 const LAYERS = {
   1: {
     width: "clamp(4.5rem, 7vw, 7rem)",
@@ -58,14 +52,11 @@ const LAYERS = {
   },
 };
 
-// The physical-card treatment from the reference: a light outer ring holding a
-// rounded inner tile, so a flat gradient reads as an object on the dark page.
+// Light outer ring around a rounded tile so a flat poster reads as a physical card.
 function PosterCard({ children }) {
   return (
     <div className="rounded-[14%] bg-white/[0.07] p-[3.5%] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.85)] ring-1 ring-inset ring-white/[0.08]">
-      {/* Poster type is authored in % of the card, so one set of designs holds
-          its proportions at every layer size. The container query turns the
-          card's own width into that reference. */}
+      {/* Poster type is sized in % of the card via a container query, so it scales with every layer. */}
       <div className="aspect-square overflow-hidden rounded-[11%] [container-type:inline-size]">
         <div className="h-full w-full" style={{ fontSize: "100cqw" }}>
           {children}
@@ -78,8 +69,7 @@ function PosterCard({ children }) {
 export function PosterFieldCta({ dashboardHref = "/org" }) {
   const fieldRef = useRef(null);
 
-  // Cursor parallax. One listener writes two custom properties on the section
-  // and the layers consume them in CSS, so moving the mouse never re-renders.
+  // Cursor parallax via two CSS custom properties, so pointer moves never re-render.
   useEffect(() => {
     const node = fieldRef.current;
     if (!node) return undefined;
@@ -120,9 +110,10 @@ export function PosterFieldCta({ dashboardHref = "/org" }) {
   }, []);
 
   return (
+    // Always dark: the posters are authored for a night backdrop in both themes.
     <section
       ref={fieldRef}
-      className="relative isolate overflow-hidden px-4 py-28 sm:px-6 sm:py-36"
+      className="dark relative isolate overflow-hidden border-t border-white/10 bg-[#080808] px-4 py-28 sm:px-6 sm:py-36"
       style={{ "--px": "0", "--py": "0" }}
     >
       <div aria-hidden className="absolute inset-0 -z-10">
@@ -170,29 +161,25 @@ export function PosterFieldCta({ dashboardHref = "/org" }) {
       />
 
       <div className="relative mx-auto flex max-w-2xl flex-col items-center text-center">
-        <h2 className="text-4xl font-semibold tracking-tight text-white sm:text-6xl">
-          Every kind of event
-          <span className="mt-1 block bg-gradient-to-r from-[#ee6b3b] via-[#f0913b] to-[#ffd166] bg-clip-text text-transparent">
-            starts here
-          </span>
+        <h2 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+          Set up your next event
         </h2>
-        <p className="mt-6 max-w-lg text-balance text-sm text-muted-foreground sm:text-base">
-          From run clubs to launch parties and conference floors, Geiger makes
-          every event feel effortless.
+        <p className="mt-5 max-w-md text-balance text-sm text-zinc-400 sm:text-base">
+          Build the page and tickets now, and publish when you&apos;re ready.
         </p>
-        <div className="mt-8 flex flex-col items-center gap-4">
+        <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row">
           <Link
             href={dashboardHref}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-zinc-100 px-7 text-sm font-medium text-zinc-950 transition-colors hover:bg-white"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-6 text-sm font-medium text-zinc-950 transition-colors hover:bg-zinc-200"
           >
-            Create your first event
+            Create an event
+            <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
-            href={dashboardHref}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            href="#playground"
+            className="inline-flex h-11 items-center rounded-full border border-white/15 px-6 text-sm font-medium text-zinc-200 transition-colors hover:border-white/30 hover:bg-white/5"
           >
-            Discover events
-            <ArrowRight className="h-4 w-4" />
+            Try the playground
           </Link>
         </div>
       </div>

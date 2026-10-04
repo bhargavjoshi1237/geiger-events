@@ -20,6 +20,7 @@ export async function POST(request) {
   if (!member) return generic;
 
   const { token, tokenHash } = randomToken();
+  const expires = new Date(Date.now() + 3600000).toISOString();
   const { error } = await sb
     .from("portal_password_setups")
     .insert({ member_id: member.id, token_hash: tokenHash, expires_at: expires });
@@ -28,15 +29,23 @@ export async function POST(request) {
     return generic;
   }
 
-  let base = "";
+  let base;
   try {
-    if (body.origin && /^https?:\/\//i.test(body.origin)) {
-      base = new URL(body.origin).origin;
+    const configured = process.env.GEIGER_OPERATIONS_PUBLIC_URL;
+    if (configured) {
+      base = new URL(configured);
+    } else {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+      if (basePath && !/^\/(?!\/)[^?#]*$/.test(basePath)) throw new Error("Invalid application base path");
+      base = new URL(basePath || "/", new URL(request.url).origin);
     }
+    if (!["http:", "https:"].includes(base.protocol) || base.username || base.password || base.search || base.hash) throw new Error("Invalid application public URL");
   } catch {
-    base = "";
+    console.error("[portal.request-setup] Invalid application URL configuration");
+    return generic;
   }
-  const setupUrl = `${base}${body.basePath || ""}/login?setup=${token}`;
+  const setupUrl = new URL(`${base.href.replace(/\/$/, "")}/login`);
+  setupUrl.searchParams.set("setup", token);
   const projectIds = await listMemberProjectIds(clean);
   await sendNotificationEmail({
     projectId: projectIds.length === 1 ? projectIds[0] : null,
@@ -46,7 +55,7 @@ export async function POST(request) {
     subject: "Set your Geiger Events password",
     data: {
       recipientName: member.name || "there",
-      resetUrl: setupUrl,
+      resetUrl: setupUrl.href,
       expiresIn: "1 hour",
     },
   });

@@ -1,65 +1,36 @@
 "use client";
 
+import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowUpRight, CalendarDays, LayoutDashboard, Play, Ticket, Users } from "lucide-react";
+import Logo from "@geiger/ui/logo";
+import { LogoLoading } from "@geiger/ui/logo-loading";
+import { ScreenErrorBoundary } from "@/components/landing/screen_error_boundary";
+import styles from "@/components/landing/landing.module.css";
 
-const EventsPlayground = dynamic(
-  () =>
-    import("@/components/EventsPlayground").then((mod) => mod.EventsPlayground),
-  {
-    ssr: false,
-  },
-);
+const EventsPlayground = dynamic(() => import("@/components/EventsPlayground").then((mod) => mod.EventsPlayground), {
+  ssr: false,
+  loading: () => <div className={styles.playgroundLoading}><LogoLoading size={56} /></div>,
+});
 
-// Framed, interactive product preview for the landing page. Mirrors the suite's
-// landing showcase structure (geiger-campaign LandingCampaignShowcase): a
-// background-image section holding the intro copy + CTA, with the live Events
-// workspace running below in its own bordered, fixed-height card.
-export default function EventsPlaygroundShowcase({
-  ctaHref = "/org",
-  ctaLabel = "Open the workspace",
-  backgroundImage,
-}) {
+export default function EventsPlaygroundShowcase() {
+  const [started, setStarted] = useState(false);
+  const shellRef = useRef(null);
+  // Launching widens the shell, then brings the full workspace into view once the resize settles.
+  const launch = () => {
+    setStarted(true);
+    setTimeout(() => shellRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 450);
+  };
   return (
-    <section
-      className="relative overflow-hidden rounded-2xl border mx-auto w-[calc(100%-1.5rem)] border-border bg-cover bg-center bg-no-repeat p-3 sm:w-[80%] sm:rounded-3xl sm:p-6 md:p-8 xl:p-10"
-      style={
-        backgroundImage
-          ? { backgroundImage: `url('${backgroundImage}')` }
-          : undefined
-      }
-    >
-      <div className="absolute inset-0 bg-[#080808]/75" />
-      <div className="relative z-10 flex flex-col gap-6 sm:gap-10">
-        <div className="space-y-5">
-          <div className="mx-auto mb-4 mt-4 flex w-full flex-col items-start gap-4 sm:mb-6 sm:mt-6 sm:w-[90%]">
-            <h3 className="text-3xl font-semibold leading-tight text-white">
-              Try the full Events workspace in real time.
-            </h3>
-
-            <p className="max-w-lg text-[#bcbcbc]">
-              This playground runs live on the page with the complete workspace —
-              sidebar navigation, the events overview, and every screen. No save
-              and no load, just pure exploration.
-            </p>
-
-            <Link
-              href={ctaHref}
-              className="inline-flex h-10 items-center gap-2 rounded-full bg-zinc-100 px-5 font-medium text-zinc-950 transition-colors hover:bg-white"
-            >
-              {ctaLabel}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+    <div ref={shellRef} data-launched={started} className={`dark ${styles.playgroundShell}`}>
+      <div className={styles.playgroundToolbar}><span><Logo size={16} />Events playground</span><span>Example data</span></div>
+      {started ? <div className={styles.livePlayground}><ScreenErrorBoundary title="Events playground"><EventsPlayground /></ScreenErrorBoundary></div> : <div className={styles.playgroundPlaceholder}>
+        <div className={styles.mockWorkspace} aria-hidden="true">
+          <aside><span><Logo size={16} />Geiger</span>{[[LayoutDashboard, "Overview"], [CalendarDays, "Events"], [Users, "People"], [Ticket, "Orders"]].map(([Icon, label]) => <div key={label}><Icon size={15} />{label}</div>)}</aside>
+          <div className={styles.mockOverview}><h3>Overview</h3><div className={styles.mockStats}>{["Events", "Registrations", "Check-ins"].map((label) => <div key={label}><span>{label}</span><strong>—</strong></div>)}</div><div className={styles.mockRows}>{["Nightshift 2026", "Friday Night Live", "The Sunday Social"].map((label) => <div key={label}><CalendarDays size={16} /><span>{label}</span><span>Draft</span><ArrowUpRight size={14} /></div>)}</div></div>
         </div>
-
-        <div className=" ">
-          <div className="h-[720px] overflow-hidden rounded-lg border border-border bg-background sm:h-[700px] lg:h-[900px]">
-            <EventsPlayground />
-          </div>
-        </div>
-      </div>
-    </section>
+        <div className={styles.playgroundLaunch}><button type="button" className={styles.primaryButton} onClick={launch}><Play size={15} fill="currentColor" />Open the playground</button><p>Runs in your browser. No account needed.</p></div>
+      </div>}
+    </div>
   );
 }

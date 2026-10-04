@@ -31,6 +31,9 @@ const permissionsSql = await readFile(new URL(
 const recordReadsSql = await readFile(new URL(
   "../supabase/migrations/20260930165200_operations_record_reads.sql", import.meta.url,
 ), "utf8");
+const permissionKeysSql = await readFile(new URL(
+  "../supabase/migrations/20260930192748_operations_record_permission_keys.sql", import.meta.url,
+), "utf8");
 
 try {
   await db.exec(`
@@ -51,10 +54,20 @@ try {
   insert into public.roles (id,key,is_system,permissions) values
     ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','manager',true,array['events.event.edit']),
     ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','member',true,array['events.event.edit']),
-    ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','custom',false,array['events.event.edit']);`);
+    ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','custom',false,array['events.event.edit']),
+    ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','custom_records',false,array['events.operations.records.update','events.operations.record_update']);`);
   await db.exec(permissionsSql.split("-- @up")[1].split("-- @down")[0]);
+  await db.exec(permissionKeysSql.split("-- @up")[1].split("-- @down")[0]);
+  // A replay preserves the same grants, including roles that held both keys.
+  await db.exec(permissionKeysSql.split("-- @up")[1].split("-- @down")[0]);
   const permissions = await db.query("select key,permissions from public.roles order by key");
   assert.equal(permissions.rows.find((r) => r.key === "manager").permissions.includes("events.operations.configure"), true);
+  const managerPermissions = permissions.rows.find((r) => r.key === "manager").permissions;
+  for (const action of ["record_create", "record_update", "record_archive"]) {
+    assert.equal(managerPermissions.includes(`events.operations.${action}`), true);
+  }
+  assert.deepEqual(permissions.rows.find((r) => r.key === "custom_records").permissions,
+    ["events.operations.record_update"]);
   assert.equal(permissions.rows.find((r) => r.key === "member").permissions.includes("events.operations.view"), false);
   assert.equal(permissions.rows.find((r) => r.key === "custom").permissions.includes("events.operations.view"), false);
 
