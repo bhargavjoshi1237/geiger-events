@@ -126,7 +126,7 @@ function CapacityCard({ row, onAdjust }) {
                 </Badge>
               ) : null}
               {over ? (
-                <span className="text-[11px] font-medium uppercase tracking-wide text-red-400">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-red-600 dark:text-red-400">
                   Full
                 </span>
               ) : null}
@@ -139,7 +139,7 @@ function CapacityCard({ row, onAdjust }) {
           <div className="flex shrink-0 items-center gap-2">
             <div className="text-right">
               <span
-                className={`text-sm font-semibold tabular-nums ${over ? "text-red-400" : "text-foreground"}`}
+                className={`text-sm font-semibold tabular-nums ${over ? "text-red-600 dark:text-red-400" : "text-foreground"}`}
               >
                 {counts.seats}
                 <span className="font-normal text-text-secondary">

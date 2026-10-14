@@ -116,7 +116,7 @@ function DoorPos({ eventId, code, role, exit, event }) {
         <div className="mx-auto max-w-sm space-y-5 pt-8 text-center">
           {receipt.ok ? (
             <>
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15 text-emerald-300">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                 <CheckCircle2 className="h-8 w-8" />
               </div>
               <div className="space-y-1">
@@ -128,7 +128,7 @@ function DoorPos({ eventId, code, role, exit, event }) {
             </>
           ) : (
             <div className="space-y-1">
-              <p className="text-lg font-semibold text-red-300">Sale failed</p>
+              <p className="text-lg font-semibold text-red-700 dark:text-red-300">Sale failed</p>
               <p className="text-sm text-text-secondary">{receipt.error}</p>
             </div>
           )}

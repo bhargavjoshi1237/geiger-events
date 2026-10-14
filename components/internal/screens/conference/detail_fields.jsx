@@ -388,8 +388,8 @@ function SocialLink({ href, icon: Icon, label, compact = false }) {
 export function SpeakerTitleBadges({ record }) {
   if (!record.config?.featured) return null;
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-300">
-      <Star className="h-3 w-3 fill-amber-300" /> Featured
+    <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+      <Star className="h-3 w-3 fill-amber-700 dark:fill-amber-300" /> Featured
     </span>
   );
 }
@@ -478,7 +478,7 @@ function ProgressRing({ value, size = 88 }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-lg font-bold leading-none text-white">{Math.round(value)}%</span>
+        <span className="text-lg font-bold leading-none text-foreground dark:text-white">{Math.round(value)}%</span>
       </div>
     </div>
   );
@@ -503,7 +503,7 @@ export function PortalProgressHero({ record }) {
 
         <div className="min-w-0 flex-1 space-y-3">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="truncate text-xl font-semibold tracking-tight text-white sm:text-2xl">
+            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground dark:text-white sm:text-2xl">
               {record.name || "Untitled invite"}
             </h2>
             <StatusPill status={record.status} map={PORTAL_STATUS_MAP} />
@@ -522,7 +522,7 @@ export function PortalProgressHero({ record }) {
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium",
                     on
-                      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-700 dark:text-emerald-300"
                       : "border-border bg-surface-card text-text-tertiary",
                   )}
                 >
@@ -747,7 +747,7 @@ export function AgendaAssignHero({ record }) {
 
         <div className="min-w-0 flex-1 space-y-3">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="truncate text-xl font-semibold tracking-tight text-white sm:text-2xl">
+            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground dark:text-white sm:text-2xl">
               {record.name || "Untitled agenda"}
             </h2>
             <StatusPill status={record.status} map={AGENDA_ASSIGN_STATUS_MAP} />
@@ -768,7 +768,7 @@ export function AgendaAssignHero({ record }) {
           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-text-secondary">
             <Users className="h-3.5 w-3.5" /> Reach
           </span>
-          <span className="text-2xl font-bold leading-none text-white tabular-nums">
+          <span className="text-2xl font-bold leading-none text-foreground dark:text-white tabular-nums">
             {reach.loading ? "…" : reach.count.toLocaleString("en-US")}
           </span>
           <span className="text-[11px] text-text-tertiary">guests match</span>

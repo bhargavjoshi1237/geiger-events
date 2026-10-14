@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Smartphone,
   Ticket,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { accessCodesEnabled } from "@/lib/events/access_codes";
 import { ticketSelectionActive } from "@/lib/events/ticket_selection";
 import { activeCtas, ctaIsExternal, normalizeCtas } from "@/lib/events/ctas";
+import { expressClicks } from "@/lib/events/express_checkout";
 import {
   eventCountdown,
   eventTimezoneLabel,
@@ -150,6 +152,7 @@ export function RegisterCard({
   ctaHover,
   note,
   onCheckout,
+  express = null,
 }) {
   const [, m, d] = event.date.split("-").map(Number);
   const startLine = [
@@ -321,6 +324,20 @@ export function RegisterCard({
             )}
           </Button>
         )}
+
+        {express && express.placement !== "replace" && !soldOut ? (
+          <Button
+            variant="outline"
+            className="w-full border-border bg-transparent text-foreground hover:bg-surface-active"
+            onClick={() => onCheckout("express")}
+          >
+            <Zap className="h-4 w-4 shrink-0" style={{ color: accent.color }} />
+            <span className="min-w-0 truncate">{express.buttonLabel || "Express checkout"}</span>
+            <span className="ml-auto shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] font-medium text-text-tertiary">
+              {expressClicks(event)} clicks
+            </span>
+          </Button>
+        ) : null}
 
         {extraCtas.length ? (
           <div className="space-y-2">

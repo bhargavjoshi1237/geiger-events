@@ -243,7 +243,7 @@ function ItemsControl({ field, value, onChange }) {
                     size="icon-sm"
                     onClick={() => onChange(rows.filter((_, j) => j !== i))}
                     aria-label="Remove"
-                    className="h-6 w-6 text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                    className="h-6 w-6 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -335,7 +335,7 @@ function CloneAssetsControl({ field, value, onChange }) {
         </div>
 
         {error ? (
-          <p className="flex items-center gap-1.5 text-xs text-red-400">
+          <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
             <AlertTriangle className="h-3.5 w-3.5" /> {error}
           </p>
         ) : null}
@@ -368,8 +368,8 @@ function CloneAssetsControl({ field, value, onChange }) {
                     className={cn(
                       "mr-1 rounded px-1 py-px text-[0.65rem] font-semibold",
                       a.kind === "css"
-                        ? "bg-blue-500/15 text-blue-300"
-                        : "bg-purple-500/15 text-purple-300",
+                        ? "bg-blue-500/15 text-blue-700 dark:text-blue-300"
+                        : "bg-purple-500/15 text-purple-700 dark:text-purple-300",
                     )}
                   >
                     {a.kind === "css" ? "css" : "js"}

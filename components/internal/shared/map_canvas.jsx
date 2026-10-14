@@ -325,11 +325,11 @@ export const MapCanvas = forwardRef(function MapCanvas(
           }}
         >
           <div
-            className="pointer-events-none absolute inset-0 transition-opacity"
+            className="pointer-events-none absolute inset-0 transition-opacity [--grid-line:rgba(0,0,0,0.06)] dark:[--grid-line:rgba(255,255,255,0.04)]"
             style={{
-              backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.04) ${
+              backgroundImage: `linear-gradient(to right, var(--grid-line) ${
                 1 / view.scale
-              }px, transparent ${1 / view.scale}px), linear-gradient(to bottom, rgba(255,255,255,0.04) ${
+              }px, transparent ${1 / view.scale}px), linear-gradient(to bottom, var(--grid-line) ${
                 1 / view.scale
               }px, transparent ${1 / view.scale}px)`,
               backgroundSize: `${5 / view.scale}% ${5 / view.scale}%`,

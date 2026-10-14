@@ -76,10 +76,10 @@ function Notice({ tone = "warning", children }) {
       className={cn(
         "rounded-lg border px-4 py-2.5 text-sm",
         tone === "danger"
-          ? "border-red-500/20 bg-red-500/10 text-red-200"
+          ? "border-red-500/20 bg-red-500/10 text-red-800 dark:text-red-200"
           : tone === "muted"
             ? "border-border bg-surface-subtle text-text-secondary"
-            : "border-amber-500/20 bg-amber-500/10 text-amber-200",
+            : "border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-200",
       )}
     >
       {children}
@@ -183,7 +183,7 @@ function FindView({ onPick, onWalkup, canWalkup, lookup, recent, onUndo, canRetu
               key={r.redemptionId}
               className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle px-3.5 py-2.5"
             >
-              <PackageCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+              <PackageCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{r.itemLabel}</p>
                 <p className="truncate text-xs text-text-secondary">
@@ -256,7 +256,7 @@ function EntitlementsView({ subject, entitlements, loading, onIssue, onBack, can
                   {ent.periodLabel ? ` · ${ent.periodLabel}` : ""}
                 </p>
                 {blocked ? (
-                  <p className="mt-1 inline-flex items-center gap-1 text-xs text-amber-300">
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300">
                     <Clock className="h-3 w-3" />
                     {blockLabel(ent.blockedReason)}
                     {ent.lastAt ? ` · ${timeAgo(ent.lastAt)}` : ""}
@@ -269,7 +269,7 @@ function EntitlementsView({ subject, entitlements, loading, onIssue, onBack, can
                 className={cn(
                   "h-10 shrink-0",
                   blocked
-                    ? "bg-amber-500/15 text-amber-200 hover:bg-amber-500/25"
+                    ? "bg-amber-500/15 text-amber-800 dark:text-amber-200 hover:bg-amber-500/25"
                     : "bg-primary text-primary-foreground hover:bg-primary/90",
                 )}
               >
@@ -348,7 +348,7 @@ function ConfirmView({
                   <p
                     className={cn(
                       "text-xs tabular-nums",
-                      none ? "text-red-400" : "text-text-secondary",
+                      none ? "text-red-600 dark:text-red-400" : "text-text-secondary",
                     )}
                   >
                     {none ? "Out of stock" : `${qty(v.onHand)} on hand`}
@@ -429,7 +429,7 @@ function DoneView({ result, onDone, onUndo, canReturn }) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-5 py-12 text-center">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15 text-emerald-300">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
         <CheckCircle2 className="h-10 w-10" />
       </div>
       <div className="space-y-1">
@@ -620,7 +620,7 @@ export function IssueDesk({ eventId, code, role, exit, event }) {
   const badge = useMemo(
     () =>
       stats ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium tabular-nums text-emerald-300">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
           <PackageCheck className="h-3.5 w-3.5" />
           {qty(stats.issuedToday)} today
         </span>

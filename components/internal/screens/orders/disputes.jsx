@@ -332,7 +332,7 @@ export function DisputesScreen() {
       key: "amount",
       header: "Amount",
       align: "right",
-      className: "text-right font-semibold tabular-nums text-white",
+      className: "text-right font-semibold tabular-nums text-foreground dark:text-white",
       render: (d) => currency(d.amount),
     },
     {

@@ -178,7 +178,7 @@ function SiteHeaderEditor({ header, onChange }) {
                 size="icon-sm"
                 aria-label="Remove link"
                 onClick={() => patch({ links: links.filter((_, j) => j !== i) })}
-                className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -417,7 +417,7 @@ function ItemsField({ field, items, onChange }) {
                   size="icon-sm"
                   onClick={() => removeRow(i)}
                   aria-label="Remove row"
-                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -623,7 +623,7 @@ function BlockList({ blocks, isCustom, onToggle, onMove, onRemove, onEdit }) {
                   size="icon-sm"
                   onClick={() => onRemove(b.id)}
                   aria-label="Remove block"
-                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

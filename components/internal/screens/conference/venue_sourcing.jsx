@@ -387,7 +387,7 @@ function ResultCard({ r, active, added, onHover, onAdd }) {
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-tertiary">
           {r.rating != null && (
             <span className="inline-flex items-center gap-1">
-              <Star className="h-3 w-3 text-amber-400" /> {r.rating.toFixed(1)}
+              <Star className="h-3 w-3 text-amber-600 dark:text-amber-400" /> {r.rating.toFixed(1)}
             </span>
           )}
           {r.capacity ? (

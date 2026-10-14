@@ -192,7 +192,7 @@ function GateZoneManager({ placeholder, items, catalog, onChange, emptyHint }) {
                 type="button"
                 aria-label={`Remove ${it.name}`}
                 onClick={() => remove(it.id)}
-                className="text-text-tertiary transition-colors hover:text-red-400"
+                className="text-text-tertiary transition-colors hover:text-red-600 dark:hover:text-red-400"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -392,7 +392,7 @@ export function SessionsSection({ event, headerItem }) {
                       type="button"
                       aria-label={`Remove ${s.name}`}
                       onClick={() => remove(s.id)}
-                      className="text-text-tertiary transition-colors hover:text-red-400"
+                      className="text-text-tertiary transition-colors hover:text-red-600 dark:hover:text-red-400"
                     >
                       <X className="h-4 w-4" />
                     </button>

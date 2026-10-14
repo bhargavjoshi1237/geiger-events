@@ -451,7 +451,7 @@ function ItemDrawerBody({ item, items, projectId, onPatch, onAddVariant }) {
                       <StatusPill status={m.kind} map={MOVEMENT_KIND_MAP} />
                       <span
                         className={`text-sm font-semibold tabular-nums ${
-                          m.qty < 0 ? "text-red-400" : "text-emerald-400"
+                          m.qty < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
                         }`}
                       >
                         {signedQty(m.qty)}

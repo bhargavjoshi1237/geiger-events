@@ -19,7 +19,7 @@ export function RouteShell({ title, subtitle, count, badge, onExit, children, cl
         <div className="flex shrink-0 items-center gap-2">
           {badge}
           {count ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 tabular-nums">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 tabular-nums">
               <Activity className="h-3.5 w-3.5" />
               {count.checkedIn}
               {typeof count.expected === "number" && count.expected > 0

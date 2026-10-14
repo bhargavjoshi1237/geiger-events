@@ -173,7 +173,7 @@ export function BillingReceiptsScreen() {
       key: "total",
       header: "Amount",
       align: "right",
-      className: "text-right font-semibold tabular-nums text-white",
+      className: "text-right font-semibold tabular-nums text-foreground dark:text-white",
       render: (o) => currency(o.total),
     },
     {

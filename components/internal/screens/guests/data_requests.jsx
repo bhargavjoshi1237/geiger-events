@@ -199,7 +199,7 @@ export function DataRequestsScreen() {
         <span
           className={cn(
             "text-sm",
-            isOverdue(r) ? "font-medium text-red-400" : "text-text-secondary",
+            isOverdue(r) ? "font-medium text-red-600 dark:text-red-400" : "text-text-secondary",
           )}
         >
           {formatDateTime(r.dueAt)}

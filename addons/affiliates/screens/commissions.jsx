@@ -261,7 +261,7 @@ export function CommissionsScreen() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-red-400 hover:bg-red-500/10"
+                className="text-red-600 dark:text-red-400 hover:bg-red-500/10"
                 disabled={busy || reversible.length === 0}
                 onClick={handleReverse}
               >

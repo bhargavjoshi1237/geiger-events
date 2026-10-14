@@ -254,7 +254,7 @@ function PreLaunchNotes({ eventId, className }) {
                     <p
                       className={cn(
                         "mt-0.5 flex items-center gap-1 text-xs",
-                        overdue ? "text-red-400" : "text-text-tertiary",
+                        overdue ? "text-red-600 dark:text-red-400" : "text-text-tertiary",
                       )}
                     >
                       <CalendarClock className="h-3 w-3" />
@@ -268,7 +268,7 @@ function PreLaunchNotes({ eventId, className }) {
                   size="icon-sm"
                   onClick={() => deleteNote(n.id)}
                   aria-label="Delete checklist item"
-                  className="shrink-0 text-text-tertiary opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                  className="shrink-0 text-text-tertiary opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 group-hover:opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

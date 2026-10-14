@@ -121,7 +121,7 @@ function InclusionRows({ items, onChange }) {
               type="button"
               aria-label="Remove line"
               onClick={() => onChange(items.filter((i) => i.id !== inc.id))}
-              className="p-1 text-text-tertiary transition-colors hover:text-red-400"
+              className="p-1 text-text-tertiary transition-colors hover:text-red-600 dark:hover:text-red-400"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -547,7 +547,7 @@ export function EventPackagesSection({ event, headerItem }) {
                     onClick={() =>
                       setItems(data.items.filter((p) => p.id !== pkg.id))
                     }
-                    className="p-1 text-text-tertiary transition-colors hover:text-red-400"
+                    className="p-1 text-text-tertiary transition-colors hover:text-red-600 dark:hover:text-red-400"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

@@ -284,7 +284,7 @@ function OrdersListView({ tabs }) {
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-sm font-semibold text-emerald-400 tabular-nums">
+                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
                         {currency(o.total)}
                       </p>
                       <p className="text-xs text-text-tertiary">

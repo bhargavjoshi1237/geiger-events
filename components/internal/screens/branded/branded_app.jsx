@@ -261,7 +261,7 @@ function UploadTile({ label, hint, preview, onFile, onClear }) {
         type="button"
         onClick={() => inputRef.current?.click()}
         aria-label={`Upload ${label}`}
-        className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border-strong bg-surface-card transition-colors hover:border-white/40"
+        className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border-strong bg-surface-card transition-colors hover:border-foreground/40 dark:hover:border-white/40"
       >
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -481,7 +481,7 @@ export function BrandedAppScreen() {
                         title={a.name}
                         className={cn(
                           "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-transform hover:scale-105",
-                          on ? "border-white" : "border-transparent",
+                          on ? "border-foreground dark:border-white" : "border-transparent",
                         )}
                         style={{ background: a.value }}
                       >

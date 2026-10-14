@@ -998,7 +998,7 @@ function RoleDrawer({
                 variant="outline"
                 size="sm"
                 aria-label="Delete role"
-                className="text-red-400 hover:text-red-300"
+                className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 onClick={() => {
                   onOpenChange(false);
                   onDelete(role);

@@ -28,7 +28,7 @@ export function OfflineCheckinScreen() {
         <div className="mx-auto flex max-w-lg flex-col items-center gap-5 text-center">
           <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-surface-card text-muted-foreground">
             <CloudOff className="h-6 w-6" />
-            <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-amber-500/20 text-amber-300">
+            <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-amber-500/20 text-amber-700 dark:text-amber-300">
               <Wrench className="h-3 w-3" />
             </span>
           </div>
@@ -52,7 +52,7 @@ export function OfflineCheckinScreen() {
             ))}
           </div>
 
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
             <Wrench className="h-3.5 w-3.5" />
             In progress
           </span>

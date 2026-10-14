@@ -33,6 +33,7 @@ import {
 import { listVenues } from "@/lib/supabase/venues";
 import { venueFullAddress } from "@/components/internal/screens/venues/constants";
 import { useEventConfig } from "@/lib/events/use-event-config";
+import { updateEventMeta } from "@/lib/supabase/events";
 import { EventDatePicker, EventTimeField } from "./date_time_fields";
 import {
   EventMap,
@@ -44,7 +45,7 @@ import {
   GETTING_THERE_GROUPS,
   AROUND_VENUE_GROUPS,
 } from "./event_map";
-import { LocationPicker, LocationModeTabs } from "./location_picker";
+import { LocationPicker, LocationModeTabs, photoKey } from "./location_picker";
 import { resolveEventLocation, geocodeAddress } from "@/lib/map/geo";
 
 function eventAddress(event) {
@@ -141,10 +142,19 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
 
   const detachVenue = () => commit({ venueId: null });
 
-  const handleLocation = ({ address, coords }) => {
+  // The panel photo is keyed to the coords it was found for, so it is saved alongside them and never re-fetched.
+  const handleLocation = ({ address, coords, photo }) => {
     if (address !== undefined) patch({ address });
     if (coords !== undefined) {
-      setMapCfg({ ...mapCfg, coords, ...EMPTY_NEARBY });
+      setMapCfg((prev) => ({ ...prev, coords, ...EMPTY_NEARBY }));
+    }
+    if (photo !== undefined) {
+      setMapCfg((prev) => ({ ...prev, photo }));
+      // Pin already saved: store the photo now (on top of the saved map only, so unsaved edits stay unsaved).
+      const saved = event?.map;
+      if (saved?.coords && photoKey(saved.coords) === photo?.key) {
+        updateEventMeta(event.id, { map: { ...saved, photo } });
+      }
     }
   };
 
@@ -193,6 +203,7 @@ export function LocationTimeSection({ event, headerItem, onPatch, onCommit }) {
           mode={locMode}
           address={event?.address || ""}
           coords={mapCfg.coords}
+          photo={mapCfg.photo}
           onChange={handleLocation}
         />
       )}

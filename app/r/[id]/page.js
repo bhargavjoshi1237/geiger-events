@@ -128,6 +128,7 @@ export default function PublicRecordingPage() {
               alt="Logo"
               width={20}
               height={20}
+              className="geiger-logo"
             />
           </div>
           <span className="truncate text-sm font-semibold text-foreground">

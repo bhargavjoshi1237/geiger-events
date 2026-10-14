@@ -358,7 +358,7 @@ export function StockMovementsScreen() {
       className: "whitespace-nowrap text-right font-semibold tabular-nums",
       headClassName: "whitespace-nowrap",
       render: (m) => (
-        <span className={m.qty < 0 ? "text-red-400" : "text-emerald-400"}>
+        <span className={m.qty < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}>
           {signedQty(m.qty)}
         </span>
       ),

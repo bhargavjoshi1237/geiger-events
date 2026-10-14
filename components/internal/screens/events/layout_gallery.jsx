@@ -331,7 +331,7 @@ export function LayoutGallery({
                       variant="ghost"
                       aria-label={`Delete ${layout.name}`}
                       onClick={() => removeSaved(layout)}
-                      className="ml-auto text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                      className="ml-auto text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

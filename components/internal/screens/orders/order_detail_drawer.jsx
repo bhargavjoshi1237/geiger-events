@@ -173,7 +173,7 @@ function LineRow({ label, value, muted, strong }) {
       <span
         className={
           strong
-            ? "font-semibold tabular-nums text-white"
+            ? "font-semibold tabular-nums text-foreground dark:text-white"
             : "tabular-nums text-foreground"
         }
       >
@@ -462,7 +462,7 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                         </p>
                       </div>
                     </div>
-                    <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-medium capitalize text-emerald-300">
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-medium capitalize text-emerald-700 dark:text-emerald-300">
                       {stripeDetails.intent?.status || stripeDetails.session.payment_status}
                     </span>
                   </div>
@@ -564,7 +564,7 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                       href={stripeDetails.charge.receipt_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-4 flex items-center gap-2 text-xs font-medium text-sky-300 hover:text-sky-200"
+                      className="mt-4 flex items-center gap-2 text-xs font-medium text-sky-700 dark:text-sky-300 hover:text-sky-800 dark:hover:text-sky-200"
                     >
                       <Receipt className="h-3.5 w-3.5" /> View Stripe receipt
                       <ExternalLink className="h-3 w-3" />
@@ -625,7 +625,7 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                 </Button>
                 <Button
                   variant="outline"
-                  className="border-border bg-surface-card text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                  className="border-border bg-surface-card text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
                   disabled={!canCancel}
                   onClick={() => setCancelConfirmOpen(true)}
                 >
@@ -647,7 +647,7 @@ function OrderDrawerBody({ order, eventName, onRefunded, onCancelled }) {
                         <span className="text-foreground">
                           {reasonLabel(r.reasonCode)} · {methodLabel(r.method)}
                         </span>
-                        <span className="font-semibold tabular-nums text-red-300">
+                        <span className="font-semibold tabular-nums text-red-700 dark:text-red-300">
                           -{currency(r.amount)}
                         </span>
                       </div>

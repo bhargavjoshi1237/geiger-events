@@ -620,7 +620,7 @@ export function EventTicketsSection({ event, headerItem }) {
                     variant="ghost"
                     aria-label="Remove group"
                     onClick={() => removeGroup(g.tierId)}
-                    className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                    className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

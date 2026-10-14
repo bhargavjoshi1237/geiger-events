@@ -269,7 +269,7 @@ export function WallDesignSection({ wall, onWallChange }) {
                     variant="outline"
                     aria-label="Remove logo"
                     onClick={() => setLogoUrl("")}
-                    className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                    className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -584,7 +584,7 @@ export function WallDesignSection({ wall, onWallChange }) {
                     variant="outline"
                     aria-label="Remove background"
                     onClick={clearHeaderBg}
-                    className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                    className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>

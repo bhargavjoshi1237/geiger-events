@@ -46,7 +46,7 @@ function NamedList({ label, placeholder, items, onChange }) {
                 type="button"
                 aria-label={`Remove ${it.name}`}
                 onClick={() => onChange(items.filter((x) => x.id !== it.id))}
-                className="text-text-tertiary transition-colors hover:text-red-400"
+                className="text-text-tertiary transition-colors hover:text-red-600 dark:hover:text-red-400"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

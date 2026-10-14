@@ -72,7 +72,7 @@ function RunDetailSheet({ run, workflowName, onClose }) {
             </div>
 
             {run.status === "Failed" && run.error ? (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-300">
+              <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-700 dark:text-red-300">
                 {run.error}
               </div>
             ) : null}
@@ -133,7 +133,7 @@ function RunDetailSheet({ run, workflowName, onClose }) {
                             {s.label || entry?.label || s.type}
                           </p>
                           {s.error ? (
-                            <p className="mt-0.5 text-xs text-red-300">{s.error}</p>
+                            <p className="mt-0.5 text-xs text-red-700 dark:text-red-300">{s.error}</p>
                           ) : (
                             <p className="mt-0.5 text-xs text-text-secondary">
                               {formatDuration(s.durationMs)}

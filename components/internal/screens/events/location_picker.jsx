@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
+import { useTheme } from "next-themes";
 import {
   Search,
   MapPinned,
@@ -11,15 +12,17 @@ import {
   MapPin,
   Copy,
   Check,
+  Camera,
 } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { SegmentedTabs } from "@/components/internal/shared/screen_kit";
 import { Input } from "@geiger/ui/input";
 import { MapZoomControls } from "./event_map";
-import { searchAddresses, reverseGeocode } from "@/lib/map/geo";
+import { searchAddresses, reverseGeocode, fetchLocationPhoto } from "@/lib/map/geo";
+import { loadMapKit } from "@/lib/map/basemap";
 
 const DEFAULT_CENTER = { lat: 25, lng: 5 };
-const TILE = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 const MODES = [
   { value: "search", label: "Search", icon: Search },
@@ -42,8 +45,12 @@ function PickerMap({ coords, onPick }) {
   const elRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const basemapRef = useRef(null);
+  const mountRef = useRef(null);
   const LRef = useRef(null);
   const [ready, setReady] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const scheme = resolvedTheme === "light" ? "light" : "dark";
   const onPickRef = useRef(onPick);
   useEffect(() => {
     onPickRef.current = onPick;
@@ -52,16 +59,16 @@ function PickerMap({ coords, onPick }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const L = (await import("leaflet")).default;
+      const { L, mountBasemap } = await loadMapKit();
       if (cancelled || !elRef.current || mapRef.current) return;
       LRef.current = L;
+      mountRef.current = mountBasemap;
       const start = coords || DEFAULT_CENTER;
       const map = L.map(elRef.current, {
         zoomControl: false,
         scrollWheelZoom: false,
         attributionControl: false,
       }).setView([start.lat, start.lng], coords ? 15 : 3);
-      L.tileLayer(TILE, { subdomains: "abcd", maxZoom: 19 }).addTo(map);
       map.on("click", (e) =>
         onPickRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng }),
       );
@@ -76,10 +83,21 @@ function PickerMap({ coords, onPick }) {
         mapRef.current.remove();
         mapRef.current = null;
         markerRef.current = null;
+        basemapRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Base tiles follow the app theme.
+  useEffect(() => {
+    const L = LRef.current;
+    const map = mapRef.current;
+    if (!ready || !L || !map) return;
+    elRef.current?.classList.toggle("ev-map-light", scheme === "light");
+    if (basemapRef.current) basemapRef.current.setScheme(scheme);
+    else basemapRef.current = mountRef.current(map, scheme);
+  }, [ready, scheme]);
 
   useEffect(() => {
     const L = LRef.current;
@@ -323,8 +341,82 @@ function CoordsInput({ coords, onChange }) {
   );
 }
 
-function SelectedLocationPanel({ address, coords }) {
+export const photoKey = (c) => (c ? `${c.lat.toFixed(5)},${c.lng.toFixed(5)}` : null);
+
+// Photo for the pin: reuses the stored one when it was taken for these coords, otherwise looks it up once and reports it via onFetched for saving.
+function useLocationPhoto(coords, stored, onFetched) {
+  const key = photoKey(coords);
+  const hasStored = !!key && stored?.key === key;
+  const [fetched, setFetched] = useState(null);
+  const onFetchedRef = useRef(onFetched);
+  useEffect(() => {
+    onFetchedRef.current = onFetched;
+  });
+
+  useEffect(() => {
+    if (!key || hasStored) return undefined;
+    let alive = true;
+    const [lat, lng] = key.split(",").map(Number);
+    fetchLocationPhoto(lat, lng).then((p) => {
+      // undefined = the lookup failed; leave it unsaved so it is retried later.
+      if (!alive || p === undefined) return;
+      const next = { key, ...(p || { url: null }) };
+      setFetched(next);
+      onFetchedRef.current?.(next);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [key, hasStored]);
+
+  const photo = hasStored ? stored : fetched?.key === key ? fetched : null;
+  return photo?.url ? photo : null;
+}
+
+function PanelPhoto({ photo }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={photo.url}
+        alt=""
+        aria-hidden
+        onLoad={() => setLoaded(true)}
+        className={cn(
+          "absolute inset-0 -z-10 h-full w-full object-cover transition-opacity duration-500",
+          loaded ? "opacity-100" : "opacity-0",
+        )}
+      />
+      {/* Photo stays visible through the middle; denser at the top and bottom where the text sits. */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-surface-subtle/80 via-surface-subtle/45 via-40% to-surface-subtle/90" />
+    </>
+  );
+}
+
+function PhotoCredit({ photo }) {
+  const credit = [
+    photo.place,
+    photo.distance ? `${photo.distance} m away` : null,
+    photo.author,
+    photo.license,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <p
+      title={credit}
+      className="flex min-w-0 items-center gap-1.5 text-[10px] text-text-tertiary"
+    >
+      <Camera className="h-3 w-3 shrink-0" />
+      <span className="min-w-0 truncate">{credit}</span>
+    </p>
+  );
+}
+
+function SelectedLocationPanel({ address, coords, photo: storedPhoto, onPhoto }) {
   const [copied, setCopied] = useState(false);
+  const photo = useLocationPhoto(coords, storedPhoto, onPhoto);
 
   const copy = () => {
     if (!coords || typeof navigator === "undefined" || !navigator.clipboard)
@@ -338,8 +430,9 @@ function SelectedLocationPanel({ address, coords }) {
   };
 
   return (
-    <aside className="flex flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+    <aside className="relative isolate flex flex-col gap-3 overflow-hidden rounded-xl border border-border bg-surface-subtle p-4">
+      {photo ? <PanelPhoto key={photo.url} photo={photo} /> : null}
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
         Selected location
       </p>
       {coords ? (
@@ -349,28 +442,31 @@ function SelectedLocationPanel({ address, coords }) {
               {address || "Address not set"}
             </p>
           </div>
-          <div className="flex flex-col items-center justify-between h-full py-2">
+          <div className="flex flex-col items-center justify-between h-full pt-2">
             <div className="flex w-full items-center gap-2">
-              <span className="text-xs tabular-nums text-text-secondary">
+              <span className="text-xs tabular-nums text-foreground">
                 {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
               </span>
               <button
                 type="button"
                 onClick={copy}
                 aria-label="Copy coordinates"
-                className="shrink-0 text-text-secondary transition-colors hover:text-foreground ml-auto mr-4"
+                className="shrink-0 text-foreground transition-opacity hover:opacity-80 ml-auto mr-4"
               >
                 {copied ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
                   <Copy className="h-3.5 w-3.5" />
                 )}
               </button>
             </div>           
-             <p className="text-xs text-text-secondary">
-              Drag the pin to adjust, or switch tabs to change how you set the
-              location.
-            </p>
+            <div className="w-full space-y-3">
+              <p className="text-xs text-text-secondary">
+                Drag the pin to adjust, or switch tabs to change how you set the
+                location.
+              </p>
+              {photo ? <PhotoCredit photo={photo} /> : null}
+            </div>
           </div>
 
         </div>
@@ -388,6 +484,7 @@ export function LocationPicker({
   mode = "search",
   address = "",
   coords = null,
+  photo = null,
   onChange,
 }) {
   const emit = (patch) => onChange?.(patch);
@@ -423,7 +520,12 @@ export function LocationPicker({
 
       <div className="grid gap-4 lg:grid-cols-[7fr_3fr]">
         <PickerMap coords={coords} onPick={handlePick} />
-        <SelectedLocationPanel address={address} coords={coords} />
+        <SelectedLocationPanel
+          address={address}
+          coords={coords}
+          photo={photo}
+          onPhoto={(p) => emit({ photo: p })}
+        />
       </div>
     </div>
   );

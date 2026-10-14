@@ -136,7 +136,7 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, co
             className="h-12 text-center text-lg tracking-[0.4em]"
             aria-label="Access code"
           />
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
           <Button
             type="submit"
             disabled={checking}

@@ -65,7 +65,7 @@ function NoteCard({ note, index, total, onPatch, onRemove }) {
           disabled={total <= 1}
           onClick={() => onRemove(note.id)}
           aria-label="Remove note"
-          className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
+          className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30"
         >
           <Trash2 className="h-4 w-4" />
         </Button>

@@ -248,7 +248,7 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
                         {ticketCode(a.id)}
                       </Badge>
                       {a.status === "Waitlisted" ? (
-                        <span className="text-[11px] font-medium uppercase tracking-wide text-amber-400">
+                        <span className="text-[11px] font-medium uppercase tracking-wide text-amber-600 dark:text-amber-400">
                           Waitlisted
                         </span>
                       ) : null}
@@ -259,7 +259,7 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
                     </p>
                   </div>
                   {isIn ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-300">
                       <CheckCircle2 className="h-4 w-4" /> Checked in
                     </span>
                   ) : (

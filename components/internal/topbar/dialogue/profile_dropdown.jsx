@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { getUser, invalidateUserCache } from "@/lib/supabase/user";
 import { createClient } from "@/lib/supabase/client";
+import { isPlaygroundActive } from "@/lib/playground/mode";
 import { useOptionalProject } from "@/context/project-context";
 import { Button } from "@geiger/ui/button";
 
@@ -50,7 +51,8 @@ export function ProfileDropdown({ children }) {
     });
   }, []);
 
-  const pfpUrl = user?.id
+  // The playground's seeded people have no uploaded photo, so they keep the initials fallback.
+  const pfpUrl = user?.id && !isPlaygroundActive()
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/pfp/${user.id}/latest.jpg`
     : null;
 
@@ -197,9 +199,9 @@ export function ProfileDropdown({ children }) {
 
             <DropdownMenuItem
               onSelect={handleSignOut}
-              className={`${itemBaseStyle} text-muted-foreground hover:bg-red-500/10 focus:bg-red-500/10 hover:text-red-400 focus:text-red-400 group`}
+              className={`${itemBaseStyle} text-muted-foreground hover:bg-red-500/10 focus:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 focus:text-red-600 dark:focus:text-red-400 group`}
             >
-              <LogOut className="size-4 group-hover:text-red-400 group-focus:text-red-400" />
+              <LogOut className="size-4 group-hover:text-red-600 dark:group-hover:text-red-400 group-focus:text-red-600 dark:group-focus:text-red-400" />
               <span>Sign out</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>

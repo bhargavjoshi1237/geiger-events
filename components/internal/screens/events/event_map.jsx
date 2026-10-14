@@ -32,6 +32,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { fetchWeather } from "@/lib/map/geo";
+import { loadMapKit } from "@/lib/map/basemap";
 
 export function MapZoomControls({ onZoomIn, onZoomOut, className }) {
   return (
@@ -63,11 +64,6 @@ export function MapZoomControls({ onZoomIn, onZoomOut, className }) {
 }
 
 const DEFAULT_CENTER = { lat: 25, lng: 5 };
-
-const TILES = {
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-};
 
 function brightnessOf(color) {
   let raw = String(color || "").trim();
@@ -129,7 +125,7 @@ export function EventMap({
   address = "",
 }) {
   const containerRef = useRef(null);
-  const tileRef = useRef(null);
+  const basemapRef = useRef(null);
   const elRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef(null);
@@ -142,7 +138,7 @@ export function EventMap({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const L = (await import("leaflet")).default;
+      const { L, mountBasemap } = await loadMapKit();
       if (cancelled || !elRef.current || mapInstanceRef.current) return;
       LRef.current = L;
       const map = L.map(elRef.current, {
@@ -151,10 +147,7 @@ export function EventMap({
         attributionControl: false,
       }).setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 2);
       const initial = detectScheme(containerRef.current) || "dark";
-      tileRef.current = L.tileLayer(TILES[initial] || TILES.dark, {
-        subdomains: "abcd",
-        maxZoom: 19,
-      }).addTo(map);
+      basemapRef.current = mountBasemap(map, initial);
       markersRef.current = L.layerGroup().addTo(map);
       mapInstanceRef.current = map;
       setReady(true);
@@ -169,7 +162,7 @@ export function EventMap({
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         markersRef.current = null;
-        tileRef.current = null;
+        basemapRef.current = null;
       }
     };
   }, []);
@@ -180,7 +173,7 @@ export function EventMap({
     if (!el || !next) return;
     el.classList.toggle("ev-map-light", next === "light");
     el.classList.toggle("ev-map-dark", next === "dark");
-    tileRef.current?.setUrl(TILES[next]);
+    basemapRef.current?.setScheme(next);
   });
 
   useEffect(() => {
@@ -398,15 +391,15 @@ function NearbyRow({ item, accentClass }) {
 }
 
 export const GETTING_THERE_GROUPS = [
-  { key: "nearbyTransit", label: "Public transport", accentClass: "text-sky-400" },
-  { key: "nearbyParking", label: "Parking", accentClass: "text-amber-400" },
-  { key: "nearbyBike", label: "Cycling", accentClass: "text-emerald-400" },
-  { key: "nearbyTaxi", label: "Taxi", accentClass: "text-yellow-400" },
-  { key: "nearbyCharging", label: "EV charging", accentClass: "text-lime-400" },
+  { key: "nearbyTransit", label: "Public transport", accentClass: "text-sky-600 dark:text-sky-400" },
+  { key: "nearbyParking", label: "Parking", accentClass: "text-amber-600 dark:text-amber-400" },
+  { key: "nearbyBike", label: "Cycling", accentClass: "text-emerald-600 dark:text-emerald-400" },
+  { key: "nearbyTaxi", label: "Taxi", accentClass: "text-yellow-600 dark:text-yellow-400" },
+  { key: "nearbyCharging", label: "EV charging", accentClass: "text-lime-600 dark:text-lime-400" },
 ];
 export const AROUND_VENUE_GROUPS = [
-  { key: "nearbyHotels", label: "Hotels", accentClass: "text-violet-400" },
-  { key: "nearbyFood", label: "Food & drink", accentClass: "text-orange-400" },
+  { key: "nearbyHotels", label: "Hotels", accentClass: "text-violet-600 dark:text-violet-400" },
+  { key: "nearbyFood", label: "Food & drink", accentClass: "text-orange-600 dark:text-orange-400" },
 ];
 
 const ALL_NEARBY_GROUPS = [...GETTING_THERE_GROUPS, ...AROUND_VENUE_GROUPS];
@@ -586,7 +579,7 @@ export function WeatherCard({ coords, date, className }) {
     .join(" - ");
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-sky-300">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-sky-700 dark:text-sky-300">
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0">

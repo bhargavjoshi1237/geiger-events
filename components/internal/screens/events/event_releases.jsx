@@ -672,7 +672,7 @@ function BulkWavesCard({ list, wavesOf, drafts, onBulkCopy, onBulkRemove, onSpli
                     onBulkRemove(pickedIds);
                     setPicked(new Set());
                   }}
-                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Remove waves from{" "}
                   {pickedIds.length ? pickedIds.length : "…"}
@@ -875,7 +875,7 @@ function TicketWaveCard({
                   <ConfirmButton
                     size="sm"
                     onConfirm={() => onRemove(ticket.id)}
-                    className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                    className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" /> Remove waves
                   </ConfirmButton>

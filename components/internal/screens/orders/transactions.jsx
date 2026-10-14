@@ -211,7 +211,7 @@ export function TransactionsScreen() {
       align: "right",
       className: "text-right font-semibold tabular-nums",
       render: (t) => (
-        <span className={t.amount < 0 ? "text-red-300" : "text-emerald-400"}>
+        <span className={t.amount < 0 ? "text-red-700 dark:text-red-300" : "text-emerald-600 dark:text-emerald-400"}>
           {t.amount < 0 ? `-${currency(Math.abs(t.amount))}` : currency(t.amount)}
         </span>
       ),

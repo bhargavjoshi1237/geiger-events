@@ -1,12 +1,12 @@
 
 export const ADDON_ACCENTS = {
-  violet: { text: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20" },
-  blue: { text: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-  emerald: { text: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-  amber: { text: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-  rose: { text: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
-  cyan: { text: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
-  slate: { text: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/20" },
+  violet: { text: "text-violet-600 dark:text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20" },
+  blue: { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+  emerald: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  amber: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+  rose: { text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+  cyan: { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
+  slate: { text: "text-slate-600 dark:text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/20" },
 };
 
 export const DEFAULT_ACCENT = "slate";

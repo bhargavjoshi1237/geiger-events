@@ -613,7 +613,7 @@ export function InventoryItemsScreen() {
         return (
           <span
             className={
-              available < 0 ? "font-semibold text-red-400" : "text-text-secondary"
+              available < 0 ? "font-semibold text-red-600 dark:text-red-400" : "text-text-secondary"
             }
           >
             {qty(available)}
@@ -641,7 +641,7 @@ export function InventoryItemsScreen() {
       key: "value",
       header: "Value",
       align: "right",
-      className: "whitespace-nowrap text-right font-semibold tabular-nums text-white",
+      className: "whitespace-nowrap text-right font-semibold tabular-nums text-foreground dark:text-white",
       headClassName: "whitespace-nowrap",
       render: (row) =>
         currency(

@@ -83,7 +83,7 @@ export function EventsHomeScreen() {
       key: "revenue",
       header: "Revenue",
       align: "right",
-      className: "text-right font-semibold tabular-nums text-white",
+      className: "text-right font-semibold tabular-nums text-foreground dark:text-white",
       render: (e) => currency(e.revenue),
     },
   ];

@@ -25,6 +25,7 @@ import {
   logActivity,
   syncTeam,
 } from "@/lib/supabase/team";
+import { notifyTeamRemoved, notifyTeamRoleChanged } from "@/lib/notifications/client";
 import { DEFAULT_SEAT_LIMIT } from "../constants";
 
 // Everything the Team & Members screen knows about the roster: the rows it
@@ -32,7 +33,7 @@ import { DEFAULT_SEAT_LIMIT } from "../constants";
 // itself keeps only view state (tab, search, filters, which panel is open) and
 // renders what this returns.
 export function useTeam() {
-  const { projectId } = useProject();
+  const { projectId, project } = useProject();
   const { can, userId: myUserId, refresh: refreshRbac } = useRbac();
 
   const canInvite = can("events.team.invite");
@@ -233,6 +234,13 @@ export function useTeam() {
       }
     }
     audit("role_changed", member, { role: roleById[roleId]?.name });
+    notifyTeamRoleChanged({
+      userId: member.userId,
+      actorId: myUserId,
+      projectId,
+      projectName: project?.name,
+      role: roleById[roleId]?.name || "updated",
+    });
   };
 
   // Scope is the half of authorization customers own: the catalog says a
@@ -319,6 +327,7 @@ export function useTeam() {
     const ok = await softDeleteMember(member.id);
     if (ok) {
       audit("removed", member);
+      notifyTeamRemoved({ userId: member.userId, actorId: myUserId, projectId, projectName: project?.name });
       toast.success("Member removed");
       return true;
     }

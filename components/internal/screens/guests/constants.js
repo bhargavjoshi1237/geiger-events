@@ -79,10 +79,10 @@ export const DATA_REQUEST_STATUS_FILTER_OPTIONS = [
 
 // Communication-history channel -> icon + tint.
 export const ACTIVITY_CHANNEL_MAP = {
-  Email: { label: "Email", icon: Mail, tint: "text-sky-400" },
-  SMS: { label: "SMS", icon: MessageSquare, tint: "text-emerald-400" },
-  Call: { label: "Call", icon: Phone, tint: "text-violet-300" },
-  Note: { label: "Note", icon: StickyNote, tint: "text-amber-400" },
+  Email: { label: "Email", icon: Mail, tint: "text-sky-600 dark:text-sky-400" },
+  SMS: { label: "SMS", icon: MessageSquare, tint: "text-emerald-600 dark:text-emerald-400" },
+  Call: { label: "Call", icon: Phone, tint: "text-violet-700 dark:text-violet-300" },
+  Note: { label: "Note", icon: StickyNote, tint: "text-amber-600 dark:text-amber-400" },
   System: { label: "System", icon: Settings2, tint: "text-text-tertiary" },
 };
 
@@ -115,11 +115,11 @@ export const SEGMENT_OP_LABELS = {
 // Segment pill colors -> tailwind classes (/10 bg + /20 border), semantic tints.
 export const SEGMENT_COLOR_MAP = {
   slate: "border-border bg-surface-card text-muted-foreground",
-  emerald: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
-  sky: "border-sky-500/20 bg-sky-500/10 text-sky-400",
-  amber: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-  violet: "border-violet-500/20 bg-violet-500/10 text-violet-300",
-  rose: "border-rose-500/20 bg-rose-500/10 text-rose-300",
+  emerald: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  sky: "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  amber: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  violet: "border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  rose: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
 };
 
 export const SEGMENT_COLOR_OPTIONS = [

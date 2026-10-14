@@ -27,17 +27,17 @@ export default function Pallet() {
         <div className="max-w-6xl mx-auto space-y-16">
           <div className="space-y-4 border-b border-border pb-8 pt-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-card border border-border mb-4">
-               <div className="w-2 h-2 rounded-full bg-white"></div>
+               <div className="w-2 h-2 rounded-full bg-foreground dark:bg-white"></div>
                <span className="text-xs font-medium text-muted-foreground">Design System</span>
             </div>
-            <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-white">Dark Mode Theme Palette</h1>
+            <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-foreground dark:text-white">Dark Mode Theme Palette</h1>
             <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
               A carefully curated, lighter dark style starting at #161616 minimum brightness. Use these progressive shades to build hierarchy, depth, and contrast in interfaces.
             </p>
           </div>
           <section className="space-y-6">
             <div className="space-y-1">
-              <h2 className="text-xl font-medium text-white flex items-center gap-2">
+              <h2 className="text-xl font-medium text-foreground dark:text-white flex items-center gap-2">
                 <Layers className="h-5 w-5 text-text-secondary" />
                 Surfaces & Borders
               </h2>
@@ -53,7 +53,7 @@ export default function Pallet() {
                   </div>
                   <div className="p-4">
                     <div className="flex items-center justify-between font-mono text-sm mb-1">
-                      <span className="text-white font-medium">{color.hex}</span>
+                      <span className="text-foreground dark:text-white font-medium">{color.hex}</span>
                     </div>
                     <h3 className="text-sm font-medium text-foreground mb-1">{color.name}</h3>
                     <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{color.desc}</p>
@@ -64,7 +64,7 @@ export default function Pallet() {
           </section>
           <section className="space-y-6">
             <div className="space-y-1">
-              <h2 className="text-xl font-medium text-white flex items-center gap-2">
+              <h2 className="text-xl font-medium text-foreground dark:text-white flex items-center gap-2">
                 <Type className="h-5 w-5 text-text-secondary" />
                 Typography
               </h2>
@@ -81,7 +81,7 @@ export default function Pallet() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-medium text-white">{color.name}</h3>
+                      <h3 className="text-sm font-medium text-foreground dark:text-white">{color.name}</h3>
                       <span className="text-xs font-mono text-muted-foreground bg-surface-hover px-1.5 py-0.5 rounded">{color.hex}</span>
                     </div>
                     <p className="text-xs text-text-secondary">{color.desc}</p>
@@ -93,7 +93,7 @@ export default function Pallet() {
 
           <section className="space-y-6">
             <div className="space-y-1">
-              <h2 className="text-xl font-medium text-white flex items-center gap-2">
+              <h2 className="text-xl font-medium text-foreground dark:text-white flex items-center gap-2">
                 <AppWindow className="h-5 w-5 text-text-secondary" />
                 UI Example Application
               </h2>
@@ -108,11 +108,11 @@ export default function Pallet() {
                 <div className="w-full max-w-lg bg-surface-card border border-border rounded-xl overflow-hidden shadow-2xl flex flex-col">
                   <div className="px-5 py-4 border-b border-border bg-surface-card flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-md bg-surface-hover border border-border flex items-center justify-center text-white">
+                      <div className="w-8 h-8 rounded-md bg-surface-hover border border-border flex items-center justify-center text-foreground dark:text-white">
                         <Settings className="w-4 h-4" />
                       </div>
                       <div>
-                        <h3 className="text-white font-medium text-sm">Application Settings</h3>
+                        <h3 className="text-foreground dark:text-white font-medium text-sm">Application Settings</h3>
                         <p className="text-xs text-muted-foreground">Manage core configuration</p>
                       </div>
                     </div>
@@ -122,7 +122,7 @@ export default function Pallet() {
                       <Label className="text-sm font-medium text-foreground">Framework Name</Label>
                       <Input
                         defaultValue="geiger-events"
-                        className="bg-background border-border text-white placeholder:text-text-secondary focus-visible:ring-0 focus-visible:border-border-strong"
+                        className="bg-background border-border text-foreground dark:text-white placeholder:text-text-secondary focus-visible:ring-0 focus-visible:border-border-strong"
                       />
                     </div>
 
@@ -150,7 +150,7 @@ export default function Pallet() {
                     <Button variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 px-3 py-2">
                       Cancel
                     </Button>
-                    <Button className="bg-white text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e5e5e5] transition-colors duration-200 flex items-center gap-2">
+                    <Button className="bg-primary text-primary-foreground dark:bg-white dark:text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 dark:hover:bg-[#e5e5e5] transition-colors duration-200 flex items-center gap-2">
                       Save Changes
                     </Button>
                   </div>

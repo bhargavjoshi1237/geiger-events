@@ -341,7 +341,7 @@ export function CustomDomainsScreen() {
               size="sm"
               onClick={handleSubdomainRemove}
               disabled={removing}
-              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
             >
               {removing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -424,7 +424,7 @@ export function CustomDomainsScreen() {
                 </span>
               </div>
               {check.reason ? (
-                <p className="text-xs text-red-400">{check.reason}</p>
+                <p className="text-xs text-red-600 dark:text-red-400">{check.reason}</p>
               ) : null}
             </Field>
             <Button
@@ -644,7 +644,7 @@ function DomainsTable({
             <ShieldCheck
               className={cn(
                 "h-3.5 w-3.5",
-                d.sslStatus === "valid" ? "text-emerald-400" : "text-amber-400",
+                d.sslStatus === "valid" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
               )}
             />
             {d.sslStatus === "valid" ? "Active" : "Provisioning"}

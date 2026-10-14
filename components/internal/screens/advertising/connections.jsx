@@ -177,7 +177,7 @@ export function ConnectionsScreen() {
                   {connected ? (
                     <Button
                       variant="outline"
-                      className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                      className="border-border bg-transparent text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
                       onClick={() => setDisconnectTarget(platform)}
                     >
                       Disconnect

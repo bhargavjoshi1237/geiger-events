@@ -356,7 +356,7 @@ export function SlideInspector({ slide, sessions, eventId, onChange, onDelete })
       <Button
         variant="ghost"
         onClick={() => onDelete(slide)}
-        className="mt-auto justify-start text-red-300 hover:bg-red-500/10 hover:text-red-300"
+        className="mt-auto justify-start text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
       >
         <Trash2 className="h-4 w-4" /> Remove this slide
       </Button>

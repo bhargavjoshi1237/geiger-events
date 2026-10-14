@@ -88,7 +88,7 @@ export function ChipsInput({ value, onChange, placeholder }) {
                 type="button"
                 onClick={() => remove(item)}
                 aria-label={`Remove ${item}`}
-                className="text-text-secondary transition-colors hover:text-red-300"
+                className="text-text-secondary transition-colors hover:text-red-700 dark:hover:text-red-300"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -182,7 +182,7 @@ function ImageField({ field, value, onValue, values }) {
               variant="outline"
               size="sm"
               onClick={remove}
-              className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
+              className="border-border bg-transparent text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
             >
               <Trash2 className="h-4 w-4" /> Remove
             </Button>
@@ -511,7 +511,7 @@ export function CoverImageCard({ record, commit, upload, aspect = "aspect-[16/9]
               variant="outline"
               size="sm"
               onClick={remove}
-              className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
+              className="border-border bg-transparent text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
             >
               <Trash2 className="h-4 w-4" /> Remove
             </Button>

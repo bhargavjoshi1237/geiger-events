@@ -2,15 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
+import { useTheme } from "next-themes";
 
 import { MapZoomControls } from "@/components/internal/screens/events/event_map";
+import { loadMapKit } from "@/lib/map/basemap";
 
-// Results map for the Discover tab. Built on the same dark, key-less base as the
-// suite's venue location map (EventMap) — CARTO "dark_all" tiles + the shared
-// MapZoomControls — so it feels native. Vanilla Leaflet is loaded lazily inside
-// the effect so it never touches `window` during SSR (mounted via next/dynamic
-// { ssr: false }). Each result is a divIcon pin; the active card highlights its
-// pin and clicking a pin selects the card.
+// Discover-tab results map on the shared key-less basemap (lib/map/basemap) + MapZoomControls; Leaflet loads lazily so SSR never touches window.
 
 // A round pin matching EventMap's venue marker; emerald + larger when active.
 function pinIcon(L, active) {
@@ -31,8 +28,12 @@ export default function VenueMap({ center, results = [], activeId, onSelect }) {
   const LRef = useRef(null);
   const layerRef = useRef(null);
   const markersRef = useRef(null);
+  const basemapRef = useRef(null);
+  const mountRef = useRef(null);
   const onSelectRef = useRef(onSelect);
   const [ready, setReady] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const scheme = resolvedTheme === "light" ? "light" : "dark";
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -76,17 +77,14 @@ export default function VenueMap({ center, results = [], activeId, onSelect }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const L = (await import("leaflet")).default;
+      const { L, mountBasemap } = await loadMapKit();
       if (cancelled || !elRef.current || mapRef.current) return;
       LRef.current = L;
+      mountRef.current = mountBasemap;
       const map = L.map(elRef.current, {
         zoomControl: false,
         attributionControl: false,
       }).setView([20, 0], 2);
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        { subdomains: "abcd", maxZoom: 19 },
-      ).addTo(map);
       layerRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
       if (!cancelled) setReady(true);
@@ -97,9 +95,20 @@ export default function VenueMap({ center, results = [], activeId, onSelect }) {
         mapRef.current.remove();
         mapRef.current = null;
         markersRef.current = null;
+        basemapRef.current = null;
       }
     };
   }, []);
+
+  // Base tiles follow the app theme.
+  useEffect(() => {
+    const L = LRef.current;
+    const map = mapRef.current;
+    if (!ready || !L || !map) return;
+    elRef.current?.classList.toggle("ev-map-light", scheme === "light");
+    if (basemapRef.current) basemapRef.current.setScheme(scheme);
+    else basemapRef.current = mountRef.current(map, scheme);
+  }, [ready, scheme]);
 
   useEffect(() => {
     if (ready) draw();

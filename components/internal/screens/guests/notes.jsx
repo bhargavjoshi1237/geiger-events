@@ -340,7 +340,7 @@ export function NotesScreen() {
                         size="icon-sm"
                         variant="ghost"
                         aria-label="Delete note"
-                        className="-mr-1 shrink-0 text-text-tertiary hover:bg-red-500/10 hover:text-red-300"
+                        className="-mr-1 shrink-0 text-text-tertiary hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
                         onClick={() => handleDeleteNote(openPerson.contactId, n.id)}
                       >
                         <Trash2 className="h-4 w-4" />

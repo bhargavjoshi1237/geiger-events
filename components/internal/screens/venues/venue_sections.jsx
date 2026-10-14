@@ -632,7 +632,7 @@ function MediaSection({ venue, commit }) {
                 variant="outline"
                 size="sm"
                 onClick={removeCover}
-                className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                className="border-border bg-transparent text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
               >
                 <Trash2 className="h-4 w-4" /> Remove
               </Button>
@@ -673,7 +673,7 @@ function MediaSection({ venue, commit }) {
                 type="button"
                 onClick={() => removeGalleryImage(url)}
                 aria-label="Remove photo"
-                className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-md bg-background/80 text-red-300 opacity-0 transition-opacity hover:bg-background group-hover:opacity-100"
+                className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-md bg-background/80 text-red-700 dark:text-red-300 opacity-0 transition-opacity hover:bg-background group-hover:opacity-100"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>

@@ -67,7 +67,7 @@ function StepCard({ step, index, onChange, onRemove, removable }) {
           size="icon"
           variant="ghost"
           disabled={!removable}
-          className="h-8 w-8 text-text-tertiary hover:text-red-300"
+          className="h-8 w-8 text-text-tertiary hover:text-red-700 dark:hover:text-red-300"
           onClick={onRemove}
           aria-label="Remove step"
         >

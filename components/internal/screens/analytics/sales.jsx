@@ -182,7 +182,7 @@ export function SalesScreen() {
         return (
           <div className="flex min-w-36 items-center gap-2">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-strong">
-              <div className="h-full rounded-full bg-[#ededed]" style={{ width: `${Math.min(100, pct)}%` }} />
+              <div className="h-full rounded-full bg-foreground dark:bg-[#ededed]" style={{ width: `${Math.min(100, pct)}%` }} />
             </div>
             <span className="text-xs tabular-nums text-text-secondary">{pct}%</span>
           </div>
@@ -463,7 +463,7 @@ export function CrossEventScreen() {
             roam: false,
             nodeClick: "zoomToNode",
             breadcrumb: { show: false },
-            label: { show: true, color: "#e7e7e7", fontSize: 11, formatter: "{b}\n${c}" },
+            label: { show: true, color: "white", fontSize: 11, formatter: "{b}\n${c}" },
             upperLabel: { show: false },
             itemStyle: { borderColor: "#161616", borderWidth: 3, gapWidth: 3, borderRadius: 8 },
             levels: [{ itemStyle: { borderWidth: 0 } }],

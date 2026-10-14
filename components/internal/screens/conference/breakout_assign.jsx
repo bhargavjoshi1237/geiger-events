@@ -239,7 +239,7 @@ export function BreakoutAssign({ record }) {
           </div>
 
           {unassigned.length ? (
-            <p className="text-xs text-amber-400">
+            <p className="text-xs text-amber-600 dark:text-amber-400">
               {unassigned.length} attendee{unassigned.length === 1 ? "" : "s"} didn&apos;t fit:{" "}
               {unassigned.slice(0, 6).map((m) => m.name).join(", ")}
               {unassigned.length > 6 ? ` and ${unassigned.length - 6} more` : ""}. Add capacity or
@@ -255,7 +255,7 @@ export function BreakoutAssign({ record }) {
         description="One countdown shared by every room in this round."
         action={
           timer.running ? (
-            <span className="font-mono text-lg font-semibold tabular-nums text-emerald-400">
+            <span className="font-mono text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
               {formatCountdown(timer.secondsRemaining)}
             </span>
           ) : (

@@ -354,7 +354,7 @@ export function CaptionsTranscriptionScreen() {
       header: "Status",
       render: (j) =>
         j.status === "Processing" ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing…
           </span>
         ) : (
@@ -384,7 +384,7 @@ export function CaptionsTranscriptionScreen() {
             variant="ghost"
             size="icon-sm"
             aria-label="Clear job"
-            className="text-muted-foreground hover:bg-red-500/10 hover:text-red-300"
+            className="text-muted-foreground hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
             onClick={() => setClearTarget(j)}
           >
             <X className="h-4 w-4" />

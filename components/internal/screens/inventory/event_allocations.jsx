@@ -318,7 +318,7 @@ function AllocateDialog({
                   onSpecChange={setAudience}
                 />
                 {unsupportedAudience ? (
-                  <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
                     Tag and segment filters can&apos;t be checked at the issuing
                     desk, so this audience would entitle nobody. Target by ticket,
                     add-on or named buyers instead.
@@ -844,7 +844,7 @@ export function EventAllocationsScreen() {
       headClassName: "whitespace-nowrap",
       render: (a) =>
         a.shortfall > 0 ? (
-          <span className="font-semibold text-red-400">-{qty(a.shortfall)}</span>
+          <span className="font-semibold text-red-600 dark:text-red-400">-{qty(a.shortfall)}</span>
         ) : (
           <span className="text-text-tertiary">—</span>
         ),

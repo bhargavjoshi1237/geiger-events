@@ -28,12 +28,12 @@ const DEFAULT_WINDOW = { from: 8 * 60, to: 18 * 60 };
 const MIN_BLOCK_MIN = 30;
 
 const TRACK_STYLES = [
-  { bar: "bg-orange-400", tint: "bg-orange-500/10", text: "text-orange-300" },
-  { bar: "bg-sky-400", tint: "bg-sky-500/10", text: "text-sky-300" },
-  { bar: "bg-violet-400", tint: "bg-violet-500/10", text: "text-violet-300" },
-  { bar: "bg-emerald-400", tint: "bg-emerald-500/10", text: "text-emerald-300" },
-  { bar: "bg-amber-400", tint: "bg-amber-500/10", text: "text-amber-300" },
-  { bar: "bg-pink-400", tint: "bg-pink-500/10", text: "text-pink-300" },
+  { bar: "bg-orange-400", tint: "bg-orange-500/10", text: "text-orange-700 dark:text-orange-300" },
+  { bar: "bg-sky-400", tint: "bg-sky-500/10", text: "text-sky-700 dark:text-sky-300" },
+  { bar: "bg-violet-400", tint: "bg-violet-500/10", text: "text-violet-700 dark:text-violet-300" },
+  { bar: "bg-emerald-400", tint: "bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-300" },
+  { bar: "bg-amber-400", tint: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-300" },
+  { bar: "bg-pink-400", tint: "bg-pink-500/10", text: "text-pink-700 dark:text-pink-300" },
 ];
 
 export const trackStyle = (i) => TRACK_STYLES[((i % 6) + 6) % 6];
@@ -58,7 +58,7 @@ function ConflictBanner({ pairs, onEdit }) {
   if (!pairs.length) return null;
   return (
     <div className="space-y-2 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3">
-      <div className="flex items-center gap-2 text-sm font-medium text-amber-300">
+      <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
         <AlertTriangle className="h-4 w-4" />
         {pairs.length} double-booking{pairs.length === 1 ? "" : "s"} on this day
       </div>
@@ -66,16 +66,16 @@ function ConflictBanner({ pairs, onEdit }) {
         {pairs.map((pair) => (
           <div
             key={`${pair.kind}-${pair.a.id}-${pair.b.id}`}
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-amber-200/90"
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-amber-800/90 dark:text-amber-200/90"
           >
             <span className="font-medium">{pair.value}</span>
-            <span className="text-amber-200/60">
+            <span className="text-amber-800/60 dark:text-amber-200/60">
               is booked for {pair.a.name} and {pair.b.name} at the same time
             </span>
             <button
               type="button"
               onClick={() => onEdit(pair.b)}
-              className="rounded-md bg-amber-400/20 px-2 py-0.5 font-medium text-amber-100 transition-colors hover:bg-amber-400/30"
+              className="rounded-md bg-amber-400/20 px-2 py-0.5 font-medium text-amber-900 dark:text-amber-100 transition-colors hover:bg-amber-400/30"
             >
               Move {pair.b.name}
             </button>
@@ -127,7 +127,7 @@ function SessionBlock({ session, top, height, style, conflicted, onEdit, onDelet
             e.stopPropagation();
             onDelete(session);
           }}
-          className="shrink-0 rounded p-0.5 text-text-tertiary opacity-0 transition-opacity hover:text-red-400 focus-visible:opacity-100 group-hover:opacity-100"
+          className="shrink-0 rounded p-0.5 text-text-tertiary opacity-0 transition-opacity hover:text-red-600 dark:hover:text-red-400 focus-visible:opacity-100 group-hover:opacity-100"
         >
           <Trash2 className="h-3 w-3" />
         </button>
@@ -137,7 +137,7 @@ function SessionBlock({ session, top, height, style, conflicted, onEdit, onDelet
           <p
             className={cn(
               "truncate text-[11px] tabular-nums",
-              conflicted ? "text-amber-300" : style.text,
+              conflicted ? "text-amber-700 dark:text-amber-300" : style.text,
             )}
           >
             {minutesToLabel(start)} – {minutesToLabel(end)}

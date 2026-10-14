@@ -129,7 +129,7 @@ function BundleItemsSection({ config, setConfig }) {
                   size="icon-sm"
                   aria-label={`Remove ${ticketName[it.ticketTypeId] || "item"}`}
                   onClick={() => removeItem(idx)}
-                  className="mb-1 text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                  className="mb-1 text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

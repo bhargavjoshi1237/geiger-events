@@ -250,7 +250,7 @@ export function FillDialog({
                       variant="outline"
                       disabled={busy}
                       onClick={() => setLogoFile(null)}
-                      className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                      className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" /> Remove
                     </Button>

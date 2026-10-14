@@ -19,8 +19,8 @@ import { portalFetch } from "@/lib/portal/portal_fetch";
 const ROUND_POLL_MS = 5000;
 
 const STATE_STYLES = {
-  Live: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
-  "Opening soon": "border-amber-500/20 bg-amber-500/10 text-amber-400",
+  Live: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  "Opening soon": "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   Scheduled: "border-border bg-surface-card text-text-secondary",
   Manual: "border-border bg-surface-card text-text-secondary",
 };
@@ -153,7 +153,7 @@ function RoundRail({ parentSessionId }) {
         <p
           className={cn(
             "mt-1 font-mono text-3xl font-semibold tabular-nums",
-            timer.running ? "text-emerald-400" : "text-text-tertiary",
+            timer.running ? "text-emerald-600 dark:text-emerald-400" : "text-text-tertiary",
           )}
         >
           {formatCountdown(timer.secondsRemaining)}

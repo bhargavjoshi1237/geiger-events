@@ -170,7 +170,7 @@ export function RegistrationDrawer({
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
+            className="text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
             onClick={() => onDelete(reg)}
           >
             <Trash2 className="h-4 w-4" /> Remove

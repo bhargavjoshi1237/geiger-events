@@ -129,8 +129,8 @@ function ModeBadge({ mode }) {
       className={cn(
         "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium",
         open
-          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-          : "border-sky-500/20 bg-sky-500/10 text-sky-400",
+          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          : "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400",
       )}
     >
       {open ? <Radio className="h-2.5 w-2.5" /> : <Megaphone className="h-2.5 w-2.5" />}
@@ -491,7 +491,7 @@ function ThreadParticipantsDialog({ open, onOpenChange, projectId, channel }) {
                       </span>
                       <span className="truncate text-sm text-foreground">Member</span>
                       {p.muted ? (
-                        <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                        <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
                           Muted
                         </span>
                       ) : null}
@@ -511,7 +511,7 @@ function ThreadParticipantsDialog({ open, onOpenChange, projectId, channel }) {
                         size="icon-sm"
                         aria-label="Remove"
                         onClick={() => remove(p)}
-                        className="text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                        className="text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                       >
                         <UserMinus className="h-4 w-4" />
                       </Button>

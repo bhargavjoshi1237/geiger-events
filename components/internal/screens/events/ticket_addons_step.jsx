@@ -33,7 +33,7 @@ export function SlotPicker({ slots, slotsSold, ticketId, qty, selectedId, onSele
       <p className="flex items-center gap-2 text-sm font-medium text-foreground">
         <Clock className="h-4 w-4 text-muted-foreground" />
         {label || "Choose your time"}
-        <span className="ml-1 text-red-400">*</span>
+        <span className="ml-1 text-red-600 dark:text-red-400">*</span>
       </p>
       <div className="space-y-2">
         {slots.map((s) => {
@@ -81,9 +81,9 @@ export function SlotPicker({ slots, slotsSold, ticketId, qty, selectedId, onSele
                     </span>
                   ) : null}
                   {status.waitlisted ? (
-                    <span className="text-amber-400">Waitlist</span>
+                    <span className="text-amber-600 dark:text-amber-400">Waitlist</span>
                   ) : Number.isFinite(remaining) && remaining <= 10 ? (
-                    <span className={disabled ? "text-red-400" : "text-text-tertiary"}>
+                    <span className={disabled ? "text-red-600 dark:text-red-400" : "text-text-tertiary"}>
                       {disabled && status.reason === "full"
                         ? "Full"
                         : disabled && status.reason === "cutoff"
@@ -192,7 +192,7 @@ export function TicketAddonsStep({ purchasables, selections, onToggle, onQty, ac
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                 {p.name}
-                {p.required ? <span className="text-red-400">*</span> : null}
+                {p.required ? <span className="text-red-600 dark:text-red-400">*</span> : null}
               </p>
               {p.description ? (
                 <p className="mt-0.5 text-xs text-text-secondary">{p.description}</p>

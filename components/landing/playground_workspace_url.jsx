@@ -6,16 +6,16 @@ import {
   DEFAULT_TAB,
   DEFAULT_SECTION,
 } from "@/lib/hooks/use-workspace-url";
+import { PLAYGROUND_PROJECT } from "@/lib/playground/mode";
 
 // In-memory stand-in for the routed workspace URL, for shells that run outside a
-// /project/<id> route — today the landing playground. It exposes exactly the
+// /project/<id> route — today the /playground route. It exposes exactly the
 // useWorkspaceUrl() API, but the active tab, open event/venue/workflow/record and
 // editor section live in React state, so a screen can open its detail view inside
 // the embed without navigating the page hosting it.
 //
-// There is no project here (and no session on a public page), so projectId stays
-// null: every data-layer call short-circuits and screens render their real empty
-// states instead of touching someone's data.
+// The project is the playground's seeded Halcyon Studio project, served by the
+// in-memory database (lib/playground) while the playground is mounted.
 
 const EMPTY_STATE = {
   tab: DEFAULT_TAB,
@@ -45,14 +45,14 @@ export function PlaygroundWorkspaceUrlProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      projectId: null,
+      projectId: PLAYGROUND_PROJECT.id,
       tab: state.tab || DEFAULT_TAB,
       eventId: state.event,
       section: state.section || DEFAULT_SECTION,
       workflowId: state.workflow,
       venueId: state.venue,
       recordId: state.record,
-      // Nothing to switch to — the playground is deliberately project-less.
+      // Nothing to switch to — the playground has exactly one project.
       setProject: () => {},
       // Switching tabs exits any open entity, mirroring the routed behaviour.
       setTab: (tab) =>

@@ -67,7 +67,7 @@ function StatusBadge({ live }) {
       className={cn(
         "h-4 shrink-0 px-1.5 text-[9px] font-medium",
         live
-          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
           : "border-border bg-surface-card text-muted-foreground",
       )}
     >
@@ -140,7 +140,7 @@ function DeliverySection({ config, set }) {
               className={cn(
                 "mt-1 text-lg font-semibold",
                 stat.label === "Status" && paused
-                  ? "text-red-400"
+                  ? "text-red-600 dark:text-red-400"
                   : "text-foreground",
               )}
             >

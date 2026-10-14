@@ -309,7 +309,7 @@ export function WorkflowBuilderScreen({
                   </div>
                   <Button
                     variant="outline"
-                    className="shrink-0 border-red-500/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                    className="shrink-0 border-red-500/30 bg-transparent text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
                     onClick={() => setDeleteOpen(true)}
                   >
                     <Trash2 className="h-4 w-4" /> Delete
@@ -339,14 +339,14 @@ export function WorkflowBuilderScreen({
                             className={cn(
                               "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                               isItemActive
-                                ? "bg-surface-card font-medium text-white"
+                                ? "bg-surface-card font-medium text-foreground dark:text-white"
                                 : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
                             )}
                           >
                             <Icon
                               className={cn(
                                 "h-4 w-4 shrink-0",
-                                isItemActive ? "text-white" : "text-text-secondary",
+                                isItemActive ? "text-foreground dark:text-white" : "text-text-secondary",
                               )}
                             />
                             <span className="truncate capitalize">{item.label}</span>

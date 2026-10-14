@@ -7,6 +7,7 @@ import { validateEventDiscount, discountBase } from "@/lib/supabase/discounts";
 import { earlybirdReduction } from "@/lib/events/earlybird";
 import { groupDiscountAmount } from "@/lib/events/group";
 import { resolveTicketReleases } from "@/lib/events/ticket_releases";
+import { expressConfig } from "@/lib/events/express_checkout";
 
 export async function POST(request) {
   if (!isStripeConfigured()) {
@@ -47,6 +48,8 @@ export async function POST(request) {
     seatToken = null,
     boothToken = null,
     skipRegistration = false,
+    express = false,
+    termsAcceptedAt = null,
     returnUrl,
   } = body || {};
 
@@ -59,13 +62,21 @@ export async function POST(request) {
   if (!eventId || !returnUrl || price <= 0) {
     return NextResponse.json({ error: "Missing checkout details." }, { status: 400 });
   }
-  if (!email || !email.includes("@")) {
-    return NextResponse.json({ error: "A valid email is required." }, { status: 400 });
-  }
-
   const event = await getEvent(eventId);
   if (!event) {
     return NextResponse.json({ error: "Event not found." }, { status: 404 });
+  }
+
+  // Express Lane leaves name and email to Stripe; only an event that turned it on may skip them.
+  const expressCfg = express ? expressConfig(event) : null;
+  if (express && !expressCfg.enabled) {
+    return NextResponse.json({ error: "Express checkout isn't available." }, { status: 400 });
+  }
+  if (!express && (!email || !email.includes("@"))) {
+    return NextResponse.json({ error: "A valid email is required." }, { status: 400 });
+  }
+  if (email && !email.includes("@")) {
+    return NextResponse.json({ error: "A valid email is required." }, { status: 400 });
   }
 
   const paymentsCfg = event.payments || {};
@@ -205,7 +216,10 @@ export async function POST(request) {
     const params = {
       mode: "payment",
       line_items: lineItems,
-      customer_email: email,
+      ...(email ? { customer_email: email } : {}),
+      ...(expressCfg?.collectName && !name
+        ? { name_collection: { individual: { enabled: true, optional: false } } }
+        : {}),
       success_url: `${returnUrl}${separator}session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${returnUrl}${separator}canceled=1`,
       ...(discounts ? { discounts } : {}),
@@ -231,6 +245,8 @@ export async function POST(request) {
         clientRef: clientRef || "",
         seatToken: seatToken || "",
         boothToken: boothToken || "",
+        express: express ? "1" : "",
+        termsAck: termsAcceptedAt ? String(termsAcceptedAt).slice(0, 40) : "",
         extra: extraJson,
       },
     };

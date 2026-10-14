@@ -198,7 +198,7 @@ function RowActions({ onRemove }) {
       size="icon-sm"
       onClick={onRemove}
       aria-label="Remove"
-      className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+      className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
     >
       <Trash2 className="h-4 w-4" />
     </Button>

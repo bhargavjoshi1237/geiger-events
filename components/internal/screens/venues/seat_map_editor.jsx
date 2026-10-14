@@ -173,7 +173,7 @@ function ImportDialog({ open, onOpenChange, onImport }) {
           </Field>
           {errors.length > 0 ? (
             <div className="max-h-40 overflow-y-auto rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-              <p className="mb-1 text-xs font-medium text-red-400">
+              <p className="mb-1 text-xs font-medium text-red-600 dark:text-red-400">
                 {errors.length} problem{errors.length > 1 ? "s" : ""} found
               </p>
               <ul className="space-y-0.5 text-xs text-text-secondary">
@@ -430,7 +430,7 @@ function BowlDialog({ open, onOpenChange, field, aspect, onGenerate, hasSections
               {trimmed ? ` · ${plan.tiers} of ${plan.requestedTiers} tiers` : null}
             </p>
             {!plan.fits ? (
-              <p className="mt-1 text-amber-400">
+              <p className="mt-1 text-amber-600 dark:text-amber-400">
                 The central feature leaves no room for a ring. Tick the box above, or make it
                 smaller on the Floor panel.
               </p>
@@ -441,7 +441,7 @@ function BowlDialog({ open, onOpenChange, field, aspect, onGenerate, hasSections
               </p>
             ) : null}
             {hasSections ? (
-              <p className="mt-1 text-red-400">
+              <p className="mt-1 text-red-600 dark:text-red-400">
                 This replaces every section already on this map.
               </p>
             ) : null}
@@ -494,7 +494,7 @@ function SectionPanel({ section, seatCount, onPatch, onCommitLayout, onCommitRot
         <Button
           size="sm"
           variant="ghost"
-          className="text-red-400 hover:bg-red-500/10 hover:text-red-400"
+          className="text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
           onClick={onDelete}
           aria-label="Delete section"
         >

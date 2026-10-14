@@ -21,9 +21,9 @@ import { RouteShell } from "@/components/checkin_routes/route_shell";
 import { QrScanner } from "@/components/checkin_routes/qr_scanner";
 
 const FEEDBACK = {
-  success: { icon: CheckCircle2, cls: "border-emerald-500/30 bg-emerald-500/15 text-emerald-200" },
-  already: { icon: AlertTriangle, cls: "border-amber-500/30 bg-amber-500/15 text-amber-200" },
-  error: { icon: XCircle, cls: "border-red-500/30 bg-red-500/15 text-red-200" },
+  success: { icon: CheckCircle2, cls: "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" },
+  already: { icon: AlertTriangle, cls: "border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-200" },
+  error: { icon: XCircle, cls: "border-red-500/30 bg-red-500/15 text-red-800 dark:text-red-200" },
 };
 
 function Scanner({ eventId, code, role, exit, event }) {
@@ -219,7 +219,7 @@ function Scanner({ eventId, code, role, exit, event }) {
                   </p>
                 </div>
                 {r.checkedIn ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-300">
                     <CheckCircle2 className="h-4 w-4" /> In
                   </span>
                 ) : (

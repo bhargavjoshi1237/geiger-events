@@ -27,6 +27,11 @@ import { VenueDetailsDialog } from "./venue_dialog";
 import { TicketCheckout } from "./checkout/ticket_checkout";
 import { makeDisclaimerSlot } from "./disclaimer";
 import { getSectionNote } from "./section_note";
+import {
+  activeExpress,
+  expressTicketEligible,
+  expressTickets,
+} from "@/lib/events/express_checkout";
 
 export function EventPublicPageContent({
   event,
@@ -117,9 +122,15 @@ export function EventPublicPageContent({
   const checkoutRemaining = Number.isFinite(remaining) ? remaining : 9999;
   const showRemaining = event.regSettings?.showRemaining !== false;
 
+  // In "replace" placement a plain Get Tickets click on a paid ticket lands in Express Lane.
+  const express = activeExpress(event, expressTickets(event, tickets));
   const [checkoutEntry, setCheckoutEntry] = useState(null);
   const openCheckout = (entry) => {
-    setCheckoutEntry(entry || null);
+    const viaExpress =
+      !entry &&
+      express?.placement === "replace" &&
+      expressTicketEligible(event, selectedTicket);
+    setCheckoutEntry(viaExpress ? "express" : entry || null);
     setCheckoutOpen(true);
   };
 
@@ -178,6 +189,7 @@ export function EventPublicPageContent({
         ctaHover={ctaHover}
         note={getSectionNote(event, "register")}
         onCheckout={openCheckout}
+        express={express}
       />
     ),
     goodtoknow: (
@@ -402,6 +414,7 @@ export function EventPublicPageContent({
         entry={checkoutEntry}
         event={event}
         ticket={tickets[selected]}
+        tickets={tickets}
         remaining={checkoutRemaining}
         live={live}
         accent={accent}

@@ -93,7 +93,7 @@ function AddonCard({
 
         <div className="flex shrink-0 items-center gap-3">
           {enabled ? (
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               Active
             </span>

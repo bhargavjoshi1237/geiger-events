@@ -75,12 +75,17 @@ import { listAttendanceByProject } from "@/lib/supabase/checkin";
 import { listOrderRefunds } from "@/lib/supabase/order_refunds";
 import { listDisputes } from "@/lib/supabase/order_disputes";
 
+// Chart inks resolve per theme through CSS vars set on WidgetShell.
+const CHART_THEME_VARS =
+  "[--ov-ink:#18181b] [--ov-bg:#f9fafb] [--ov-grid:#e4e4e7] [--ov-tick:#71717a] [--ov-s2:#52525b] [--ov-s3:#a1a1aa] [--ov-s4:#d4d4d8] [--ov-s5:#e4e4e7] " +
+  "dark:[--ov-ink:#ffffff] dark:[--ov-bg:#161616] dark:[--ov-grid:#2a2a2a] dark:[--ov-tick:#a3a3a3] dark:[--ov-s2:#d4d4d4] dark:[--ov-s3:#a3a3a3] dark:[--ov-s4:#737373] dark:[--ov-s5:#525252]";
+
 const CHART_COLORS = {
-  primary: "#ffffff",
-  appBackground: "#161616",
+  primary: "var(--ov-ink)",
+  appBackground: "var(--ov-bg)",
 };
 
-const CHART_SERIES_COLORS = ["#ffffff", "#d4d4d4", "#a3a3a3", "#737373", "#525252"];
+const CHART_SERIES_COLORS = ["var(--ov-ink)", "var(--ov-s2)", "var(--ov-s3)", "var(--ov-s4)", "var(--ov-s5)"];
 
 function formatCurrency(value) {
   return `$${Math.round(value || 0).toLocaleString("en-US")}`;
@@ -136,9 +141,9 @@ const DEMO_TOP_EVENTS = [
 ];
 
 const MOMENTUM_META = {
-  fast: { label: "Selling fast", icon: Flame, className: "text-emerald-300" },
-  track: { label: "On track", icon: TrendingUp, className: "text-sky-300" },
-  slow: { label: "Slow", icon: TrendingDown, className: "text-amber-300" },
+  fast: { label: "Selling fast", icon: Flame, className: "text-emerald-700 dark:text-emerald-300" },
+  track: { label: "On track", icon: TrendingUp, className: "text-sky-700 dark:text-sky-300" },
+  slow: { label: "Slow", icon: TrendingDown, className: "text-amber-700 dark:text-amber-300" },
   upcoming: { label: "Not yet on sale", icon: Clock, className: "text-text-secondary" },
 };
 
@@ -271,6 +276,7 @@ function WidgetShell({ children, className, contentClassName }) {
     <Card
       className={cn(
         "bg-surface-subtle border-border text-foreground rounded-xl py-0 gap-0 overflow-hidden h-full",
+        CHART_THEME_VARS,
         className,
       )}
     >
@@ -363,7 +369,7 @@ function RegistrationsTrendWidget({ demo, pending, events = [], orders = [], reg
           className="mx-auto h-full w-full"
         >
           <LineChart data={data} margin={{ top: 24, right: 16, left: 12, bottom: 0 }}>
-            <CartesianGrid vertical={false} stroke="#2a2a2a" strokeDasharray="3 3" />
+            <CartesianGrid vertical={false} stroke="var(--ov-grid)" strokeDasharray="3 3" />
             <XAxis
               dataKey="label"
               tickLine={false}
@@ -398,7 +404,7 @@ function RegistrationsTrendWidget({ demo, pending, events = [], orders = [], reg
                 dataKey="value"
                 position="top"
                 offset={10}
-                className="fill-[#ededed]"
+                className="fill-foreground dark:fill-[#ededed]"
                 fontSize={11}
                 formatter={formatValue}
               />
@@ -557,7 +563,7 @@ function ConversionFunnelWidget({ demo, registered, confirmed, checkedIn }) {
         subtitle={subtitle}
         action={
           <div className="flex shrink-0 flex-col items-end">
-            <span className="text-3xl font-bold leading-none text-white">{overall}%</span>
+            <span className="text-3xl font-bold leading-none text-foreground dark:text-white">{overall}%</span>
             <span className="mt-1 text-[11px] text-text-secondary">
               {demo ? "view → ticket" : "registered → checked-in"}
             </span>
@@ -584,8 +590,8 @@ function ConversionFunnelWidget({ demo, registered, confirmed, checkedIn }) {
                 />
               }
             />
-            <PolarGrid stroke="#2a2a2a" />
-            <PolarAngleAxis dataKey="short" tick={{ fill: "#a3a3a3", fontSize: 11 }} />
+            <PolarGrid stroke="var(--ov-grid)" />
+            <PolarAngleAxis dataKey="short" tick={{ fill: "var(--ov-tick)", fontSize: 11 }} />
             <Radar
               dataKey="share"
               stroke={CHART_COLORS.primary}
@@ -649,7 +655,7 @@ function GaugeWidget({ title, subtitle, caption, events = [], demo, demoValue, d
               radialLines={false}
               stroke="none"
               polarRadius={[78, 66]}
-              className="first:fill-[#202020] last:fill-[#1a1a1a]"
+              className="first:fill-[#f4f4f5] last:fill-[#fafafa] dark:first:fill-[#202020] dark:last:fill-[#1a1a1a]"
             />
             <RadialBar dataKey="value" cornerRadius={8} isAnimationActive={true} />
             <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
@@ -666,7 +672,7 @@ function GaugeWidget({ title, subtitle, caption, events = [], demo, demoValue, d
                         <tspan
                           x={viewBox.cx}
                           y={viewBox.cy}
-                          className="fill-white text-3xl font-bold"
+                          className="fill-foreground dark:fill-white text-3xl font-bold"
                         >
                           {clamped}%
                         </tspan>
@@ -792,14 +798,14 @@ function TopEventsTable({ demo, pending, events = [] }) {
                       <div className="w-[140px] space-y-1.5">
                         <div className="h-1.5 overflow-hidden rounded-full bg-surface-hover">
                           <div
-                            className="h-full rounded-full bg-[#ededed]"
+                            className="h-full rounded-full bg-foreground dark:bg-[#ededed]"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
                         <p className="text-xs text-text-secondary">{pct}%</p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums text-white">
+                    <TableCell className="text-right font-semibold tabular-nums text-foreground dark:text-white">
                       {formatCurrency(event.revenue)}
                     </TableCell>
                     <TableCell>
@@ -889,7 +895,7 @@ function GeneralStatsCard({ items }) {
                 </div>
                 <p className="mt-0.5 truncate text-xs text-text-secondary">{item.hint}</p>
               </div>
-              <span className="shrink-0 text-xl font-bold tabular-nums text-white">{item.value}</span>
+              <span className="shrink-0 text-xl font-bold tabular-nums text-foreground dark:text-white">{item.value}</span>
               {href ? (
                 <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-medium text-text-secondary transition-colors group-hover:text-foreground">
                   <ChevronRight className="h-3 w-3" />
@@ -1128,7 +1134,7 @@ export function EventsOverviewScreen({ demo = false }) {
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <div className="flex w-full items-center justify-center gap-3 text-center md:w-auto md:justify-start md:text-left">
-              <h1 className="text-2xl font-bold text-white tracking-tight">Events Overview</h1>
+              <h1 className="text-2xl font-bold text-foreground dark:text-white tracking-tight">Events Overview</h1>
 
             </div>
             <p className="mt-1 text-center text-sm text-muted-foreground md:text-left">
@@ -1156,7 +1162,7 @@ export function EventsOverviewScreen({ demo = false }) {
 
                     <RollingNumber
                       value={stat.value}
-                      className="mt-0.5 text-2xl font-bold text-white"
+                      className="mt-0.5 text-2xl font-bold text-foreground dark:text-white"
                     />
                   </div>
                 );

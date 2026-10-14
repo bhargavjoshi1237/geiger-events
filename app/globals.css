@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../node_modules/@geiger/ui/src";
+@source "../node_modules/@geiger/notify/src";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@geiger/ui/logo-loading.css";
@@ -107,17 +108,17 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: hsl(0 0% 98%);
-  --sidebar-foreground: hsl(240 5.3% 26.1%);
-  --sidebar-primary: hsl(240 5.9% 10%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(240 4.8% 95.9%);
-  --sidebar-accent-foreground: hsl(240 5.9% 10%);
-  --sidebar-border: hsl(220 13% 91%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: oklch(0.21 0.006 285.885);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.705 0.015 286.067);
   --surface-subtle: #f9fafb;
   --surface-card: #ffffff;
-  --surface-active: #f3f4f6;
+  --surface-active: #e5e7eb;
   --surface-hover: #f3f4f6;
   --surface-dialog: #ffffff;
   --surface-strong: #e5e7eb;
@@ -133,10 +134,10 @@
   --comment-input: #bfdbfe;
   --scrollbar-thumb: #d1d5db;
   --scrollbar-thumb-hover: #9ca3af;
-  --topbar-bg: rgb(255 255 255 / 0.82);
+  --topbar-bg: rgba(255, 255, 255, 0.6);
   --topbar-border: #e5e7eb;
   --divider: #e5e7eb;
-  --zoom-bg: rgb(229 231 235 / 0.72);
+  --zoom-bg: rgba(229, 231, 235, 0.6);
   --notification-dot: #3b82f6;
 }
 
@@ -417,6 +418,31 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   }
 }
 
+/* Express Lane glow — a soft accent halo that breathes behind the dialog; --ev-glow-color tints it. */
+@keyframes ev-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 25px 50px -12px rgb(0 0 0 / 0.4),
+      0 0 28px -8px color-mix(in srgb, var(--ev-glow-color, #fff) 23%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 25px 50px -12px rgb(0 0 0 / 0.4),
+      0 0 42px -6px color-mix(in srgb, var(--ev-glow-color, #fff) 35%, transparent);
+  }
+}
+
+.ev-glow-pulse {
+  animation: ev-glow-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ev-glow-pulse {
+    animation: none;
+  }
+}
+
 .leaflet-container {
   background: var(--surface-card);
   font-family: inherit;
@@ -455,6 +481,48 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 .leaflet-popup-close-button:hover {
   color: var(--foreground) !important;
+}
+/* Required OpenFreeMap/OSM credit, collapsed to a dark lucide "info" badge that expands on hover/tap. */
+.leaflet-container .leaflet-control.leaflet-control-attribution {
+  position: relative;
+  box-sizing: border-box;
+  height: 22px;
+  max-width: 22px;
+  margin: 0 0 8px 8px;
+  padding: 0 0 0 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 9999px;
+  background: rgb(14 14 14 / 0.8);
+  color: rgb(255 255 255 / 0.55);
+  font-size: 10px;
+  line-height: 20px;
+  backdrop-filter: blur(4px);
+  cursor: default;
+  transition: max-width 0.25s ease, padding 0.25s ease;
+}
+.leaflet-container .leaflet-control.leaflet-control-attribution::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background: rgb(255 255 255 / 0.7);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E")
+    center / 14px 14px no-repeat;
+}
+.leaflet-container .leaflet-control.leaflet-control-attribution:hover {
+  max-width: 420px;
+  padding-right: 8px;
+}
+.leaflet-container .leaflet-control.leaflet-control-attribution a {
+  color: rgb(255 255 255 / 0.8);
+  text-decoration: none;
+}
+.leaflet-container .leaflet-control.leaflet-control-attribution a:hover {
+  color: #fff;
 }
 .event-map-marker {
   display: flex;

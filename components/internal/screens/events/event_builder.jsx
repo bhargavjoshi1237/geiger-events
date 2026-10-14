@@ -131,7 +131,7 @@ export function BasicsSection({ event, headerItem, onPatch }) {
                 variant="ghost"
                 size="icon-sm"
                 aria-label="Remove organizer photo"
-                className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                 disabled={avatarBusy}
                 onClick={() =>
                   saveAvatar("", organizerAvatar, "Organizer photo removed.")

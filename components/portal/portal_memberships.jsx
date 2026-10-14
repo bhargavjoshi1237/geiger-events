@@ -85,7 +85,7 @@ function HeldCard({ m }) {
         <ul className="mt-3 space-y-1.5">
           {m.benefits.map((b, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
               {b}
             </li>
           ))}
@@ -152,7 +152,7 @@ function PlanCard({ plan, paymentsEnabled, busy, onBuy }) {
         <ul className="mt-3 space-y-1.5">
           {plan.benefits.map((b, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
               {b}
             </li>
           ))}

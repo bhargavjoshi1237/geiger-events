@@ -31,9 +31,9 @@ function DetailRow({ label, value, strong, muted, danger }) {
         className={cn(
           "text-right tabular-nums",
           danger
-            ? "font-semibold text-red-300"
+            ? "font-semibold text-red-700 dark:text-red-300"
             : strong
-              ? "font-semibold text-white"
+              ? "font-semibold text-foreground dark:text-white"
               : "text-foreground",
         )}
       >

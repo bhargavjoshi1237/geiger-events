@@ -55,6 +55,8 @@ import {
   Inbox,
   LayoutTemplate,
   Layers3,
+  Zap,
+  ShieldCheck,
 } from "lucide-react";
 
 import {
@@ -107,6 +109,8 @@ import { EventBadgeSection } from "./event_badge";
 import { GuidelinesSection } from "./guidelines";
 import { PageNotesSection } from "./page_notes";
 import { PageDisclaimerSection } from "./page_disclaimer";
+import { PurchaseDisclaimerSection } from "./purchase_disclaimer";
+import { ExpressLaneSection } from "./express_lane";
 import { EventCtasSection } from "./event_ctas";
 import { EventPackagesSection } from "./event_packages";
 import { EventPackagesPageSection } from "./packages_page_editor";
@@ -349,6 +353,20 @@ export const NAV_GROUPS = [
         label: "Ticket Selection",
         icon: Armchair,
         desc: "Offer two routes on the tickets card — seat selection via the seating plan, or selection by price.",
+      },
+      {
+        key: "express",
+        label: "Express Lane",
+        icon: Zap,
+        desc: "A 2-click checkout: buyers pick a ticket and pay, and they're on Stripe.",
+        ownHeader: true,
+      },
+      {
+        key: "purchasedisclaimer",
+        label: "Purchase Disclaimer",
+        icon: ShieldCheck,
+        desc: "The last thing buyers see before they pay — they acknowledge it to continue.",
+        ownHeader: true,
       },
       {
         key: "slots",
@@ -713,6 +731,8 @@ export const SECTIONS = {
   packagespage: EventPackagesPageSection,
   ctas: EventCtasSection,
   ticketselection: TicketSelectionSection,
+  express: ExpressLaneSection,
+  purchasedisclaimer: PurchaseDisclaimerSection,
   slots: SlotsSection,
   purchasables: PurchasablesSection,
   discounts: EventDiscountsSection,

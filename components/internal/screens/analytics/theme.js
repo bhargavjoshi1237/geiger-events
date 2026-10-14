@@ -25,6 +25,62 @@ export const INK = {
   track: "#242424",
 };
 
+// The chart options above are authored for dark mode; in light mode every
+// colour is swapped through this map (write "white" for text that must stay white).
+const LIGHT_SWAP = {
+  "#ffffff": "#18181b",
+  "#fff": "#18181b",
+  "#e7e7e7": "#3f3f46",
+  "#a3a3a3": "#71717a",
+  "#525252": "#a1a1aa",
+  "#474747": "#a1a1aa",
+  "#3f3f3f": "#d4d4d8",
+  "#333333": "#d4d4d8",
+  "#333": "#d4d4d8",
+  "#2e2e2e": "#e4e4e7",
+  "#2a2a2a": "#f4f4f5",
+  "#262626": "#e4e4e7",
+  "#242424": "#f4f4f5",
+  "#202020": "#ffffff",
+  "#1a1a1a": "#ffffff",
+  "#161616": "#ffffff",
+};
+
+function swapColor(value) {
+  if (typeof value !== "string") return value;
+  const key = value.toLowerCase();
+  if (LIGHT_SWAP[key]) return LIGHT_SWAP[key];
+  return value.replace(/rgba\(\s*255\s*,\s*255\s*,\s*255\s*,/g, "rgba(24,24,27,");
+}
+
+export function themeOption(option, mode) {
+  if (mode !== "light") return option;
+  const walk = (node, key) => {
+    if (typeof node === "string") return swapColor(node);
+    if (typeof node === "function") {
+      return key === "color" ? (...args) => walk(node(...args)) : node;
+    }
+    if (Array.isArray(node)) return node.map((item) => walk(item, key));
+    if (node instanceof echarts.graphic.LinearGradient) {
+      return new echarts.graphic.LinearGradient(
+        node.x,
+        node.y,
+        node.x2,
+        node.y2,
+        node.colorStops.map((stop) => ({ ...stop, color: swapColor(stop.color) })),
+        node.global,
+      );
+    }
+    if (node && Object.getPrototypeOf(node) === Object.prototype) {
+      const out = {};
+      for (const [k, v] of Object.entries(node)) out[k] = walk(v, k);
+      return out;
+    }
+    return node;
+  };
+  return walk(option);
+}
+
 export function areaGradient(hex, fromAlpha = 0.32, toAlpha = 0.02) {
   const normalized = String(hex || "#ffffff");
   const toRgba = (h, a) => {

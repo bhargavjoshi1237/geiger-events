@@ -129,7 +129,7 @@ export function PaymentsSection({ event, headerItem }) {
                 placeholder={event?.name?.slice(0, 22) || "Your event name"}
               />
               {descTouched && descriptorTooLong ? (
-                <p className="mt-1 text-xs text-red-400">
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                   Keep it to 22 characters or fewer.
                 </p>
               ) : null}

@@ -101,7 +101,7 @@ export function Countdown({ dateStr, className = "" }) {
   if (!p) return null;
   if (p.done) {
     return (
-      <span className={`text-sm font-medium text-emerald-400 ${className}`}>
+      <span className={`text-sm font-medium text-emerald-600 dark:text-emerald-400 ${className}`}>
         Happening now
       </span>
     );

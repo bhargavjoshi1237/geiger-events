@@ -188,7 +188,7 @@ function CollectSection({ entitlements }) {
                 </span>
               </span>
               {done ? (
-                <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-label="Collected" />
+                <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Collected" />
               ) : null}
             </li>
           );
@@ -326,7 +326,7 @@ function TicketDialog({ ticket, onClose, onMessage, onRequestRefund }) {
                 <Row label="Group order">1 of {ticket.group.size}</Row>
               ) : null}
               {ticket.discount ? (
-                <div className="flex items-center justify-between text-emerald-400">
+                <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
                   <span>Discount ({ticket.discount.code})</span>
                   <span className="tabular-nums">−{money(ticket.discount.amount)}</span>
                 </div>
@@ -334,7 +334,7 @@ function TicketDialog({ ticket, onClose, onMessage, onRequestRefund }) {
               {/* Order-level amounts only on single-buyer orders — group rows show
                   each attendee's own share as the total. */}
               {!ticket.group && ticket.earlybird?.amount > 0 ? (
-                <div className="flex items-center justify-between text-emerald-400">
+                <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
                   <span>Early bird</span>
                   <span className="tabular-nums">−{money(ticket.earlybird.amount)}</span>
                 </div>

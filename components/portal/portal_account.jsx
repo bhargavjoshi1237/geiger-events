@@ -185,7 +185,7 @@ export function PortalAccount({ member, onMemberChange }) {
             variant="outline"
             disabled={busyOut}
             onClick={() => signOut(true)}
-            className="border-border bg-transparent text-red-400 hover:bg-red-500/10 hover:text-red-400"
+            className="border-border bg-transparent text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
           >
             Sign out of all devices
           </Button>

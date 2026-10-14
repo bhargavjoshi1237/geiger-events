@@ -300,7 +300,7 @@ function RfidDataSync({ regs, loading }) {
         />
       </div>
       {verify ? (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-300">
+        <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
           <CheckCircle2 className="h-4 w-4" />
           {verify.rows} rows · checksum{" "}
           <span className="font-mono font-medium">{verify.sum}</span>
@@ -625,7 +625,7 @@ function EntryPointRow({ point, onEdit, onDelete, onChanged }) {
           Test tap
         </Button>
         {last ? (
-          <span className={`text-xs ${last.ok ? "text-emerald-300" : "text-red-400"}`}>
+          <span className={`text-xs ${last.ok ? "text-emerald-700 dark:text-emerald-300" : "text-red-600 dark:text-red-400"}`}>
             {last.ok
               ? `${last.attendee?.name || "?"} · ${last.status}${last.status === "pending" ? ` · ${formatMoney(last.amount_cents, last.currency)}` : ""}${last.deduped ? " · replay" : ""}`
               : `Failed: ${last.reason || "error"}`}
@@ -1088,7 +1088,7 @@ function PaidEntryManager({ defaultCurrency }) {
             </p>
           ) : null}
           {rfidOff ? (
-            <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 RFID / NFC entry is switched off for this event (event editor →
@@ -1261,7 +1261,7 @@ function PaidEntryManager({ defaultCurrency }) {
                     key: "pending",
                     header: "Owes",
                     align: "right",
-                    className: "whitespace-nowrap text-right font-semibold tabular-nums text-amber-200",
+                    className: "whitespace-nowrap text-right font-semibold tabular-nums text-amber-800 dark:text-amber-200",
                     headClassName: "whitespace-nowrap",
                     render: (b) => formatMoney(b.pendingCents, b.currency),
                   },
@@ -1379,7 +1379,7 @@ export function RfidNfcScreen() {
               </SettingsList>
             </SectionCard>
             {slice.medium === "badge" ? (
-              <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+              <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
                 <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   Phone-as-badge tap-in is Android only, via the mobile app (Host Card Emulation) — it

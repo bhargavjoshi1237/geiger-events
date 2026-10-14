@@ -268,7 +268,7 @@ function OfferingDialog({ open, onOpenChange, ticketTypes, initial, onSave }) {
                     disabled={draft.options.length <= 1}
                     onClick={() => removeOption(o.id)}
                     aria-label="Remove option"
-                    className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
+                    className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -423,7 +423,7 @@ export function OfferingsSection({ event, headerItem }) {
                           className={cn(
                             "tabular-nums",
                             Number(opt.price) > 0
-                              ? "text-emerald-400"
+                              ? "text-emerald-600 dark:text-emerald-400"
                               : "text-text-tertiary",
                           )}
                         >
@@ -467,7 +467,7 @@ export function OfferingsSection({ event, headerItem }) {
                       size="icon-sm"
                       onClick={() => setDeleteTarget(i)}
                       aria-label="Delete offering"
-                      className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                      className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

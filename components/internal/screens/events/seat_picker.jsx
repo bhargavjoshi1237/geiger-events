@@ -588,7 +588,7 @@ function SelectionBar({
               <span
                 className={cn(
                   "inline-flex items-center justify-center gap-1.5 text-xs tabular-nums",
-                  urgent ? "font-semibold text-amber-400" : "text-text-secondary",
+                  urgent ? "font-semibold text-amber-600 dark:text-amber-400" : "text-text-secondary",
                 )}
               >
                 <Timer className="h-3.5 w-3.5" />

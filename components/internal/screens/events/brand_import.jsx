@@ -318,8 +318,8 @@ export function ImportBrandDialog({
 
           {error ? (
             <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
-              <p className="text-sm text-red-400">{error}</p>
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             </div>
           ) : null}
 
@@ -677,7 +677,7 @@ export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
                 variant="outline"
                 aria-label="Remove header logo"
                 onClick={() => setLogo({ url: "" })}
-                className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -744,7 +744,7 @@ export function BrandLogoSection({ theme, eventId, onChange, onReimport }) {
                 variant="outline"
                 aria-label="Remove footer logo"
                 onClick={() => setFooterLogo({ url: "" })}
-                className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>

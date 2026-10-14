@@ -361,7 +361,7 @@ export function GuestImportScreen({ onBack, onImported } = {}) {
               "flex h-12 w-12 items-center justify-center rounded-xl border",
               result.noDb
                 ? "border-border bg-surface-card text-text-secondary"
-                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
             )}
           >
             <CheckCircle2 className="h-6 w-6" />
@@ -406,7 +406,7 @@ function Stepper({ step }) {
               className={cn(
                 "flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold",
                 i < step
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                   : i === step
                     ? "border-border-strong bg-surface-card text-foreground"
                     : "border-border bg-surface-subtle text-text-tertiary",

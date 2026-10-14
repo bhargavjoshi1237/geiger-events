@@ -31,9 +31,9 @@ const SIZE_OPTIONS = ["Standard", "Large", "Premium"];
 const STATUS_OPTIONS = Object.keys(BOOTH_STATUS_MAP);
 
 const FLOOR_STYLE = {
-  Available: "border-emerald-400/30 bg-emerald-400/10 text-emerald-100",
-  Reserved: "border-sky-400/30 bg-sky-400/10 text-sky-100",
-  Occupied: "border-violet-400/30 bg-violet-400/10 text-violet-100",
+  Available: "border-emerald-400/30 bg-emerald-400/10 text-emerald-800 dark:text-emerald-100",
+  Reserved: "border-sky-400/30 bg-sky-400/10 text-sky-800 dark:text-sky-100",
+  Occupied: "border-violet-400/30 bg-violet-400/10 text-violet-800 dark:text-violet-100",
 };
 const DOT_STYLE = {
   Available: "bg-emerald-400",
@@ -462,10 +462,10 @@ export function FloorPlanScreen({ demo = false }) {
 
             <div
               ref={canvasRef}
-              className="relative aspect-[4/3] w-full touch-none overflow-hidden rounded-2xl border border-border bg-surface-subtle"
+              className="relative aspect-[4/3] w-full touch-none overflow-hidden rounded-2xl border border-border bg-surface-subtle [--grid-line:rgba(0,0,0,0.06)] dark:[--grid-line:rgba(255,255,255,0.04)]"
               style={{
                 backgroundImage:
-                  "linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)",
+                  "linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)",
                 backgroundSize: "40px 40px",
               }}
             >
@@ -539,7 +539,7 @@ export function FloorPlanScreen({ demo = false }) {
                 <div className="space-y-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h2 className="truncate text-base font-semibold text-white">
+                      <h2 className="truncate text-base font-semibold text-foreground dark:text-white">
                         {selected.name || "Untitled booth"}
                       </h2>
                       <StatusPill status={selected.status} map={BOOTH_STATUS_MAP} className="mt-1" />
@@ -640,7 +640,7 @@ export function FloorPlanScreen({ demo = false }) {
                       variant="outline"
                       size="sm"
                       onClick={() => setDeleteTarget(selected)}
-                      className="border-border bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                      className="border-border bg-transparent text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
                     >
                       <Trash2 className="h-4 w-4" /> Delete
                     </Button>

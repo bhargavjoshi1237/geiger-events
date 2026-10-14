@@ -244,7 +244,7 @@ function NeedsReportTab({ regs, events, eventNames, questions, registerExport })
                 key={b.tag}
                 className="flex items-center gap-3 rounded-xl border border-border bg-surface-card px-4 py-3"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-amber-400">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-amber-600 dark:text-amber-400">
                   <Utensils className="h-4 w-4" />
                 </div>
                 <div>
@@ -792,7 +792,7 @@ function InquiryTab({ config, onSave }) {
                                 disabled={(q.options || []).length <= 1}
                                 onClick={() => removeOption(q, o.id)}
                                 aria-label="Remove option"
-                                className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
+                                className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -823,7 +823,7 @@ function InquiryTab({ config, onSave }) {
                           variant="ghost"
                           size="icon-sm"
                           aria-label="Remove question"
-                          className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                          className="text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
                           onClick={() => removeQuestion(q.id)}
                         >
                           <Trash2 className="h-4 w-4" />

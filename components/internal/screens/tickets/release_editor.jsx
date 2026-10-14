@@ -426,7 +426,7 @@ function WaveNode({ r, idx, list, per, total, patchRelease, removeRelease, moveR
               size="sm"
               variant="ghost"
               onClick={() => patchRelease(r.id, { startMode: "now", paused: false, released: true })}
-              className="h-6 px-2 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
+              className="h-6 px-2 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400"
               title="Open this wave to buyers right now"
             >
               Open now
@@ -448,7 +448,7 @@ function WaveNode({ r, idx, list, per, total, patchRelease, removeRelease, moveR
             aria-label={`Delete wave ${idx + 1}`}
             title="Remove this wave — applies when you save"
             onClick={() => removeRelease(r.id)}
-            className="ml-auto text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+            className="ml-auto text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

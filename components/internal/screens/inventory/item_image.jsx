@@ -170,7 +170,7 @@ export function ItemImageCard({ item, items, onChange }) {
                   variant="outline"
                   size="sm"
                   onClick={remove}
-                  className="h-7 border-border bg-surface-card/90 text-xs text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                  className="h-7 border-border bg-surface-card/90 text-xs text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Remove
                 </Button>

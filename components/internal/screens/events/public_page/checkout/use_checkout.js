@@ -21,6 +21,16 @@ import {
   saveTicketAnswers,
 } from "@/lib/supabase/ticket_questions";
 
+import { activePurchaseDisclaimer } from "@/lib/events/purchase_disclaimer";
+import {
+  EXPRESS_NAME,
+  activeExpress,
+  expressClicks,
+  expressConfig,
+  expressQtyCap,
+  expressTickets,
+} from "@/lib/events/express_checkout";
+
 import { makeDisclaimerSlot } from "../disclaimer";
 import { derivePricing } from "./pricing";
 import {
@@ -59,6 +69,7 @@ export function useCheckout({
   open,
   event,
   ticket: baseTicket,
+  tickets: pageTickets,
   remaining,
   live,
   entry,
@@ -86,14 +97,35 @@ export function useCheckout({
       ? (event?.tickets || []).find((t) => String(t.id) === String(boothSel.ticketId)) || null
       : null;
 
-  const ticket = seatTicket || boothTicket || baseTicket;
-
   const defaultEntryStep =
     (seatingOn && (seating?.mode || "map-first") === "map-first" && "seats") ||
     (expoOn && "booths") ||
     "details";
-  const entryStep =
-    entry === "price"
+
+  // Express Lane: the page's ticket list narrowed to what can go straight to Stripe.
+  const expressCfg = expressConfig(event);
+  const expressOptions = expressTickets(
+    event,
+    pageTickets?.length ? pageTickets : baseTicket ? [baseTicket] : [],
+  );
+  const expressOn = entry === "express" && !!activeExpress(event, expressOptions);
+  const expressDefault =
+    (expressCfg.defaultTicket === "selected"
+      ? expressOptions.find((t) => t === baseTicket || String(t.id) === String(baseTicket?.id))
+      : expressOptions.find((t) => String(t.id) === String(expressCfg.defaultTicket))) ||
+    expressOptions[0] ||
+    null;
+  const [expressTicketId, setExpressTicketId] = useState(null);
+  const expressTicket = expressOn
+    ? (expressTicketId != null
+        ? expressOptions.find((t) => String(t.id) === String(expressTicketId))
+        : null) || expressDefault
+    : null;
+  const ticket = seatTicket || boothTicket || expressTicket || baseTicket;
+
+  const entryStep = expressOn
+    ? "express"
+    : entry === "price"
       ? (expoOn && "booths") || "details"
       : entry === "seats" &&
           seatingOn &&
@@ -115,6 +147,9 @@ export function useCheckout({
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [gateOpen, setGateOpen] = useState(false);
+  const [gateChecked, setGateChecked] = useState(false);
+  const acceptedAtRef = useRef(null);
 
   const seatHoldRef = useRef(null);
   useEffect(() => {
@@ -125,6 +160,7 @@ export function useCheckout({
   useEffect(() => {
     if (!open) return undefined;
     keepHoldRef.current = false;
+    acceptedAtRef.current = null;
     return () => {
       if (!keepHoldRef.current && seatHoldRef.current && event?.id) {
         releaseSeats(event.id, seatHoldRef.current);
@@ -275,6 +311,9 @@ export function useCheckout({
         setDonationAmount(0);
         setDonationCustom("");
         setAttendees([]);
+        setExpressTicketId(null);
+        setGateOpen(false);
+        setGateChecked(false);
       } else {
         setStep(entryStep);
         setQty(1);
@@ -295,6 +334,9 @@ export function useCheckout({
         setDonationAmount(0);
         setDonationCustom("");
         setAttendees([]);
+        setExpressTicketId(null);
+        setGateOpen(false);
+        setGateChecked(false);
       }
     }
   }
@@ -438,7 +480,7 @@ export function useCheckout({
     setStep("done");
   };
 
-  const startStripeCheckout = async () => {
+  const startStripeCheckout = async ({ express = false } = {}) => {
     if (!live) {
       await finalize();
       return;
@@ -475,8 +517,10 @@ export function useCheckout({
           ticketPrice: price,
           quantity: qty,
           addonUnit,
-          name,
-          email,
+          name: express && !expressCfg.prefillSignedIn ? "" : name,
+          email: express && !expressCfg.prefillSignedIn ? "" : email,
+          express,
+          termsAcceptedAt: acceptedAtRef.current,
           selections: buildSelections(offerings, selections),
           purchasables: buildPurchasables(visiblePurs, purSelections),
           slot: slotRecord(selectedSlot),
@@ -511,6 +555,42 @@ export function useCheckout({
     }
   };
 
+  const expressMaxQty = Math.min(maxQty, expressQtyCap(event, ticketId));
+  const expressGate = activePurchaseDisclaimer(event, { isFree: false });
+  const pickExpressTicket = (id) => {
+    setExpressTicketId(id);
+    setQty(1);
+  };
+  const leaveExpress = () => setStep(defaultEntryStep);
+
+  // Click two: straight to Stripe, unless this ticket turns out to need answers the sheet can't take.
+  const expressPay = async () => {
+    const needsMore =
+      isFree ||
+      isGroup ||
+      ticketQuestions.some((q) => q.required) ||
+      inquiryQuestions.some((q) => q.required);
+    if (needsMore) {
+      toast.message("This ticket needs a few details first.");
+      leaveExpress();
+      return;
+    }
+    if (expressGate?.requireCheck && !gateChecked) return;
+    if (live && blockWaitlistedRebook && email) {
+      setBusy(true);
+      const already = await hasWaitlistedRegistration(event.id, email);
+      setBusy(false);
+      if (already) {
+        toast.error(
+          "You're already on the waitlist for this event — you can't book again.",
+        );
+        return;
+      }
+    }
+    acceptedAtRef.current = expressGate ? new Date().toISOString() : null;
+    startStripeCheckout({ express: true });
+  };
+
   const validateDetails = () =>
     validateCheckoutDetails({
       name,
@@ -531,6 +611,11 @@ export function useCheckout({
       ticketAnswers,
     });
 
+  // The organiser's purchase disclaimer, gated on the final button.
+  const gateCfg = activePurchaseDisclaimer(event, {
+    isFree: isFree || (requiresApproval && !approvedResume),
+  });
+
   const proceed = async () => {
     if (live && blockWaitlistedRebook) {
       setBusy(true);
@@ -543,6 +628,21 @@ export function useCheckout({
         return;
       }
     }
+    if (gateCfg) {
+      setGateOpen(true);
+      return;
+    }
+    dispatchOrder();
+  };
+
+  const acceptGate = () => {
+    acceptedAtRef.current = new Date().toISOString();
+    setGateOpen(false);
+    dispatchOrder();
+  };
+  const cancelGate = () => setGateOpen(false);
+
+  const dispatchOrder = () => {
     if (requiresApproval && !approvedResume) {
       requestApproval();
     } else if (isFree) {
@@ -715,13 +815,29 @@ export function useCheckout({
           : "Order confirmed"
       : step === "error"
         ? "Checkout"
+        : step === "express"
+          ? EXPRESS_NAME
         : step === "addons"
           ? "Add-ons"
           : "Get Tickets";
 
+  // The in-dialog route for this event, ending in the hand-off (Stripe, approval or free confirm).
+  const flowSteps = [
+    ...(seatingOn && seatMode === "map-first" ? [{ id: "seats", label: "Seats" }] : []),
+    ...(expoOn ? [{ id: "booths", label: "Booth" }] : []),
+    { id: "details", label: "Details" },
+    ...(seatingOn && seatMode === "type-first" ? [{ id: "seats", label: "Seats" }] : []),
+    ...(usePurchasables && visiblePurs.length ? [{ id: "addons", label: "Add-ons" }] : []),
+    {
+      id: "pay",
+      label: requiresApproval && !approvedResume ? "Request" : isFree ? "Confirm" : "Payment",
+    },
+  ];
+
   return {
     seating,
     seatMode,
+    flowSteps,
     seatSel,
     setSeatSel,
     expo,
@@ -798,5 +914,20 @@ export function useCheckout({
     removeDiscount,
     headerLabel,
     disclaimerSlot,
+    gateCfg,
+    gateOpen,
+    acceptGate,
+    cancelGate,
+    expressCfg,
+    expressOptions,
+    setExpressTicketId: pickExpressTicket,
+    expressMaxQty,
+    expressGate,
+    gateChecked,
+    setGateChecked,
+    expressClickCount: expressClicks(event),
+    expressPayerEmail: expressCfg.prefillSignedIn ? email : "",
+    expressPay,
+    leaveExpress,
   };
 }

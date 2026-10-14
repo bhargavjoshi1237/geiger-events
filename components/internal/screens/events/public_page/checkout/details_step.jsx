@@ -74,6 +74,12 @@ export function DetailsStep({ event, checkout, accent, accentStyle, daConfig }) 
     requiresApproval,
   } = checkout;
 
+  // Dividers only sit between blocks that render — the totals carry their own top border.
+  const summaryNote = checkout.disclaimerSlot("checkout-summary");
+  const afterSlots =
+    offerings.length > 0 || donationOn || discountEnabled || !!summaryNote;
+  const hasExtras = bookableSlots.length > 0 || afterSlots;
+
   return (
     <div className="grid gap-4">
       {approvedResume ? (
@@ -107,7 +113,7 @@ export function DetailsStep({ event, checkout, accent, accentStyle, daConfig }) 
             <span className="text-sm font-medium text-muted-foreground">Quantity</span>
             <QtyStepper qty={qty} setQty={setQty} max={maxQty} accent={accent} />
           </div>
-          <div className="border-t border-border"></div>
+          {hasExtras ? <div className="border-t border-border" /> : null}
 
           {bookableSlots.length ? (
             <>
@@ -121,7 +127,7 @@ export function DetailsStep({ event, checkout, accent, accentStyle, daConfig }) 
                 accent={accent}
                 label={event.slotBooking?.label}
               />
-              <div className="border-t border-border"></div>
+              {afterSlots ? <div className="border-t border-border" /> : null}
             </>
           ) : null}
 
@@ -155,7 +161,7 @@ export function DetailsStep({ event, checkout, accent, accentStyle, daConfig }) 
             />
           ) : null}
 
-          {checkout.disclaimerSlot("checkout-summary")}
+          {summaryNote}
 
           <DetailsTotals event={event} checkout={checkout} />
         </div>

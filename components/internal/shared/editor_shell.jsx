@@ -95,7 +95,7 @@ function NavItem({ item, active, onSelect }) {
       className={cn(
         "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
         isActive
-          ? "bg-surface-card font-medium text-white"
+          ? "bg-surface-card font-medium text-foreground dark:text-white"
           : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
       )}
     >
@@ -103,7 +103,7 @@ function NavItem({ item, active, onSelect }) {
         <Icon
           className={cn(
             "h-4 w-4 shrink-0",
-            isActive ? "text-white" : "text-text-secondary",
+            isActive ? "text-foreground dark:text-white" : "text-text-secondary",
           )}
         />
       ) : null}
@@ -154,20 +154,13 @@ function EditorNav({
       <nav
         ref={navRef}
         className={cn(
-          "space-y-5 lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          "lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           fullHeight
             ? "lg:min-h-0 lg:flex-1"
             : "lg:sticky lg:top-0 lg:max-h-[calc(100dvh-7.5rem)]",
         )}
       >
-        {/*
-          Collapse consecutive ungrouped (`group: null`) groups into a single
-          block so they sit at the same rhythm as the items inside a grouped
-          section instead of getting the parent nav's space-y-5 (20px) between
-          each one. The five extracted sections that follow Tickets are the
-          reason this exists — without this they read as five orphaned entries
-          with big gaps, not as a continuation of the right-hand list.
-        */}
+        {/* Consecutive ungrouped groups collapse into one run that continues the list above at item rhythm; only headed groups get the 20px break. */}
         {(() => {
           const runs = [];
           for (const group of groups) {
@@ -178,11 +171,13 @@ function EditorNav({
               runs.push({ group: group, groups: [group] });
             }
           }
+          const gapFor = (run, ri) =>
+            ri === 0 ? "" : run.group.group ? "mt-5" : "mt-0.5";
           return runs.map((run, ri) => {
             if (run.groups.length === 1) {
               const group = run.group;
               return (
-                <div key={group.group || `g${ri}`}>
+                <div key={group.group || `g${ri}`} className={gapFor(run, ri)}>
                   {group.group ? (
                     <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
                       {group.group}
@@ -202,7 +197,7 @@ function EditorNav({
               );
             }
             return (
-              <div key={`g${ri}`} className="space-y-0.5">
+              <div key={`g${ri}`} className={cn("space-y-0.5", gapFor(run, ri))}>
                 {run.groups.flatMap((g) =>
                   g.items.map((item) => (
                     <NavItem

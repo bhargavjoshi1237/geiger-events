@@ -6,10 +6,10 @@
 // --- Platforms ---------------------------------------------------------------
 // value → the wrapped ad channel. accent/dotClass drive per-platform styling.
 export const AD_PLATFORMS = [
-  { value: "google_adsense", label: "Google AdSense", blurb: "Google's display-ad network.", accent: "text-sky-400", dotClass: "bg-sky-400", variant: "info" },
-  { value: "facebook_marketplace", label: "Facebook Marketplace", blurb: "Meta Marketplace listings & ads.", accent: "text-blue-400", dotClass: "bg-blue-400", variant: "info" },
-  { value: "google_ads", label: "Google Ads", blurb: "Search & display campaigns.", accent: "text-emerald-400", dotClass: "bg-emerald-400", variant: "success" },
-  { value: "meta_ads", label: "Meta Ads", blurb: "Facebook + Instagram paid campaigns.", accent: "text-violet-400", dotClass: "bg-violet-400", variant: "purple" },
+  { value: "google_adsense", label: "Google AdSense", blurb: "Google's display-ad network.", accent: "text-sky-600 dark:text-sky-400", dotClass: "bg-sky-400", variant: "info" },
+  { value: "facebook_marketplace", label: "Facebook Marketplace", blurb: "Meta Marketplace listings & ads.", accent: "text-blue-600 dark:text-blue-400", dotClass: "bg-blue-400", variant: "info" },
+  { value: "google_ads", label: "Google Ads", blurb: "Search & display campaigns.", accent: "text-emerald-600 dark:text-emerald-400", dotClass: "bg-emerald-400", variant: "success" },
+  { value: "meta_ads", label: "Meta Ads", blurb: "Facebook + Instagram paid campaigns.", accent: "text-violet-600 dark:text-violet-400", dotClass: "bg-violet-400", variant: "purple" },
 ];
 
 export const PLATFORM_VALUES = AD_PLATFORMS.map((p) => p.value);

@@ -186,7 +186,7 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
                       variant="outline"
                       disabled={busy}
                       onClick={removeImage}
-                      className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                      className="border-border bg-transparent text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" /> Remove
                     </Button>
@@ -613,7 +613,7 @@ export function GuestsSection({ event, headerItem }) {
                   size="icon-sm"
                   onClick={() => setDeleteTarget(i)}
                   aria-label="Delete guest"
-                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                  className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

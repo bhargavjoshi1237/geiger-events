@@ -28,7 +28,7 @@ import { QrScanner } from "@/components/checkin_routes/qr_scanner";
 const currency = (n) => `$${Number(n || 0).toLocaleString("en-US")}`;
 
 const AMBER_ALERT =
-  "rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200";
+  "rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-200";
 
 const DONE_MS = 4000;
 
@@ -46,7 +46,7 @@ function Done({ title, message, onDone }) {
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-5 bg-background px-6 text-center text-foreground">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15 text-emerald-300">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
         <CheckCircle2 className="h-10 w-10" />
       </div>
       <div className="space-y-1">
@@ -128,7 +128,7 @@ function CheckinAction({ eventId, code, role, onDone, onBack }) {
         <div key={r.registrationId} className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-3.5">
           <span className="min-w-0 flex-1 truncate font-medium text-foreground">{r.name || "Guest"}</span>
           {r.checkedIn ? (
-            <span className="text-sm font-medium text-emerald-300">Checked in</span>
+            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Checked in</span>
           ) : (
             <Button className="h-10 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => admit(r, "self")}>Check in</Button>
           )}

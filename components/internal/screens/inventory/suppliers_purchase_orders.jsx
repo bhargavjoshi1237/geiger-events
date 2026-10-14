@@ -807,7 +807,7 @@ export function SuppliersPurchaseOrdersScreen() {
       key: "total",
       header: "Total",
       align: "right",
-      className: "whitespace-nowrap text-right font-semibold tabular-nums text-white",
+      className: "whitespace-nowrap text-right font-semibold tabular-nums text-foreground dark:text-white",
       headClassName: "whitespace-nowrap",
       render: (po) => currency(po.total),
     },

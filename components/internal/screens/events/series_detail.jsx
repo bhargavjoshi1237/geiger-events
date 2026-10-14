@@ -363,7 +363,7 @@ function EventsTab({
             size="icon-sm"
             variant="ghost"
             aria-label="Remove from series"
-            className="text-red-400 hover:bg-red-500/10 hover:text-red-400"
+            className="text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
             onClick={() => onRemove(e.id)}
           >
             <X className="h-4 w-4" />

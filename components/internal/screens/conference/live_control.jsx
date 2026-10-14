@@ -101,7 +101,7 @@ export function LiveControl({ record, commit }) {
             {scheduleWords(resolved.startsAt, resolved.endsAt)}
           </p>
           {forced ? (
-            <p className="text-sm text-amber-400">
+            <p className="text-sm text-amber-600 dark:text-amber-400">
               Overridden to <span className="font-medium">{forced}</span> — the schedule is ignored
               until you clear it.
             </p>

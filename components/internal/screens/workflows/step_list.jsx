@@ -208,7 +208,7 @@ export function WorkflowStepList({ steps, onChange }) {
       {/* Trigger card */}
       <div className="rounded-xl border border-border bg-surface-subtle p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
             <TriggerIcon className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
@@ -245,8 +245,8 @@ export function WorkflowStepList({ steps, onChange }) {
                 <div
                   className={
                     isCondition
-                      ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-violet-500/20 bg-violet-500/10 text-violet-300"
-                      : "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 text-sky-400"
+                      ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                      : "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400"
                   }
                 >
                   <Icon className="h-4 w-4" />
@@ -281,7 +281,7 @@ export function WorkflowStepList({ steps, onChange }) {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
+                    className="text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
                     aria-label="Remove step"
                     onClick={() => removeStep(index)}
                   >

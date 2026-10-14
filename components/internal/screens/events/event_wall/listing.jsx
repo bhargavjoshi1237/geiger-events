@@ -145,7 +145,7 @@ export function WallEventsSection({ wall }) {
                     key={e.id}
                     className="flex items-center gap-2 rounded-lg border border-border bg-surface-card px-3 py-2.5"
                   >
-                    <Star className="h-4 w-4 shrink-0 text-amber-400" />
+                    <Star className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">
                         {e.name}
@@ -180,7 +180,7 @@ export function WallEventsSection({ wall }) {
                         size="icon-sm"
                         onClick={() => removeFeatured(e.id)}
                         aria-label="Remove from featured"
-                        className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                        className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                       >
                         <X className="h-4 w-4" />
                       </Button>

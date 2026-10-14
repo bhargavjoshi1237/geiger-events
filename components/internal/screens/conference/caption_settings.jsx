@@ -247,7 +247,7 @@ export function CaptionSettings({ api, projectId }) {
               className={cn(
                 "shrink-0 gap-1.5 border-border",
                 configured
-                  ? "bg-emerald-500/10 text-emerald-400"
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                   : "bg-surface-subtle text-text-secondary",
               )}
             >

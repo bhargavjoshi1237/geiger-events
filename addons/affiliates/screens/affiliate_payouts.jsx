@@ -248,7 +248,7 @@ export function AffiliatePayoutsScreen() {
                   <p className="truncate text-xs text-text-secondary">{a.email}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="tabular-nums font-medium text-emerald-400">
+                  <span className="tabular-nums font-medium text-emerald-600 dark:text-emerald-400">
                     {currency(a.owed)}
                   </span>
                   <Button

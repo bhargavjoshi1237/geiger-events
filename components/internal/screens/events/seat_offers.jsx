@@ -59,11 +59,11 @@ export function VenueThumb({ sections, field, aspect, highlightId, className }) 
 
 function qualityBadge(score) {
   if (score >= 0.8)
-    return { label: "Prime", tone: "border-emerald-500/25 bg-emerald-500/10 text-emerald-400" };
+    return { label: "Prime", tone: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" };
   if (score >= 0.6)
-    return { label: "Great view", tone: "border-teal-500/25 bg-teal-500/10 text-teal-300" };
+    return { label: "Great view", tone: "border-teal-500/25 bg-teal-500/10 text-teal-700 dark:text-teal-300" };
   if (score >= 0.4)
-    return { label: "Good view", tone: "border-sky-500/25 bg-sky-500/10 text-sky-300" };
+    return { label: "Good view", tone: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300" };
   return null;
 }
 
@@ -346,7 +346,7 @@ export function SeatOffers({
           </div>
 
           <p className="flex items-center gap-1.5 border-t border-border bg-surface-subtle px-3 py-2 text-[11px] text-text-tertiary">
-            <Check className="h-3 w-3 text-emerald-400" />
+            <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
             <span className="tabular-nums">
               {offers.length} row{offers.length === 1 ? "" : "s"} across {groups.length} section
               {groups.length === 1 ? "" : "s"}

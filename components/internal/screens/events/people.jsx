@@ -61,6 +61,11 @@ import {
   softDeleteEventTeamMember,
 } from "@/lib/supabase/event_team";
 import { uploadEventImage } from "@/lib/supabase/storage";
+import {
+  notifyEventTeamAdded,
+  notifyEventTeamRemoved,
+  notifyEventTeamRoleChanged,
+} from "@/lib/notifications/client";
 
 import { LogoLoading } from "@geiger/ui";
 const ROLE_ICONS = { Crown, ShieldCheck, Users, ScanLine, Eye };
@@ -202,6 +207,9 @@ export function CoHostsAdminsSection({ event, headerItem }) {
       ),
     );
     setAdding(false);
+    saved.filter(Boolean).forEach((row) =>
+      notifyEventTeamAdded({ userId: row.userId, actorId: user?.id, event, role: row.role }),
+    );
     const failed = optimistic.filter((row, i) => !saved[i]);
     setTeam((prev) => {
       const byId = new Map(saved.filter(Boolean).map((r) => [r.id, r]));
@@ -316,6 +324,8 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, role } : m)));
     const saved = await updateEventTeamMember(id, { role });
     if (saved) {
+      const member = before.find((m) => m.id === id);
+      notifyEventTeamRoleChanged({ userId: member?.userId, actorId: user?.id, event, role });
       toast.success("Role updated.");
     } else {
       setTeam(before);
@@ -328,6 +338,8 @@ export function CoHostsAdminsSection({ event, headerItem }) {
     setTeam((prev) => prev.filter((m) => m.id !== id));
     const ok = await softDeleteEventTeamMember(id);
     if (ok) {
+      const member = before.find((m) => m.id === id);
+      notifyEventTeamRemoved({ userId: member?.userId, actorId: user?.id, event });
       toast.success(msg);
     } else {
       setTeam(before);
@@ -559,7 +571,7 @@ export function CoHostsAdminsSection({ event, headerItem }) {
                           </p>
                         </div>
                         {picked ? (
-                          <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                          <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                         ) : null}
                       </button>
                     );
@@ -645,7 +657,7 @@ export function CoHostsAdminsSection({ event, headerItem }) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                      className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                       onClick={() => setForm((f) => ({ ...f, avatarUrl: "" }))}
                     >
                       <X className="h-4 w-4" /> Remove

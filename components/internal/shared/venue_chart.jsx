@@ -15,6 +15,7 @@ import { CustomChart } from "echarts/charts";
 import { GridComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { Maximize2, Minus, Plus } from "lucide-react";
+import { useTheme } from "next-themes";
 
 import { aspectRatio } from "@/lib/seating/geometry";
 import {
@@ -313,6 +314,9 @@ export const VenueChart = forwardRef(function VenueChart({
   );
 
   const palette = useMemo(() => ({ ...SEAT_COLOR, ...(seatColors || {}) }), [seatColors]);
+  // The ambient backdrop is dark in both themes; without it the canvas sits on the page surface.
+  const { resolvedTheme } = useTheme();
+  const light = !ambient && resolvedTheme === "light";
 
   const option = useMemo(() => {
     const seatSize = seatPitch * SEAT_FILL;
@@ -373,7 +377,9 @@ export const VenueChart = forwardRef(function VenueChart({
                     height: bottomRight[1] - topLeft[1],
                     r: 4,
                   },
-            style: { fill: "#242424", stroke: "#474747", lineWidth: 1 },
+            style: light
+              ? { fill: "#e4e4e7", stroke: "#d4d4d8", lineWidth: 1 }
+              : { fill: "#242424", stroke: "#474747", lineWidth: 1 },
           };
         },
       });
@@ -419,7 +425,7 @@ export const VenueChart = forwardRef(function VenueChart({
               text: item.section.name || "",
               textAlign: "center",
               textVerticalAlign: "middle",
-              fill: item.disabled ? "#737373" : "#e7e7e7",
+              fill: item.disabled ? (light ? "#a1a1aa" : "#737373") : (light ? "#3f3f46" : "#e7e7e7"),
               fontSize: 11,
               fontWeight: 500,
             },
@@ -485,7 +491,7 @@ export const VenueChart = forwardRef(function VenueChart({
             style: {
               fill: colour,
               opacity,
-              stroke: isHovered ? "#f8fafc" : undefined,
+              stroke: isHovered ? (light ? "#18181b" : "#f8fafc") : undefined,
               lineWidth: isHovered ? 1.25 : 0,
             },
           };
@@ -528,6 +534,7 @@ export const VenueChart = forwardRef(function VenueChart({
     seatState,
     seatPitch,
     palette,
+    light,
   ]);
 
   useEffect(() => {
@@ -695,7 +702,7 @@ export const VenueChart = forwardRef(function VenueChart({
 
 function ZoomControls({ onZoom, onReset }) {
   const button =
-    "flex h-8 w-8 items-center justify-center text-text-secondary transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary";
+    "flex h-8 w-8 items-center justify-center text-white/70 transition-colors hover:bg-white/10 hover:text-white dark:text-text-secondary dark:hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white";
 
   return (
     <div className="absolute bottom-2.5 right-2.5 z-20 flex flex-col divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10 bg-black/60 shadow-lg shadow-black/40 backdrop-blur-md">

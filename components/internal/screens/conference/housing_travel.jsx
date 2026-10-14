@@ -439,7 +439,7 @@ function ResultCard({ r, active, added, onHover, onAdd }) {
           )}
           {r.stars != null && (
             <span className="inline-flex items-center gap-1">
-              <Star className="h-3 w-3 text-amber-400" /> {r.stars}
+              <Star className="h-3 w-3 text-amber-600 dark:text-amber-400" /> {r.stars}
             </span>
           )}
           {r.website && (

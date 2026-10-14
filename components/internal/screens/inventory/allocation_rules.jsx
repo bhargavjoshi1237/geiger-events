@@ -113,7 +113,7 @@ export function PeriodEditor({ value, onChange }) {
                   size="icon-sm"
                   aria-label="Remove window"
                   onClick={() => setConfig({ windows: windows.filter((x) => x.id !== w.id) })}
-                  className="text-red-300 hover:bg-red-500/10"
+                  className="text-red-700 dark:text-red-300 hover:bg-red-500/10"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -289,7 +289,7 @@ export function SellAddonDialog({
           </div>
 
           {capWarning ? (
-            <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
               That cap is higher than the {qty(available)} you can currently promise —
               you may oversell unless you receive more stock.
             </p>
@@ -322,7 +322,7 @@ export function SellAddonDialog({
           {published ? (
             <Button
               variant="ghost"
-              className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
+              className="text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
               onClick={onUnpublish}
               disabled={pending}
             >

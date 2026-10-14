@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 
 const THEMES = {
   warning: {
-    root: "border-amber-500/25 bg-amber-500/10 text-amber-200",
-    chip: "border-amber-500/30 bg-amber-500/15 text-amber-200",
-    linkDecoration: "decoration-amber-300/40",
+    root: "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-200",
+    chip: "border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-200",
+    linkDecoration: "decoration-amber-700/40 dark:decoration-amber-300/40",
   },
   info: {
     root: "border-primary/20 bg-primary/10 text-foreground",
@@ -70,7 +70,7 @@ export function GlobalBanner() {
           variant="ghost"
           size="icon-sm"
           onClick={hideBanner}
-          className="absolute right-4 p-1.5 rounded-full hover:bg-white/10 transition-all active:scale-95 flex items-center justify-center"
+          className="absolute right-4 p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-95 flex items-center justify-center"
           aria-label="Close banner"
         >
           <X className="w-3.5 h-3.5" />

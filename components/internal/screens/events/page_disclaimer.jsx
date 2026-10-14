@@ -88,7 +88,7 @@ export function PageDisclaimerSection({ event, headerItem }) {
         ) : null}
 
         {cfg.enabled && !placements.length ? (
-          <p className="mt-3 text-[11px] text-amber-400">
+          <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">
             Pick at least one slot — the disclaimer has nowhere to render.
           </p>
         ) : null}

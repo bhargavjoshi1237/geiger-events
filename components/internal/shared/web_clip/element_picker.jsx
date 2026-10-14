@@ -251,7 +251,7 @@ export function ElementPicker({ src, onPick, onLoadState }) {
                     className={cn(
                       "shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] transition-colors",
                       node === picked
-                        ? "bg-emerald-500/20 text-emerald-300"
+                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
                         : "text-text-secondary hover:bg-surface-active hover:text-foreground",
                     )}
                   >

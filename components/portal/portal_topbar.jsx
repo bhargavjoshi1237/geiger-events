@@ -20,11 +20,6 @@ import {
 } from "@geiger/ui/dropdown-menu";
 import { initials } from "./portal_kit";
 
-const surfaceStyle = {
-  backgroundColor: "var(--surface-subtle)",
-  borderColor: "var(--border)",
-  color: "var(--foreground)",
-};
 const itemStyle =
   "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm cursor-default transition-colors outline-none hover:bg-surface-hover focus:bg-surface-hover text-muted-foreground hover:text-foreground focus:text-foreground";
 
@@ -57,8 +52,7 @@ function AccountMenu({ member, onNavigate, onSignOut }) {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="w-72 rounded-xl border p-0 shadow-xl"
-        style={surfaceStyle}
+        className="w-72 rounded-xl border border-border bg-background p-0 text-foreground shadow-xl"
         sideOffset={8}
         align="end"
       >
@@ -104,17 +98,17 @@ function AccountMenu({ member, onNavigate, onSignOut }) {
               type="single"
               value={theme}
               onValueChange={(v) => v && setTheme(v)}
-              className="flex w-full items-center justify-evenly rounded-lg bg-background p-0.5"
+              className="flex w-full items-center justify-evenly rounded-lg border border-border bg-surface-subtle p-0.5"
             >
               <ToggleGroupItem
                 value="light"
-                className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-card hover:text-foreground data-[state=on]:bg-surface-active data-[state=on]:text-foreground"
+                className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-hover dark:hover:bg-surface-card hover:text-foreground data-[state=on]:bg-surface-active data-[state=on]:text-foreground"
               >
                 <Sun className="size-3.5" /> Light
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="dark"
-                className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-card hover:text-foreground data-[state=on]:bg-surface-active data-[state=on]:text-foreground"
+                className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-hover dark:hover:bg-surface-card hover:text-foreground data-[state=on]:bg-surface-active data-[state=on]:text-foreground"
               >
                 <Moon className="size-3.5" /> Dark
               </ToggleGroupItem>
@@ -124,10 +118,10 @@ function AccountMenu({ member, onNavigate, onSignOut }) {
           <DropdownMenuSeparator className="my-1 bg-surface-hover" />
 
           <DropdownMenuItem
-            className={`${itemStyle} group hover:bg-red-500/10 hover:text-red-400 focus:bg-red-500/10 focus:text-red-400`}
+            className={`${itemStyle} group hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400`}
             onSelect={onSignOut}
           >
-            <LogOut className="size-4 group-hover:text-red-400 group-focus:text-red-400" />
+            <LogOut className="size-4 group-hover:text-red-600 dark:group-hover:text-red-400 group-focus:text-red-600 dark:group-focus:text-red-400" />
             <span>Sign out</span>
           </DropdownMenuItem>
         </div>

@@ -135,7 +135,7 @@ function SlideList({ slides, selectedId, onSelect, onMove, onDelete, onAdd }) {
                 size="icon-sm"
                 aria-label="Remove slide"
                 onClick={() => onDelete(slide)}
-                className="text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

@@ -454,7 +454,7 @@ function ProgramDetail({ program, events, onBack, onChange, onDeleted }) {
                       variant="ghost"
                       size="icon"
                       aria-label={`Remove ${tier.name}`}
-                      className="text-red-400 hover:bg-red-500/10"
+                      className="text-red-600 dark:text-red-400 hover:bg-red-500/10"
                       onClick={() => handleTierDelete(tier)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -526,7 +526,7 @@ function ProgramDetail({ program, events, onBack, onChange, onDeleted }) {
                       variant="ghost"
                       size="icon"
                       aria-label="Remove from program"
-                      className="text-red-400 hover:bg-red-500/10"
+                      className="text-red-600 dark:text-red-400 hover:bg-red-500/10"
                       onClick={() => handleEnrolmentRemove(enrolment)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -586,7 +586,7 @@ function ProgramDetail({ program, events, onBack, onChange, onDeleted }) {
           <SectionCard title="Danger zone">
             <Button
               variant="ghost"
-              className="text-red-400 hover:bg-red-500/10"
+              className="text-red-600 dark:text-red-400 hover:bg-red-500/10"
               onClick={async () => {
                 const ok = await softDeleteProgram(program.id);
                 if (ok) {

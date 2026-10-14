@@ -459,7 +459,7 @@ export function IssuingDeskScreen() {
         <div className="flex items-center gap-1.5">
           <span className="truncate text-text-secondary">{r.issuedBy || "—"}</span>
           {r.override ? (
-            <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-label="Override" />
+            <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-label="Override" />
           ) : null}
         </div>
       ),

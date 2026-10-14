@@ -657,7 +657,7 @@ function RuleRow({ rule, events, onChangeField, onChange, onRemove, removable })
         variant="ghost"
         size="icon-sm"
         disabled={!removable}
-        className="shrink-0 text-text-tertiary hover:text-red-300"
+        className="shrink-0 text-text-tertiary hover:text-red-700 dark:hover:text-red-300"
         onClick={onRemove}
         aria-label="Remove rule"
       >

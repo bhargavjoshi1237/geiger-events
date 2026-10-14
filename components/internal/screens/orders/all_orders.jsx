@@ -212,12 +212,12 @@ export function AllOrdersScreen() {
       key: "total",
       header: "Total",
       align: "right",
-      className: "text-right font-semibold tabular-nums text-white",
+      className: "text-right font-semibold tabular-nums text-foreground dark:text-white",
       render: (o) => (
         <div>
           {currency(o.total)}
           {o.refundedTotal > 0 ? (
-            <span className="block text-xs font-normal text-red-300">
+            <span className="block text-xs font-normal text-red-700 dark:text-red-300">
               -{currency(o.refundedTotal)}
             </span>
           ) : null}

@@ -552,7 +552,7 @@ export function ScheduleItemDialog({
                             onClick={() => set("clip")(null)}
                             title="Remove this clip"
                             aria-label="Remove this clip"
-                            className="hover:bg-red-500/10 hover:text-red-400"
+                            className="hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

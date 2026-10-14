@@ -374,7 +374,7 @@ function QrElementForm({ el, patch, qrSettings, onUpload, maxSize }) {
         }
       />
       {el.bgTransparent ? (
-        <p className="text-xs text-amber-400">
+        <p className="text-xs text-amber-600 dark:text-amber-400">
           Scanners need contrast — keep the code dark on a light background behind it, or
           invert the code colour on dark artwork.
         </p>
@@ -393,7 +393,7 @@ function QrElementForm({ el, patch, qrSettings, onUpload, maxSize }) {
         onUpload={onUpload}
       />
       {!centreLogoAllowed && el.logoUrl ? (
-        <p className="text-xs text-amber-400">
+        <p className="text-xs text-amber-600 dark:text-amber-400">
           Error correction {ec} is too low to print a centre mark safely — raise it to Q or H
           under Check-in → QR Tickets.
         </p>
@@ -649,7 +649,7 @@ export function Inspector({
               <PanelSection>
                 <Button
                   variant="outline"
-                  className="w-full border-border bg-transparent text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                  className="w-full border-border bg-transparent text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                   onClick={() => setPendingDelete(element)}
                 >
                   <Trash2 className="h-4 w-4" /> Remove from card

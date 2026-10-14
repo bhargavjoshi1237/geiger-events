@@ -247,7 +247,7 @@ export function WaitlistScreen() {
           title={openGroup.event.name}
           badges={
             openGroup.event.waitlistRules?.autoPromote ? (
-              <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+              <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                 Auto-promote on
               </span>
             ) : null
@@ -263,9 +263,9 @@ export function WaitlistScreen() {
               <span className="shrink-0 text-xs text-text-secondary tabular-nums">
                 {openGroup.counts.seats}/{openGroup.cap || "∞"} ·{" "}
                 {canPromote ? (
-                  <span className="text-emerald-400">{openGroup.open} open</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">{openGroup.open} open</span>
                 ) : (
-                  <span className="text-red-400">full</span>
+                  <span className="text-red-600 dark:text-red-400">full</span>
                 )}
                 {" · "}
                 {openGroup.queue.length} waiting
@@ -447,7 +447,7 @@ export function WaitlistScreen() {
                         {g.event.name}
                       </span>
                       {g.event.waitlistRules?.autoPromote ? (
-                        <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                        <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
                           Auto
                         </span>
                       ) : null}
@@ -471,11 +471,11 @@ export function WaitlistScreen() {
                   </div>
                   <div className="shrink-0 text-right">
                     {g.open > 0 ? (
-                      <span className="text-xs font-medium text-emerald-400 tabular-nums">
+                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">
                         {g.open} open
                       </span>
                     ) : (
-                      <span className="text-xs font-medium text-red-400">full</span>
+                      <span className="text-xs font-medium text-red-600 dark:text-red-400">full</span>
                     )}
                   </div>
                   <Button

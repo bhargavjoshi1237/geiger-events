@@ -271,7 +271,7 @@ export function ClipPruner({ clip, onChange, className }) {
           <p
             className={cn(
               "text-[11px]",
-              notice ? "text-amber-400" : "truncate text-muted-foreground",
+              notice ? "text-amber-600 dark:text-amber-400" : "truncate text-muted-foreground",
             )}
           >
             {notice ||

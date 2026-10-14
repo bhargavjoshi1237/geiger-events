@@ -254,7 +254,7 @@ export function OrganiserProfileScreen() {
           variant="ghost"
           size="icon"
           aria-label="Remove follower"
-          className="h-8 w-8 text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+          className="h-8 w-8 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
           onClick={() => handleRemoveFollower(f)}
         >
           <Trash2 className="h-4 w-4" />
@@ -402,7 +402,7 @@ export function OrganiserProfileScreen() {
                       variant="ghost"
                       size="icon"
                       aria-label="Remove link"
-                      className="h-9 w-9 shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400"
+                      className="h-9 w-9 shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                       onClick={() => removeLink(i)}
                     >
                       <X className="h-4 w-4" />

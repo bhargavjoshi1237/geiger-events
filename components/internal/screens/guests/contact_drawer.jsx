@@ -239,7 +239,7 @@ function ContactDrawerBody({
                       />
                       <span className="flex-1 truncate">{seg.name}</span>
                       {inSeg ? (
-                        <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                        <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                       ) : null}
                     </DropdownMenuItem>
                   );
@@ -268,7 +268,7 @@ function ContactDrawerBody({
             variant="ghost"
             className={cn(
               contact.blocked
-                ? "text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-300"
+                ? "text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300"
                 : "text-muted-foreground hover:bg-surface-active hover:text-foreground",
             )}
             onClick={() => onPatch(contact.id, { blocked: !contact.blocked })}
@@ -286,7 +286,7 @@ function ContactDrawerBody({
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-300 hover:bg-red-500/10 hover:text-red-300"
+            className="text-red-700 dark:text-red-300 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300"
             onClick={() => onDelete(contact)}
           >
             <Trash2 className="h-4 w-4" /> Delete
@@ -520,7 +520,7 @@ function TagsNotesTab({ contact, userId, onPatch }) {
                   <button
                     type="button"
                     onClick={() => removeNote(n.id)}
-                    className="text-[11px] text-text-tertiary hover:text-red-300"
+                    className="text-[11px] text-text-tertiary hover:text-red-700 dark:hover:text-red-300"
                   >
                     Remove
                   </button>

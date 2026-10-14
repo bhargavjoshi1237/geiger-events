@@ -144,7 +144,7 @@ export function EventCtasSection({ event, headerItem }) {
                       onClick={() =>
                         setItems(data.items.filter((i) => i.id !== item.id))
                       }
-                      className="mt-1.5 shrink-0 text-text-tertiary transition-colors hover:text-red-400"
+                      className="mt-1.5 shrink-0 text-text-tertiary transition-colors hover:text-red-600 dark:hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -169,7 +169,7 @@ export function EventCtasSection({ event, headerItem }) {
         )}
 
         {data.items.length >= 3 ? (
-          <p className="mt-3 text-[11px] text-amber-400">
+          <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">
             With this many buttons the card stops having one obvious action. Keep
             Get Tickets as the only primary and the rest quieter.
           </p>

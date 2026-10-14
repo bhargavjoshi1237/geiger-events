@@ -1,7 +1,7 @@
 const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig = {
-  transpilePackages: ["@geiger/ui"],
+  transpilePackages: ["@geiger/ui", "@geiger/notify"],
   basePath: isProd ? '/events' : '',
   allowedDevOrigins: ['127.0.0.1'],
   env: {
