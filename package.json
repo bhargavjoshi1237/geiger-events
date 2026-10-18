@@ -19,7 +19,7 @@
     "@geiger/notify": "github:bhargavjoshi1237/geiger-notify#400b90fabefe15df2ef80bf7857d5b2228272277",
     "@geiger/orm": "github:bhargavjoshi1237/geiger-orm#master",
     "@geiger/rbac": "github:bhargavjoshi1237/geiger-rbac#1835de3735cf9c86df5adebdbc7458dd4302e40d",
-    "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#00cac4f5bc540cd910478abb0f240358cc653f08",
+    "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#258dd6aa93dbf55262eb37055fcc5ef61da24a5b",
     "@maplibre/maplibre-gl-leaflet": "^0.1.4",
     "@react-three/fiber": "^9.7.0",
     "@supabase/ssr": "^0.8.0",
