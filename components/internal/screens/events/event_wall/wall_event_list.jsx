@@ -122,7 +122,7 @@ function EventListRow({ event, meta, featured, accent }) {
   return (
     <Link
       href={`/e/${event.id}`}
-      className="group flex gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-surface-hover"
+      className="group flex gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-surface-card/30"
     >
       <span className="w-20 shrink-0 pt-0.5 text-sm font-medium tabular-nums text-text-secondary">
         {formatTime(event.time)}
@@ -175,13 +175,20 @@ export function WallEventList({
       {groups.map((group) => (
         <section
           key={group.date}
-          className={cn(cards && "relative border-l border-dashed border-border pl-6")}
+          className={cn(cards && "relative pl-6")}
         >
           {cards ? (
-            <span
-              className="absolute -left-[4px] top-[0.4rem] h-[7px] w-[7px] rounded-full"
-              style={{ backgroundColor: accent.color }}
-            />
+            <>
+              {/* Rail starts at the dot, so nothing pokes out above the date. */}
+              <span
+                aria-hidden
+                className="absolute bottom-0 left-0 top-[0.6rem] border-l border-dashed border-border"
+              />
+              <span
+                className="absolute -left-[3px] top-[0.4rem] h-[7px] w-[7px] rounded-full"
+                style={{ backgroundColor: accent.color }}
+              />
+            </>
           ) : null}
           <header
             className={cn(

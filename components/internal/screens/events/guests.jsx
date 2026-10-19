@@ -13,21 +13,10 @@ import {
   UploadCloud,
   Loader2,
   Settings2,
-  LayoutGrid,
-  Rows3,
-  Columns2,
-  Columns3,
-  Columns4,
-  Square,
-  RectangleVertical,
-  Circle,
-  Maximize2,
-  Minimize2,
-  SquareDashed,
-  AlignLeft,
-  AlignCenter,
   Eye,
   Text,
+  RotateCcw,
+  Check,
 } from "lucide-react";
 
 import {
@@ -40,7 +29,6 @@ import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
 import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
-import { Separator } from "@geiger/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -68,7 +56,7 @@ import {
   resolveGuestDisplay,
 } from "@/lib/events/guests";
 import { cn } from "@/lib/utils";
-import { Segmented, withIcons } from "./theme_controls";
+import { ChoiceRow } from "./schedule_style";
 import { initials } from "./sample_data";
 
 const EMPTY_GUEST = { name: "", role: "", company: "", bio: "", image: "" };
@@ -253,29 +241,10 @@ function GuestDialog({ open, onOpenChange, eventId, initial, onSave }) {
   );
 }
 
-const LAYOUT_OPTIONS = withIcons(GUEST_LAYOUTS, { grid: LayoutGrid, list: Rows3 });
-const COLUMN_OPTIONS = withIcons(GUEST_COLUMN_OPTIONS, {
-  2: Columns2,
-  3: Columns3,
-  4: Columns4,
-});
-const SHAPE_OPTIONS = withIcons(GUEST_IMAGE_SHAPES, {
-  square: Square,
-  portrait: RectangleVertical,
-  circle: Circle,
-});
-const FIT_OPTIONS = withIcons(GUEST_IMAGE_FITS, {
-  cover: Maximize2,
-  contain: Minimize2,
-});
-const CARD_STYLE_OPTIONS = withIcons(GUEST_CARD_STYLES, {
-  plain: SquareDashed,
-  card: Square,
-});
-const ALIGN_OPTIONS = withIcons(GUEST_ALIGNS, {
-  left: AlignLeft,
-  center: AlignCenter,
-});
+const GUEST_LAYOUT_CHOICES = GUEST_LAYOUTS.map((o) => ({
+  ...o,
+  hint: o.key === "grid" ? "Photo cards in columns" : "Stacked rows",
+}));
 
 const PREVIEW_GUESTS = [
   { name: "Ava Mitchell", role: "VP, Product", bio: "Leads the platform team building developer tools." },
@@ -284,78 +253,206 @@ const PREVIEW_GUESTS = [
   { name: "Jonas Weber", role: "Staff Engineer", bio: "Works on edge runtime performance." },
 ];
 
-const PREVIEW_COLUMNS = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" };
+const PREVIEW_COLUMNS = {
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+};
 
 const GUEST_DISPLAY_KEYS = Object.keys(DEFAULT_GUEST_DISPLAY);
 
-// Miniature of GuestsBlock so settings can be judged without leaving the dialog.
+const ART_BAR = "rounded-[2px] bg-current";
+
+// Purpose-made diagrams for each choice tile — spatial options read better drawn than iconed.
+function GuestArt({ kind, value }) {
+  if (kind === "layout") {
+    return value === "grid" ? (
+      <div className="grid h-7 w-full grid-cols-3 gap-1 opacity-70">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="flex flex-col gap-0.5">
+            <span className={cn(ART_BAR, "flex-1")} />
+            <span className={cn(ART_BAR, "h-1 w-3/4")} />
+          </span>
+        ))}
+      </div>
+    ) : (
+      <div className="flex h-7 w-full flex-col justify-between opacity-70">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="flex items-center gap-1">
+            <span className={cn(ART_BAR, "h-1.5 w-1.5 shrink-0")} />
+            <span className={cn(ART_BAR, "h-1 flex-1")} />
+          </span>
+        ))}
+      </div>
+    );
+  }
+  if (kind === "columns") {
+    return (
+      <div
+        className="grid h-7 w-full gap-1 opacity-70"
+        style={{ gridTemplateColumns: `repeat(${value}, minmax(0, 1fr))` }}
+      >
+        {Array.from({ length: value }, (_, i) => (
+          <span key={i} className={ART_BAR} />
+        ))}
+      </div>
+    );
+  }
+  if (kind === "shape") {
+    const shape = {
+      square: "h-6 w-6 rounded-[3px]",
+      portrait: "h-7 w-[22px] rounded-[3px]",
+      circle: "h-6 w-6 rounded-full",
+    }[value];
+    return (
+      <div className="flex h-7 items-center justify-center opacity-70">
+        <span className={cn("bg-current", shape)} />
+      </div>
+    );
+  }
+  if (kind === "fit") {
+    return (
+      <div className="flex h-7 items-center justify-center opacity-70">
+        <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-[3px] border border-current">
+          <span
+            className={cn(
+              "bg-current",
+              value === "cover" ? "h-full w-full" : "h-3 w-4 rounded-[2px]",
+            )}
+          />
+        </span>
+      </div>
+    );
+  }
+  if (kind === "card") {
+    return (
+      <div
+        className={cn(
+          "flex h-7 w-full flex-col justify-center gap-1 rounded-[4px] px-1.5 opacity-70",
+          value === "card" && "border border-current",
+        )}
+      >
+        <span className={cn(ART_BAR, "h-1 w-3/4")} />
+        <span className={cn(ART_BAR, "h-1 w-1/2")} />
+      </div>
+    );
+  }
+  return (
+    <div
+      className={cn(
+        "flex h-7 w-full flex-col justify-center gap-1 opacity-70",
+        value === "center" ? "items-center" : "items-start",
+      )}
+    >
+      <span className={cn(ART_BAR, "h-1.5 w-1/2")} />
+      <span className={cn(ART_BAR, "h-1 w-3/4")} />
+      <span className={cn(ART_BAR, "h-1 w-2/5")} />
+    </div>
+  );
+}
+
+function SettingsGroup({ title, children }) {
+  return (
+    <section className="space-y-4 py-5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+        {title}
+      </p>
+      {children}
+    </section>
+  );
+}
+
+// A choice that only applies to the grid stays in place (dimmed) for lists, so the panel never jumps.
+function GridOnly({ active, children }) {
+  return (
+    <div
+      aria-disabled={!active}
+      className={cn("transition-opacity", !active && "pointer-events-none opacity-40")}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PreviewPhoto({ guest, display, className }) {
+  const frame = cn(
+    "overflow-hidden border border-border bg-surface-card",
+    GUEST_SHAPE_CLASS[display.imageShape],
+    className,
+  );
+  if (guest.image) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={guest.image}
+        alt=""
+        className={cn(
+          frame,
+          "block",
+          GUEST_FIT_CLASS[display.imageFit],
+          display.imageFit === "contain" && "bg-white p-1",
+        )}
+      />
+    );
+  }
+  return (
+    <div className={cn(frame, "flex items-center justify-center")}>
+      <span className="text-[10px] font-medium text-muted-foreground">
+        {initials(guest.name || "?")}
+      </span>
+    </div>
+  );
+}
+
+// Miniature of the public GuestsBlock so settings can be judged without leaving the dialog.
 function GuestLayoutPreview({ display, guests }) {
   const isGrid = display.layout === "grid";
-  const source = guests?.length ? guests : PREVIEW_GUESTS;
-  const items = Array.from(
-    { length: isGrid ? display.columns : 2 },
-    (_, i) => source[i % source.length],
-  );
+  const count = isGrid ? display.columns : 3;
+  // Real guests first; samples only fill the row so nobody appears twice.
+  const items = [...(guests || []), ...PREVIEW_GUESTS].slice(0, count);
   const carded = display.cardStyle === "card";
+
   return (
-    <div className="rounded-xl border border-border bg-surface-subtle p-4">
-      <p className="mb-3 flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-        <Eye className="h-3.5 w-3.5" /> Preview
-      </p>
-      <div
-        className={
-          isGrid
-            ? cn("grid gap-x-3 gap-y-4", PREVIEW_COLUMNS[display.columns])
-            : "flex flex-col gap-3"
-        }
-      >
-        {items.map((g, i) => (
-          <div
-            key={i}
-            className={cn(
-              isGrid ? "min-w-0" : "flex min-w-0 items-start gap-3",
-              isGrid && display.align === "center" && "text-center",
-              carded && "rounded-lg border border-border bg-surface-card p-2.5",
-            )}
-          >
+    <div className="w-full rounded-xl border border-border bg-background shadow-xl shadow-black/20">
+      <div className="p-5">
+        <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <Users className="h-3.5 w-3.5 text-text-secondary" /> Guests
+        </p>
+        <div
+          className={
+            isGrid
+              ? cn("grid gap-x-3 gap-y-4", PREVIEW_COLUMNS[display.columns])
+              : "flex flex-col gap-2.5"
+          }
+        >
+          {items.map((g, i) => (
             <div
+              key={g.id || i}
               className={cn(
-                "flex items-center justify-center overflow-hidden border border-border bg-surface-card",
-                GUEST_SHAPE_CLASS[display.imageShape],
-                isGrid ? "w-full" : "w-11 shrink-0",
+                isGrid ? "min-w-0" : "flex min-w-0 items-start gap-3",
+                isGrid && display.align === "center" && "text-center",
+                carded && "rounded-lg border border-border bg-surface-subtle p-2.5",
               )}
             >
-              {g.image ? (
-                <img
-                  src={g.image}
-                  alt=""
-                  className={cn(
-                    "h-full w-full",
-                    GUEST_FIT_CLASS[display.imageFit],
-                    display.imageFit === "contain" && "bg-white p-1",
-                  )}
-                />
-              ) : (
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  {initials(g.name || "?")}
-                </span>
-              )}
+              <PreviewPhoto
+                guest={g}
+                display={display}
+                className={isGrid ? "w-full" : "w-10 shrink-0"}
+              />
+              <div className={cn("min-w-0", isGrid && "mt-2")}>
+                <p className="truncate text-xs font-semibold text-foreground">{g.name}</p>
+                {g.role ? (
+                  <p className="truncate text-[11px] text-text-secondary">{g.role}</p>
+                ) : null}
+                {display.showBio && g.bio ? (
+                  <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
+                    {g.bio}
+                  </p>
+                ) : null}
+              </div>
             </div>
-            <div className={cn("min-w-0", isGrid && "mt-2")}>
-              <p className="truncate text-[11px] font-semibold text-foreground">
-                {g.name}
-              </p>
-              {g.role ? (
-                <p className="truncate text-[10px] text-text-secondary">{g.role}</p>
-              ) : null}
-              {display.showBio && g.bio ? (
-                <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
-                  {g.bio}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -366,106 +463,125 @@ function GuestDisplayDialog({ open, onOpenChange, display, onChange, onReset, gu
   const isDefault = GUEST_DISPLAY_KEYS.every(
     (k) => display[k] === DEFAULT_GUEST_DISPLAY[k],
   );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto bg-background">
-        <DialogHeader>
+      <DialogContent className="flex h-[min(700px,90dvh)] max-w-4xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="border-b border-border px-6 pb-4 pr-12 pt-5">
           <DialogTitle>Guest layout</DialogTitle>
           <DialogDescription>
             How featured guests are arranged on your public event page.
           </DialogDescription>
         </DialogHeader>
 
-        <GuestLayoutPreview display={display} guests={guests} />
+        <div className="min-h-0 flex-1 overflow-y-auto md:grid md:grid-cols-[minmax(0,1fr)_340px] md:overflow-hidden">
+          <div className="flex flex-col border-b border-border md:min-h-0 md:border-b-0 md:border-r">
+            <p className="flex min-w-0 items-center gap-1.5 truncate px-6 pt-4 text-xs font-medium text-text-secondary">
+              <Eye className="h-3.5 w-3.5 shrink-0" />
+              {guests?.length
+                ? `Live preview · ${guests.length} guest${guests.length === 1 ? "" : "s"}`
+                : "Live preview · sample guests"}
+            </p>
+            <div className="flex flex-1 items-start justify-center bg-[radial-gradient(var(--border)_1px,transparent_1px)] [background-size:16px_16px] p-6 md:min-h-0 md:overflow-y-auto">
+              <GuestLayoutPreview display={display} guests={guests} />
+            </div>
+          </div>
 
-        <div className="grid gap-5">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Layout" hint="Grid shows photo cards; list stacks rows.">
-              <Segmented
+          <div className="divide-y divide-border px-6 md:min-h-0 md:overflow-y-auto">
+            <SettingsGroup title="Arrangement">
+              <ChoiceRow
+                label="Layout"
                 value={display.layout}
                 onChange={onChange("layout")}
-                options={LAYOUT_OPTIONS}
+                options={GUEST_LAYOUT_CHOICES}
+                render={(o) => <GuestArt kind="layout" value={o.key} />}
               />
-            </Field>
-            {isGrid ? (
-              <Field label="Columns" hint="At desktop width; narrower screens step down.">
-                <Segmented
+              <GridOnly active={isGrid}>
+                <ChoiceRow
+                  label="Columns"
+                  hint={isGrid ? "Steps down on smaller screens" : "Grid only"}
                   value={display.columns}
                   onChange={onChange("columns")}
-                  options={COLUMN_OPTIONS}
+                  options={GUEST_COLUMN_OPTIONS}
+                  render={(o) => <GuestArt kind="columns" value={o.key} />}
                 />
-              </Field>
-            ) : null}
-          </div>
+              </GridOnly>
+            </SettingsGroup>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Photo shape">
-              <Segmented
+            <SettingsGroup title="Photos">
+              <ChoiceRow
+                label="Shape"
                 value={display.imageShape}
                 onChange={onChange("imageShape")}
-                options={SHAPE_OPTIONS}
+                options={GUEST_IMAGE_SHAPES}
+                render={(o) => <GuestArt kind="shape" value={o.key} />}
               />
-            </Field>
-            <Field
-              label="Photo framing"
-              hint="Fit inside keeps the whole image, with space around it."
-            >
-              <Segmented
+              <ChoiceRow
+                label="Framing"
+                hint={display.imageFit === "contain" ? "Whole image, padded" : "Cropped to fill"}
                 value={display.imageFit}
                 onChange={onChange("imageFit")}
-                options={FIT_OPTIONS}
+                options={GUEST_IMAGE_FITS}
+                render={(o) => <GuestArt kind="fit" value={o.key} />}
               />
-            </Field>
-          </div>
+            </SettingsGroup>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Card style" hint="Plain sits straight on the page.">
-              <Segmented
+            <SettingsGroup title="Card">
+              <ChoiceRow
+                label="Style"
+                hint={display.cardStyle === "card" ? "In a bordered panel" : "Straight on the page"}
                 value={display.cardStyle}
                 onChange={onChange("cardStyle")}
-                options={CARD_STYLE_OPTIONS}
+                options={GUEST_CARD_STYLES}
+                render={(o) => <GuestArt kind="card" value={o.key} />}
               />
-            </Field>
-            {isGrid ? (
-              <Field label="Text alignment">
-                <Segmented
+              <GridOnly active={isGrid}>
+                <ChoiceRow
+                  label="Text alignment"
+                  hint={isGrid ? null : "Grid only"}
                   value={display.align}
                   onChange={onChange("align")}
-                  options={ALIGN_OPTIONS}
+                  options={GUEST_ALIGNS}
+                  render={(o) => <GuestArt kind="align" value={o.key} />}
                 />
-              </Field>
-            ) : null}
+              </GridOnly>
+            </SettingsGroup>
+
+            <SettingsGroup title="Details">
+              <SettingsList>
+                <SettingRow
+                  icon={Text}
+                  title="Show bios"
+                  description="The short introduction under each guest's name."
+                  checked={display.showBio}
+                  onCheckedChange={onChange("showBio")}
+                />
+              </SettingsList>
+            </SettingsGroup>
           </div>
-
-          <Separator />
-
-          <SettingsList>
-            <SettingRow
-              icon={Text}
-              title="Show bios"
-              description="The short introduction under each guest's name."
-              checked={display.showBio}
-              onCheckedChange={onChange("showBio")}
-            />
-          </SettingsList>
         </div>
 
-        <DialogFooter className="sm:justify-between">
+        <div className="flex items-center justify-between gap-3 border-t border-border px-6 py-4">
           <Button
             variant="ghost"
             disabled={isDefault}
             onClick={onReset}
             className="text-muted-foreground hover:bg-surface-active hover:text-foreground disabled:opacity-40"
           >
-            Reset to default
+            <RotateCcw className="h-4 w-4" /> Reset to default
           </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => onOpenChange(false)}
-          >
-            Done
-          </Button>
-        </DialogFooter>
+          <div className="flex items-center gap-4">
+            <span className="hidden items-center gap-1.5 text-xs text-text-tertiary sm:flex">
+              <Check className="h-3.5 w-3.5" /> Changes save automatically
+            </span>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => onOpenChange(false)}
+            >
+              Done
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

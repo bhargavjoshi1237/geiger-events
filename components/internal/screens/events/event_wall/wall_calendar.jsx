@@ -149,6 +149,9 @@ function StatusToggle({ status, onStatus, accent }) {
   );
 }
 
+// Frame the next event and anything within city range; events elsewhere stay pinned, one zoom-out away.
+const WALL_MAP_FIT_KM = 10;
+
 function MapCard({ events }) {
   const located = useMemo(() => locatedEvents(events), [events]);
   if (!located.length) return null;
@@ -167,6 +170,7 @@ function MapCard({ events }) {
       className="mt-3 h-[230px]"
       coords={{ lat: lead.lat, lng: lead.lng }}
       places={places}
+      fitRadiusKm={WALL_MAP_FIT_KM}
       label={lead.event.name}
       address={[lead.event.venue, lead.event.city].filter(Boolean).join(", ")}
     />

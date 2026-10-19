@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { fetchWeather } from "@/lib/map/geo";
+import { distanceMeters, fetchWeather } from "@/lib/map/geo";
 import { loadMapKit } from "@/lib/map/basemap";
 
 export function MapZoomControls({ onZoomIn, onZoomOut, className }) {
@@ -123,6 +123,7 @@ export function EventMap({
   fallbackCenter = null,
   label = "Venue",
   address = "",
+  fitRadiusKm = null,
 }) {
   const containerRef = useRef(null);
   const basemapRef = useRef(null);
@@ -189,7 +190,7 @@ export function EventMap({
     );
 
     const coordKey = coords ? `${coords.lat},${coords.lng}` : "none";
-    const sig = `${coordKey}|${zoom}|${label}|${address}|${valid
+    const sig = `${coordKey}|${zoom}|${label}|${address}|${fitRadiusKm}|${valid
       .map((p) => `${p.lat},${p.lng}`)
       .join(";")}`;
     if (sig === sigRef.current) return;
@@ -221,8 +222,13 @@ export function EventMap({
     lastCoordRef.current = coordKey;
     initedRef.current = true;
 
+    // Pins past fitRadiusKm still render, but don't pull the initial view out to world level.
+    const framed =
+      coords && Number.isFinite(fitRadiusKm)
+        ? valid.filter((p) => distanceMeters(coords, p) <= fitRadiusKm * 1000)
+        : valid;
     const pts = coords
-      ? [[coords.lat, coords.lng], ...valid.map((p) => [p.lat, p.lng])]
+      ? [[coords.lat, coords.lng], ...framed.map((p) => [p.lat, p.lng])]
       : [];
     if (pts.length > 1) {
       const opts = { padding: [32, 32], maxZoom: 16 };
@@ -238,7 +244,7 @@ export function EventMap({
       () => mapInstanceRef.current && mapInstanceRef.current.invalidateSize(),
       0,
     );
-  }, [ready, coords, places, fallbackCenter, label, address]);
+  }, [ready, coords, places, fallbackCenter, label, address, fitRadiusKm]);
 
   return (
     <div

@@ -10,13 +10,12 @@ import {
   LayoutGrid,
   Linkedin,
   List,
-  Search,
   Twitch,
   Twitter,
-  X,
   Youtube,
 } from "lucide-react";
 
+import { ExpandableSearch, SegmentedTabs } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 import {
   resolveTheme,
@@ -147,71 +146,34 @@ function SocialLinks({ profile }) {
   );
 }
 
-function ViewToggle({ view, onView }) {
-  return (
-    <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface-subtle p-0.5">
-      {[
-        ["cards", LayoutGrid, "Card view"],
-        ["list", List, "List view"],
-      ].map(([key, Icon, label]) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => onView(key)}
-          aria-label={label}
-          aria-pressed={view === key}
-          className={cn(
-            "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
-            view === key
-              ? "bg-surface-active text-foreground"
-              : "text-text-secondary hover:text-foreground",
-          )}
-        >
-          <Icon className="h-4 w-4" />
-        </button>
-      ))}
-    </div>
-  );
-}
+const VIEW_TABS = [
+  { value: "cards", label: "Cards", icon: LayoutGrid },
+  { value: "list", label: "List", icon: List },
+];
 
-function SearchControl({ query, onQuery }) {
+// Collapsed, the search sits in a bordered tile the same height as the tab rail; open, the field's own border takes over.
+function WallSearch({ query, onQuery }) {
   const [open, setOpen] = useState(false);
-
-  if (!open && !query) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Search events"
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface-subtle text-text-secondary transition-colors hover:text-foreground"
-      >
-        <Search className="h-4 w-4" />
-      </button>
-    );
-  }
-
+  const expanded = open || !!query;
   return (
-    <div className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface-subtle pl-2.5 pr-1">
-      <Search className="h-4 w-4 shrink-0 text-text-secondary" />
-      <input
-        autoFocus
+    <div
+      className={cn(
+        "max-w-full shrink-0 rounded-lg border transition-[width] duration-200 ease-out",
+        expanded
+          ? "w-36 border-transparent sm:w-64"
+          : "w-[42px] border-border bg-surface-subtle p-0.5",
+      )}
+    >
+      <ExpandableSearch
         value={query}
-        onChange={(e) => onQuery(e.target.value)}
-        placeholder="Search events"
-        aria-label="Search events"
-        className="w-36 bg-transparent text-sm text-foreground outline-none placeholder:text-text-tertiary sm:w-48"
+        onChange={onQuery}
+        open={expanded}
+        onOpenChange={setOpen}
+        expandedWidth="100%"
+        placeholder="Search events…"
+        label="Search events"
+        inputClassName="[&::-webkit-search-cancel-button]:appearance-none"
       />
-      <button
-        type="button"
-        onClick={() => {
-          onQuery("");
-          setOpen(false);
-        }}
-        aria-label="Clear search"
-        className="flex h-6 w-6 items-center justify-center rounded-md text-text-secondary transition-colors hover:text-foreground"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }
@@ -496,8 +458,13 @@ export function WallPublicPageContent({ wall, events, profile }) {
                 Events
               </h2>
               <div className="flex items-center gap-2">
-                <ViewToggle view={view} onView={setView} />
-                <SearchControl query={query} onQuery={setQuery} />
+                <SegmentedTabs
+                  tabs={VIEW_TABS}
+                  value={view}
+                  onChange={setView}
+                  className="w-fit shrink-0 sm:w-fit"
+                />
+                <WallSearch query={query} onQuery={setQuery} />
               </div>
             </div>
 

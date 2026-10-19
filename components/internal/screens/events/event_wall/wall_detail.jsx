@@ -5,8 +5,11 @@ import { toast } from "sonner";
 import { Copy, ExternalLink, LayoutGrid } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { EditorShell } from "@/components/internal/shared/editor_shell";
-import { EmptyState } from "@/components/internal/shared/screen_kit";
+import { EditorSections } from "@/components/internal/shared/editor_shell";
+import {
+  EmptyState,
+  ScreenHeader,
+} from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
 import { useProject } from "@/context/project-context";
 import { getWall } from "@/lib/supabase/event_wall";
@@ -72,46 +75,52 @@ export function EventWallScreen() {
     );
   }
 
+  // Same frame as All Events: page-scrolling wrapper + ScreenHeader, with the section nav below.
   return (
-    <EditorShell
-      title="Event Wall"
-      meta={
-        <>
-          <p>The public page listing every event you&apos;ve marked listable.</p>
-          <button
-            type="button"
-            onClick={copyLink}
-            title="Copy public link"
-            className="group mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md text-xs text-text-tertiary transition-colors hover:text-foreground"
-          >
-            <span className="truncate font-mono">{wallUrl}</span>
-            <Copy className="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100" />
-          </button>
-        </>
-      }
-      actions={
-        <>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={copyLink}
-          >
-            <Copy className="h-4 w-4" /> Copy link
-          </Button>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={viewLive}
-          >
-            <ExternalLink className="h-4 w-4" /> View live
-          </Button>
-        </>
-      }
-      nav={NAV_GROUPS}
-      sections={SECTIONS}
-      sectionProps={{ wall, onWallChange: setWall }}
-      defaultSection="general"
-    />
+    <MainScreenWrapper>
+      <ScreenHeader
+        title="Event Wall"
+        description={
+          <>
+            The public page listing every event you&apos;ve marked listable.
+            <button
+              type="button"
+              onClick={copyLink}
+              title="Copy public link"
+              className="group mt-2 flex max-w-full items-center gap-1.5 rounded-md text-xs text-text-tertiary transition-colors hover:text-foreground"
+            >
+              <span className="truncate font-mono">{wallUrl}</span>
+              <Copy className="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100" />
+            </button>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="outline"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={copyLink}
+            >
+              <Copy className="h-4 w-4" /> Copy link
+            </Button>
+            <Button
+              variant="outline"
+              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              onClick={viewLive}
+            >
+              <ExternalLink className="h-4 w-4" /> View live
+            </Button>
+          </>
+        }
+      />
+
+      <EditorSections
+        nav={NAV_GROUPS}
+        sections={SECTIONS}
+        sectionProps={{ wall, onWallChange: setWall }}
+        defaultSection="general"
+      />
+    </MainScreenWrapper>
   );
 }
 
