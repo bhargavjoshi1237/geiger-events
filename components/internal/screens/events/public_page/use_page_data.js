@@ -163,6 +163,7 @@ export function usePageData({ event, live }) {
           setResumeResult({
             ok: Boolean(data.ok),
             orderId: data.orderId,
+            sessionId,
             error: data.error,
             ticket: data.ticket,
             quantity: data.quantity,

@@ -19,14 +19,16 @@ import { SeatsStep } from "./seats_step";
 import { BoothsStep } from "./booths_step";
 import { DetailsStep } from "./details_step";
 import { AddonsStep } from "./addons_step";
+import { ReviewStep } from "./review_step";
 import { DoneStep } from "./done_step";
 import { ErrorStep } from "./error_step";
 import { ExpressStep } from "./express_step";
 
-// The hidden pane collapses once the slide ends, so the dialog takes the visible step's height, not the taller one's.
+// The form steps slide sideways; a hidden pane collapses once the slide ends so the dialog takes the visible step's height.
+const SLIDES = ["details", "addons", "review"];
 const slidePane = (active) =>
   cn(
-    "w-1/2 shrink-0 px-0.5 transition-[max-height] duration-0",
+    "shrink-0 px-0.5 transition-[max-height] duration-0",
     active ? "max-h-[400vh] delay-0" : "max-h-0 overflow-hidden delay-300",
   );
 
@@ -37,7 +39,8 @@ export function TicketCheckout(props) {
   const accentStyle = { backgroundColor: accent.color, color: accent.text };
 
   const wide = step === "seats" || step === "booths";
-  const wideForm = step === "details" || step === "addons";
+  const slide = SLIDES.indexOf(step);
+  const wideForm = slide >= 0;
   const fills = step === "seats";
   const express = step === "express";
   const showMeta = wide || wideForm;
@@ -119,7 +122,7 @@ export function TicketCheckout(props) {
 
         <div
           className={`flex-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-            fills ? "min-h-0 overflow-hidden" : "overflow-y-auto"
+            fills ? "min-h-0 overflow-hidden" : "overflow-y-auto pt-2"
           }`}
         >
           {disclaimerSlot("checkout-top", "mb-4")}
@@ -136,32 +139,37 @@ export function TicketCheckout(props) {
             <BoothsStep event={event} checkout={checkout} accent={accent} />
           ) : null}
 
-          {step === "details" || step === "addons" ? (
+          {wideForm ? (
             <div className="w-full overflow-hidden">
               <div
                 className="flex items-start transition-transform duration-300 ease-out"
                 style={{
-                  width: "200%",
-                  transform: step === "addons" ? "translateX(-50%)" : "translateX(0)",
+                  width: `${SLIDES.length * 100}%`,
+                  transform: `translateX(-${(slide * 100) / SLIDES.length}%)`,
                 }}
               >
-                <div className={slidePane(step === "details")} inert={step !== "details"}>
-                  <DetailsStep
-                    event={event}
-                    checkout={checkout}
-                    accent={accent}
-                    accentStyle={accentStyle}
-                    daConfig={daConfig}
-                  />
-                </div>
-                <div className={slidePane(step === "addons")} inert={step !== "addons"}>
-                  <AddonsStep
-                    event={event}
-                    checkout={checkout}
-                    accent={accent}
-                    accentStyle={accentStyle}
-                  />
-                </div>
+                {SLIDES.map((id) => (
+                  <div
+                    key={id}
+                    className={slidePane(step === id)}
+                    style={{ width: `${100 / SLIDES.length}%` }}
+                    inert={step !== id}
+                  >
+                    {id === "details" ? (
+                      <DetailsStep
+                        event={event}
+                        checkout={checkout}
+                        accent={accent}
+                        accentStyle={accentStyle}
+                        daConfig={daConfig}
+                      />
+                    ) : id === "addons" ? (
+                      <AddonsStep checkout={checkout} accent={accent} accentStyle={accentStyle} />
+                    ) : (
+                      <ReviewStep event={event} checkout={checkout} accentStyle={accentStyle} />
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           ) : null}

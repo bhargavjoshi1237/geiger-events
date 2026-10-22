@@ -291,7 +291,9 @@ export function useCheckout({
     if (open) {
       if (resumeResult) {
         setStep(resumeResult.ok ? "done" : "error");
-        setOrder(resumeResult.ok ? { orderId: resumeResult.orderId } : null);
+        setOrder(
+          resumeResult.ok ? { orderId: resumeResult.orderId, sessionId: resumeResult.sessionId } : null,
+        );
         setErrorMsg(resumeResult.ok ? "" : resumeResult.error || "Payment could not be completed.");
         setRegStatus(resumeResult.ok ? "Confirmed" : null);
         setDoneTicketName(resumeResult.ticket || "");
@@ -615,9 +617,8 @@ export function useCheckout({
   });
   const hasAddons = usePurchasables && visiblePurs.length > 0;
   const seatsAfterDetails = seatingOn && seatMode === "type-first";
-  // The seat map's bar can't carry the disclaimer, so a type-first flow then ends on the add-ons step as a review.
-  const reviewStepOn = hasAddons || (!!gateCfg && seatsAfterDetails);
-  const gateStep = gateCfg ? (reviewStepOn ? "addons" : "details") : null;
+  // The terms get a final Review step of their own, so no screen asks for extras, totals and terms at once.
+  const reviewOn = !!gateCfg;
   const gateReady = !gateCfg || !gateCfg.requireCheck || gateChecked;
 
   const proceed = async () => {
@@ -658,8 +659,12 @@ export function useCheckout({
       setStep("seats");
       return;
     }
-    if (reviewStepOn) {
+    if (hasAddons) {
       setStep("addons");
+      return;
+    }
+    if (reviewOn) {
+      setStep("review");
       return;
     }
     proceed();
@@ -699,8 +704,12 @@ export function useCheckout({
       toast.error(`Pick ${qty} seat${qty > 1 ? "s" : ""} to match your order.`);
       return;
     }
-    if (reviewStepOn) {
+    if (hasAddons) {
       setStep("addons");
+      return;
+    }
+    if (reviewOn) {
+      setStep("review");
       return;
     }
     proceed();
@@ -714,6 +723,10 @@ export function useCheckout({
     });
     if (missingReq) {
       toast.error(`Please add ${missingReq.name}.`);
+      return;
+    }
+    if (reviewOn) {
+      setStep("review");
       return;
     }
     proceed();
@@ -816,10 +829,12 @@ export function useCheckout({
         : step === "express"
           ? EXPRESS_NAME
         : step === "addons"
-          ? hasAddons
-            ? "Add-ons"
-            : "Review"
-          : "Get Tickets";
+          ? "Add-ons"
+          : step === "review"
+            ? isFree || (requiresApproval && !approvedResume)
+              ? "Review"
+              : "Review & pay"
+            : "Get Tickets";
 
   // The in-dialog route for this event, ending in the hand-off (Stripe, approval or free confirm).
   const flowSteps = [
@@ -827,7 +842,8 @@ export function useCheckout({
     ...(expoOn ? [{ id: "booths", label: "Booth" }] : []),
     { id: "details", label: "Details" },
     ...(seatingOn && seatMode === "type-first" ? [{ id: "seats", label: "Seats" }] : []),
-    ...(reviewStepOn ? [{ id: "addons", label: hasAddons ? "Add-ons" : "Review" }] : []),
+    ...(hasAddons ? [{ id: "addons", label: "Add-ons" }] : []),
+    ...(reviewOn ? [{ id: "review", label: "Review" }] : []),
     {
       id: "pay",
       label: requiresApproval && !approvedResume ? "Request" : isFree ? "Confirm" : "Payment",
@@ -915,10 +931,11 @@ export function useCheckout({
     headerLabel,
     disclaimerSlot,
     gateCfg,
-    gateStep,
     gateReady,
     hasAddons,
-    detailsContinues: seatsAfterDetails || reviewStepOn,
+    reviewOn,
+    confirmReview: proceed,
+    detailsContinues: seatsAfterDetails || hasAddons || reviewOn,
     expressCfg,
     expressOptions,
     setExpressTicketId: pickExpressTicket,

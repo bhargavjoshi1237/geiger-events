@@ -52,7 +52,7 @@ export function PurchaseDisclaimerBody({
 }
 
 // The organiser's terms, inline above the final checkout button; the button stays disabled until they're accepted.
-export function PurchaseGateInline({ cfg, checked, onCheckedChange }) {
+export function PurchaseGateInline({ cfg, checked, onCheckedChange, boxClassName = "max-h-40" }) {
   if (!cfg) return null;
   return (
     <section className="space-y-2.5">
@@ -64,7 +64,7 @@ export function PurchaseGateInline({ cfg, checked, onCheckedChange }) {
         cfg={cfg}
         checked={checked}
         onCheckedChange={onCheckedChange}
-        boxClassName="max-h-40"
+        boxClassName={boxClassName}
       />
     </section>
   );

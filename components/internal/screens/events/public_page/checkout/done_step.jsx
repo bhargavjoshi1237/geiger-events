@@ -19,6 +19,7 @@ import { formatDate } from "../../sample_data";
 
 import { seatLabelSummary } from "../tickets";
 import { PostPurchaseRequest } from "./post_purchase_request";
+import { TicketEmailStatus } from "./ticket_email_status";
 
 function SummaryRow({ icon: Icon, label, children }) {
   return (
@@ -35,6 +36,8 @@ function SummaryRow({ icon: Icon, label, children }) {
 export function DoneStep({ event, checkout, accentStyle, daConfig, live, onClose }) {
   const { regStatus, order, qty, doneTicketName, ticket, seatSel, email, name } = checkout;
   const isConfirmed = regStatus !== "Pending" && regStatus !== "Waitlisted";
+  // Paid orders coming back from Stripe show the ticket email's real state instead of a plain address row.
+  const tracksEmail = isConfirmed && !!order?.sessionId;
 
   return (
     <div className="flex flex-col items-center gap-5 py-2 text-center">
@@ -79,6 +82,10 @@ export function DoneStep({ event, checkout, accentStyle, daConfig, live, onClose
         ) : null}
       </div>
 
+      {tracksEmail ? (
+        <TicketEmailStatus sessionId={order.sessionId} email={email} orderId={order.orderId} />
+      ) : null}
+
       <div className="w-full divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-card">
         {isConfirmed ? (
           <SummaryRow icon={Ticket} label="Ticket">
@@ -103,7 +110,7 @@ export function DoneStep({ event, checkout, accentStyle, daConfig, live, onClose
             {event.venue}
           </SummaryRow>
         ) : null}
-        {email ? (
+        {email && !tracksEmail ? (
           <SummaryRow
             icon={Mail}
             label={isConfirmed ? "Confirmation to" : "We'll email"}

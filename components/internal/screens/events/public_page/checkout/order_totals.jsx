@@ -154,7 +154,7 @@ export function DetailsTotals({ event, checkout }) {
   );
 }
 
-export function AddonsTotals({ event, checkout }) {
+export function OrderSummary({ event, checkout }) {
   return (
     <div className="space-y-3">
       <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-tertiary">

@@ -10,7 +10,6 @@ import { currency } from "@/components/internal/screens/tickets/constants";
 import { SlotPicker } from "../../ticket_addons_step";
 import { QtyStepper } from "./qty_stepper";
 import { DetailsTotals } from "./order_totals";
-import { PurchaseGateInline } from "./purchase_gate";
 import {
   RegistrationQuestions,
   DietaryInquiry,
@@ -74,13 +73,7 @@ export function DetailsStep({ event, checkout, accent, accentStyle, daConfig }) 
     submitDetails,
     detailsContinues,
     requiresApproval,
-    gateCfg,
-    gateStep,
-    gateReady,
-    gateChecked,
-    setGateChecked,
   } = checkout;
-  const gateHere = gateStep === "details";
 
   // Dividers only sit between blocks that render — the totals carry their own top border.
   const summaryNote = checkout.disclaimerSlot("checkout-summary");
@@ -229,14 +222,10 @@ export function DetailsStep({ event, checkout, accent, accentStyle, daConfig }) 
             />
           ) : null}
 
-          {gateHere ? (
-            <PurchaseGateInline cfg={gateCfg} checked={gateChecked} onCheckedChange={setGateChecked} />
-          ) : null}
-
           <Button
-            style={!gateHere || gateReady ? accentStyle : undefined}
-            className="w-full hover:opacity-90 disabled:opacity-50"
-            disabled={busy || (gateHere && !gateReady)}
+            style={accentStyle}
+            className="w-full hover:opacity-90"
+            disabled={busy}
             onClick={submitDetails}
           >
             {busy ? (
@@ -249,8 +238,6 @@ export function DetailsStep({ event, checkout, accent, accentStyle, daConfig }) 
               "Request to register"
             ) : isFree ? (
               "Complete registration"
-            ) : gateHere && !gateCfg.requireCheck ? (
-              gateCfg.confirmLabel || "Agree & continue"
             ) : (
               <>
                 Continue To Payment <ChevronRight className="h-4 w-4" />

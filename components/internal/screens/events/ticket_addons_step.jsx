@@ -10,7 +10,6 @@ import {
   bandLabel,
   parseSlotDate,
 } from "@/lib/events/slots";
-import { purchasableUnitPrice } from "@/lib/events/purchasables";
 import { currency } from "@/components/internal/screens/tickets/constants";
 
 function fmtSlotTime(slot) {
@@ -151,73 +150,79 @@ export function TicketAddonsStep({ purchasables, selections, onToggle, onQty, ac
       <p className="text-sm text-text-secondary">
         Enhance your booking with these extras.
       </p>
-      {purchasables.map((p) => {
-        const sel = selections[p.id];
-        const isQty = p.pickType === "quantity";
-        const chosen = isQty ? (Number(sel) || 0) > 0 : !!sel;
-        const lineTotal = purchasableUnitPrice(p, sel);
-        return (
-          <div
-            key={p.id}
-            role={isQty ? undefined : "button"}
-            tabIndex={isQty ? undefined : 0}
-            onClick={isQty ? undefined : () => onToggle(p.id)}
-            onKeyDown={
-              isQty
-                ? undefined
-                : (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onToggle(p.id);
+      <div className="grid gap-3 sm:grid-cols-2">
+        {purchasables.map((p) => {
+          const sel = selections[p.id];
+          const isQty = p.pickType === "quantity";
+          const chosen = isQty ? (Number(sel) || 0) > 0 : !!sel;
+          return (
+            <div
+              key={p.id}
+              role={isQty ? undefined : "button"}
+              tabIndex={isQty ? undefined : 0}
+              aria-pressed={isQty ? undefined : chosen}
+              onClick={isQty ? undefined : () => onToggle(p.id)}
+              onKeyDown={
+                isQty
+                  ? undefined
+                  : (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onToggle(p.id);
+                      }
                     }
-                  }
-            }
-            style={chosen ? { borderColor: accent.color } : undefined}
-            className={cn(
-              "flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
-              isQty ? "border-border bg-surface-card" : "cursor-pointer",
-              chosen && !isQty ? "bg-surface-card" : !isQty ? "border-border bg-transparent hover:bg-surface-card" : "",
-            )}
-          >
-            {!isQty ? (
-              <span
-                style={chosen ? { backgroundColor: accent.color, borderColor: accent.color } : undefined}
-                className={cn(
-                  "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                  chosen ? "" : "border-border-strong",
-                )}
-              >
-                {chosen ? <Check className="h-3 w-3" style={{ color: accent.text }} /> : null}
-              </span>
-            ) : null}
-            <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                {p.name}
-                {p.required ? <span className="text-red-600 dark:text-red-400">*</span> : null}
-              </p>
-              {p.description ? (
-                <p className="mt-0.5 text-xs text-text-secondary">{p.description}</p>
-              ) : null}
+              }
+              style={chosen ? { borderColor: accent.color } : undefined}
+              className={cn(
+                "flex flex-col gap-3 rounded-xl border p-4 text-left transition-colors",
+                isQty ? "border-border bg-surface-card" : "cursor-pointer",
+                chosen && !isQty ? "bg-surface-card" : !isQty ? "border-border bg-transparent hover:bg-surface-card" : "",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                {!isQty ? (
+                  <span
+                    style={chosen ? { backgroundColor: accent.color, borderColor: accent.color } : undefined}
+                    className={cn(
+                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                      chosen ? "" : "border-border-strong",
+                    )}
+                  >
+                    {chosen ? <Check className="h-3 w-3" style={{ color: accent.text }} /> : null}
+                  </span>
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 text-sm font-medium leading-snug text-foreground">
+                    {p.name}
+                    {p.required ? <span className="text-red-600 dark:text-red-400">*</span> : null}
+                  </p>
+                  {p.description ? (
+                    <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-text-secondary" title={p.description}>
+                      {p.description}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-auto flex items-center justify-between gap-3">
+                <span className="text-sm font-medium tabular-nums text-foreground">
+                  {Number(p.price) > 0 ? `+${currency(p.price)}` : "Free"}
+                  {isQty ? <span className="text-xs text-text-tertiary"> ea</span> : null}
+                </span>
+                {isQty ? (
+                  <QuantityControl
+                    value={sel}
+                    onChange={(v) => onQty(p.id, v)}
+                    max={p.maxPerOrder}
+                    accent={accent}
+                  />
+                ) : chosen ? (
+                  <span className="text-xs text-text-tertiary">Added</span>
+                ) : null}
+              </div>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1.5">
-              <span className="text-sm font-medium tabular-nums text-foreground">
-                {Number(p.price) > 0 ? `+${currency(p.price)}` : "Free"}
-                {isQty ? <span className="text-xs text-text-tertiary"> ea</span> : null}
-              </span>
-              {isQty ? (
-                <QuantityControl
-                  value={sel}
-                  onChange={(v) => onQty(p.id, v)}
-                  max={p.maxPerOrder}
-                  accent={accent}
-                />
-              ) : chosen && lineTotal > 0 ? (
-                <span className="text-xs text-text-tertiary tabular-nums">${lineTotal}</span>
-              ) : null}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

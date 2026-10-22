@@ -234,11 +234,11 @@ function ScheduleBlock({ event }) {
     </section>);
 }
 function NoteCard({ icon: Icon, title, text }) {
-    return (<div className="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
+    return (<div className="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-4">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"/>
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        <p className="text-xs text-text-secondary">{text}</p>
+      <div className="min-w-0 space-y-1.5">
+        <p className="text-sm font-medium leading-5 text-foreground">{title}</p>
+        <p className="text-xs leading-relaxed text-text-secondary">{text}</p>
       </div>
     </div>);
 }

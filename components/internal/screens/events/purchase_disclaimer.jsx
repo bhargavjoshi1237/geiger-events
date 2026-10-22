@@ -30,7 +30,7 @@ const APPLIES_OPTIONS = [
   { value: "paid", label: "Paid orders only" },
 ];
 
-// Static replica of the checkout's last column: the terms inline above the pay button.
+// Static replica of the Review step's right column: the terms above the pay button.
 function GatePreview({ cfg }) {
   const [checked, setChecked] = React.useState(false);
   const ready = !cfg.requireCheck || checked;
@@ -94,7 +94,7 @@ export function PurchaseDisclaimerSection({ event, headerItem, onPatch }) {
 
       <SectionCard
         title="Gate"
-        description="Sits above the final checkout button, after every other step; the button stays off until it's accepted."
+        description="Shown on a final Review step beside the order summary; the pay button stays off until it's accepted."
       >
         <SettingsList>
           <SettingRow
