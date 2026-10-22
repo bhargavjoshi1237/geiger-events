@@ -11,6 +11,7 @@ import {
   parseSlotDate,
 } from "@/lib/events/slots";
 import { purchasableUnitPrice } from "@/lib/events/purchasables";
+import { currency } from "@/components/internal/screens/tickets/constants";
 
 function fmtSlotTime(slot) {
   const d = parseSlotDate(slot.start);
@@ -95,7 +96,7 @@ export function SlotPicker({ slots, slotsSold, ticketId, qty, selectedId, onSele
               </span>
               {delta ? (
                 <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                  {delta > 0 ? `+$${delta}` : `-$${Math.abs(delta)}`}
+                  {delta > 0 ? `+${currency(delta)}` : `−${currency(Math.abs(delta))}`}
                 </span>
               ) : null}
             </button>
@@ -200,7 +201,7 @@ export function TicketAddonsStep({ purchasables, selections, onToggle, onQty, ac
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
               <span className="text-sm font-medium tabular-nums text-foreground">
-                {Number(p.price) > 0 ? `+$${Number(p.price)}` : "Free"}
+                {Number(p.price) > 0 ? `+${currency(p.price)}` : "Free"}
                 {isQty ? <span className="text-xs text-text-tertiary"> ea</span> : null}
               </span>
               {isQty ? (

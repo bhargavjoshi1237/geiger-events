@@ -22,12 +22,18 @@ import { AddonsStep } from "./addons_step";
 import { DoneStep } from "./done_step";
 import { ErrorStep } from "./error_step";
 import { ExpressStep } from "./express_step";
-import { PurchaseGate } from "./purchase_gate";
+
+// The hidden pane collapses once the slide ends, so the dialog takes the visible step's height, not the taller one's.
+const slidePane = (active) =>
+  cn(
+    "w-1/2 shrink-0 px-0.5 transition-[max-height] duration-0",
+    active ? "max-h-[400vh] delay-0" : "max-h-0 overflow-hidden delay-300",
+  );
 
 export function TicketCheckout(props) {
   const { open, onClose, event, live, accent, daConfig } = props;
   const checkout = useCheckout(props);
-  const { step, headerLabel, disclaimerSlot, gateCfg, gateOpen, acceptGate, cancelGate } = checkout;
+  const { step, headerLabel, disclaimerSlot } = checkout;
   const accentStyle = { backgroundColor: accent.color, color: accent.text };
 
   const wide = step === "seats" || step === "booths";
@@ -133,13 +139,13 @@ export function TicketCheckout(props) {
           {step === "details" || step === "addons" ? (
             <div className="w-full overflow-hidden">
               <div
-                className="flex transition-transform duration-300 ease-out"
+                className="flex items-start transition-transform duration-300 ease-out"
                 style={{
                   width: "200%",
                   transform: step === "addons" ? "translateX(-50%)" : "translateX(0)",
                 }}
               >
-                <div className="w-1/2 shrink-0 px-0.5">
+                <div className={slidePane(step === "details")} inert={step !== "details"}>
                   <DetailsStep
                     event={event}
                     checkout={checkout}
@@ -148,8 +154,9 @@ export function TicketCheckout(props) {
                     daConfig={daConfig}
                   />
                 </div>
-                <div className="w-1/2 shrink-0 px-0.5">
+                <div className={slidePane(step === "addons")} inert={step !== "addons"}>
                   <AddonsStep
+                    event={event}
                     checkout={checkout}
                     accent={accent}
                     accentStyle={accentStyle}
@@ -179,14 +186,6 @@ export function TicketCheckout(props) {
           ) : null}
         </div>
       </DialogContent>
-
-      <PurchaseGate
-        open={gateOpen}
-        cfg={gateCfg}
-        accentStyle={accentStyle}
-        onCancel={cancelGate}
-        onAccept={acceptGate}
-      />
     </Dialog>
   );
 }

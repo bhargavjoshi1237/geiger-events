@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Accessibility, Check, ChevronRight, Ticket } from "lucide-react";
+import { Accessibility, Check, ChevronRight, Star, Ticket } from "lucide-react";
 
 import {
   Button,
@@ -67,8 +67,30 @@ function qualityBadge(score) {
   return null;
 }
 
-function OfferRow({ offer, selected, onSelect, formatPrice, quantity }) {
-  const badge = qualityBadge(offer.quality ?? 0);
+function QualityBadge({ score }) {
+  const badge = qualityBadge(score ?? 0);
+  if (!badge) return null;
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full border px-1.5 py-px text-[10px] font-medium leading-4",
+        badge.tone,
+      )}
+    >
+      {badge.label}
+    </span>
+  );
+}
+
+function availability(offer, quantity) {
+  if (!offer.fits) return `${offer.available} open · not together`;
+  return quantity > 1 ? `${quantity} together · ${offer.available} open` : `${offer.available} open`;
+}
+
+const tinted = (accent) => (accent ? { color: accent } : undefined);
+
+// Price lives on the section header (one ticket per section), so a row only says what's open.
+function OfferRow({ offer, selected, onSelect, quantity, accent }) {
   return (
     <li>
       <button
@@ -76,81 +98,70 @@ function OfferRow({ offer, selected, onSelect, formatPrice, quantity }) {
         onClick={() => onSelect(offer)}
         aria-current={selected ? "true" : undefined}
         className={cn(
-          "relative flex w-full items-center gap-3 py-2 pl-4 pr-3 text-left transition-colors",
+          "group flex w-full items-center gap-2 py-2 pl-7 pr-3 text-left transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
           selected ? "bg-surface-active" : "hover:bg-surface-hover",
         )}
       >
+        <span className="shrink-0 text-sm font-medium text-foreground">Row {offer.rowLabel}</span>
+        <QualityBadge score={offer.quality} />
         <span
-          aria-hidden="true"
           className={cn(
-            "absolute inset-y-0 left-0 w-0.5 transition-colors",
-            selected ? "bg-primary" : "bg-transparent",
+            "ml-auto min-w-0 truncate pl-2 text-xs tabular-nums",
+            offer.fits ? "text-text-tertiary" : "text-amber-600 dark:text-amber-400",
           )}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-medium text-foreground">
-              Row {offer.rowLabel}
-            </span>
-            {badge ? (
-              <span
-                className={cn(
-                  "shrink-0 rounded-full border px-1.5 py-px text-[10px] font-medium leading-4",
-                  badge.tone,
-                )}
-              >
-                {badge.label}
-              </span>
-            ) : null}
-          </span>
-          <span className="mt-0.5 block truncate text-xs text-text-tertiary">
-            {!offer.fits
-              ? `${offer.available} open · not together`
-              : quantity > 1
-                ? `${quantity} together · ${offer.available} open`
-                : `${offer.available} open`}
-          </span>
+        >
+          {availability(offer, quantity)}
         </span>
-        <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-          {formatPrice(offer.price)}
-        </span>
+        {selected ? (
+          <Check className="h-3.5 w-3.5 shrink-0 text-primary" style={tinted(accent)} />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+        )}
       </button>
     </li>
   );
 }
 
-function BestValue({ offer, onSelect, formatPrice, accent }) {
+function BestValue({ offer, selected, onSelect, formatPrice, quantity, accent }) {
   if (!offer) return null;
   return (
-    <div className="border-b border-border p-2.5">
+    <div className="border-b border-border p-3">
       <button
         type="button"
         onClick={() => onSelect(offer)}
-        className="group relative flex w-full items-center gap-3 overflow-hidden rounded-lg border border-primary/25 bg-primary/[0.07] py-2.5 pl-3 pr-2.5 text-left transition-colors hover:bg-primary/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        style={accent ? { borderColor: `${accent}40` } : undefined}
+        aria-current={selected ? "true" : undefined}
+        className={cn(
+          "group flex w-full items-center gap-3 rounded-lg border bg-surface-card p-2.5 text-left transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          selected
+            ? "border-border-strong"
+            : "border-border hover:border-border-strong hover:bg-surface-hover",
+        )}
       >
-        <span
-          aria-hidden="true"
-          className="absolute inset-y-0 left-0 w-0.5 bg-primary"
-          style={accent ? { backgroundColor: accent } : undefined}
-        />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-active">
+          <Star className="h-4 w-4 text-primary" style={tinted(accent)} />
+        </span>
         <span className="min-w-0 flex-1">
-          <span
-            className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-primary"
-            style={accent ? { color: accent } : undefined}
-          >
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
             Best available
           </span>
           <span className="mt-0.5 block truncate text-sm font-medium text-foreground">
             Sec {offer.sectionName} · Row {offer.rowLabel}
           </span>
+          <span className="block truncate text-xs tabular-nums text-text-tertiary">
+            {availability(offer, quantity)}
+          </span>
         </span>
-        <span className="flex shrink-0 items-center gap-1.5">
+        <span className="flex shrink-0 items-center gap-1">
           <span className="text-sm font-semibold tabular-nums text-foreground">
             {formatPrice(offer.price)}
           </span>
-          <ChevronRight className="h-4 w-4 text-text-tertiary transition-transform group-hover:translate-x-0.5" />
+          {selected ? (
+            <Check className="h-4 w-4 text-primary" style={tinted(accent)} />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-text-tertiary transition-transform group-hover:translate-x-0.5" />
+          )}
         </span>
       </button>
     </div>
@@ -173,6 +184,7 @@ export function SeatOffers({
   selectedOfferId,
   onSelectOffer,
   formatPrice,
+  colorBySectionId,
   accent,
 }) {
   const hasRange = priceRange.max > priceRange.min;
@@ -203,10 +215,28 @@ export function SeatOffers({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="space-y-2.5 border-b border-border p-3">
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
-          Rows on sale
-        </h2>
+      <div className="space-y-3 border-b border-border p-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+            Rows on sale
+          </h2>
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            aria-pressed={accessibleOnly}
+            onClick={() => onAccessibleChange(!accessibleOnly)}
+            className={cn(
+              "h-7 border px-2 text-text-secondary hover:bg-surface-active hover:text-foreground",
+              accessibleOnly
+                ? "border-border-strong bg-surface-active text-foreground"
+                : "border-border",
+            )}
+          >
+            <Accessibility className="h-3.5 w-3.5" />
+            Accessible
+          </Button>
+        </div>
 
         {onQuantityChange ? (
           <Select value={String(quantity)} onValueChange={(v) => onQuantityChange(Number(v) || 1)}>
@@ -223,30 +253,13 @@ export function SeatOffers({
           </Select>
         ) : null}
 
-        <div className="flex items-center gap-2">
-          <SegmentedTabs
-            tabs={OFFER_SORTS}
-            value={sort}
-            onChange={onSortChange}
-            fullWidth
-            className="flex-1"
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            aria-pressed={accessibleOnly}
-            aria-label="Accessible seats only"
-            title="Accessible seats only"
-            onClick={() => onAccessibleChange(!accessibleOnly)}
-            className={cn(
-              "h-9 w-9 shrink-0 p-0 text-muted-foreground hover:bg-surface-active hover:text-foreground",
-              accessibleOnly && "bg-surface-active text-foreground",
-            )}
-          >
-            <Accessibility className="h-4 w-4" />
-          </Button>
-        </div>
+        <SegmentedTabs
+          tabs={OFFER_SORTS}
+          value={sort}
+          onChange={onSortChange}
+          fullWidth
+          buttonClassName="px-2"
+        />
 
         {hasRange ? (
           <div className="flex items-center gap-3">
@@ -269,7 +282,7 @@ export function SeatOffers({
                 "shrink-0 text-xs font-medium tabular-nums",
                 maxPrice === null ? "text-text-tertiary" : "text-primary",
               )}
-              style={maxPrice !== null && accent ? { color: accent } : undefined}
+              style={maxPrice !== null ? tinted(accent) : undefined}
             >
               {maxPrice === null ? `${formatPrice(priceRange.max)}+` : formatPrice(maxPrice)}
             </span>
@@ -307,29 +320,44 @@ export function SeatOffers({
         </div>
       ) : (
         <>
-          <BestValue
-            offer={bestOffer}
-            onSelect={onSelectOffer}
-            formatPrice={formatPrice}
-            accent={accent}
-          />
+          {/* With a single row the card would only repeat the list. */}
+          {offers.length > 1 ? (
+            <BestValue
+              offer={bestOffer}
+              selected={bestOffer?.id === selectedOfferId}
+              onSelect={onSelectOffer}
+              formatPrice={formatPrice}
+              quantity={quantity}
+              accent={accent}
+            />
+          ) : null}
 
           <div className="flex-1 overflow-y-auto">
             {groups.map((group) => (
-              <section key={group.id}>
-                <h3 className="sticky top-0 z-10 flex items-baseline justify-between gap-2 border-y border-border bg-surface-subtle/95 px-3 py-1.5 backdrop-blur">
-                  <span className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
+              <section key={group.id} className="border-b border-border/60 pb-1 last:border-b-0">
+                <h3 className="sticky top-0 z-10 flex items-center gap-2 bg-surface-subtle/95 px-3 pb-1 pt-2.5 backdrop-blur">
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      colorBySectionId?.[group.id]?.dot || "bg-border-strong",
+                    )}
+                  />
+                  <span className="shrink-0 text-xs font-semibold text-foreground">
                     Sec {group.name}
                   </span>
-                  <span className="shrink-0 text-[11px] tabular-nums text-text-tertiary">
+                  {group.ticketName ? (
+                    <span className="min-w-0 truncate text-xs text-text-tertiary">
+                      {group.ticketName}
+                    </span>
+                  ) : null}
+                  <span className="ml-auto shrink-0 pl-2 text-xs font-semibold tabular-nums text-foreground">
                     {group.low === group.high
                       ? formatPrice(group.low)
                       : `from ${formatPrice(group.low)}`}
-                    <span className="mx-1 text-border-strong">·</span>
-                    {group.offers.length} row{group.offers.length === 1 ? "" : "s"}
                   </span>
                 </h3>
-                <ul className="divide-y divide-border/60">
+                <ul>
                   {group.offers.map((offer) => (
                     <OfferRow
                       key={offer.id}
@@ -337,7 +365,7 @@ export function SeatOffers({
                       quantity={quantity}
                       selected={offer.id === selectedOfferId}
                       onSelect={onSelectOffer}
-                      formatPrice={formatPrice}
+                      accent={accent}
                     />
                   ))}
                 </ul>

@@ -5,6 +5,7 @@ import { Check, Heart, Loader2, Users } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
+import { currency } from "@/components/internal/screens/tickets/constants";
 
 export function OfferingsPicker({ offerings, isChosen, selectSingle, toggleMultiple, accent }) {
   if (!offerings.length) return null;
@@ -77,7 +78,7 @@ export function OfferingsPicker({ offerings, isChosen, selectSingle, toggleMulti
                       free ? "text-text-secondary" : "text-foreground",
                     )}
                   >
-                    {free ? "Free" : `+$${Number(opt.price)}`}
+                    {free ? "Free" : `+${currency(opt.price)}`}
                   </span>
                 </button>
               );

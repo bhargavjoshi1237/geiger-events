@@ -425,6 +425,7 @@ export function SeatPicker({
             selectedOfferId={selectedOfferId}
             onSelectOffer={chooseOffer}
             formatPrice={currency}
+            colorBySectionId={priceTiers.colorBySectionId}
             accent={tint}
           />
         </div>

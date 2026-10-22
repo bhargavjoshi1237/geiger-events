@@ -147,7 +147,6 @@ export function useCheckout({
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [gateOpen, setGateOpen] = useState(false);
   const [gateChecked, setGateChecked] = useState(false);
   const acceptedAtRef = useRef(null);
 
@@ -312,7 +311,6 @@ export function useCheckout({
         setDonationCustom("");
         setAttendees([]);
         setExpressTicketId(null);
-        setGateOpen(false);
         setGateChecked(false);
       } else {
         setStep(entryStep);
@@ -335,7 +333,6 @@ export function useCheckout({
         setDonationCustom("");
         setAttendees([]);
         setExpressTicketId(null);
-        setGateOpen(false);
         setGateChecked(false);
       }
     }
@@ -536,7 +533,8 @@ export function useCheckout({
           seatToken: seatSel?.token ?? null,
           boothToken: boothSel?.token ?? null,
           skipRegistration: !!approvedResume,
-          returnUrl: window.location.href.split("?")[0],
+          // No query or #anchor: Stripe appends ?session_id=, which after a '#' never reaches the page.
+          returnUrl: `${window.location.origin}${window.location.pathname}`,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -611,10 +609,16 @@ export function useCheckout({
       ticketAnswers,
     });
 
-  // The organiser's purchase disclaimer, gated on the final button.
+  // The organiser's purchase disclaimer, shown inline above the final button.
   const gateCfg = activePurchaseDisclaimer(event, {
     isFree: isFree || (requiresApproval && !approvedResume),
   });
+  const hasAddons = usePurchasables && visiblePurs.length > 0;
+  const seatsAfterDetails = seatingOn && seatMode === "type-first";
+  // The seat map's bar can't carry the disclaimer, so a type-first flow then ends on the add-ons step as a review.
+  const reviewStepOn = hasAddons || (!!gateCfg && seatsAfterDetails);
+  const gateStep = gateCfg ? (reviewStepOn ? "addons" : "details") : null;
+  const gateReady = !gateCfg || !gateCfg.requireCheck || gateChecked;
 
   const proceed = async () => {
     if (live && blockWaitlistedRebook) {
@@ -628,19 +632,13 @@ export function useCheckout({
         return;
       }
     }
-    if (gateCfg) {
-      setGateOpen(true);
+    if (!gateReady) {
+      toast.error("Please accept the conditions to continue.");
       return;
     }
+    acceptedAtRef.current = gateCfg ? new Date().toISOString() : null;
     dispatchOrder();
   };
-
-  const acceptGate = () => {
-    acceptedAtRef.current = new Date().toISOString();
-    setGateOpen(false);
-    dispatchOrder();
-  };
-  const cancelGate = () => setGateOpen(false);
 
   const dispatchOrder = () => {
     if (requiresApproval && !approvedResume) {
@@ -656,11 +654,11 @@ export function useCheckout({
 
   const submitDetails = () => {
     if (!validateDetails()) return;
-    if (seatingOn && seatMode === "type-first") {
+    if (seatsAfterDetails) {
       setStep("seats");
       return;
     }
-    if (usePurchasables && visiblePurs.length) {
+    if (reviewStepOn) {
       setStep("addons");
       return;
     }
@@ -701,7 +699,7 @@ export function useCheckout({
       toast.error(`Pick ${qty} seat${qty > 1 ? "s" : ""} to match your order.`);
       return;
     }
-    if (usePurchasables && visiblePurs.length) {
+    if (reviewStepOn) {
       setStep("addons");
       return;
     }
@@ -818,7 +816,9 @@ export function useCheckout({
         : step === "express"
           ? EXPRESS_NAME
         : step === "addons"
-          ? "Add-ons"
+          ? hasAddons
+            ? "Add-ons"
+            : "Review"
           : "Get Tickets";
 
   // The in-dialog route for this event, ending in the hand-off (Stripe, approval or free confirm).
@@ -827,7 +827,7 @@ export function useCheckout({
     ...(expoOn ? [{ id: "booths", label: "Booth" }] : []),
     { id: "details", label: "Details" },
     ...(seatingOn && seatMode === "type-first" ? [{ id: "seats", label: "Seats" }] : []),
-    ...(usePurchasables && visiblePurs.length ? [{ id: "addons", label: "Add-ons" }] : []),
+    ...(reviewStepOn ? [{ id: "addons", label: hasAddons ? "Add-ons" : "Review" }] : []),
     {
       id: "pay",
       label: requiresApproval && !approvedResume ? "Request" : isFree ? "Confirm" : "Payment",
@@ -915,9 +915,10 @@ export function useCheckout({
     headerLabel,
     disclaimerSlot,
     gateCfg,
-    gateOpen,
-    acceptGate,
-    cancelGate,
+    gateStep,
+    gateReady,
+    hasAddons,
+    detailsContinues: seatsAfterDetails || reviewStepOn,
     expressCfg,
     expressOptions,
     setExpressTicketId: pickExpressTicket,

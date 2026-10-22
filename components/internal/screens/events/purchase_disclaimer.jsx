@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Loader2, ShieldCheck, Zap } from "lucide-react";
+import { ChevronRight, Loader2, Zap } from "lucide-react";
 
 import {
   EditorSectionHeader,
@@ -23,48 +23,38 @@ import {
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { PURCHASE_DISCLAIMER_DEFAULTS } from "@/lib/events/purchase_disclaimer";
 import { EXPRESS_NAME, expressConfig } from "@/lib/events/express_checkout";
-import { PurchaseDisclaimerBody } from "./public_page/checkout/purchase_gate";
+import { PurchaseGateInline } from "./public_page/checkout/purchase_gate";
 
 const APPLIES_OPTIONS = [
   { value: "all", label: "Every order — paid, free and approval requests" },
   { value: "paid", label: "Paid orders only" },
 ];
 
-// Static replica of the buyer's gate dialog, so the organiser sees exactly what pops up.
+// Static replica of the checkout's last column: the terms inline above the pay button.
 function GatePreview({ cfg }) {
   const [checked, setChecked] = React.useState(false);
   const ready = !cfg.requireCheck || checked;
   return (
-    <div className="mx-auto w-full max-w-md space-y-4 rounded-2xl border border-border bg-surface-card p-5 shadow-sm">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground">
-          <ShieldCheck className="h-4 w-4" />
-        </span>
-        <p className="text-base font-semibold text-foreground">{cfg.title || "Before you buy"}</p>
-      </div>
+    <div className="mx-auto w-full max-w-sm space-y-4 rounded-2xl border border-border bg-surface-card p-5 shadow-sm">
       {String(cfg.text || "").trim() ? (
-        <PurchaseDisclaimerBody cfg={cfg} checked={checked} onCheckedChange={setChecked} />
+        <PurchaseGateInline cfg={cfg} checked={checked} onCheckedChange={setChecked} />
       ) : (
         <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-xs text-text-tertiary">
           Your disclaimer text will appear here.
         </p>
       )}
-      <div className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-        >
-          Go back
-        </Button>
-        <Button
-          size="sm"
-          disabled={!ready}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-        >
-          {cfg.confirmLabel || "Agree & continue"}
-        </Button>
-      </div>
+      <Button
+        disabled={!ready}
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+      >
+        {cfg.requireCheck ? (
+          <>
+            Continue To Payment <ChevronRight className="h-4 w-4" />
+          </>
+        ) : (
+          cfg.confirmLabel || "Agree & continue"
+        )}
+      </Button>
     </div>
   );
 }
@@ -104,7 +94,7 @@ export function PurchaseDisclaimerSection({ event, headerItem, onPatch }) {
 
       <SectionCard
         title="Gate"
-        description="Pops up when the buyer clicks the final checkout button, after every other step is filled in."
+        description="Sits above the final checkout button, after every other step; the button stays off until it's accepted."
       >
         <SettingsList>
           <SettingRow
@@ -115,7 +105,7 @@ export function PurchaseDisclaimerSection({ event, headerItem, onPatch }) {
           />
           <SettingRow
             title="Require a tick-box"
-            description="Buyers must tick to agree. Off makes the confirm button itself the acceptance."
+            description="Buyers must tick to agree. Off makes the pay button itself the acceptance."
             checked={!!view.requireCheck}
             onCheckedChange={(v) => set("requireCheck")(v)}
           />
@@ -181,18 +171,20 @@ export function PurchaseDisclaimerSection({ event, headerItem, onPatch }) {
                 />
               </Field>
             ) : null}
-            <Field label="Confirm button">
-              <Input
-                value={view.confirmLabel}
-                onChange={(e) => set("confirmLabel")(e.target.value)}
-                placeholder="Agree & continue"
-              />
-            </Field>
+            {view.requireCheck ? null : (
+              <Field label="Pay button">
+                <Input
+                  value={view.confirmLabel}
+                  onChange={(e) => set("confirmLabel")(e.target.value)}
+                  placeholder="Agree & continue"
+                />
+              </Field>
+            )}
           </div>
         </div>
       </SectionCard>
 
-      <SectionCard bare title="Preview" description="What buyers see when they click to pay.">
+      <SectionCard bare title="Preview" description="What buyers see beside their order summary before they pay.">
         <div className="rounded-xl border border-border bg-surface-subtle p-6">
           <GatePreview cfg={view} />
         </div>

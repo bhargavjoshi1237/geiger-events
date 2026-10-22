@@ -9,6 +9,42 @@ import { groupDiscountAmount } from "@/lib/events/group";
 import { resolveTicketReleases } from "@/lib/events/ticket_releases";
 import { expressConfig } from "@/lib/events/express_checkout";
 
+// Add-ons as named Stripe lines, purchasables at the event's own price; one "Add-ons" line when they don't add up to the charge.
+function addonLineItems({ event, currency, qty, addons, purchasables, selections, slot }) {
+  const unitCents = Math.round(addons * 100);
+  if (unitCents <= 0) return [];
+  const catalog = new Map(
+    (Array.isArray(event.purchasables) ? event.purchasables : []).map((p) => [String(p?.id), p]),
+  );
+
+  const items = [];
+  for (const p of Array.isArray(purchasables) ? purchasables : []) {
+    const known = catalog.get(String(p?.id));
+    const cents = Math.round((Number(known ? known.price : p?.price) || 0) * 100);
+    const count = Math.max(0, Math.floor(Number(p?.quantity) || 0));
+    if (cents > 0 && count > 0) items.push({ name: known?.name || p?.name, cents, count: count * qty });
+  }
+  for (const o of Array.isArray(selections) ? selections : []) {
+    for (const c of Array.isArray(o?.choices) ? o.choices : []) {
+      const cents = Math.round((Number(c?.price) || 0) * 100);
+      if (cents > 0) items.push({ name: o.offering ? `${o.offering}: ${c.label}` : c.label, cents, count: qty });
+    }
+  }
+  const slotCents = Math.round((Number(slot?.priceDelta) || 0) * 100);
+  if (slotCents > 0) items.push({ name: slot.label ? `Time slot: ${slot.label}` : "Time slot", cents: slotCents, count: qty });
+
+  const itemized = items.reduce((sum, i) => sum + i.cents * i.count, 0);
+  const lines = itemized === unitCents * qty ? items : [{ name: "Add-ons", cents: unitCents, count: qty }];
+  return lines.map((i) => ({
+    price_data: {
+      currency,
+      product_data: { name: String(i.name || "Add-on").slice(0, 250) },
+      unit_amount: i.cents,
+    },
+    quantity: i.count,
+  }));
+}
+
 export async function POST(request) {
   if (!isStripeConfigured()) {
     return NextResponse.json(
@@ -130,16 +166,9 @@ export async function POST(request) {
       quantity: qty,
     },
   ];
-  if (addons > 0) {
-    lineItems.push({
-      price_data: {
-        currency,
-        product_data: { name: "Add-ons" },
-        unit_amount: Math.round(addons * 100),
-      },
-      quantity: qty,
-    });
-  }
+  lineItems.push(
+    ...addonLineItems({ event, currency, qty, addons, purchasables, selections, slot }),
+  );
   if (donationAmount > 0) {
     lineItems.push({
       price_data: {
@@ -195,7 +224,9 @@ export async function POST(request) {
 
   try {
     const stripe = getStripe();
-    const separator = returnUrl.includes("?") ? "&" : "?";
+    // Nothing after a '#' reaches the page's query, so the session id must come before any anchor.
+    const returnBase = String(returnUrl).split("#")[0];
+    const separator = returnBase.includes("?") ? "&" : "?";
     let discounts;
     if (totalOff > 0) {
       const coupon = await stripe.coupons.create({
@@ -220,8 +251,8 @@ export async function POST(request) {
       ...(expressCfg?.collectName && !name
         ? { name_collection: { individual: { enabled: true, optional: false } } }
         : {}),
-      success_url: `${returnUrl}${separator}session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${returnUrl}${separator}canceled=1`,
+      success_url: `${returnBase}${separator}session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${returnBase}${separator}canceled=1`,
       ...(discounts ? { discounts } : {}),
       ...(descriptor
         ? { payment_intent_data: { statement_descriptor_suffix: descriptor } }
