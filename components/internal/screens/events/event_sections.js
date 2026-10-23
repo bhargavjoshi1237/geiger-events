@@ -205,6 +205,7 @@ export const NAV_GROUPS = [
         label: "Rich Description",
         icon: FileText,
         desc: "Tell attendees what to expect. Format with headings, lists, and links.",
+        ownHeader: true,
       },
       {
         key: "highlights",
@@ -292,6 +293,7 @@ export const NAV_GROUPS = [
         label: "Dietary & Accessibility",
         icon: Accessibility,
         desc: "Guidelines shown on your event page, plus the post-purchase request opt-in.",
+        ownHeader: true,
       },
     ],
   },

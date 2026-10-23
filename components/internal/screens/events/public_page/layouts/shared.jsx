@@ -148,7 +148,7 @@ export const PAIR_ITEM = "min-w-0 grow basis-[calc(50%-1rem)]";
 export const PAIR_WIDE = "min-w-0 basis-full";
 
 export function blockLabel(block) {
-  return getBlockMeta(block.type)?.label || block.type;
+  return block.navLabel || getBlockMeta(block.type)?.label || block.type;
 }
 
 export function blockAnchor(block) {

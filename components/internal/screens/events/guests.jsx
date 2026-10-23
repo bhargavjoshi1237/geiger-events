@@ -58,6 +58,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ChoiceRow } from "./schedule_style";
 import { initials } from "./sample_data";
+import { PageHeadingLine } from "./section_heading";
 
 const EMPTY_GUEST = { name: "", role: "", company: "", bio: "", image: "" };
 
@@ -587,7 +588,7 @@ function GuestDisplayDialog({ open, onOpenChange, display, onChange, onReset, gu
   );
 }
 
-export function GuestsSection({ event, headerItem }) {
+export function GuestsSection({ event, headerItem, onPatch }) {
   const [guests, , saveGuests] = useEventConfig(event, "guests", []);
   const [rawDisplay, , saveDisplay] = useEventConfig(
     event,
@@ -633,8 +634,11 @@ export function GuestsSection({ event, headerItem }) {
       <EditorSectionHeader
         title={headerItem?.label || "Guests"}
         description={
-          headerItem?.desc ||
-          "Feature speakers and special guests on your public event page."
+          <>
+            {headerItem?.desc ||
+              "Feature speakers and special guests on your public event page."}
+            <PageHeadingLine event={event} section="guests" onPatch={onPatch} />
+          </>
         }
         action={
           <>

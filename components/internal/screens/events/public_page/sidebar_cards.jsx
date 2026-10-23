@@ -38,6 +38,7 @@ import { GUIDELINE_CATEGORY_MAP } from "@/components/internal/screens/registrati
 import { formatDate } from "../sample_data";
 import { MONTHS, tierAccentDot } from "./constants";
 import { SectionNoteBadge } from "./section_note";
+import { sectionTitle } from "@/lib/events/section_titles";
 
 const SELECTION_FEATURES = {
   plan: { icon: Armchair, label: "Selection based on plan" },
@@ -226,7 +227,7 @@ export function RegisterCard({
 
       <div className="space-y-2 p-4">
         <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-text-secondary">
-          Select ticket
+          {sectionTitle(event, "register")}
           <SectionNoteBadge text={note} />
         </p>
         {accessCodesEnabled(event) && gatedIds.size > 0 ? (
@@ -432,7 +433,7 @@ export function GoodToKnowCard({ event, TypeIcon, language, note }) {
   return (
     <div className="rounded-2xl border border-border bg-surface-subtle p-4">
       <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-        Good To Know
+        {sectionTitle(event, "goodtoknow")}
         <SectionNoteBadge text={note} />
       </p>
       <div className="space-y-3 text-sm">
@@ -461,13 +462,13 @@ export function GoodToKnowCard({ event, TypeIcon, language, note }) {
   );
 }
 
-export function AtRegistrationCard({ questions, note }) {
+export function AtRegistrationCard({ questions, note, title }) {
   if (!questions.length) return null;
 
   return (
     <div className="rounded-2xl border border-border bg-surface-subtle p-4">
       <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <ClipboardList className="h-4 w-4 text-muted-foreground" /> At registration
+        <ClipboardList className="h-4 w-4 text-muted-foreground" /> {title || "At registration"}
         <SectionNoteBadge text={note} />
       </p>
       <ul className="space-y-2">
@@ -482,14 +483,14 @@ export function AtRegistrationCard({ questions, note }) {
   );
 }
 
-export function GuidelinesCard({ guidelines, note }) {
+export function GuidelinesCard({ guidelines, note, title }) {
   if (!guidelines.length) return null;
 
   return (
     <div className="rounded-2xl border border-border bg-surface-subtle p-4">
       <p className="mb-4 flex items-center gap-2 border-b border-border pb-3 text-sm font-semibold text-foreground">
         <Accessibility className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1">Dietary & Accessibility</span>
+        <span className="min-w-0 flex-1">{title || "Dietary & Accessibility"}</span>
         <SectionNoteBadge text={note} />
       </p>
       <div className="flex flex-col gap-4">

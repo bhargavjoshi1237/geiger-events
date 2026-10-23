@@ -133,6 +133,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
               onPersist={persistDesign}
               onPreview={() => setPreviewOpen(true)}
               eventId={form?.id}
+              onPatch={patch}
             />
           );
         }

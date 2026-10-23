@@ -9,6 +9,7 @@ import { parseRichText } from "@/lib/events/richtext";
 import { resolveGuestDisplay, GUEST_GRID_COLUMNS, GUEST_SHAPE_CLASS, GUEST_FIT_CLASS, } from "@/lib/events/guests";
 import { initials } from "./sample_data";
 import { getSectionNote, SectionNoteBadge } from "./public_page/section_note";
+import { sectionTitle } from "@/lib/events/section_titles";
 import { EventMap, NearbyList, WeatherCard, nearbyGroups, flattenPlaces, GETTING_THERE_GROUPS, AROUND_VENUE_GROUPS, } from "./event_map";
 import { geocodeAddress } from "@/lib/map/geo";
 import { getVenue } from "@/lib/supabase/venues";
@@ -61,7 +62,7 @@ function AboutBlock({ event }) {
     if (!String(event.description || "").trim())
         return null;
     return (<section className="space-y-4">
-      <SectionTitle>About this event</SectionTitle>
+      <SectionTitle>{sectionTitle(event, "about")}</SectionTitle>
       <ClampedContent>
         <RichText source={event.description}/>
       </ClampedContent>
@@ -73,7 +74,7 @@ function ExpectBlock({ event }) {
         return null;
     return (<div className="rounded-xl border border-border bg-surface-subtle p-5">
       <p className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <Sparkles className="h-4 w-4 text-muted-foreground"/> What to expect
+        <Sparkles className="h-4 w-4 text-muted-foreground"/> {sectionTitle(event, "expect")}
       </p>
       <ul className="grid gap-3 sm:grid-cols-2">
         {items.map((h, i) => (<li key={h.id || i} className="flex items-start gap-2.5 text-sm">
@@ -224,7 +225,7 @@ function ScheduleBlock({ event }) {
             <ScheduleTimelineItems items={items} gapClass={gapClass}/>
           </div>) : (<ScheduleListItems items={items} gapClass={gapClass} bare={bare}/>);
     return (<section className="space-y-4">
-      <SectionTitle icon={Clock}>Schedule</SectionTitle>
+      <SectionTitle icon={Clock}>{sectionTitle(event, "schedule")}</SectionTitle>
       {note ? (<p className="-mt-2 text-sm leading-relaxed text-muted-foreground">
           {note}
         </p>) : null}
@@ -286,7 +287,7 @@ function LocationBlock({ event }) {
         };
     }, [address, pin, isRemote]);
     return (<section className="space-y-4">
-      <SectionTitle icon={MapPin}>Location</SectionTitle>
+      <SectionTitle icon={MapPin}>{sectionTitle(event, "location")}</SectionTitle>
       <div>
         <p className="text-sm font-medium text-foreground">{event.venue}</p>
         {!isRemote ? (<p className="text-sm text-text-secondary">
@@ -315,7 +316,7 @@ function WhosGoingBlock({ event }) {
         return null;
     const capacity = Number(event.capacity) || 0;
     return (<section className="space-y-4">
-      <SectionTitle icon={Users}>Who&apos;s going</SectionTitle>
+      <SectionTitle icon={Users}>{sectionTitle(event, "whosgoing")}</SectionTitle>
       <div className="flex items-center gap-4 rounded-xl border border-border bg-surface-subtle p-5">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface-card text-muted-foreground">
           <Users className="h-5 w-5"/>
@@ -355,7 +356,7 @@ function GuestsBlock({ event }) {
     const carded = display.cardStyle === "card";
     const isGrid = display.layout === "grid";
     return (<section className="space-y-4">
-      <SectionTitle icon={Users}>Guests</SectionTitle>
+      <SectionTitle icon={Users}>{sectionTitle(event, "guests")}</SectionTitle>
       <div className={isGrid
             ? cn("grid gap-x-6 gap-y-8", GUEST_GRID_COLUMNS[display.columns])
             : "flex flex-col gap-4"}>
@@ -380,7 +381,7 @@ function FaqBlock({ event }) {
     if (!items.length)
         return null;
     return (<section className="space-y-4">
-      <SectionTitle icon={HelpCircle}>Frequently Asked Questions</SectionTitle>
+      <SectionTitle icon={HelpCircle}>{sectionTitle(event, "faq")}</SectionTitle>
       <Accordion type="single" collapsible className="w-full">
         {items.map((f, i) => (<AccordionItem key={f.id || i} value={`faq-${i}`} className="border-border">
             <AccordionTrigger className="text-left text-sm text-foreground hover:text-foreground hover:no-underline">

@@ -12,8 +12,9 @@ import {
 import { Button } from "@geiger/ui/button";
 import { GuidelineListEditor } from "@/components/internal/shared/guideline_editor";
 import { useEventConfig } from "@/lib/events/use-event-config";
+import { PageHeadingLine } from "./section_heading";
 
-export function GuidelinesSection({ event, headerItem }) {
+export function GuidelinesSection({ event, headerItem, onPatch }) {
   const [items, setItems, saveItems, saving] = useEventConfig(
     event,
     "guidelines",
@@ -28,8 +29,11 @@ export function GuidelinesSection({ event, headerItem }) {
       <EditorSectionHeader
         title={headerItem?.label || "Dietary & Accessibility"}
         description={
-          headerItem?.desc ||
-          "Guidelines shown on your event page and whether ticket holders can send a request after checkout."
+          <>
+            {headerItem?.desc ||
+              "Guidelines shown on your event page and whether ticket holders can send a request after checkout."}
+            <PageHeadingLine event={event} section="guidelines" onPatch={onPatch} />
+          </>
         }
       />
 

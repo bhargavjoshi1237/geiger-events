@@ -78,6 +78,13 @@ import {
   designWithSavedLayout,
 } from "@/lib/events/page_presets";
 import { Segmented, ColorField, withIcons } from "./theme_controls";
+import { HeadingInput } from "./section_heading";
+import { useEventConfig } from "@/lib/events/use-event-config";
+import {
+  SECTION_TITLE_DEFAULTS,
+  isRenamableSection,
+  withSectionTitle,
+} from "@/lib/events/section_titles";
 
 // Two-option sets render as an icon+label tab pair, so each needs a glyph.
 // Attached here rather than in lib/events/theme.js because the public event
@@ -536,7 +543,18 @@ function BlockEditorDialog({ block, onOpenChange, onSave }) {
   );
 }
 
-function BlockList({ blocks, isCustom, onToggle, onMove, onRemove, onEdit }) {
+function BlockList({
+  blocks,
+  isCustom,
+  onToggle,
+  onMove,
+  onRemove,
+  onEdit,
+  titles,
+  onRename,
+}) {
+  const [renaming, setRenaming] = useState(null);
+
   if (!blocks.length) {
     return (
       <p className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-text-tertiary">
@@ -551,6 +569,8 @@ function BlockList({ blocks, isCustom, onToggle, onMove, onRemove, onEdit }) {
         const Icon = meta?.icon;
         const editable = isCustom && meta?.category === "content";
         const locked = meta?.locked;
+        const renamable = !!onRename && isRenamableSection(b.type);
+        const heading = renamable ? String(titles?.[b.type] || "").trim() : "";
         return (
           <div
             key={b.id}
@@ -560,19 +580,38 @@ function BlockList({ blocks, isCustom, onToggle, onMove, onRemove, onEdit }) {
             {Icon ? (
               <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
             ) : null}
-            <span
-              className={cn(
-                "min-w-0 flex-1 truncate text-sm",
-                b.visible ? "text-foreground" : "text-text-tertiary",
-              )}
-            >
-              {meta?.label || b.type}
-              {meta?.category === "content" ? (
-                <span className="ml-2 text-xs text-text-tertiary">
-                  {(b.props?.text || b.props?.title || b.props?.label || "").slice(0, 28)}
-                </span>
-              ) : null}
-            </span>
+            {renaming === b.id ? (
+              <div className="min-w-0 flex-1">
+                <HeadingInput
+                  initial={heading || SECTION_TITLE_DEFAULTS[b.type]}
+                  fallback={SECTION_TITLE_DEFAULTS[b.type]}
+                  className="text-sm text-foreground"
+                  onDone={(next) => {
+                    setRenaming(null);
+                    if (next !== null) onRename(b.type, next);
+                  }}
+                />
+              </div>
+            ) : (
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate text-sm",
+                  b.visible ? "text-foreground" : "text-text-tertiary",
+                )}
+              >
+                {heading || meta?.label || b.type}
+                {heading ? (
+                  <span className="ml-2 text-xs text-text-tertiary">
+                    {meta?.label}
+                  </span>
+                ) : null}
+                {meta?.category === "content" ? (
+                  <span className="ml-2 text-xs text-text-tertiary">
+                    {(b.props?.text || b.props?.title || b.props?.label || "").slice(0, 28)}
+                  </span>
+                ) : null}
+              </span>
+            )}
             <div className="flex items-center">
               <Button
                 variant="ghost"
@@ -600,6 +639,18 @@ function BlockList({ blocks, isCustom, onToggle, onMove, onRemove, onEdit }) {
                   size="icon-sm"
                   onClick={() => onEdit(b)}
                   aria-label="Edit block"
+                  className="text-text-secondary hover:bg-surface-active hover:text-foreground"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              ) : null}
+              {renamable ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setRenaming(b.id)}
+                  title="Rename heading"
+                  aria-label="Rename heading"
                   className="text-text-secondary hover:bg-surface-active hover:text-foreground"
                 >
                   <Pencil className="h-4 w-4" />
@@ -643,6 +694,7 @@ export function PageDesignSection({
   onPreview,
   eventId,
   event,
+  onPatch,
 }) {
   const [adding, setAdding] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -754,6 +806,22 @@ export function PageDesignSection({
         [key]: list.map((b) => (b.id === id ? { ...b, props, layout } : b)),
       }),
   });
+  // Headings live on the event, not the design, so a rename saves straight away.
+  const [titles, setTitles, saveTitles] = useEventConfig(
+    event,
+    "sectionTitles",
+    {},
+    onPatch,
+  );
+  const renameSection = onPatch
+    ? async (type, value) => {
+        const next = withSectionTitle(titles, type, value);
+        if ((next[type] || "") === (titles?.[type] || "")) return;
+        const prev = titles;
+        const ok = await saveTitles(next, { successMsg: "Section heading saved." });
+        if (!ok) setTitles(prev);
+      }
+    : undefined;
   const mainHandlers = handlersFor("blocks", mainBlocks);
   const sidebarHandlers = handlersFor("sidebarBlocks", sidebarBlocks);
   const surfaceHandlers = (surface) =>
@@ -1378,6 +1446,8 @@ export function PageDesignSection({
                   blocks={mainBlocks}
                   isCustom={isCustom}
                   onEdit={(b) => setEditing({ block: b, surface: "main" })}
+                  titles={titles}
+                  onRename={renameSection}
                   {...mainHandlers}
                 />
               </div>
@@ -1407,6 +1477,8 @@ export function PageDesignSection({
                 blocks={sidebarBlocks}
                 isCustom={isCustom}
                 onEdit={(b) => setEditing({ block: b, surface: "sidebar" })}
+                titles={titles}
+                onRename={renameSection}
                 {...sidebarHandlers}
               />
             </SectionCard>

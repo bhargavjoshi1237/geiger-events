@@ -27,6 +27,7 @@ import { VenueDetailsDialog } from "./venue_dialog";
 import { TicketCheckout } from "./checkout/ticket_checkout";
 import { makeDisclaimerSlot } from "./disclaimer";
 import { getSectionNote } from "./section_note";
+import { customSectionTitle, sectionTitle } from "@/lib/events/section_titles";
 import {
   activeExpress,
   expressTicketEligible,
@@ -203,12 +204,14 @@ export function EventPublicPageContent({
     atregistration: regQuestions.length ? (
       <AtRegistrationCard
         questions={regQuestions}
+        title={sectionTitle(event, "atregistration")}
         note={getSectionNote(event, "atregistration")}
       />
     ) : null,
     guidelines: guidelines.length ? (
       <GuidelinesCard
         guidelines={guidelines}
+        title={sectionTitle(event, "guidelines")}
         note={getSectionNote(event, "guidelines")}
       />
     ) : null,
@@ -277,6 +280,7 @@ export function EventPublicPageContent({
     },
     blocks: contentBlocks.map((b) => ({
       ...b,
+      navLabel: customSectionTitle(event, b.type),
       node: <PageBlock key={b.id} block={b} event={event} accent={accent} />,
     })),
     sidebarNodes,

@@ -46,6 +46,7 @@ import {
   AROUND_VENUE_GROUPS,
 } from "./event_map";
 import { LocationPicker, LocationModeTabs, photoKey } from "./location_picker";
+import { PageHeadingLine } from "./section_heading";
 import { resolveEventLocation, geocodeAddress } from "@/lib/map/geo";
 
 function eventAddress(event) {
@@ -361,7 +362,7 @@ function directionProviders(address, coords) {
   ];
 }
 
-export function MapDirectionsSection({ event, headerItem }) {
+export function MapDirectionsSection({ event, headerItem, onPatch }) {
   const [map, setMap, saveMap, saving] = useEventConfig(event, "map", {
     transport: "",
     parking: "",
@@ -435,8 +436,11 @@ export function MapDirectionsSection({ event, headerItem }) {
       <EditorSectionHeader
         title={headerItem?.label || "Map & Directions"}
         description={
-          headerItem?.desc ||
-          "Help attendees arrive — a pinned map, getting-there notes, and directions."
+          <>
+            {headerItem?.desc ||
+              "Help attendees arrive — a pinned map, getting-there notes, and directions."}
+            <PageHeadingLine event={event} section="location" onPatch={onPatch} />
+          </>
         }
         action={
           <Button

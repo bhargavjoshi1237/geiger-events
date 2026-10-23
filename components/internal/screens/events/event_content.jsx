@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@geiger/ui/dialog";
 import { useEventConfig } from "@/lib/events/use-event-config";
+import { PageHeadingLine } from "./section_heading";
 
 const MARKDOWN_HINT =
   "Supports **bold**, *italic*, [links](https://…), and - bullet lists.";
@@ -116,6 +117,8 @@ function ItemDialog({ open, onOpenChange, title, description, fields, initial, o
 function ListSection({
   event,
   headerItem,
+  onPatch,
+  pageSection,
   configKey,
   idPrefix,
   title,
@@ -159,7 +162,16 @@ function ListSection({
     <div className="space-y-6">
       <EditorSectionHeader
         title={headerItem?.label || title}
-        description={headerItem?.desc || description}
+        description={
+          pageSection ? (
+            <>
+              {headerItem?.desc || description}
+              <PageHeadingLine event={event} section={pageSection} onPatch={onPatch} />
+            </>
+          ) : (
+            headerItem?.desc || description
+          )
+        }
         action={
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -266,11 +278,13 @@ function ListSection({
   );
 }
 
-export function HighlightsSection({ event, headerItem }) {
+export function HighlightsSection({ event, headerItem, onPatch }) {
   return (
     <ListSection
       event={event}
       headerItem={headerItem}
+      onPatch={onPatch}
+      pageSection="expect"
       configKey="highlights"
       idPrefix="hl"
       title="What to expect"
@@ -298,11 +312,13 @@ export function HighlightsSection({ event, headerItem }) {
   );
 }
 
-export function FaqSection({ event, headerItem }) {
+export function FaqSection({ event, headerItem, onPatch }) {
   return (
     <ListSection
       event={event}
       headerItem={headerItem}
+      onPatch={onPatch}
+      pageSection="faq"
       configKey="faq"
       idPrefix="faq"
       title="FAQ"

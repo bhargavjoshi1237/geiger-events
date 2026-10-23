@@ -21,6 +21,7 @@ import {
 } from "@geiger/ui/select";
 import { useEventConfig } from "@/lib/events/use-event-config";
 import { SECTION_NOTE_TARGETS } from "./public_page/section_note";
+import { customSectionTitle } from "@/lib/events/section_titles";
 
 let noteCounter = 0;
 const newNote = () => {
@@ -33,7 +34,7 @@ const newNote = () => {
   };
 };
 
-function NoteCard({ note, index, total, onPatch, onRemove }) {
+function NoteCard({ event, note, index, total, onPatch, onRemove }) {
   const set = (key) => (value) => onPatch(note.id, { [key]: value });
   return (
     <div className="space-y-4 rounded-xl border border-border bg-surface-card p-4">
@@ -47,7 +48,7 @@ function NoteCard({ note, index, total, onPatch, onRemove }) {
               <SelectContent>
                 {Object.entries(SECTION_NOTE_TARGETS).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
-                    {label}
+                    {customSectionTitle(event, value) || label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -139,6 +140,7 @@ export function PageNotesSection({ event, headerItem }) {
           {items.map((n, i) => (
             <NoteCard
               key={n.id}
+              event={event}
               note={n}
               index={i}
               total={items.length}

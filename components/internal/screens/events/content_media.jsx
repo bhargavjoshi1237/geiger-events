@@ -82,6 +82,7 @@ import {
   coverKind,
 } from "@/lib/events/gallery";
 import { Segmented, withIcons } from "./theme_controls";
+import { PageHeadingLine } from "./section_heading";
 
 import { LogoLoading } from "@geiger/ui";
 // Two-option sets render as an icon+label tab pair, so each needs a glyph.
@@ -871,7 +872,7 @@ const SNIPPETS = [
   },
 ];
 
-export function RichDescriptionsSection({ event }) {
+export function RichDescriptionsSection({ event, headerItem, onPatch }) {
   const [text, setText, saveText, saving] = useEventConfig(
     event,
     "description",
@@ -899,6 +900,16 @@ export function RichDescriptionsSection({ event }) {
 
   return (
     <div className="space-y-6">
+      <EditorSectionHeader
+        title={headerItem?.label || "Rich Description"}
+        description={
+          <>
+            {headerItem?.desc ||
+              "Tell attendees what to expect. Format with headings, lists, and links."}
+            <PageHeadingLine event={event} section="about" onPatch={onPatch} />
+          </>
+        }
+      />
       <SectionCard title="Description" bodyPadding={false}>
         <div className="flex items-center gap-1 border-b border-border px-3 py-2">
           <Button
@@ -982,7 +993,7 @@ const INITIAL_QUESTIONS = [
   { id: 4, label: "How did you hear about us?", type: "long", required: false },
 ];
 
-export function CustomQuestionsSection({ event, headerItem }) {
+export function CustomQuestionsSection({ event, headerItem, onPatch }) {
   const [questions, , saveQuestions] = useEventConfig(
     event,
     "questions",
@@ -1025,8 +1036,11 @@ export function CustomQuestionsSection({ event, headerItem }) {
       <EditorSectionHeader
         title={headerItem?.label || "Custom Questions"}
         description={
-          headerItem?.desc ||
-          "Questions appear in this order on the registration page."
+          <>
+            {headerItem?.desc ||
+              "Questions appear in this order on the registration page."}
+            <PageHeadingLine event={event} section="atregistration" onPatch={onPatch} />
+          </>
         }
         action={
           <Button

@@ -25,6 +25,7 @@ import { clipHostLabel } from "@/lib/clip/model";
 import { removeClipAssets } from "@/lib/clip/assets";
 import { ScheduleStyleButton } from "./schedule_style";
 import { EMPTY_ITEM, ScheduleItemDialog } from "./schedule_item_dialog";
+import { PageHeadingLine } from "./section_heading";
 import { removeEventImage, pathFromPublicUrl } from "@/lib/supabase/storage";
 
 function ScheduleRow({ item, index, count, onEdit, onRemove, onMove }) {
@@ -117,7 +118,7 @@ function ScheduleRow({ item, index, count, onEdit, onRemove, onMove }) {
   );
 }
 
-export function ScheduleSection({ event, headerItem }) {
+export function ScheduleSection({ event, headerItem, onPatch }) {
   const [items, , saveItems] = useEventConfig(event, "schedule", []);
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState(null); 
@@ -162,8 +163,11 @@ export function ScheduleSection({ event, headerItem }) {
       <EditorSectionHeader
         title={headerItem?.label || "Schedule"}
         description={
-          headerItem?.desc ||
-          "Build your event's running order. Items appear in this order in the Schedule section of your public page."
+          <>
+            {headerItem?.desc ||
+              "Build your event's running order. Items appear in this order in the Schedule section of your public page."}
+            <PageHeadingLine event={event} section="schedule" onPatch={onPatch} />
+          </>
         }
         action={
           <div className="flex items-center gap-2">
