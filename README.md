@@ -69,6 +69,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 # Server-only
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 STRING_URI=your-direct-postgres-connection-string   # migrations only
+# GEIGER_STRIPE_SECRET_KEY / GEIGER_STRIPE_WEBHOOK_SECRET take precedence over these two when set
 STRIPE_SECRET_KEY=your-stripe-secret-key
 STRIPE_WEBHOOK_SECRET=your-stripe-webhook-signing-secret
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
