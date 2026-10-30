@@ -1,4 +1,5 @@
 import {
+  Bot,
   LayoutDashboard,
   CalendarDays,
   ClipboardList,
@@ -483,6 +484,7 @@ export const workspaceNav = [
       // screen that unhides everything else.
       { title: "Navigation", icon: PanelLeft },
       { title: "Notifications", icon: Bell },
+      { title: "AI Apps", icon: Bot },
       { title: "API & Webhooks", icon: Webhook },
       { title: "Usage", icon: Gauge },
       { title: "Custom Domains", icon: Globe },

@@ -159,6 +159,7 @@ import { CustomDomainsScreen } from "./settings/custom_domains";
 import { NotificationsSettingsScreen } from "./settings/notifications";
 import { AddonsSettingsScreen } from "./settings/addons_settings";
 import { NavigationSettingsScreen } from "./settings/navigation_settings";
+import { AiAppsScreen } from "./settings/ai_apps";
 import { BrandedAppScreen } from "./branded/branded_app";
 import { createAddonScreen } from "./addon_screen_host";
 import { ADDON_SCREEN_BY_TITLE, ADDON_SECTION_SCREEN } from "@/addons";
@@ -411,6 +412,7 @@ export const SCREEN_REGISTRY = {
   "Custom Domains": CustomDomainsScreen,
   Navigation: NavigationSettingsScreen,
   "Add-ons": AddonsSettingsScreen,
+  "AI Apps": AiAppsScreen,
 
   // Analytics area — Scheduled Reports is a record set
   // (events.analytics_records); the rest are ECharts dashboards over demo data.
