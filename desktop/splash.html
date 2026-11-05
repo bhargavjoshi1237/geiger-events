@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+    />
+    <title>Geiger Events</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+        cursor: default;
+        user-select: none;
+        font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* The window is transparent; the card is the visible splash, with the suite's 12px card radius. */
+      .card {
+        position: relative;
+        height: 100%;
+        overflow: hidden;
+        border: 1px solid #2a2a2a;
+        border-radius: 12px;
+        background: #161616;
+        -webkit-app-region: drag;
+        animation: enter 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+      /* Same faint grid as the dash backdrop, fading out from the centre. */
+      .grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+        background-size: 28px 28px;
+        background-position: center;
+        mask-image: radial-gradient(ellipse 58% 68% at 50% 44%, #000 0%, transparent 78%);
+      }
+      .glow {
+        position: absolute;
+        top: 42%;
+        left: 50%;
+        width: 340px;
+        height: 340px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, rgb(255 255 255 / 0.07), transparent 62%);
+      }
+
+      .center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Splash-only: the loader ink (in-app it inherits the text colour); html.dark picks its dark-theme glow. */
+      .geiger-loading {
+        color: #e7e7e7;
+      }
+
+      /* Copied verbatim from @geiger/ui src/logo-loading.css (the LogoLoading treatments) — re-copy when the suite loader changes. */
+      /* LogoLoading — Geiger mark loading treatments. One `data-variant` per
+         animation; `.gl-bar` is one of the mark's 3 paths, timed via :nth-child. */
+      .geiger-loading {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 0;
+        /* Theme colours behind the `accent` prop (--gl-accent): glow, sweep highlight, dim base. */
+        --gl-glow: var(--gl-accent, color-mix(in srgb, currentColor 35%, transparent));
+        --gl-arc-glow: color-mix(in srgb, currentColor 35%, transparent);
+        --gl-ink: var(--gl-accent, currentColor);
+        --gl-dim: color-mix(in srgb, currentColor 18%, transparent);
+      }
+      .dark .geiger-loading {
+        --gl-glow: var(--gl-accent, #e7e7e7);
+        --gl-arc-glow: rgb(255 255 255 / 0.7);
+        --gl-ink: var(--gl-accent, #e7e7e7);
+        --gl-dim: #4a4a4a;
+      }
+
+      .geiger-loading svg {
+        overflow: visible;
+      }
+
+      .geiger-loading[data-variant="neon-start"] .gl-bar {
+        filter: drop-shadow(0 0 14px var(--gl-glow));
+        animation: gl-neon calc(3.2s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="neon-start"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.06s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="neon-start"] .gl-bar:nth-child(3) {
+        animation-delay: calc(0.12s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="burst"] .gl-mark {
+        filter: drop-shadow(0 0 16px var(--gl-glow));
+        animation: gl-burst calc(1.6s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+
+      .geiger-loading[data-variant="countdown"] .gl-bar {
+        filter: drop-shadow(0 0 14px var(--gl-glow));
+      }
+      .geiger-loading[data-variant="countdown"] .gl-bar:nth-child(1) {
+        animation: gl-lad1 calc(2.4s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="countdown"] .gl-bar:nth-child(2) {
+        animation: gl-lad2 calc(2.4s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="countdown"] .gl-bar:nth-child(3) {
+        animation: gl-lad3 calc(2.4s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+
+      .geiger-loading[data-variant="dying-bulb"] .gl-bar {
+        filter: drop-shadow(0 0 12px var(--gl-glow));
+        animation: gl-bulb calc(3.6s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="dying-bulb"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.5s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="dying-bulb"] .gl-bar:nth-child(3) {
+        animation-delay: calc(1s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="fuse-relay"] .gl-bar {
+        filter: drop-shadow(0 0 14px var(--gl-glow));
+        animation: gl-fuse calc(1.8s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="fuse-relay"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.22s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="fuse-relay"] .gl-bar:nth-child(3) {
+        animation-delay: calc(0.44s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="arc-flicker"] .gl-bar {
+        filter: drop-shadow(0 0 12px var(--gl-arc-glow));
+        animation: gl-arc calc(2.6s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="arc-flicker"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.34s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="arc-flicker"] .gl-bar:nth-child(3) {
+        animation-delay: calc(0.71s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="sequential-strobe"] .gl-bar {
+        filter: drop-shadow(0 0 14px var(--gl-glow));
+        animation: gl-strobe calc(1.5s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="sequential-strobe"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.09s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="sequential-strobe"] .gl-bar:nth-child(3) {
+        animation-delay: calc(0.18s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="static-crackle"] .gl-bar {
+        filter: drop-shadow(0 0 13px var(--gl-glow));
+        animation: gl-crackle calc(2.2s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="static-crackle"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.04s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="static-crackle"] .gl-bar:nth-child(3) {
+        animation-delay: calc(0.09s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="warning-flash"] .gl-bar {
+        filter: drop-shadow(0 0 15px var(--gl-glow));
+        animation: gl-warn calc(2.4s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="warning-flash"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.08s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="warning-flash"] .gl-bar:nth-child(3) {
+        animation-delay: calc(0.16s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="short-circuit"] .gl-bar {
+        filter: drop-shadow(0 0 14px var(--gl-glow));
+        animation: gl-short calc(2s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="short-circuit"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.05s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="short-circuit"] .gl-bar:nth-child(3) {
+        animation-delay: calc(0.1s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="heartbeat-pulse"] .gl-bar {
+        filter: drop-shadow(0 0 12px var(--gl-glow));
+        animation: gl-heartbeat calc(1.8s / var(--gl-speed, 1)) ease-in-out infinite;
+      }
+      .geiger-loading[data-variant="heartbeat-pulse"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.6s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="heartbeat-pulse"] .gl-bar:nth-child(3) {
+        animation-delay: calc(1.2s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="counter-ticks"] .gl-bar {
+        filter: drop-shadow(0 0 13px var(--gl-glow));
+      }
+      .geiger-loading[data-variant="counter-ticks"] .gl-bar:nth-child(1) {
+        animation: gl-tick-a calc(1.7s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="counter-ticks"] .gl-bar:nth-child(2) {
+        animation: gl-tick-b calc(1.7s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+      .geiger-loading[data-variant="counter-ticks"] .gl-bar:nth-child(3) {
+        animation: gl-tick-c calc(1.7s / var(--gl-speed, 1)) steps(1, end) infinite;
+      }
+
+      .geiger-loading[data-variant="elastic-pop"] .gl-bar {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: gl-pop calc(2.4s / var(--gl-speed, 1)) cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+      }
+      .geiger-loading[data-variant="elastic-pop"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.11s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="elastic-pop"] .gl-bar:nth-child(3) {
+        animation-delay: calc(0.22s / var(--gl-speed, 1));
+      }
+
+      .geiger-loading[data-variant="relay-pulse"] .gl-bar {
+        animation: gl-relay calc(1.5s / var(--gl-speed, 1)) ease-in-out infinite;
+      }
+      .geiger-loading[data-variant="relay-pulse"] .gl-bar:nth-child(2) {
+        animation-delay: calc(0.18s / var(--gl-speed, 1));
+      }
+      .geiger-loading[data-variant="relay-pulse"] .gl-bar:nth-child(3) {
+        animation-delay: calc(0.36s / var(--gl-speed, 1));
+      }
+
+      @keyframes gl-neon {
+        0%, 3% { opacity: .06; }
+        4%, 6% { opacity: 1; }
+        7%, 11% { opacity: .06; }
+        12%, 14% { opacity: .85; }
+        15%, 22% { opacity: .06; }
+        23%, 26% { opacity: 1; }
+        27%, 30% { opacity: .06; }
+        31%, 86% { opacity: 1; }
+        88%, 100% { opacity: .06; }
+      }
+      @keyframes gl-burst {
+        0%, 3% { opacity: 1; }
+        4%, 7% { opacity: .05; }
+        8%, 11% { opacity: 1; }
+        12%, 15% { opacity: .05; }
+        16%, 19% { opacity: 1; }
+        20%, 23% { opacity: .05; }
+        24%, 27% { opacity: 1; }
+        28%, 100% { opacity: .05; }
+      }
+      @keyframes gl-lad1 {
+        0%, 5% { opacity: 1; }
+        7%, 100% { opacity: .06; }
+      }
+      @keyframes gl-lad2 {
+        0%, 14% { opacity: .06; }
+        16%, 21% { opacity: 1; }
+        23%, 27% { opacity: .06; }
+        29%, 34% { opacity: 1; }
+        36%, 100% { opacity: .06; }
+      }
+      @keyframes gl-lad3 {
+        0%, 42% { opacity: .06; }
+        44%, 48% { opacity: 1; }
+        50%, 54% { opacity: .06; }
+        56%, 60% { opacity: 1; }
+        62%, 66% { opacity: .06; }
+        68%, 72% { opacity: 1; }
+        74%, 100% { opacity: .06; }
+      }
+      @keyframes gl-bulb {
+        0%, 18% { opacity: .32; }
+        20%, 24% { opacity: 1; }
+        26%, 40% { opacity: .18; }
+        42% { opacity: .8; }
+        44%, 58% { opacity: .32; }
+        60%, 62% { opacity: 1; }
+        64%, 76% { opacity: .1; }
+        78%, 82% { opacity: .6; }
+        84%, 100% { opacity: .28; }
+      }
+      @keyframes gl-fuse {
+        0%, 2% { opacity: 1; }
+        4%, 6% { opacity: .06; }
+        8%, 13% { opacity: 1; }
+        15%, 100% { opacity: .06; }
+      }
+      @keyframes gl-arc {
+        0% { opacity: 1; }
+        3% { opacity: .08; }
+        6% { opacity: 1; }
+        9% { opacity: .15; }
+        12% { opacity: 1; }
+        15%, 29% { opacity: .06; }
+        31% { opacity: 1; }
+        34%, 66% { opacity: .06; }
+        68% { opacity: 1; }
+        71%, 100% { opacity: .06; }
+      }
+      @keyframes gl-strobe {
+        0% { opacity: 1; }
+        8% { opacity: .07; }
+        16% { opacity: 1; }
+        24% { opacity: .07; }
+        32% { opacity: 1; }
+        40%, 100% { opacity: .07; }
+      }
+      @keyframes gl-crackle {
+        0% { opacity: 1; }
+        2% { opacity: .1; }
+        5% { opacity: 1; }
+        6% { opacity: .05; }
+        9% { opacity: 1; }
+        11% { opacity: .08; }
+        14% { opacity: 1; }
+        17% { opacity: .06; }
+        22% { opacity: 1; }
+        24% { opacity: .05; }
+        29% { opacity: 1; }
+        33%, 58% { opacity: .06; }
+        61% { opacity: 1; }
+        64%, 100% { opacity: .06; }
+      }
+      @keyframes gl-warn {
+        0% { opacity: 1; }
+        6% { opacity: .08; }
+        12% { opacity: 1; }
+        18%, 50% { opacity: .08; }
+        56% { opacity: 1; }
+        62%, 100% { opacity: .08; }
+      }
+      @keyframes gl-short {
+        0% { opacity: 1; }
+        3% { opacity: .1; }
+        6% { opacity: 1; }
+        8% { opacity: .1; }
+        10% { opacity: 1; }
+        12% { opacity: .06; }
+        14% { opacity: .9; }
+        16% { opacity: .06; }
+        18% { opacity: .8; }
+        20%, 44% { opacity: 0; }
+        46%, 100% { opacity: 1; }
+      }
+      @keyframes gl-heartbeat {
+        0% { opacity: .15; }
+        8% { opacity: 1; }
+        16% { opacity: .35; }
+        24% { opacity: 1; }
+        32%, 100% { opacity: .15; }
+      }
+      @keyframes gl-tick-a {
+        0% { opacity: 1; }
+        4% { opacity: .08; }
+        7% { opacity: 1; }
+        9%, 31% { opacity: .08; }
+        34% { opacity: 1; }
+        37%, 68% { opacity: .08; }
+        71% { opacity: 1; }
+        74%, 100% { opacity: .08; }
+      }
+      @keyframes gl-tick-b {
+        0%, 18% { opacity: .08; }
+        21% { opacity: 1; }
+        24%, 52% { opacity: .08; }
+        55% { opacity: 1; }
+        58%, 89% { opacity: .08; }
+        92% { opacity: 1; }
+        95%, 100% { opacity: .08; }
+      }
+      @keyframes gl-tick-c {
+        0%, 12% { opacity: .08; }
+        15% { opacity: 1; }
+        18%, 44% { opacity: .08; }
+        47% { opacity: 1; }
+        50%, 80% { opacity: .08; }
+        83% { opacity: 1; }
+        86%, 100% { opacity: .08; }
+      }
+      @keyframes gl-pop {
+        0% { opacity: 0; transform: scale(.35); }
+        18% { opacity: 1; transform: scale(1.14); }
+        28%, 74% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0; transform: scale(.8); }
+      }
+      @keyframes gl-relay {
+        0%, 100% { opacity: .14; }
+        32% { opacity: 1; }
+      }
+
+      @keyframes enter {
+        from { opacity: 0; transform: scale(0.985); }
+        to { opacity: 1; transform: scale(1); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .card {
+          animation: none;
+        }
+        /* The per-variant loader rules out-rank a plain selector, hence !important. */
+        .geiger-loading .gl-bar,
+        .geiger-loading .gl-mark {
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <!-- <div class="grid" aria-hidden="true"></div>
+      <div class="glow" aria-hidden="true"></div> -->
+
+      <div class="center">
+        <!-- Same DOM as @geiger/ui <LogoLoading size={84} />; the script below rolls the variant. -->
+        <span class="geiger-loading" id="logo" data-slot="logo-loading" data-variant="neon-start" role="status" aria-label="Loading">
+          <svg viewBox="0 0 467 285" width="84" height="51" fill="currentColor" stroke="none" aria-hidden="true">
+            <path class="gl-bar" d="M218.309 1.31216L224 1.15608L193.641 50.3271L170.178 91.0997L136.561 149.51L124.008 172.428L103.37 206.726L77.2097 251.035L57.3197 283.677L6.18221 283.433L0 284.156L22.4687 244.331L54.6016 189.816L75.3213 152.467L94.3273 119.376L144.096 31L161 1.15608L218.309 1.31216Z" />
+            <path class="gl-bar" d="M344.758 0L345.096 0.735049C326.643 33.9528 307.753 66.9251 288.428 99.6433C284.236 106.683 278.484 114.061 274.613 121.064C265.581 137.399 256.332 153.496 247.097 169.697L208.592 236.882C199.377 253.009 192.444 267.92 180.666 282.525C163.285 284.093 142.445 282.6 123.432 284L123.098 283.728C123.005 282.163 127.788 276.233 129.062 273.917C135.826 261.605 142.61 249.297 149.637 237.134L240.526 79.7429C249.025 64.9272 257.723 50.1984 266.187 35.3414C268.992 30.4177 277.596 15 285.096 0.735052C305.596 0.735046 325.596 0.735049 344.131 0.1168L344.758 0Z" />
+            <path class="gl-bar" d="M427.054 1.17427C431.046 1.15338 464.984 0.670938 466.079 1.40804C466.298 4.01125 464.421 3.92073 463.267 6.18971C450.436 31.3381 435.978 55.3181 422.003 79.8289L339.669 223C327.843 243.287 317.065 263.871 304.413 283.952L285.161 283.494C273.521 283.311 254.97 282.561 244.096 284C255.18 269.451 265.622 246.845 275.646 231.004C280.056 224.033 284.971 216.613 289.146 209.596C302.879 186.047 316.389 162.368 329.675 138.564C346.203 109.513 363.065 80.653 380.256 51.9898C390.11 35.4483 398.71 17.3651 409.366 1.55774C415.08 1.29513 421.301 1.29165 427.054 1.17427Z" />
+          </svg>
+        </span>
+      </div>
+    </div>
+
+    <script>
+      // Mirrors LogoLoading's weighted-random pick (@geiger/ui logo-loading.jsx LOGO_LOADING_VARIANTS).
+      const LOGO_VARIANTS = [
+        ["neon-start", 2],
+        ["burst", 1],
+        ["countdown", 1],
+        ["dying-bulb", 1],
+        ["fuse-relay", 1],
+        ["arc-flicker", 2],
+        ["sequential-strobe", 2],
+        ["elastic-pop", 1],
+        ["relay-pulse", 2],
+        ["static-crackle", 1],
+        ["warning-flash", 1],
+        ["short-circuit", 1],
+        ["heartbeat-pulse", 1],
+        ["counter-ticks", 1],
+      ];
+      function pickLogoVariant() {
+        let roll = Math.random() * LOGO_VARIANTS.reduce((sum, [, weight]) => sum + weight, 0);
+        for (const [id, weight] of LOGO_VARIANTS) {
+          roll -= weight;
+          if (roll <= 0) return id;
+        }
+        return LOGO_VARIANTS[0][0];
+      }
+      const logo = document.getElementById("logo");
+      const logoVariant = pickLogoVariant();
+      logo.dataset.variant = logoVariant;
+      // Burst animates the whole mark, so like the component it wraps the bars in a .gl-mark group.
+      if (logoVariant === "burst") {
+        const svg = logo.querySelector("svg");
+        const mark = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        mark.setAttribute("class", "gl-mark");
+        mark.append(...svg.children);
+        svg.append(mark);
+      }
+    </script>
+  </body>
+</html>

@@ -13,6 +13,7 @@ import { AssetRecovery } from "@/components/asset-recovery";
 import { Toaster } from "@geiger/ui/sonner";
 import { BannerProvider } from "@/context/banner-context";
 import { GlobalBanner } from "@/components/internal/banner/global_banner";
+import { DesktopWindowChrome } from "@/components/desktop/desktop_titlebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -78,6 +79,7 @@ export default function RootLayout({ children }) {
               {children}
             </div>
             <Toaster />
+            <DesktopWindowChrome />
           </BannerProvider>
         </ThemeProvider>
       </body>

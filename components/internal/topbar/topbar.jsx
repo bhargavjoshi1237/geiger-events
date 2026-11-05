@@ -6,6 +6,7 @@ import { SidebarTrigger } from "@geiger/ui/sidebar";
 import { NotificationsBell } from "./dialogue/notifications_bell";
 import { ProfileDropdown } from "./dialogue/profile_dropdown";
 import { SupabaseActivityLine } from "./supabase_activity_line";
+import { DesktopTitlebar } from "@/components/desktop/desktop_titlebar";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useVisibleNav } from "@/lib/hooks/use-visible-nav";
 
@@ -16,21 +17,23 @@ export function Topbar() {
   const visibleNav = useVisibleNav();
 
   return (
-    <SuiteTopbar
-      label="Events"
-      logoSrc={`${BASE_PATH}/logo1.svg`}
-      homeHref={BASE_PATH || "/"}
-      helpHref="/docs"
-      searchPlaceholder="Search Events..."
-      searchNav={visibleNav}
-      searchRecentsKey="geiger:events:search-recents"
-      onSearchSelect={(item) => setTab(item.title)}
-      sidebarTrigger={
-        <SidebarTrigger className="md:hidden -ml-2 text-foreground" />
-      }
-      notifications={<NotificationsBell />}
-      profile={<ProfileDropdown />}
-      activity={<SupabaseActivityLine />}
-    />
+    <DesktopTitlebar className="relative z-20 w-full shrink-0">
+      <SuiteTopbar
+        label="Events"
+        logoSrc={`${BASE_PATH}/logo1.svg`}
+        homeHref={BASE_PATH || "/"}
+        helpHref="/docs"
+        searchPlaceholder="Search Events..."
+        searchNav={visibleNav}
+        searchRecentsKey="geiger:events:search-recents"
+        onSearchSelect={(item) => setTab(item.title)}
+        sidebarTrigger={
+          <SidebarTrigger className="md:hidden -ml-2 text-foreground" />
+        }
+        notifications={<NotificationsBell />}
+        profile={<ProfileDropdown />}
+        activity={<SupabaseActivityLine />}
+      />
+    </DesktopTitlebar>
   );
 }

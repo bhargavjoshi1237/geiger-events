@@ -536,3 +536,73 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   border: 2px solid currentColor;
   box-shadow: 0 2px 6px rgb(0 0 0 / 0.45);
 }
+
+/* Desktop app (Electron): the frameless main window (html[data-frameless]) uses page headers as its title bar, carrying our window controls. */
+html[data-frameless] {
+  /* Three 44px control cells plus the 1px divider and its 8px margins. */
+  --desktop-controls-width: 149px;
+}
+html[data-frameless] .desktop-titlebar > header {
+  -webkit-app-region: drag;
+  app-region: drag;
+  padding-right: calc(var(--desktop-controls-width) + 1rem);
+}
+html[data-frameless] .desktop-floating-chrome {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+html[data-frameless] body:has(.desktop-titlebar) .desktop-floating-chrome {
+  display: none;
+}
+html[data-frameless] :is(.desktop-titlebar, .desktop-floating-chrome) :is(a, button, input, select, textarea, label, summary, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="combobox"], [contenteditable="true"]) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+/* The shell window is transparent, so the page is the visible window: clipped to the suite's 12px card radius, square when maximized. */
+html[data-frameless] {
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  /* Any background image on <html> stops body's background spilling onto the square canvas behind the corners. */
+  background-image: linear-gradient(transparent, transparent);
+}
+html[data-frameless] body {
+  height: 100%;
+  overflow: auto;
+  clip-path: inset(0 round 12px);
+}
+html[data-frameless] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483645;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  pointer-events: none;
+}
+html[data-frameless]:not(.dark) body::after {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.1);
+}
+html[data-frameless][data-maximized] body {
+  clip-path: none;
+}
+html[data-frameless][data-maximized] body::after,
+html[data-frameless][data-maximized] .desktop-resize-handles {
+  display: none;
+}
+/* App, not browser: chrome text isn't selectable and links/images don't drag out as browser objects. */
+html[data-desktop] :is(.desktop-titlebar, .desktop-floating-chrome, [data-sidebar], button, [role="button"], [role="tab"], [role="menuitem"], label) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+html[data-desktop] :is(a, img, svg) {
+  -webkit-user-drag: none;
+}
+/* Thin themed scrollbars instead of Chromium's native ones; standard properties, since Windows can veto ::-webkit-scrollbar. Base layer so utilities like [scrollbar-width:none] still win. */
+@layer base {
+  html[data-desktop],
+  html[data-desktop] * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}

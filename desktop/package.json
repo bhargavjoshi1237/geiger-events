@@ -1,0 +1,77 @@
+{
+  "name": "geiger-events-desktop",
+  "productName": "Geiger Events",
+  "version": "0.1.0",
+  "description": "Geiger Events desktop app",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "dist": "electron-builder --win",
+    "dist:dir": "electron-builder --win --dir",
+    "dist:portable": "electron-builder --win portable",
+    "dist:mac": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "studio.geiger.events",
+    "productName": "Geiger Events",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "offline.html",
+      "splash.html",
+      "package.json",
+      "assets/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "${productName} Setup ${version}.${ext}"
+    },
+    "protocols": [
+      {
+        "name": "Geiger Events",
+        "schemes": [
+          "geiger-events"
+        ]
+      }
+    ],
+    "portable": {
+      "artifactName": "${productName} ${version} Portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.business"
+    },
+    "dmg": {
+      "artifactName": "${productName} ${version}.${ext}"
+    }
+  }
+}
