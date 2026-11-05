@@ -1,14 +1,16 @@
 import { after, NextResponse } from "next/server";
 
+import { channelFromParam } from "@/lib/pay/server";
 import { fulfillCheckoutSession } from "@/lib/stripe/fulfill-checkout";
-import { isStripeConfigured } from "@/lib/stripe/server";
+import { isDemoConfigured, isStripeConfigured } from "@/lib/stripe/server";
 
 export async function GET(request) {
   const sessionId = request.nextUrl.searchParams.get("session_id");
   if (!sessionId) {
     return NextResponse.json({ ok: false, error: "Missing session id." }, { status: 400 });
   }
-  if (!isStripeConfigured()) {
+  const channel = channelFromParam(request.nextUrl.searchParams.get("pay"));
+  if (channel.kind === "demo" ? !isDemoConfigured() : !isStripeConfigured()) {
     return NextResponse.json({ ok: false, error: "Not configured." }, { status: 503 });
   }
 
@@ -16,6 +18,7 @@ export async function GET(request) {
     const result = await fulfillCheckoutSession(sessionId, {
       source: "return",
       defer: after,
+      channel,
     });
     return NextResponse.json(result);
   } catch (error) {

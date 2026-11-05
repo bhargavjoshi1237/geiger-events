@@ -484,6 +484,7 @@ export const workspaceNav = [
       // screen that unhides everything else.
       { title: "Navigation", icon: PanelLeft },
       { title: "Notifications", icon: Bell },
+      { title: "Payments", icon: Wallet },
       { title: "AI Apps", icon: Bot },
       { title: "API & Webhooks", icon: Webhook },
       { title: "Usage", icon: Gauge },

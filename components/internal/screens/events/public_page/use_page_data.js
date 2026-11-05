@@ -154,9 +154,10 @@ export function usePageData({ event, live }) {
     const sessionId = params.get("session_id");
     const canceled = params.get("canceled");
     if (sessionId) {
-      fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/checkout/verify?session_id=${encodeURIComponent(sessionId)}`,
-      )
+      // `pay` names the Stripe account that holds the session: demo sandbox or the organiser's own.
+      const verifyQuery = new URLSearchParams({ session_id: sessionId });
+      if (params.get("pay")) verifyQuery.set("pay", params.get("pay"));
+      fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/checkout/verify?${verifyQuery}`)
         .then((r) => r.json())
         .then((data) => {
           if (typeof data.sold === "number") setSoldOverride(data.sold);

@@ -160,6 +160,7 @@ import { NotificationsSettingsScreen } from "./settings/notifications";
 import { AddonsSettingsScreen } from "./settings/addons_settings";
 import { NavigationSettingsScreen } from "./settings/navigation_settings";
 import { AiAppsScreen } from "./settings/ai_apps";
+import { PaymentsSettingsScreen } from "./settings/payments";
 import { BrandedAppScreen } from "./branded/branded_app";
 import { createAddonScreen } from "./addon_screen_host";
 import { ADDON_SCREEN_BY_TITLE, ADDON_SECTION_SCREEN } from "@/addons";
@@ -400,12 +401,7 @@ export const SCREEN_REGISTRY = {
   Surveys: SurveysScreen,
   Announcements: AnnouncementsScreen,
 
-  // Settings area — Team & Members (people, groups, invites, activity), Roles &
-  // Permissions (role matrix over WORKSPACE_PERMISSIONS), Notifications (which
-  // transactional emails this project sends), Custom Domains (CNAME-based domain
-  // connection), Navigation (this user's personal sidebar curation, rules in
-  // geiger-ui.config.js) and Add-ons (per-project enablement and placement of
-  // the addon catalog). API & Webhooks and Usage are ComingSoon.
+  // Settings area; Payments connects the organization's Stripe via @geiger/pay. API & Webhooks and Usage are ComingSoon.
   "Team & Members": TeamMembersScreen,
   "Roles & Permissions": RolesPermissionsScreen,
   Notifications: NotificationsSettingsScreen,
@@ -413,6 +409,7 @@ export const SCREEN_REGISTRY = {
   Navigation: NavigationSettingsScreen,
   "Add-ons": AddonsSettingsScreen,
   "AI Apps": AiAppsScreen,
+  Payments: PaymentsSettingsScreen,
 
   // Analytics area — Scheduled Reports is a record set
   // (events.analytics_records); the rest are ECharts dashboards over demo data.

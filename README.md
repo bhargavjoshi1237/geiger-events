@@ -95,6 +95,30 @@ Stripe sandbox and live-mode destinations have different signing secrets. Use
 the live destination's secret in Production; use a separate sandbox destination
 and secret for local/preview testing.
 
+#### Ticket payments (Stripe Connect via `@geiger/pay`)
+
+Ticket checkout runs on one of two channels, chosen per project in
+**Settings → Payments**:
+
+- **Connected account** (default): a direct charge on the organization's own
+  Stripe account, connected by an organization owner on the same screen. With
+  no ready account and demo mode off, online ticket sales are paused.
+- **Demo mode**: the checkout runs in Geiger's Stripe sandbox. Buyers pay with
+  test cards and no real money moves. The sandbox key is
+  `GEIGER_STRIPE_DEMO_SECRET_KEY`, or the main key when that is a test key. A
+  live key is never used for demo mode.
+
+Connected-account sales need a second destination, **Events on connected
+accounts**, pointing at `/events/api/pay/webhook`, with
+`checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+`checkout.session.async_payment_failed`, `checkout.session.expired`,
+`charge.refunded`, `charge.dispute.created`, `account.updated` and
+`account.application.deauthorized`. Put its secret in
+`GEIGER_PAY_WEBHOOK_SECRET`. If the demo sandbox is a different Stripe account
+from the main key, point that sandbox's own destination at
+`/events/api/stripe/webhook` and put its secret in
+`GEIGER_STRIPE_DEMO_WEBHOOK_SECRET`.
+
 ### Database
 
 Schema changes are timestamped SQL migrations in `supabase/migrations/`, applied
