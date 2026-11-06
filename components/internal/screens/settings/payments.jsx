@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CircleAlert, CircleCheck, CreditCard, FlaskConical, Loader2, RefreshCw } from "lucide-react";
 import { ACCOUNT_STATUS } from "@geiger/pay";
-import { StripeConnectCard } from "@geiger/pay/react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { ScreenHeader, EmptyState, SectionCard, SettingRow } from "@/components/internal/shared/screen_kit";
@@ -21,13 +20,9 @@ import {
 } from "@geiger/ui/dialog";
 import { useProject } from "@/context/project-context";
 import { cn } from "@/lib/utils";
-import {
-  connectStripe,
-  disconnectStripe,
-  getPaymentSettings,
-  refreshStripe,
-  setDemoMode,
-} from "@/lib/pay/client";
+import { getPaymentSettings, setDemoMode } from "@/lib/pay/client";
+import { StripeAccountCard } from "./payment_settings/stripe_account_card";
+import { useStripeActions } from "./payment_settings/use_stripe_actions";
 
 const RETURN_TOASTS = {
   [ACCOUNT_STATUS.ACTIVE]: () => toast.success("Stripe is connected."),
@@ -204,21 +199,7 @@ export function PaymentsSettingsScreen() {
       setState((current) => (current.settings ? { ...current, settings: { ...current.settings, ...patch } } : current)),
     [],
   );
-
-  const handleConnect = useCallback((input) => connectStripe(projectId, input), [projectId]);
-  const handleRefresh = useCallback(async () => {
-    const result = await refreshStripe(projectId);
-    if (!result?.error) patchSettings({ account: result });
-    return result;
-  }, [projectId, patchSettings]);
-  const handleDisconnect = useCallback(async () => {
-    const result = await disconnectStripe(projectId);
-    if (!result?.error) {
-      patchSettings({ account: result });
-      toast.success("Stripe disconnected");
-    }
-    return result;
-  }, [projectId, patchSettings]);
+  const stripe = useStripeActions(projectId, (account) => patchSettings({ account }));
 
   async function handleDemoMode(next) {
     const result = await setDemoMode(projectId, next);
@@ -265,13 +246,7 @@ export function PaymentsSettingsScreen() {
     body = (
       <>
         <CheckoutRouting demoMode={settings.demoMode} account={settings.account} canManage={settings.canManage} />
-        <StripeConnectCard
-          account={settings.account}
-          canManage={settings.canManage}
-          onConnect={handleConnect}
-          onRefresh={handleRefresh}
-          onDisconnect={handleDisconnect}
-        />
+        <StripeAccountCard account={settings.account} canManage={settings.canManage} stripe={stripe} />
         <DemoModeCard settings={settings} onChange={handleDemoMode} />
       </>
     );
