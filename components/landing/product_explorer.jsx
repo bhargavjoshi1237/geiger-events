@@ -15,22 +15,20 @@ const AutoplayPreview = dynamic(() => import("./previews/autoplay"), {
 
 const surfaces = [
   { label: "The event page", title: "Sell tickets from a page you design", description: "Ticket tiers, add-ons, discount codes and checkout sit on one public page with your branding. Share a single link.", points: ["Ticket tiers and capacity", "Add-ons and discount codes", "Checkout on the same page"], demo: "page" },
-  { label: "At the door", title: "Scan guests in at the door", description: "Door staff scan QR or wallet passes, look a guest up by name, and see how many people have arrived.", points: ["QR and wallet passes", "Search by name or order", "Live arrival count"], demo: "door" },
-  { label: "In their pocket", title: "Give attendees their tickets and agenda", description: "The attendee portal holds each guest's tickets, their personal agenda and the event's live rooms.", points: ["Tickets and event details", "Personal agendas", "Live rooms and chat"], demo: "portal" },
+  { label: "At the door", title: "Scan guests in at the door", description: "Door staff scan QR tickets, look a guest up by name, and see how many people have arrived.", points: ["QR ticket scanning", "Search by name or order", "Live arrival count"], demo: "door" },
+  { label: "In their pocket", title: "Give attendees their tickets and live rooms", description: "The attendee portal holds each guest's tickets, orders and memberships, plus the event's live rooms and chat.", points: ["Tickets with QR codes", "Orders and memberships", "Live rooms and chat"], demo: "portal" },
   { label: "Behind the scenes", title: "Hand out badges and merch without double-issuing", description: "The staff desk shows what each guest is owed, records what they collect, and blocks a second collection.", points: ["Shared issuing desk", "Collection status per guest", "Duplicate collection checks"], demo: "desk" },
 ];
 
 const automation = [
-  { label: "Workflows", title: "Start work automatically when a ticket sells", description: "Choose a trigger, add conditions, then send guest emails or alert your team. Every run is logged.", points: ["Triggers, conditions and actions", "Guest emails and team alerts", "Run history and logs"], demo: "workflows" },
-  { label: "Audience segments", title: "Build audiences from tickets, spend and tags", description: "Combine rules on ticket type, attendance, spend and tags. The list of matching guests updates as you edit.", points: ["Combine audience rules", "Preview who matches", "Reuse segments in campaigns"], demo: "segments" },
-  { label: "Live insights", title: "See where buyers come from and where they drop off", description: "Follow visitors from the event page to a paid order and compare acquisition channels side by side.", points: ["Conversion funnel", "Channel comparison", "Drop-off by step"], demo: "analytics" },
-];
+  { label: "Workflows", title: "Plan the follow-up in a workflow builder", description: "Lay out triggers, conditions and actions for what should happen after a sale. The builder is ready; automatic runs are still being built.", points: ["Triggers, conditions and actions", "One canvas per workflow", "Shared with your team"], demo: "workflows" },
+  { label: "Audience segments", title: "Build audiences from tickets, spend and tags", description: "Combine rules on ticket type, attendance, spend and tags. The list of matching guests updates as you edit.", points: ["Combine audience rules", "Preview who matches", "Save segments to reuse"], demo: "segments" },];
 
 const categories = [
   { label: "Registration", items: [
     { label: "Registration forms", demo: "forms", description: "Add custom questions to registration and choose which ones are required." },
     { label: "Approval gates", demo: "approvals", description: "Review applications with their answers attached, then approve or decline from one queue." },
-    { label: "Waitlists", demo: "waitlist", description: "Let guests join a waitlist when tickets sell out and see who is next in line." },
+    { label: "Waitlists", demo: "waitlist", description: "Keep a waitlist for a full event and promote people by hand when places open." },
   ] },
   { label: "Orders & payments", items: [
     { label: "Order cockpit", demo: "orders", description: "See paid, partial, refunded and disputed orders in one list, with the amounts beside them." },
@@ -48,10 +46,8 @@ const categories = [
     { label: "Meetings", demo: "meetings", description: "Attendees book one-to-one meetings from open time slots." },
   ] },
   { label: "Hybrid & broadcast", items: [
-    { label: "Livestream", demo: "stream", description: "Stream sessions into event rooms with attendee presence and chat." },
-    { label: "On-demand", demo: "replays", description: "Publish session recordings in a replay library and control who can watch." },
-    { label: "Captions", demo: "captions", description: "Live captions and a searchable transcript for each session." },
-  ] },
+    { label: "Livestream", demo: "stream", description: "Embed a YouTube, Vimeo or video link in event rooms, with attendee presence and chat." },
+    { label: "On-demand", demo: "replays", description: "Publish session recordings in a replay library and control who can watch." },  ] },
   { label: "Venues & logistics", items: [
     { label: "Venue sourcing", demo: "venues", description: "Search venues on a map and move the promising ones into a shortlist." },
     { label: "Instant booking", demo: "booking", description: "Check a venue's availability and rates before you book." },
@@ -59,7 +55,7 @@ const categories = [
     { label: "Venue library", demo: "library", description: "Save venue records you can reuse for the next event." },
   ] },
   { label: "Growth & discovery", items: [
-    { label: "Campaigns", demo: "campaigns", description: "Plan newsletters and reminders and track what each campaign costs." },
+    { label: "Campaigns", demo: "campaigns", description: "Plan newsletters and track what each campaign costs." },
     { label: "Discovery", demo: "discovery", description: "Publish an organizer profile and an event wall that lists your upcoming events." },
   ] },
   { label: "Seating & scale", items: [

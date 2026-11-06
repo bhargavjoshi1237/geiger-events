@@ -67,14 +67,16 @@ function SegmentScene({ view }) {
         ))}
       </div>
       <Button data-part="add-rule" variant="outline" size="sm" className="mt-2 w-full"><Plus className="size-3.5" />Add rule</Button>
-      <Part id="count" view={view} className="mt-4 flex items-center justify-between border-t border-border pt-3">
-        <div className="flex items-center">
-          <div className="flex -space-x-2">{people.map((name) => <Avatar key={name} name={name} />)}</div>
-          <span className="ml-2 text-xs text-muted-foreground">{people[0].split(" ")[0]} and {count - 1} more</span>
-        </div>
-        <span className="text-xl font-semibold tabular-nums">{count}</span>
-      </Part>
-      <Button data-part="send" className="mt-3 w-full" variant={state.sent ? "outline" : "default"}>{state.sent ? <><Check className="size-3.5" />Broadcast sent to {count} guests</> : <><Megaphone className="size-3.5" />Broadcast to this audience</>}</Button>
+      <div className="mt-4 border-t border-border pt-4">
+        <Part id="count" view={view} className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="flex -space-x-2">{people.map((name) => <Avatar key={name} name={name} />)}</div>
+            <span className="ml-2 text-xs text-muted-foreground">{people[0].split(" ")[0]} and {count - 1} more</span>
+          </div>
+          <span className="text-xl font-semibold tabular-nums">{count}</span>
+        </Part>
+      </div>
+      <Button data-part="send" className="mt-4 w-full" variant={state.sent ? "outline" : "default"}>{state.sent ? <><Check className="size-3.5" />Broadcast sent to {count} guests</> : <><Megaphone className="size-3.5" />Broadcast to this audience</>}</Button>
     </SceneCard>
   );
 }

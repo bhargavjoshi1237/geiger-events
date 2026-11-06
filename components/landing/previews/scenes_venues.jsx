@@ -136,13 +136,15 @@ function SeatScene({ view }) {
           </div>
         ))}
       </div>
-      <Part id="hold" view={view} className="mt-4 border-t border-border pt-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">{state.picked.length ? `Seats ${state.picked.join(", ")}` : "No seats selected"}</span>
-          <span className="font-semibold tabular-nums">{money(state.picked.length * 65)}</span>
-        </div>
-        <Notice tone="neutral" icon={Lock} show={state.others.length > 0} className="mt-2">Another buyer just took C6. Your seats stay held for you until the timer runs out.</Notice>
-      </Part>
+      <div className="mt-4 border-t border-border pt-4">
+        <Part id="hold" view={view}>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{state.picked.length ? `Seats ${state.picked.join(", ")}` : "No seats selected"}</span>
+            <span className="font-semibold tabular-nums">{money(state.picked.length * 65)}</span>
+          </div>
+          <Notice tone="neutral" icon={Lock} show={state.others.length > 0} className="mt-2">Another buyer just took C6. Your seats stay held for you until the timer runs out.</Notice>
+        </Part>
+      </div>
     </SceneCard>
   );
 }

@@ -42,7 +42,22 @@ function readStripeStep() {
   return new URL(window.location.href).searchParams.get("stripe");
 }
 
-function routingView({ demoMode, account }) {
+// The Stripe card shows the account's state; this says what that means for buyers and who can unblock it.
+function pausedNote(status, canManage) {
+  if (status === ACCOUNT_STATUS.PENDING) return "Stripe is reviewing your details. Sales open once it approves the account.";
+  if (status === ACCOUNT_STATUS.REJECTED) return "Stripe couldn't verify the account, so buyers can't pay. Open the Stripe Dashboard to see why.";
+  const started = status === ACCOUNT_STATUS.ACTION_REQUIRED;
+  if (!canManage) {
+    return started
+      ? "Buyers can't pay until an organization owner finishes Stripe setup or turns on demo mode."
+      : "Buyers can't pay until an organization owner connects Stripe or turns on demo mode.";
+  }
+  return started
+    ? "Buyers can't pay until Stripe setup is finished. Continue setup below, or turn on demo mode to try checkout with test cards."
+    : "Connect Stripe below to start selling, or turn on demo mode to try checkout with test cards.";
+}
+
+function routingView({ demoMode, account, canManage }) {
   if (demoMode) {
     return {
       icon: FlaskConical,
@@ -61,17 +76,18 @@ function routingView({ demoMode, account }) {
       note: "Buyers pay on Stripe's checkout and the money lands in your organization's Stripe balance.",
     };
   }
+  const rejected = account?.status === ACCOUNT_STATUS.REJECTED;
   return {
     icon: CircleAlert,
-    tone: "border-amber-500/25 bg-amber-500/10",
-    iconTone: "text-amber-600 dark:text-amber-400",
+    tone: rejected ? "border-red-500/25 bg-red-500/10" : "border-amber-500/25 bg-amber-500/10",
+    iconTone: rejected ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400",
     title: "Online ticket sales are paused",
-    note: "Connect Stripe and finish its setup, or turn on demo mode to try checkout with test cards.",
+    note: pausedNote(account?.status, canManage),
   };
 }
 
-function CheckoutRouting({ demoMode, account }) {
-  const view = routingView({ demoMode, account });
+function CheckoutRouting({ demoMode, account, canManage }) {
+  const view = routingView({ demoMode, account, canManage });
   const Icon = view.icon;
   return (
     <div className={cn("flex items-start gap-3 rounded-xl border px-4 py-3", view.tone)}>
@@ -248,7 +264,7 @@ export function PaymentsSettingsScreen() {
     const { settings } = state;
     body = (
       <>
-        <CheckoutRouting demoMode={settings.demoMode} account={settings.account} />
+        <CheckoutRouting demoMode={settings.demoMode} account={settings.account} canManage={settings.canManage} />
         <StripeConnectCard
           account={settings.account}
           canManage={settings.canManage}

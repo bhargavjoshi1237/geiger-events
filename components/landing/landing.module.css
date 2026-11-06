@@ -144,6 +144,13 @@
 .formatCard h3 { margin-top: 20px; font-size: 18px; font-weight: 600; letter-spacing: -0.015em; }
 .formatCard > p { max-width: 320px; margin-top: 8px; font-size: 15px; line-height: 1.6; color: var(--muted-foreground); }
 .formatCard .textLink { margin-top: 14px; }
+/* Guide index: crawlable links to every published feature and solution page */
+.guideGroups { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 24px 40px; }
+.guideGroup h3 { font-family: var(--font-geist-mono), monospace; font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-foreground); }
+.guideGroup ul { margin-top: 14px; display: grid; gap: 8px 24px; }
+.guideGroup:first-child ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.guideGroup a { font-size: 14px; line-height: 1.5; color: var(--foreground); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; transition: text-decoration-color .15s; }
+.guideGroup a:hover { text-decoration-color: var(--border-strong); }
 .formatArt { position: relative; display: flex; align-items: center; justify-content: center; height: 230px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-subtle); color: var(--foreground); }
 .orbitCircle { position: absolute; width: 170px; height: 170px; border: 1px solid var(--border-strong); border-radius: 50%; }
 .gatherArt > i { position: absolute; width: 16px; height: 16px; border: 4px solid var(--surface-subtle); border-radius: 50%; background: var(--foreground); box-shadow: 0 0 0 1px var(--border-strong); transform: rotate(calc(var(--i) * 45deg)) translateY(-85px); }
@@ -219,6 +226,7 @@
   .journeyLayout { grid-template-columns: 1fr; }
   .journeyCopy p { min-height: 0; }
   .formatCards { grid-template-columns: 1fr; gap: 36px; }
+  .guideGroups { grid-template-columns: 1fr; gap: 36px; }
   .faqSection { grid-template-columns: 1fr; gap: 28px; padding-bottom: 80px; }
   .mockWorkspace > aside { width: 150px; }
   .capabilityExplorer { display: block; }

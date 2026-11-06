@@ -7,9 +7,16 @@ import ProductExplorer from "./product_explorer";
 import ConnectedJourney from "./connected_journey";
 import EventsPlaygroundShowcase from "@/components/EventsPlaygroundShowcase";
 import PosterFieldCta from "./poster_field_cta";
+import { getEventGuides } from "@/lib/landing/event-guides";
 import styles from "./landing.module.css";
 
+const SITE_URL = "https://geiger.studio";
+
 const faqs = [
+  {
+    question: "Does Geiger Events charge a fee per ticket?",
+    answer: "No. Geiger Events adds no platform fee. Ticket payments go to your own Stripe account, and you pay only Stripe's processing fee, straight to Stripe.",
+  },
   {
     question: "Can I try it before creating an account?",
     answer: "Yes. The previews on this page and the playground use example data, and the playground opens the full workspace without signing in. Changes you make there aren't saved.",
@@ -29,7 +36,65 @@ const faqs = [
 ];
 
 // The hero stub's index of the page, in page order.
-const sections = [["Event page & door", "#platform"], ["Automation", "#workflow"], ["Formats", "#formats"], ["Every feature", "#capabilities"], ["Playground", "#playground"], ["Questions", "#faq"]];
+const sections = [["Event page & door", "#platform"], ["Follow-up", "#workflow"], ["Formats", "#formats"], ["Every feature", "#capabilities"], ["Playground", "#playground"], ["Guides", "#guides"], ["Questions", "#faq"]];
+
+// What search engines and AI answers should know about the product; plan prices mirror /pricing, so change both together.
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${SITE_URL}/events#app`,
+      name: "Geiger Events",
+      applicationCategory: "BusinessApplication",
+      applicationSubCategory: "Event ticketing, registration and check-in software",
+      operatingSystem: "Web",
+      url: `${SITE_URL}/events`,
+      description: "Geiger Events covers the event page, ticketing, registration, agenda and door check-in in one workspace, with no platform fee on ticket sales.",
+      featureList: [
+        "Event pages with a drag-and-drop page builder",
+        "Free and paid ticketing through the organizer's own Stripe account, with no platform fee",
+        "Custom registration questions",
+        "Approval before payment for invite-only events",
+        "Reserved seating on venue seat maps",
+        "Conference agenda builder with tracks and speakers",
+        "Exhibitor booth sales on a floor plan",
+        "Sponsorship spots with a public prospectus page",
+        "VIP and hospitality packages",
+        "Memberships and a members portal",
+        "QR code tickets",
+        "Door check-in app with staff roles",
+        "Venue display boards that update from the agenda",
+        "Merch and badge pickup tracking that blocks double collection",
+        "Affiliate and promoter tracking add-on",
+      ],
+      offers: {
+        "@type": "AggregateOffer",
+        priceCurrency: "USD",
+        lowPrice: "0",
+        highPrice: "119",
+        offerCount: 4,
+        url: `${SITE_URL}/pricing`,
+        description: "A free Early access plan, then Basic $29, Plus $79 and Pro $119 a month. No platform fee on ticket sales; Stripe's processing fee applies.",
+      },
+      publisher: { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: "Geiger Studios", url: `${SITE_URL}/` },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: faqs.map(({ question, answer }) => ({
+        "@type": "Question",
+        name: question,
+        acceptedAnswer: { "@type": "Answer", text: answer },
+      })),
+    },
+  ],
+};
+
+const guideGroups = [
+  ["features", "Features"],
+  ["useCases", "By event type"],
+  ["compare", "Compare"],
+];
 
 function SectionHeading({ title, description }) {
   return (
@@ -43,27 +108,33 @@ function SectionHeading({ title, description }) {
 const formats = [
   {
     title: "Meetups and RSVPs",
-    description: "Publish a page, collect free RSVPs or paid tickets, and send reminders before the day.",
+    description: "Publish a page, collect free RSVPs or paid tickets, and check guests in at the door.",
     link: "See registration",
+    href: "/features/events/event-registration-rsvp",
     art: <div className={styles.formatArt} aria-hidden="true"><div className={styles.orbitCircle} />{Array.from({ length: 8 }, (_, i) => <i key={i} style={{ "--i": i }} />)}<Users size={30} strokeWidth={1.25} /></div>,
   },
   {
     title: "Conferences and seated venues",
     description: "Run a multi-track agenda, sell assigned seats and lay out the exhibitor floor.",
     link: "See seating and agenda",
+    href: "/solutions/events/conference-event-software",
     art: <div className={`${styles.formatArt} ${styles.seatsArt}`} aria-hidden="true"><span>Stage</span><div>{Array.from({ length: 60 }, (_, i) => <i key={i} />)}</div></div>,
   },
   {
     title: "Recurring series",
     description: "Copy an event's setup to the next date and list every date on one event wall.",
     link: "See series",
+    href: "/features/events/event-series-recurring",
     art: <div className={`${styles.formatArt} ${styles.seriesArt}`} aria-hidden="true">{["Fri 03 Oct", "Fri 10 Oct", "Fri 17 Oct"].map((date, i) => <div key={date} style={{ "--i": i }}><span>Open Mic</span><strong>Open<br />Mic</strong><span>{date}</span></div>)}</div>,
   },
 ];
 
-export default function EventsLandingPage() {
+export default async function EventsLandingPage() {
+  const guides = await getEventGuides();
+
   return (
     <div className={styles.page}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <a href="#main-content" className={styles.skipLink}>Skip to content</a>
       <Header dashboardHref="/org" />
       <main id="main-content" className={styles.main}>
@@ -99,8 +170,8 @@ export default function EventsLandingPage() {
 
         <section id="workflow" className={`${styles.container} ${styles.section}`}>
           <SectionHeading
-            title="Follow up automatically after someone buys"
-            description="Trigger emails and team alerts from ticket sales, build audiences from orders and tags, and see which channels bring in buyers." />
+            title="Know who bought, and plan what happens next"
+            description="Build audiences from tickets, spend and tags, and lay out the follow-up in the workflow builder." />
           <ProductExplorer variant="automation" />
         </section>
 
@@ -111,12 +182,13 @@ export default function EventsLandingPage() {
             title="Use only the parts your event needs"
             description="A meetup needs a page and a guest list. Turn on seating, sessions and exhibitors when the event calls for them." />
           <div className={styles.formatCards}>
-            {formats.map(({ title, description, link, art }) => (
+            {formats.map(({ title, description, link, href, art }) => (
               <article key={title} className={styles.formatCard}>
                 {art}
                 <h3>{title}</h3>
                 <p>{description}</p>
-                <a href="#capabilities" className={styles.textLink}>{link}<ArrowRight size={14} /></a>
+                {/* Plain anchors: the guides live on the dash at the domain root, outside this app's basePath */}
+                <a href={href} className={styles.textLink}>{link}<ArrowRight size={14} /></a>
               </article>
             ))}
           </div>
@@ -138,6 +210,24 @@ export default function EventsLandingPage() {
           </div>
           <EventsPlaygroundShowcase />
         </section>
+
+        {guides ? (
+          <section id="guides" className={`${styles.container} ${styles.section}`}>
+            <SectionHeading
+              title="Guides for every feature"
+              description="How each part of Geiger Events works, which events it suits, and how it compares with the tools you may use now." />
+            <div className={styles.guideGroups}>
+              {guideGroups.map(([key, label]) => guides[key].length ? (
+                <div key={key} className={styles.guideGroup}>
+                  <h3>{label}</h3>
+                  <ul>
+                    {guides[key].map((guide) => <li key={guide.href}><a href={guide.href}>{guide.title}</a></li>)}
+                  </ul>
+                </div>
+              ) : null)}
+            </div>
+          </section>
+        ) : null}
 
         <section id="faq" className={`${styles.container} ${styles.section} ${styles.faqSection}`}>
           <div>

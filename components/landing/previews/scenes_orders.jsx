@@ -168,10 +168,12 @@ function RefundScene({ view }) {
           );
         })}
       </div>
-      <Part id="amount" view={view} className="mt-3 flex justify-between border-t border-border pt-3 text-sm">
-        <span className="text-muted-foreground">Refund under policy</span><span className="font-semibold tabular-nums">{money(amount)}</span>
-      </Part>
-      <Button data-part="record" className="mt-3 w-full" variant={state.recorded ? "outline" : "default"} disabled={!amount}>{state.recorded ? <><Check className="size-3.5" />{money(amount)} refund recorded</> : "Record refund"}</Button>
+      <div className="mt-3 border-t border-border pt-4">
+        <Part id="amount" view={view} className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Refund under policy</span><span className="font-semibold tabular-nums">{money(amount)}</span>
+        </Part>
+      </div>
+      <Button data-part="record" className="mt-4 w-full" variant={state.recorded ? "outline" : "default"} disabled={!amount}>{state.recorded ? <><Check className="size-3.5" />{money(amount)} refund recorded</> : "Record refund"}</Button>
     </SceneCard>
   );
 }

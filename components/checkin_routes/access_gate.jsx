@@ -147,7 +147,9 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, co
           </Button>
         </form>
         <p className="text-xs text-text-tertiary">
-          Codes are managed under Check-in → Staff Scanning Roles.
+          {codeType === "issue"
+            ? "Codes are managed under Inventory → Issuing Staff."
+            : "Codes are managed under Check-in → Staff Scanning Roles."}
         </p>
       </div>
     </div>

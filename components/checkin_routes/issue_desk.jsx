@@ -506,6 +506,8 @@ function WalkupView({ allocations, loading, onPick, onBack }) {
 }
 
 export function IssueDesk({ eventId, code, role, exit, event }) {
+  // find | subject | confirm | done | walkup
+  const [view, setView] = useState("find");
   const [subject, setSubject] = useState(null);
   const [entitlements, setEntitlements] = useState([]);
   const [loadingEnts, setLoadingEnts] = useState(false);

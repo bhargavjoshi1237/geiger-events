@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionMember } from "@/lib/portal/session";
 import LoginScreen from "@/components/portal/login_screen";
 
-export const metadata = { title: "Sign in · Geiger Events" };
+export const metadata = { title: "Sign in · Geiger Events", robots: { index: false, follow: false } };
 
 export const viewport = {
   width: "device-width",

@@ -52,8 +52,8 @@ const merriweather = Merriweather({
 });
 
 export const metadata = {
-  title: "Events - Geiger Studio",
-  description: "Geiger Studio - Events",
+  title: "Geiger Events",
+  description: "Event pages, ticketing and check-in by Geiger Studios.",
 };
 
 export default function RootLayout({ children }) {
