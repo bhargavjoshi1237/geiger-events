@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { CheckCircle2, Loader2, Minus, Plus, Ticket } from "lucide-react";
+import { CheckCircle2, Loader2, Minus, Plus, Ticket, WifiOff } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -18,9 +18,13 @@ import { Field, SectionCard } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
 import { getEvent } from "@/lib/supabase/events";
 import { buyTicket } from "@/lib/supabase/orders";
-import { admitCheckin, checkinStats } from "@/lib/supabase/checkin";
+import { checkinStats } from "@/lib/supabase/checkin";
+import { describeOutcome } from "@/lib/checkin/offline/feedback";
+import { useCheckinEngine } from "@/lib/checkin/offline/use_checkin_engine";
+import { useCheckinServiceWorker } from "@/lib/checkin/offline/sw_client";
 import { AccessGate } from "@/components/checkin_routes/access_gate";
 import { RouteShell } from "@/components/checkin_routes/route_shell";
+import { OfflineBanner } from "@/components/checkin_routes/offline_banner";
 
 const METHODS = [
   { value: "cash", label: "Cash" },
@@ -33,6 +37,7 @@ const MAX_QTY = 10;
 const currency = (n) => `$${Number(n || 0).toLocaleString("en-US")}`;
 
 function DoorPos({ eventId, code, role, exit, event }) {
+  const { engine, status } = useCheckinEngine({ eventId, code, role, route: "door" });
   const tickets = useMemo(() => {
     const list = Array.isArray(event?.tickets) ? event.tickets : [];
     const mapped = list
@@ -57,8 +62,9 @@ function DoorPos({ eventId, code, role, exit, event }) {
   const total = unit * qty;
 
   useEffect(() => {
+    if (!status.online) return;
     checkinStats(eventId, code).then((s) => s && setStats(s));
-  }, [eventId, code, receipt]);
+  }, [eventId, code, receipt, status.online]);
 
   const reset = () => {
     setQty(1);
@@ -85,14 +91,11 @@ function DoorPos({ eventId, code, role, exit, event }) {
       setReceipt({ error: res?.soldOut ? "That ticket is sold out." : "Couldn't complete the sale." });
       return;
     }
-    await admitCheckin({
-      eventId,
-      code,
-      orderId: res.orderId,
-      name: name || "Walk-in",
-      method: "door",
-      staff: role?.name || null,
-    });
+    // The order is new, so it isn't in the cached guest list; if the line drops now the admit still queues.
+    const admitted = await engine.admit(
+      { orderId: res.orderId, name: name || "Walk-in" },
+      { method: "door", staff: role?.name || null, trustUnknown: true },
+    );
     setSubmitting(false);
     setReceipt({
       ok: true,
@@ -101,6 +104,10 @@ function DoorPos({ eventId, code, role, exit, event }) {
       qty,
       total,
       method,
+      admitted: admitted?.kind === "success",
+      queued: admitted?.kind === "success" && !!admitted.offline,
+      // A sale into a full venue is still a sale; the guest just isn't admitted until there's room.
+      admitNote: admitted?.kind === "success" ? "" : describeOutcome(admitted).title,
     });
     reset();
   };
@@ -112,7 +119,13 @@ function DoorPos({ eventId, code, role, exit, event }) {
 
   if (receipt) {
     return (
-      <RouteShell title={event?.name || "Door sales"} subtitle="Sale complete" count={stats} onExit={exit}>
+      <RouteShell
+        title={event?.name || status.eventMeta?.name || "Door sales"}
+        subtitle="Sale complete"
+        count={stats}
+        onExit={exit}
+        banner={<OfflineBanner status={status} onSync={() => engine.syncNow({ manual: true })} />}
+      >
         <div className="mx-auto max-w-sm space-y-5 pt-8 text-center">
           {receipt.ok ? (
             <>
@@ -120,10 +133,21 @@ function DoorPos({ eventId, code, role, exit, event }) {
                 <CheckCircle2 className="h-8 w-8" />
               </div>
               <div className="space-y-1">
-                <p className="text-lg font-semibold text-foreground">Sold & checked in</p>
-                <p className="text-sm text-text-secondary">
-                  {receipt.qty}× {receipt.ticket} · {currency(receipt.total)} ({receipt.method}) — {receipt.name} admitted.
+                <p className="text-lg font-semibold text-foreground">
+                  {receipt.admitted ? "Sold & checked in" : "Sold — not checked in"}
                 </p>
+                <p className="text-sm text-text-secondary">
+                  {receipt.qty}× {receipt.ticket} · {currency(receipt.total)} ({receipt.method})
+                  {receipt.admitted ? ` — ${receipt.name} admitted.` : "."}
+                </p>
+                {receipt.admitNote ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">{receipt.admitNote}</p>
+                ) : null}
+                {receipt.queued ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    The check-in was saved on this device and will sync when the connection is back.
+                  </p>
+                ) : null}
               </div>
             </>
           ) : (
@@ -141,8 +165,20 @@ function DoorPos({ eventId, code, role, exit, event }) {
   }
 
   return (
-    <RouteShell title={event?.name || "Door sales"} subtitle={role?.name ? `Selling as ${role.name}` : "Door sales"} count={stats} onExit={exit}>
+    <RouteShell
+      title={event?.name || status.eventMeta?.name || "Door sales"}
+      subtitle={role?.name ? `Selling as ${role.name}` : "Door sales"}
+      count={stats}
+      onExit={exit}
+      banner={<OfflineBanner status={status} onSync={() => engine.syncNow({ manual: true })} />}
+    >
       <div className="space-y-5">
+        {!status.online ? (
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            <WifiOff className="mt-0.5 h-4 w-4 shrink-0" />
+            Door sales need a connection to take payment and issue the ticket. Scanning at /checkin keeps working offline.
+          </div>
+        ) : null}
         <SectionCard title="Ticket">
           <div className="grid gap-2 sm:grid-cols-2">
             {tickets.map((t, i) => (
@@ -226,7 +262,7 @@ function DoorPos({ eventId, code, role, exit, event }) {
               <p className="text-xs text-text-secondary">{qty}× {ticket.name} ({method})</p>
               <p className="text-xl font-bold tabular-nums text-foreground">{currency(total)}</p>
             </div>
-            <Button className="h-12 shrink-0 bg-primary px-6 text-base text-primary-foreground hover:bg-primary/90" disabled={submitting} onClick={requestSell}>
+            <Button className="h-12 shrink-0 bg-primary px-6 text-base text-primary-foreground hover:bg-primary/90" disabled={submitting || !status.online} onClick={requestSell}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               {submitting ? "Selling…" : "Sell & check in"}
             </Button>
@@ -274,6 +310,7 @@ export default function DoorSalesPage() {
   const params = useParams();
   const eventId = Array.isArray(params?.eventId) ? params.eventId[0] : params?.eventId;
   const [event, setEvent] = useState(null);
+  useCheckinServiceWorker("door");
 
   useEffect(() => {
     let alive = true;

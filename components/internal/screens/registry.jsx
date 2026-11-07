@@ -162,6 +162,21 @@ import { NavigationSettingsScreen } from "./settings/navigation_settings";
 import { AiAppsScreen } from "./settings/ai_apps";
 import { PaymentsSettingsScreen } from "./settings/payments";
 import { BrandedAppScreen } from "./branded/branded_app";
+import { FloorPlansScreen } from "./event_design/floor_plans";
+import { ObjectLibraryScreen } from "./event_design/object_library";
+import { RoomTemplatesScreen } from "./event_design/room_templates";
+import { VenueDiagramLibraryScreen } from "./event_design/venue_diagram_library";
+import { SeatingChartsScreen } from "./event_design/seating_charts";
+import { SetupStylesCapacityScreen } from "./event_design/setup_styles_capacity";
+import { CollaborationSharingScreen } from "./event_design/collaboration_sharing";
+import { Walkthrough3DScreen } from "./event_design/walkthrough_3d";
+import { InstantBookScreen } from "./sourcing/instant_book";
+import { SmartProposalsScreen } from "./sourcing/smart_proposals";
+import { SmartBadgesScreen } from "./checkin/smart_badges";
+import { CapacityControlScreen } from "./checkin/capacity_control";
+import { MeetingSchedulerScreen } from "./community/meeting_scheduler";
+import { DiscussionBoardsScreen } from "./community/discussion_boards";
+import { ApiWebhooksScreen } from "./settings/api_webhooks";
 import { createAddonScreen } from "./addon_screen_host";
 import { ADDON_SCREEN_BY_TITLE, ADDON_SECTION_SCREEN } from "@/addons";
 
@@ -190,6 +205,20 @@ export const SCREEN_REGISTRY = {
   Templates: TemplatesScreen,
   "Event Series": EventSeriesScreen,
   "Event Wall": EventWallScreen,
+
+  // Event Design — to-scale floor plans (events.floor_plans) on one renderer + geometry lib (lib/event_design).
+  "Floor Plans": FloorPlansScreen,
+  "Object Library": ObjectLibraryScreen,
+  "Room Templates": RoomTemplatesScreen,
+  "Venue Diagram Library": VenueDiagramLibraryScreen,
+  "Seating Charts": SeatingChartsScreen,
+  "Setup Styles & Capacity": SetupStylesCapacityScreen,
+  "Collaboration & Sharing": CollaborationSharingScreen,
+  "3D Walkthrough": Walkthrough3DScreen,
+
+  // Sourcing — RFP → bid → award loop (public replies at /rfp/<token>) and booking of the project's own venue spaces.
+  "Smart Custom Proposals": SmartProposalsScreen,
+  "Instant Book": InstantBookScreen,
 
   // Packages area (workspace-level). A single destination holding the
   // project-wide switch; the packages themselves are authored per event, in the
@@ -334,6 +363,10 @@ export const SCREEN_REGISTRY = {
   "Staff Scanning Roles": StaffScanningRolesScreen,
   "Lead Retrieval": LeadRetrievalScreen,
   "Name-search Lookup": NameSearchLookupScreen,
+  // Capacity Control — live zone occupancy (admits minus exits) with hard caps enforced in checkin_admit.
+  "Capacity Control": CapacityControlScreen,
+  // Smart Badges — NFC chip badges over events.nfc_credentials; tap purpose (gate/session/lead) decides what a tap does.
+  "Smart Badges": SmartBadgesScreen,
 
   // Campaigns area. One hub (Campaigns) backs a channel-aware records list +
   // editor; the channel/type sub-items are preset-filtered LENSES onto that hub
@@ -400,8 +433,11 @@ export const SCREEN_REGISTRY = {
   Polls: PollsScreen,
   Surveys: SurveysScreen,
   Announcements: AnnouncementsScreen,
+  // Meeting Scheduler and Discussion Boards each have a members-portal side (Networking, Discussions).
+  "Meeting Scheduler": MeetingSchedulerScreen,
+  "Discussion Boards": DiscussionBoardsScreen,
 
-  // Settings area; Payments connects the organization's Stripe via @geiger/pay. API & Webhooks and Usage are ComingSoon.
+  // Settings area; Payments connects the organization's Stripe via @geiger/pay.
   "Team & Members": TeamMembersScreen,
   "Roles & Permissions": RolesPermissionsScreen,
   Notifications: NotificationsSettingsScreen,
@@ -410,6 +446,7 @@ export const SCREEN_REGISTRY = {
   "Add-ons": AddonsSettingsScreen,
   "AI Apps": AiAppsScreen,
   Payments: PaymentsSettingsScreen,
+  "API & Webhooks": ApiWebhooksScreen,
 
   // Analytics area — Scheduled Reports is a record set
   // (events.analytics_records); the rest are ECharts dashboards over demo data.

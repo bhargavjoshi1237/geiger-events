@@ -84,6 +84,8 @@ Business errors (all `{ "ok": false, "reason": "…" }`):
 | 404 | `UNKNOWN_UID` | Unbound wristband — red + "go to registration desk"; staff bind, guest re-taps |
 | 409 | `POINT_INACTIVE` | Point disabled in dashboard |
 | 409 | `CREDENTIAL_INACTIVE` | Wristband disabled (lost/stolen) — confiscate flow |
+| 409 | `TICKET_INVALID` | Gate/session points only: the holder's ticket was cancelled, refunded or declined — box office |
+| 409 | `CAPACITY_FULL` | Gate points (and session points with a zone) only: the area is at its hard cap (Check-in → Capacity Control). Adds `zone`, `occupancy`, `cap` — red + "Full — please wait". Never returned for someone already inside |
 | 400 | `MISSING_UID` / `INVALID_TAPPED_AT` | Reader bug — log and alert |
 | 503 | `UNAVAILABLE` | Retry with backoff, keep the same `idempotency_key` |
 
@@ -101,6 +103,7 @@ Business errors (all `{ "ok": false, "reason": "…" }`):
 - `2xx ok:true, status:free` → green + "Enjoy!" (free point or re-entry).
 - `404 UNKNOWN_UID` → red + "Unknown band — registration desk".
 - `409 CREDENTIAL_INACTIVE` → red + "Band disabled — see staff".
+- `409 CAPACITY_FULL` → red + "Full — please wait" (`zone`, `occupancy` / `cap` in the body). Readers can't override a cap; staff admit past it from the scanner with a supervisor code.
 - `401/503` → red + "Reader offline — see staff"; keep buffering.
 
 ## 5. Test without hardware
@@ -136,3 +139,78 @@ curl -X POST https://<your-app>/api/nfc/tap \
   would collapse them into one.
 - Rotating a point's device key kills the old key instantly — re-provision
   readers right after rotating.
+
+## 7. Smart Badges — entry-point purposes (additive)
+
+Check-in → Smart Badges turns credentials into managed chip badges (serials,
+batches, lost / revoked / replaced states, an activity timeline) and gives
+every entry point a **purpose**. The endpoint, auth, request body and every
+field above are unchanged; responses only gain fields. Existing points are
+`gate`, which is exactly the behaviour described in sections 1–6.
+
+| Purpose | A tap… | Charges? |
+|---|---|---|
+| `gate` | Admits at the door (presence row, deduped per badge holder) | Per billing mode |
+| `session` | Checks the holder into the point's linked session | Never |
+| `lead` | Saves the holder as a lead for the point's exhibitor, once per exhibitor + holder (repeat taps count visits) | Never |
+| `payment` | Bills only — no presence row (bars, merch, rides) | Per billing mode |
+| `info` | Logs the tap only (footfall, photo spots) | Never |
+
+`paid_once` is now once per **holder**: a replacement badge doesn't pay again.
+
+### Provisioning response additions
+
+```json
+{ "ok": true, "point": { "…": "…",
+    "purpose": "lead",
+    "session": null,
+    "exhibitor": { "name": "Northwind Labs", "kind": "booth" } } }
+```
+
+`session` is `{ "id", "name" }` on session points; `exhibitor` is
+`{ "name", "kind" }` on lead points; both are `null` otherwise.
+
+### Tap response additions
+
+```json
+{ "ok": true, "…": "…",
+  "purpose": "session",
+  "outcome": "checked_in",
+  "badge": { "id": "…", "serial": "EVT-0042", "status": "active" },
+  "attendee": { "name": "Ava Rao", "registration_id": "…", "order_id": null },
+  "entry_point": { "id": "…", "name": "Hall B doors", "purpose": "session" },
+  "session": { "id": "…", "name": "Opening keynote", "already_in": false },
+  "lead": null }
+```
+
+- `outcome` — `admitted` | `already_in` | `checked_in` | `lead_captured` |
+  `lead_repeat` | `charged` | `free` | `logged`.
+- `lead` — `{ "id", "new", "exhibitor" }` on lead points; `new:false` means
+  this exhibitor already had the holder (show "Welcome back").
+- `admitted` / `already_in` keep their meaning: a presence row was (or already
+  was) recorded — at the door for gates, in the session for session points.
+
+### Refusal additions
+
+Refusals keep their `reason` and HTTP status and add `badge_status` when the
+chip is known:
+
+```json
+{ "ok": false, "reason": "CREDENTIAL_INACTIVE", "badge_status": "lost" }
+```
+
+| `reason` | `badge_status` | Reader behaviour |
+|---|---|---|
+| `UNKNOWN_UID` (404) | `unassigned` | Spare badge not bound yet — registration desk |
+| `CREDENTIAL_INACTIVE` (409) | `lost` / `revoked` | Red + "Badge disabled — see staff"; keep the badge |
+| `CREDENTIAL_INACTIVE` (409) | `replaced` | Red + "Old badge — use your new one" |
+| `TICKET_INVALID` (409) | `active` | Red + "Ticket not valid — box office" (also returns `attendee.name`) |
+| `CAPACITY_FULL` (409) | `active` | Red + "{zone or Venue} full — please wait"; no charge is taken. Also returns `attendee.name`, `zone` (`""` = the venue), `occupancy`, `cap` |
+
+Every refusal of a known chip is logged on that badge's timeline, deduped by
+`idempotency_key` like taps.
+
+### UIDs
+
+UIDs match case-insensitively with separators ignored: `04:a2:1f:9c`,
+`04-A2-1F-9C` and `04A21F9C` are the same chip. Send the reader's raw hex.

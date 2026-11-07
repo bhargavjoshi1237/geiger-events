@@ -8,12 +8,14 @@ import {
   ShoppingBag,
   BadgeCheck,
   MessagesSquare,
+  MessageCircle,
   Users,
   HelpCircle,
   Bell,
   PanelLeft,
   PlayCircle,
   Radio,
+  Handshake,
 } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
@@ -57,6 +59,8 @@ const GROUPS = [
     items: [
       { key: "community", label: "Community", icon: Users },
       { key: "qa", label: "Q&A", icon: HelpCircle },
+      { key: "discussions", label: "Discussions", icon: MessageCircle },
+      { key: "meetings", label: "Networking", icon: Handshake },
     ],
   },
   {

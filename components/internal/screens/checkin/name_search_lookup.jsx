@@ -23,11 +23,12 @@ import {
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { listRegistrationsByEvent } from "@/lib/supabase/registrations";
-import { newId } from "@/components/internal/screens/events/sample_data";
 import {
   listAttendanceByEvent,
-  createCheckin,
+  admitCheckinAsMember,
 } from "@/lib/supabase/checkin";
+import { blockedMessage } from "@/lib/checkin/scan";
+import { CapacityOverrideDialog } from "@/components/checkin_routes/capacity_override_dialog";
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 
@@ -61,7 +62,9 @@ const SORT_COMPARATORS = {
   "party-desc": (a, b) => (b.partySize || 1) - (a.partySize || 1),
 };
 
-const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUpperCase();export function NameSearchLookupScreen() {
+const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUpperCase();
+
+export function NameSearchLookupScreen() {
   const { projectId } = useProject();
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState("");
@@ -71,6 +74,7 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
   const [loadingList, setLoadingList] = useState(false);
   const [search, setSearch] = useState("");
   const [admittingId, setAdmittingId] = useState(null);
+  const [overrideTarget, setOverrideTarget] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [checkinFilter, setCheckinFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name-asc");
@@ -141,32 +145,43 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
     resetKey: `${eventId}|${search}|${statusFilter}|${checkinFilter}|${sortBy}`,
   });
 
-  const admit = (reg) => {
+  const markIn = (id) => setCheckedIn((prev) => new Set(prev).add(id));
+
+  // Same admit as the gate scanners: ticket status, duplicates and Capacity Control caps all apply.
+  const admit = async (reg, overrideReason = null) => {
     if (checkedIn.has(reg.id) || admittingId) return;
+    const name = reg.name || "attendee";
     setAdmittingId(reg.id);
-    setCheckedIn((prev) => new Set(prev).add(reg.id));
-    toast.success(`Checked in ${reg.name || "attendee"}.`);
-    createCheckin({
-      id: newId(),
+    const res = await admitCheckinAsMember({
       eventId,
-      projectId,
       registrationId: reg.id,
-      attendeeName: reg.name,
-      ticketCode: ticketCode(reg.id),
-      method: "manual",
-      checkedInBy: "Name search",
-      status: "in",
-    }).then((res) => {
-      setAdmittingId(null);
-      if (res === null) {
-        toast.error("Couldn't record the check-in.");
-        setCheckedIn((prev) => {
-          const next = new Set(prev);
-          next.delete(reg.id);
-          return next;
-        });
-      }
+      name: reg.name,
+      staff: "Name search",
+      overrideReason,
     });
+    setAdmittingId(null);
+    if (!res) {
+      toast.error("Couldn't record the check-in.");
+    } else if (res.ok) {
+      markIn(reg.id);
+      toast.success(res.override ? `Checked in ${name} — capacity override recorded.` : `Checked in ${name}.`);
+    } else if (res.already) {
+      markIn(reg.id);
+      toast.warning(`${name} is already checked in.`);
+    } else if (res.capacity) {
+      setOverrideTarget({ reg, name: reg.name, party: res.party, zone: res.zone, occupancy: res.occupancy, cap: res.cap });
+    } else if (res.blocked) {
+      toast.error(blockedMessage(res.reason, reg.name));
+    } else {
+      toast.error("Couldn't record the check-in.");
+    }
+  };
+
+  const confirmOverride = async (reason) => {
+    const target = overrideTarget;
+    if (!target) return;
+    await admit(target.reg, reason);
+    setOverrideTarget(null);
   };
 
   return (
@@ -309,6 +324,12 @@ const ticketCode = (id) => String(id || "").replace(/-/g, "").slice(0, 8).toUppe
           />
         </div>
       )}
+
+      <CapacityOverrideDialog
+        target={overrideTarget}
+        onOpenChange={(open) => !open && setOverrideTarget(null)}
+        onConfirm={confirmOverride}
+      />
     </MainScreenWrapper>
   );
 }

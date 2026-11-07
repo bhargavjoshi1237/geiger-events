@@ -24,8 +24,9 @@ import FilterDropdown from "@/components/internal/screens/overview/filter_dropdo
 import { RecordsScreen } from "@/components/internal/shared/records/records_kit";
 import { conferenceApi } from "@/lib/supabase/conference";
 import { useProject } from "@/context/project-context";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getUser } from "@/lib/supabase/user";
-import { MODULES } from "./modules";
+import { VENUE_PIPELINE_MODULE } from "./venue_pipeline";
 import {
   VENUE_TYPES,
   searchVenues,
@@ -49,7 +50,9 @@ const TYPE_OPTIONS = VENUE_TYPES.map((t) => ({ value: t.value, label: t.label })
 const POPULAR = ["London", "Amsterdam", "New York", "Austin", "Berlin", "Paris"];
 
 export function VenueSourcingScreen() {
-  const [tab, setTab] = useState("discover");
+  // An open pipeline record in the URL (e.g. coming Back from an RFP) starts on the Pipeline tab.
+  const { recordId } = useWorkspaceUrl();
+  const [tab, setTab] = useState(recordId ? "pipeline" : "discover");
 
   return (
     <div className="flex h-full flex-col">
@@ -70,7 +73,7 @@ export function VenueSourcingScreen() {
         <DiscoverPanel />
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <RecordsScreen mod={MODULES.venue_lead} api={conferenceApi} />
+          <RecordsScreen mod={VENUE_PIPELINE_MODULE} api={conferenceApi} />
         </div>
       )}
     </div>

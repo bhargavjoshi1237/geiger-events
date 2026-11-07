@@ -5,7 +5,8 @@ import { Loader2, Lock, ScanLine } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
-import { validateCheckinCode } from "@/lib/supabase/checkin";
+import { validateCheckinCodeDetailed } from "@/lib/supabase/checkin";
+import { forgetUnlock, matchUnlock, rememberUnlock } from "@/lib/checkin/offline/unlock";
 
 import { LogoLoading } from "@geiger/ui";
 const codeKey = (eventId) => `checkin:code:${eventId}`;
@@ -19,6 +20,26 @@ function readSession(eventId) {
   } catch {
   }
   return null;
+}
+
+// Scanner and kiosk codes can unlock with no connection once they've been used on this device online.
+const OFFLINE_TYPES = ["staff", "kiosk"];
+
+// { role, offline } for a code, or { role: null, error }.
+async function checkCode(eventId, code, codeType) {
+  const { role, network } = await validateCheckinCodeDetailed(eventId, code, codeType);
+  if (role) {
+    if (OFFLINE_TYPES.includes(codeType)) rememberUnlock(eventId, codeType, code, role);
+    return { role, offline: false };
+  }
+  if (network && OFFLINE_TYPES.includes(codeType)) {
+    const remembered = await matchUnlock(eventId, codeType, code);
+    if (remembered) return { role: remembered, offline: true };
+    return { role: null, error: "You're offline, and this code hasn't been used on this device before." };
+  }
+  if (network) return { role: null, error: "No connection — try again when you're back online." };
+  if (OFFLINE_TYPES.includes(codeType)) forgetUnlock(eventId, codeType, code);
+  return { role: null, error: "That code isn't valid for this event." };
 }
 
 export function AccessGate({ eventId, title, subtitle, require: requiredPerm, codeType, children }) {
@@ -36,10 +57,10 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, co
     }
     setChecking(true);
     setError("");
-    const role = await validateCheckinCode(eventId, value, codeType);
+    const { role, error: codeError } = await checkCode(eventId, value, codeType);
     setChecking(false);
     if (!role) {
-      setError("That code isn't valid for this event.");
+      setError(codeError);
       return false;
     }
     if (requiredPerm && !role?.permissions?.[requiredPerm]) {
@@ -61,7 +82,7 @@ export function AccessGate({ eventId, title, subtitle, require: requiredPerm, co
     const boot = async () => {
       const stored = readSession(eventId);
       if (stored?.code) {
-        const role = await validateCheckinCode(eventId, stored.code, codeType);
+        const { role } = await checkCode(eventId, stored.code, codeType);
         if (!alive) return;
         if (role && (!requiredPerm || role.permissions?.[requiredPerm])) {
           setUnlocked({ code: stored.code, role });

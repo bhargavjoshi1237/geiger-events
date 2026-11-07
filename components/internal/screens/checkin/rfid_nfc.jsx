@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Radio,
@@ -566,6 +566,18 @@ function EntryPointRow({ point, onEdit, onDelete, onChanged }) {
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium text-foreground">{point.name}</p>
             {!point.active ? <Badge variant="neutral">Inactive</Badge> : null}
+            {/* Set in Check-in → Smart Badges → Entry points; gate is the original admit + bill behaviour. */}
+            {point.purpose && point.purpose !== "gate" ? (
+              <Badge variant="info">
+                {point.purpose === "lead"
+                  ? `Leads · ${point.exhibitorName || "no exhibitor"}`
+                  : point.purpose === "session"
+                    ? `Session · ${point.sessionName || "none"}`
+                    : point.purpose === "payment"
+                      ? "Payment only"
+                      : "Info only"}
+              </Badge>
+            ) : null}
             <Badge variant="neutral">{modeLabel}</Badge>
             {point.billingMode !== "free" ? (
               <Badge variant="neutral" className="tabular-nums">

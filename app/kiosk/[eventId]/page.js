@@ -11,6 +11,7 @@ import {
   Loader2,
   Search,
   LogOut,
+  WifiOff,
 } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
@@ -21,10 +22,12 @@ import { cn } from "@/lib/utils";
 import { getEvent } from "@/lib/supabase/events";
 import { registerForEvent } from "@/lib/supabase/registrations";
 import { buyTicket } from "@/lib/supabase/orders";
-import { searchCheckin, admitCheckin } from "@/lib/supabase/checkin";
-import { blockedMessage, pickScanMatch, rowKey, scanQuery } from "@/lib/checkin/scan";
+import { blockedMessage, rowKey, scanQuery } from "@/lib/checkin/scan";
+import { useCheckinEngine } from "@/lib/checkin/offline/use_checkin_engine";
+import { useCheckinServiceWorker } from "@/lib/checkin/offline/sw_client";
 import { AccessGate } from "@/components/checkin_routes/access_gate";
 import { QrScanner } from "@/components/checkin_routes/qr_scanner";
+import { OfflineBanner } from "@/components/checkin_routes/offline_banner";
 
 const currency = (n) => `$${Number(n || 0).toLocaleString("en-US")}`;
 
@@ -72,7 +75,7 @@ function Done({ title, message, onDone }) {
   );
 }
 
-function CheckinAction({ eventId, code, role, onDone, onBack }) {
+function CheckinAction({ engine, status, role, onDone, onBack }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -80,35 +83,28 @@ function CheckinAction({ eventId, code, role, onDone, onBack }) {
   const [msg, setMsg] = useState("");
 
   const admit = async (row, method) => {
-    const res = await admitCheckin({
-      eventId,
-      code,
-      registrationId: row.registrationId,
-      orderId: row.orderId,
-      name: row.name,
-      ticketCode: row.ticketCode,
-      method,
-      staff: role?.name || null,
-    });
-    if (res?.ok) onDone(`Welcome, ${row.name || "guest"}!`, "You're checked in. Enjoy the event.");
-    else if (res?.blocked) setMsg(`${blockedMessage(res.reason)}. Please see staff.`);
-    else if (res?.already) setMsg(`${row.name || "You"} are already checked in.`);
+    const res = await engine.admit(row, { method, staff: role?.name || null });
+    if (res.kind === "success") onDone(`Welcome, ${row.name || "guest"}!`, "You're checked in. Enjoy the event.");
+    else if (res.kind === "blocked") setMsg(`${blockedMessage(res.reason)}. Please see staff.`);
+    else if (res.kind === "already") setMsg(`${row.name || "You"} are already checked in.`);
+    else if (res.kind === "capacity") setMsg("The venue is at capacity right now. Please see staff.");
     else setMsg("Couldn't check in — please see staff.");
   };
 
   const run = async (text) => {
     const raw = (text ?? query).trim();
     if (!raw) return;
-    const { query: q, id } = scanQuery(raw);
+    const { id } = scanQuery(raw);
     setSearching(true);
-    const rows = await searchCheckin(eventId, code, q);
+    const res = await engine.resolveScan(raw);
     setSearching(false);
-    setResults(rows || []);
-    const exact = pickScanMatch(rows, raw);
+    setResults(res.rows || []);
+    const exact = res.row;
     if (exact && !exact.admissible) setMsg(`${blockedMessage(exact.status.toLowerCase())}. Please see staff.`);
     else if (exact && !exact.checkedIn) admit(exact, "self");
     else if (exact?.checkedIn) setMsg(`${exact.name || "You"} are already checked in.`);
-    else if (!rows?.length || id) setMsg("No match — try your name or see staff.");
+    else if (res.unavailable) setMsg("Check-in is offline right now — please see staff.");
+    else if (!res.rows?.length || id) setMsg("No match — try your name or see staff.");
   };
 
   const onScan = (text) => {
@@ -121,6 +117,7 @@ function CheckinAction({ eventId, code, role, onDone, onBack }) {
     <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
       <BackBtn onBack={onBack} />
       <h2 className="text-xl font-semibold text-foreground">Check yourself in</h2>
+      {!status.online ? <OfflineBanner status={status} className="rounded-lg border" /> : null}
       <QrScanner onDecode={onScan} paused={paused} />
       {msg ? <p className={AMBER_ALERT}>{msg}</p> : null}
       <form onSubmit={(e) => { e.preventDefault(); run(); }} className="flex gap-2">
@@ -145,7 +142,7 @@ function CheckinAction({ eventId, code, role, onDone, onBack }) {
   );
 }
 
-function RegisterAction({ eventId, code, role, onDone, onBack }) {
+function RegisterAction({ eventId, engine, role, onDone, onBack }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -162,7 +159,10 @@ function RegisterAction({ eventId, code, role, onDone, onBack }) {
     }
     const status = res.registration?.status;
     if (res.registration?.id && status === "Confirmed") {
-      await admitCheckin({ eventId, code, registrationId: res.registration.id, name, method: "kiosk", staff: role?.name || null });
+      await engine.admit(
+        { registrationId: res.registration.id, name },
+        { method: "kiosk", staff: role?.name || null, trustUnknown: true },
+      );
     }
     setBusy(false);
     if (status === "Confirmed") onDone(`You're registered, ${name.split(" ")[0]}!`, "And checked in. Enjoy the event.");
@@ -184,7 +184,7 @@ function RegisterAction({ eventId, code, role, onDone, onBack }) {
   );
 }
 
-function BuyAction({ eventId, code, role, event, onDone, onBack }) {
+function BuyAction({ eventId, engine, role, event, onDone, onBack }) {
   const tickets = useMemo(() => {
     const list = Array.isArray(event?.tickets) ? event.tickets : [];
     const mapped = list.filter((t) => t && (t.name || t.id)).map((t) => ({ id: t.id ?? null, name: t.name || "Ticket", price: Number(t.price) || 0 }));
@@ -206,7 +206,10 @@ function BuyAction({ eventId, code, role, event, onDone, onBack }) {
       setBusy(false);
       return setErr(res?.soldOut ? "That ticket is sold out." : "Couldn't complete — see staff.");
     }
-    await admitCheckin({ eventId, code, orderId: res.orderId, name: name || "Guest", method: "kiosk", staff: role?.name || null });
+    await engine.admit(
+      { orderId: res.orderId, name: name || "Guest" },
+      { method: "kiosk", staff: role?.name || null, trustUnknown: true },
+    );
     setBusy(false);
     onDone(`Enjoy, ${name.split(" ")[0]}!`, `${ticket.name} — you're in.`);
   };
@@ -244,6 +247,7 @@ function BackBtn({ onBack }) {
 }
 
 function Kiosk({ eventId, code, role, exit, event }) {
+  const { engine, status } = useCheckinEngine({ eventId, code, role, route: "kiosk" });
   const [view, setView] = useState("idle");
   const [done, setDone] = useState(null);
 
@@ -265,7 +269,7 @@ function Kiosk({ eventId, code, role, exit, event }) {
           <ScanLine className="h-10 w-10" />
         </div>
         <div className="space-y-2">
-          <p className="text-3xl font-semibold text-foreground">{event?.name || "Welcome"}</p>
+          <p className="text-3xl font-semibold text-foreground">{event?.name || status.eventMeta?.name || "Welcome"}</p>
           <p className="text-lg text-text-secondary">Tap anywhere to begin</p>
         </div>
       </button>
@@ -273,18 +277,19 @@ function Kiosk({ eventId, code, role, exit, event }) {
   }
 
   if (view === "menu") {
+    // Registering and buying create records on the server, so only check-in works without a connection.
     const actions = [
       { key: "checkin", label: "Check in", desc: "Already have a ticket", icon: ScanLine },
-      { key: "register", label: "Register", desc: "Sign up on the spot", icon: UserPlus },
-      { key: "buy", label: "Buy a ticket", desc: "Purchase entry", icon: Ticket },
+      { key: "register", label: "Register", desc: "Sign up on the spot", icon: UserPlus, needsNetwork: true },
+      { key: "buy", label: "Buy a ticket", desc: "Purchase entry", icon: Ticket, needsNetwork: true },
     ];
     return (
       <div className="flex min-h-[100dvh] flex-col bg-background px-6 py-8 text-foreground">
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5">
           <div className="mb-1 flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <h1 className="text-2xl font-semibold">{event?.name || "Kiosk"}</h1>
-              <p className="text-sm text-text-secondary">Choose how you'd like to continue</p>
+              <h1 className="text-2xl font-semibold">{event?.name || status.eventMeta?.name || "Kiosk"}</h1>
+              <p className="text-sm text-text-secondary">Choose how you&apos;d like to continue</p>
             </div>
             <Button
               variant="outline"
@@ -297,19 +302,23 @@ function Kiosk({ eventId, code, role, exit, event }) {
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
-          {actions.map((a) => (
-            <button key={a.key} type="button" onClick={() => setView(a.key)}
-              className="flex items-center gap-4 rounded-2xl border border-border bg-surface-subtle p-5 text-left transition-all hover:border-border-strong hover:bg-surface-hover active:scale-[0.99]">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-card text-primary">
-                <a.icon className="h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-lg font-semibold text-foreground">{a.label}</p>
-                <p className="text-sm text-text-secondary">{a.desc}</p>
-              </div>
-            </button>
-          ))}
+          {actions.map((a) => {
+            const off = a.needsNetwork && !status.online;
+            return (
+              <button key={a.key} type="button" onClick={() => setView(a.key)} disabled={off}
+                className="flex items-center gap-4 rounded-2xl border border-border bg-surface-subtle p-5 text-left transition-all hover:border-border-strong hover:bg-surface-hover active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-card text-primary">
+                  {off ? <WifiOff className="h-6 w-6" /> : <a.icon className="h-6 w-6" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-semibold text-foreground">{a.label}</p>
+                  <p className="text-sm text-text-secondary">{off ? "Needs a connection — please see staff" : a.desc}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
+        <OfflineBanner status={status} onSync={() => engine.syncNow({ manual: true })} className="mx-auto mt-6 w-full max-w-md rounded-lg border" />
       </div>
     );
   }
@@ -317,9 +326,9 @@ function Kiosk({ eventId, code, role, exit, event }) {
   const back = () => setView("menu");
   return (
     <div className="min-h-[100dvh] bg-background">
-      {view === "checkin" ? <CheckinAction eventId={eventId} code={code} role={role} onDone={finish} onBack={back} /> : null}
-      {view === "register" ? <RegisterAction eventId={eventId} code={code} role={role} onDone={finish} onBack={back} /> : null}
-      {view === "buy" ? <BuyAction eventId={eventId} code={code} role={role} event={event} onDone={finish} onBack={back} /> : null}
+      {view === "checkin" ? <CheckinAction engine={engine} status={status} role={role} onDone={finish} onBack={back} /> : null}
+      {view === "register" ? <RegisterAction eventId={eventId} engine={engine} role={role} onDone={finish} onBack={back} /> : null}
+      {view === "buy" ? <BuyAction eventId={eventId} engine={engine} role={role} event={event} onDone={finish} onBack={back} /> : null}
     </div>
   );
 }
@@ -328,6 +337,7 @@ export default function KioskPage() {
   const params = useParams();
   const eventId = Array.isArray(params?.eventId) ? params.eventId[0] : params?.eventId;
   const [event, setEvent] = useState(null);
+  useCheckinServiceWorker("kiosk");
 
   useEffect(() => {
     let alive = true;

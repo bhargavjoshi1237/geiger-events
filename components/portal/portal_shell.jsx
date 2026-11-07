@@ -18,6 +18,8 @@ import PortalNotifications from "./portal_notifications";
 import PortalCommunity from "./portal_community";
 import PortalQa from "./portal_qa";
 import PortalAccount from "./portal_account";
+import PortalDiscussions from "./portal_discussions";
+import PortalMeetings from "./portal_meetings";
 
 import { LogoLoading } from "@geiger/ui";
 export function PortalShell({ member: initialMember }) {
@@ -26,6 +28,8 @@ export function PortalShell({ member: initialMember }) {
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
       if (p.get("membership_session")) return "memberships";
+      if (p.get("topic")) return "discussions";
+      if (p.get("tab") === "meetings") return "meetings";
     }
     return "home";
   });
@@ -36,6 +40,8 @@ export function PortalShell({ member: initialMember }) {
   const [threads, setThreads] = useState(null);
   const [notifications, setNotifications] = useState({ items: [], unread: 0 });
   const [messageDraft, setMessageDraft] = useState(null);
+  const [openTopicId, setOpenTopicId] = useState(null);
+  const [meetingEventId, setMeetingEventId] = useState(null);
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
   const loadData = () =>
@@ -211,7 +217,25 @@ export function PortalShell({ member: initialMember }) {
       );
     }
     if (tab === "notifications") {
-      return <PortalNotifications items={notifications.items} loading={false} />;
+      return (
+        <PortalNotifications
+          items={notifications.items}
+          loading={false}
+          onOpen={(n) => {
+            if (n.link?.tab === "discussions") setOpenTopicId(n.link.topicId || null);
+            if (n.link?.tab === "meetings") setMeetingEventId(n.link.eventId || null);
+            if (n.link?.tab) setTab(n.link.tab);
+          }}
+        />
+      );
+    }
+    if (tab === "discussions") {
+      return (
+        <PortalDiscussions
+          openTopicId={openTopicId}
+          onConsumeOpen={() => setOpenTopicId(null)}
+        />
+      );
     }
     if (tab === "live") {
       // Live owns its own fetch — its rooms go stale within a minute, so the
@@ -226,6 +250,9 @@ export function PortalShell({ member: initialMember }) {
     }
     if (tab === "qa") {
       return <PortalQa member={member} />;
+    }
+    if (tab === "meetings") {
+      return <PortalMeetings key={meetingEventId || "all"} member={member} initialEventId={meetingEventId} />;
     }
     if (tab === "account") {
       return <PortalAccount member={member} onMemberChange={setMember} />;

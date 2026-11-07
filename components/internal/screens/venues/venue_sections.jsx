@@ -17,6 +17,8 @@ import {
   Accessibility,
   Armchair,
   Store,
+  DoorOpen,
+  FileSignature,
 } from "lucide-react";
 
 import {
@@ -65,6 +67,8 @@ import {
 } from "./constants";
 import { SeatMapsSection } from "./seat_maps";
 import { HallMapsSection } from "./hall_maps";
+import { VenueSpacesSection } from "./venue_spaces";
+import { VenueContractsSection } from "./venue_contracts";
 
 // Right-hand editor navigation. `key` must match a SECTIONS entry below.
 export const VENUE_NAV = [
@@ -72,6 +76,8 @@ export const VENUE_NAV = [
   { key: "location", label: "Location", icon: MapPin, desc: "Address, region, timezone, and how to get there." },
   { key: "capacity", label: "Capacity & amenities", icon: Gauge, desc: "How many it holds and what it offers." },
   { key: "seatmaps", label: "Seat maps", icon: Armchair, desc: "Section, row and seat layouts events can sell from." },
+  { key: "spaces", label: "Spaces & booking", icon: DoorOpen, desc: "Rooms, capacity per setup, and Instant Book rates and hours." },
+  { key: "contracts", label: "Contracts", icon: FileSignature, desc: "Rates and terms agreed through Smart Custom Proposals." },
   { key: "hallmaps", label: "Exhibitor halls", icon: Store, desc: "Booth floor plans events can sell exhibitor space from." },
   { key: "contact", label: "Contact", icon: Contact, desc: "Who to reach and where to find them online." },
   { key: "guidelines", label: "Dietary & Accessibility", icon: Accessibility, desc: "Guidelines shown on every event held here." },
@@ -744,6 +750,8 @@ export const SECTIONS = {
   location: LocationSection,
   capacity: CapacitySection,
   seatmaps: SeatMapsSection,
+  spaces: VenueSpacesSection,
+  contracts: VenueContractsSection,
   hallmaps: HallMapsSection,
   contact: ContactSection,
   guidelines: GuidelinesSection,

@@ -1,14 +1,14 @@
 "use client";
 
 import React from "react";
-import { Bell, Megaphone } from "lucide-react";
+import { Bell, Handshake, Megaphone, MessageCircle } from "lucide-react";
 
 import { EmptyState, ScreenHeader } from "@/components/internal/shared/screen_kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { Card, fmtDateTime } from "./portal_kit";
 
 import { LoadingArea } from "@geiger/ui";
-export function PortalNotifications({ items = [], loading }) {
+export function PortalNotifications({ items = [], loading, onOpen }) {
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -21,10 +21,20 @@ export function PortalNotifications({ items = [], loading }) {
       ) : items.length ? (
         <div className="space-y-3">
           {items.map((n) => (
-            <Card key={n.id} className={n.unread ? "border-primary/30 bg-primary/5" : ""}>
+            <Card
+              key={n.id}
+              className={n.unread ? "border-primary/30 bg-primary/5" : ""}
+              onClick={n.link && onOpen ? () => onOpen(n) : undefined}
+            >
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-strong text-muted-foreground">
-                  <Megaphone className="h-4 w-4" />
+                  {n.kind === "board" ? (
+                    <MessageCircle className="h-4 w-4" />
+                  ) : n.kind === "meeting" ? (
+                    <Handshake className="h-4 w-4" />
+                  ) : (
+                    <Megaphone className="h-4 w-4" />
+                  )}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">

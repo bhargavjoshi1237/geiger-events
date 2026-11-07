@@ -487,7 +487,6 @@ export const workspaceNav = [
       { title: "Payments", icon: Wallet },
       { title: "AI Apps", icon: Bot },
       { title: "API & Webhooks", icon: Webhook },
-      { title: "Usage", icon: Gauge },
       { title: "Custom Domains", icon: Globe },
       { title: "Add-ons", icon: Blocks },
     ],

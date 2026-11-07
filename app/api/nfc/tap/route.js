@@ -105,10 +105,23 @@ export async function POST(request) {
         ? 401
         : reason === "UNKNOWN_UID"
           ? 404
-          : reason === "POINT_INACTIVE" || reason === "CREDENTIAL_INACTIVE"
+          : reason === "POINT_INACTIVE" ||
+              reason === "CREDENTIAL_INACTIVE" ||
+              reason === "TICKET_INVALID" ||
+              reason === "CAPACITY_FULL"
             ? 409
             : 400;
-    return bad(reason, status);
+    // Smart Badges: say why a known chip was refused (lost / revoked / replaced / unassigned).
+    const extra = {};
+    if (data?.badge_status) extra.badge_status = data.badge_status;
+    if (data?.attendee?.name) extra.attendee = { name: data.attendee.name };
+    // Capacity Control: which area is full and how full, for the reader's display.
+    if (reason === "CAPACITY_FULL") {
+      extra.zone = data.zone || "";
+      extra.occupancy = data.occupancy ?? null;
+      extra.cap = data.cap ?? null;
+    }
+    return bad(reason, status, extra);
   }
   return NextResponse.json(data, { headers: CORS });
 }
