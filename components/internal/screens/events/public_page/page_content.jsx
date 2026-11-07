@@ -105,8 +105,10 @@ export function EventPublicPageContent({
     event.ticketSold && typeof event.ticketSold === "object"
       ? event.ticketSold
       : {};
+  // The overbook buffer lets this many sell past capacity; buy_ticket and register enforce the same total.
+  const capacityBuffer = Math.max(0, Number(event.capacityBuffer) || 0);
   const eventRemaining =
-    event.capacity > 0 ? Math.max(0, event.capacity - soldCount) : Infinity;
+    event.capacity > 0 ? Math.max(0, event.capacity + capacityBuffer - soldCount) : Infinity;
   const tierQty = Number(selectedTicket?.qty) || 0;
   const tierRemaining =
     tierQty > 0

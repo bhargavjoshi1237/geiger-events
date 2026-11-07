@@ -22,6 +22,7 @@ import { getEvent } from "@/lib/supabase/events";
 import { registerForEvent } from "@/lib/supabase/registrations";
 import { buyTicket } from "@/lib/supabase/orders";
 import { searchCheckin, admitCheckin } from "@/lib/supabase/checkin";
+import { blockedMessage, pickScanMatch, rowKey, scanQuery } from "@/lib/checkin/scan";
 import { AccessGate } from "@/components/checkin_routes/access_gate";
 import { QrScanner } from "@/components/checkin_routes/qr_scanner";
 
@@ -83,32 +84,36 @@ function CheckinAction({ eventId, code, role, onDone, onBack }) {
       eventId,
       code,
       registrationId: row.registrationId,
+      orderId: row.orderId,
       name: row.name,
       ticketCode: row.ticketCode,
       method,
       staff: role?.name || null,
     });
     if (res?.ok) onDone(`Welcome, ${row.name || "guest"}!`, "You're checked in. Enjoy the event.");
+    else if (res?.blocked) setMsg(`${blockedMessage(res.reason)}. Please see staff.`);
     else if (res?.already) setMsg(`${row.name || "You"} are already checked in.`);
     else setMsg("Couldn't check in — please see staff.");
   };
 
   const run = async (text) => {
-    const q = (text ?? query).trim();
-    if (!q) return;
+    const raw = (text ?? query).trim();
+    if (!raw) return;
+    const { query: q, id } = scanQuery(raw);
     setSearching(true);
     const rows = await searchCheckin(eventId, code, q);
     setSearching(false);
     setResults(rows || []);
-    const exact = rows?.find((r) => r.ticketCode === q.toUpperCase()) || (rows?.length === 1 ? rows[0] : null);
-    if (exact && !exact.checkedIn) admit(exact, "self");
+    const exact = pickScanMatch(rows, raw);
+    if (exact && !exact.admissible) setMsg(`${blockedMessage(exact.status.toLowerCase())}. Please see staff.`);
+    else if (exact && !exact.checkedIn) admit(exact, "self");
     else if (exact?.checkedIn) setMsg(`${exact.name || "You"} are already checked in.`);
-    else if (!rows?.length) setMsg("No match — try your name or see staff.");
+    else if (!rows?.length || id) setMsg("No match — try your name or see staff.");
   };
 
   const onScan = (text) => {
     setPaused(true);
-    setQuery(text);
+    setQuery(scanQuery(text).query);
     run(text).finally(() => setTimeout(() => setPaused(false), 1500));
   };
 
@@ -125,9 +130,11 @@ function CheckinAction({ eventId, code, role, onDone, onBack }) {
         </Button>
       </form>
       {results.map((r) => (
-        <div key={r.registrationId} className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-3.5">
+        <div key={rowKey(r)} className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-3.5">
           <span className="min-w-0 flex-1 truncate font-medium text-foreground">{r.name || "Guest"}</span>
-          {r.checkedIn ? (
+          {!r.admissible ? (
+            <span className="text-sm font-medium text-text-secondary">See staff</span>
+          ) : r.checkedIn ? (
             <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Checked in</span>
           ) : (
             <Button className="h-10 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => admit(r, "self")}>Check in</Button>
@@ -153,11 +160,13 @@ function RegisterAction({ eventId, code, role, onDone, onBack }) {
       setBusy(false);
       return setErr(res?.full ? "This event is full." : "Couldn't register — see staff.");
     }
-    if (res.registration?.id) {
+    const status = res.registration?.status;
+    if (res.registration?.id && status === "Confirmed") {
       await admitCheckin({ eventId, code, registrationId: res.registration.id, name, method: "kiosk", staff: role?.name || null });
     }
     setBusy(false);
-    onDone(`You're registered, ${name.split(" ")[0]}!`, "And checked in. Enjoy the event.");
+    if (status === "Confirmed") onDone(`You're registered, ${name.split(" ")[0]}!`, "And checked in. Enjoy the event.");
+    else onDone(`You're registered, ${name.split(" ")[0]}!`, status === "Waitlisted" ? "You're on the waitlist. Please see staff." : "Your registration needs approval. Please see staff.");
   };
 
   return (

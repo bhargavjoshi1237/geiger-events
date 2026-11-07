@@ -16,6 +16,7 @@ import {
 } from "@geiger/ui/select";
 import { getEvent } from "@/lib/supabase/events";
 import { searchCheckin, admitCheckin, checkinStats } from "@/lib/supabase/checkin";
+import { blockedMessage, pickScanMatch, rowKey, scanQuery } from "@/lib/checkin/scan";
 import { AccessGate } from "@/components/checkin_routes/access_gate";
 import { RouteShell } from "@/components/checkin_routes/route_shell";
 import { QrScanner } from "@/components/checkin_routes/qr_scanner";
@@ -61,12 +62,14 @@ function Scanner({ eventId, code, role, exit, event }) {
   };
 
   const admit = async (row, method) => {
-    setAdmittingId(row.registrationId);
+    const key = rowKey(row);
+    setAdmittingId(key);
     try {
       const res = await admitCheckin({
         eventId,
         code,
         registrationId: row.registrationId,
+        orderId: row.orderId,
         name: row.name,
         ticketCode: row.ticketCode,
         gate: gate || null,
@@ -76,9 +79,12 @@ function Scanner({ eventId, code, role, exit, event }) {
         staff: role?.name || null,
       });
       if (res?.ok) {
-        flash("success", `Admitted ${row.name || "attendee"}`);
-        setResults((prev) => prev.map((r) => (r.registrationId === row.registrationId ? { ...r, checkedIn: true } : r)));
+        const party = res.party > 1 ? ` (party of ${res.party})` : "";
+        flash("success", `Admitted ${row.name || "attendee"}${party}`);
+        setResults((prev) => prev.map((r) => (rowKey(r) === key ? { ...r, checkedIn: true } : r)));
         refreshStats();
+      } else if (res?.blocked) {
+        flash("error", blockedMessage(res.reason, row.name));
       } else if (res?.already) {
         flash("already", `${row.name || "Attendee"} is already checked in`);
       } else {
@@ -97,7 +103,7 @@ function Scanner({ eventId, code, role, exit, event }) {
       return null;
     }
     setSearching(true);
-    const rows = await searchCheckin(eventId, code, q);
+    const rows = await searchCheckin(eventId, code, q, sessionId || null);
     setSearching(false);
     setResults(rows || []);
     setLastQuery(q);
@@ -106,15 +112,15 @@ function Scanner({ eventId, code, role, exit, event }) {
 
   const onScan = async (text) => {
     setPaused(true);
-    setQuery(text);
-    const rows = await runSearch(text);
-    const exact =
-      rows?.find((r) => r.ticketCode === text.trim().toUpperCase()) ||
-      (rows?.length === 1 ? rows[0] : null);
+    const { query: q, id } = scanQuery(text);
+    setQuery(q);
+    const rows = await runSearch(q);
+    const exact = pickScanMatch(rows, text);
     if (exact) {
-      if (exact.checkedIn) flash("already", `${exact.name || "Attendee"} is already checked in`);
+      if (!exact.admissible) flash("error", blockedMessage(exact.status.toLowerCase(), exact.name));
+      else if (exact.checkedIn) flash("already", `${exact.name || "Attendee"} is already checked in`);
       else await admit(exact, "qr");
-    } else if (!rows?.length) {
+    } else if (!rows?.length || id) {
       flash("error", "No match for that code");
     }
     setTimeout(() => setPaused(false), 1200);
@@ -211,24 +217,31 @@ function Scanner({ eventId, code, role, exit, event }) {
         {results.length ? (
           <div className="space-y-2">
             {results.map((r) => (
-              <div key={r.registrationId} className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-3.5">
+              <div key={rowKey(r)} className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-3.5">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">{r.name || "Unnamed"}</p>
+                  <p className="truncate font-medium text-foreground">
+                    {r.name || "Unnamed"}
+                    {r.partySize > 1 ? <span className="font-normal text-text-secondary"> · party of {r.partySize}</span> : null}
+                  </p>
                   <p className="truncate text-xs text-text-secondary">
-                    {r.email || "No email"} · <span className="font-mono">{r.ticketCode}</span>
+                    {r.ticketName ? `${r.ticketName} · ` : ""}{r.email || "No email"} · <span className="font-mono">{r.ticketCode}</span>
                   </p>
                 </div>
-                {r.checkedIn ? (
+                {!r.admissible ? (
+                  <span className="shrink-0 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300">
+                    {r.status}
+                  </span>
+                ) : r.checkedIn ? (
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-300">
                     <CheckCircle2 className="h-4 w-4" /> In
                   </span>
                 ) : (
                   <Button
                     className="h-10 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={admittingId === r.registrationId}
+                    disabled={admittingId === rowKey(r)}
                     onClick={() => admit(r, "manual")}
                   >
-                    {admittingId === r.registrationId ? (
+                    {admittingId === rowKey(r) ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <UserCheck className="h-4 w-4" />

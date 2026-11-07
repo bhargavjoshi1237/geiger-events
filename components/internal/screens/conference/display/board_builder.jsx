@@ -289,7 +289,7 @@ export function BoardBuilder({ board, event, sessions, onBack, onPersist, onDele
   };
 
   const liveUrl =
-    typeof window === "undefined" ? "" : `${window.location.origin}/display/${board.id}`;
+    typeof window === "undefined" ? "" : `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ""}/display/${board.id}`;
 
   const copyLiveUrl = () => {
     if (!published) {

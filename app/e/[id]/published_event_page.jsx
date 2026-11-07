@@ -168,7 +168,11 @@ export default function PublishedEventPage({ id, initialEvent = null }) {
       // Non-fatal — the choice just won't survive a reload.
     }
   };
-  const brandTheme = baseTheme ? themeForMode(baseTheme, activeMode) : null;
+  // In its own mode the theme keeps its own background, card, text and border colours (an imported cream site stays cream);
+  // only switching to the other mode swaps in the stock neutrals.
+  const brandTheme = baseTheme
+    ? activeMode === baseTheme.base ? baseTheme : themeForMode(baseTheme, activeMode)
+    : null;
   // Tab title reads like a page on the source site rather than "Events - Geiger
   // Studio"; theme-color is what tints the mobile browser's own chrome.
   const siteName = brandTheme?.source?.siteName || "";

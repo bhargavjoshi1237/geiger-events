@@ -318,7 +318,7 @@ export function DisplayBoardsScreen() {
       toast.error("Publish the board first — the link only works once it's live.");
       return;
     }
-    navigator.clipboard.writeText(`${window.location.origin}/display/${board.id}`);
+    navigator.clipboard.writeText(`${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ""}/display/${board.id}`);
     toast.success("Live board URL copied.");
   };
 
