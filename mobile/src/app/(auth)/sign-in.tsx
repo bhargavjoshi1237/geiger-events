@@ -179,6 +179,13 @@ export default function SignInScreen() {
             </>
             ) : null}
           </Animated.View>
+
+          <View style={styles.teamLink}>
+            <TextLink
+              label="On an event team? Sign in to Control"
+              onPress={() => router.push("/team-sign-in")}
+            />
+          </View>
         </View>
 
         <View style={styles.promises}>
@@ -263,6 +270,9 @@ const styles = StyleSheet.create({
   link: {
     alignSelf: "flex-start",
     paddingVertical: spacing.xs,
+  },
+  teamLink: {
+    marginTop: spacing.xl,
   },
   linkText: {
     ...type.caption,

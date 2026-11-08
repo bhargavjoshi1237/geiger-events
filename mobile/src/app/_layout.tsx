@@ -84,6 +84,8 @@ function RootNavigator() {
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="(control)" />
+        <Stack.Screen name="team-sign-in" options={{ animation: "slide_from_bottom" }} />
         <Stack.Screen name="pass/[id]" options={{ animation: "fade_from_bottom" }} />
       </Stack>
       {!splashDone ? (
