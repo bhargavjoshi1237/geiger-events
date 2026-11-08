@@ -17,6 +17,7 @@ import {
 } from "@/lib/push";
 import { PortalDataProvider } from "@/state/data";
 import { AppConfigProvider } from "@/state/app_config";
+import { ControlProvider, useControl } from "@/state/control";
 import { LivePlayerProvider } from "@/state/live_player";
 import { SessionProvider, useSession } from "@/state/session";
 import { NavHistoryRecorder } from "@/lib/nav_history";
@@ -32,13 +33,15 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ToastProvider>
           <SessionProvider>
-            <AppConfigProvider>
-              <PortalDataProvider>
-                <LivePlayerProvider>
-                  <RootNavigator />
-                </LivePlayerProvider>
-              </PortalDataProvider>
-            </AppConfigProvider>
+            <ControlProvider>
+              <AppConfigProvider>
+                <PortalDataProvider>
+                  <LivePlayerProvider>
+                    <RootNavigator />
+                  </LivePlayerProvider>
+                </PortalDataProvider>
+              </AppConfigProvider>
+            </ControlProvider>
           </SessionProvider>
         </ToastProvider>
       </SafeAreaProvider>
@@ -48,7 +51,9 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { status } = useSession();
+  const { teamStatus, modeReady } = useControl();
   const fontsReady = useAppFonts();
+  const sessionsReady = status !== "loading" && teamStatus !== "loading" && modeReady;
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
@@ -82,7 +87,7 @@ function RootNavigator() {
         <Stack.Screen name="pass/[id]" options={{ animation: "fade_from_bottom" }} />
       </Stack>
       {!splashDone ? (
-        <Splash ready={status !== "loading" && fontsReady} onFinish={() => setSplashDone(true)} />
+        <Splash ready={sessionsReady && fontsReady} onFinish={() => setSplashDone(true)} />
       ) : null}
     </>
   );
