@@ -123,7 +123,15 @@ export default function InboxScreen() {
     );
   }, [data, threads, notifications, channels, qaChannels, isOn]);
 
-  const visible = filter === "all" ? items : items.filter((i) => i.source === filter);
+  const chips = [
+    { value: "all", label: "All", count: counts.inbox },
+    ...(isOn("messages") ? [{ value: "organiser", label: "Organiser", count: counts.messages }] : []),
+    ...(isOn("notifications") ? [{ value: "updates", label: "Updates", count: counts.notifications }] : []),
+    ...(isOn("community") || isOn("qa") ? [{ value: "chats", label: "Chats", count: counts.chats }] : []),
+  ];
+  // A filter whose source was switched off falls back to All.
+  const activeFilter = chips.some((c) => c.value === filter) ? filter : "all";
+  const visible = activeFilter === "all" ? items : items.filter((i) => i.source === activeFilter);
   const first = loading.threads || loading.notifications || loading.channels;
   const empty = threads === null && channels === null && !notifications.items.length;
 
@@ -146,16 +154,9 @@ export default function InboxScreen() {
 
       <View style={styles.filters}>
         <FilterChips
-          value={filter}
+          value={activeFilter}
           onChange={(v) => setFilter(v as "all" | Source)}
-          options={[
-            { value: "all", label: "All", count: counts.inbox },
-            ...(isOn("messages") ? [{ value: "organiser", label: "Organiser", count: counts.messages }] : []),
-            ...(isOn("notifications")
-              ? [{ value: "updates", label: "Updates", count: counts.notifications }]
-              : []),
-            ...(isOn("community") || isOn("qa") ? [{ value: "chats", label: "Chats", count: counts.chats }] : []),
-          ]}
+          options={chips}
         />
       </View>
 
