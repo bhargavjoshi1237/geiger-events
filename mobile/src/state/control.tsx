@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "@/lib/api";
 import { controlApi } from "@/lib/control_api";
@@ -34,8 +34,9 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
   const [teamStatus, setTeamStatus] = useState<TeamStatus>(team.teamAuth ? "loading" : "signedOut");
   const [teamEmail, setTeamEmail] = useState<string | null>(null);
   const [hintState, setHintState] = useState<{ token: string; hint: RolesHint } | null>(null);
-  const [profile, setProfile] = useState<ControlProfile | null>(null);
-  const [profileError, setProfileError] = useState<string | null>(null);
+  const [teamUserId, setTeamUserId] = useState<string | null>(null);
+  const [profileState, setProfileState] = useState<{ userId: string; profile: ControlProfile | null; error: string | null } | null>(null);
+  const teamUserIdRef = useRef<string | null>(null);
   const [storedMode, setStoredMode] = useState<AppMode | null>(null);
 
   // Mirror the Supabase Auth session; it persists and refreshes itself.
@@ -43,13 +44,24 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
     const auth = team.teamAuth;
     if (!auth) return;
     let active = true;
-    void auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setTeamEmail(data.session?.user.email ?? null);
-      setTeamStatus(data.session ? "signedIn" : "signedOut");
-    });
+    void auth
+      .getSession()
+      .then(({ data }) => {
+        if (!active) return;
+        setTeamEmail(data.session?.user.email ?? null);
+        setTeamUserId(data.session?.user.id ?? null);
+        setTeamStatus(data.session ? "signedIn" : "signedOut");
+      })
+      .catch(() => {
+        // A failed read counts as signed out so the splash never hangs.
+        if (!active) return;
+        setTeamEmail(null);
+        setTeamUserId(null);
+        setTeamStatus("signedOut");
+      });
     const { data } = auth.onAuthStateChange((_event, session) => {
       setTeamEmail(session?.user.email ?? null);
+      setTeamUserId(session?.user.id ?? null);
       setTeamStatus(session ? "signedIn" : "signedOut");
     });
     return () => {
@@ -76,21 +88,23 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
     };
   }, [status, token]);
 
+  // The ref lets in-flight fetches see the current user without re-creating refreshProfile.
+  useEffect(() => {
+    teamUserIdRef.current = teamUserId;
+  }, [teamUserId]);
+
   const refreshProfile = useCallback(async () => {
+    const userId = teamUserIdRef.current;
+    if (!userId) return;
     const res = await controlApi<ControlProfile>("/api/control/me");
-    if (res.ok) {
-      setProfile(res.data);
-      setProfileError(null);
-    } else {
-      setProfileError(res.error);
-    }
+    // Drop responses for a user who is no longer signed in.
+    if (teamUserIdRef.current !== userId) return;
+    setProfileState(res.ok ? { userId, profile: res.data, error: null } : { userId, profile: null, error: res.error });
   }, []);
 
-  /* eslint-disable react-hooks/set-state-in-effect -- refreshProfile sets state only after the request resolves */
   useEffect(() => {
-    if (teamStatus === "signedIn") void refreshProfile();
-  }, [teamStatus, refreshProfile]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+    if (teamStatus === "signedIn" && teamUserId) void refreshProfile();
+  }, [teamStatus, teamUserId, refreshProfile]);
 
   const setMode = useCallback(async (next: AppMode) => {
     setStoredMode(next);
@@ -98,13 +112,18 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOutTeam = useCallback(async () => {
-    await team.signOutTeam();
-    setProfile(null);
-    await setMode("attendee");
+    try {
+      await team.signOutTeam();
+    } finally {
+      setProfileState(null);
+      await setMode("attendee");
+    }
   }, [setMode]);
 
   const hint = status === "authed" && hintState && hintState.token === token ? hintState.hint : null;
-  const visibleProfile = teamStatus === "signedIn" ? profile : null;
+  const owned = teamStatus === "signedIn" && teamUserId && profileState?.userId === teamUserId ? profileState : null;
+  const visibleProfile = owned?.profile ?? null;
+  const visibleError = owned?.error ?? null;
 
   const value = useMemo<ControlState>(
     () => ({
@@ -112,7 +131,7 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
       teamEmail,
       hint,
       profile: visibleProfile,
-      profileError: teamStatus === "signedIn" ? profileError : null,
+      profileError: visibleError,
       mode: storedMode ?? "attendee",
       modeReady: storedMode !== null,
       setMode,
@@ -121,7 +140,7 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
       signOutTeam,
       refreshProfile,
     }),
-    [teamStatus, teamEmail, hint, visibleProfile, profileError, storedMode, setMode, signOutTeam, refreshProfile],
+    [teamStatus, teamEmail, hint, visibleProfile, visibleError, storedMode, setMode, signOutTeam, refreshProfile],
   );
 
   return <ControlContext.Provider value={value}>{children}</ControlContext.Provider>;
