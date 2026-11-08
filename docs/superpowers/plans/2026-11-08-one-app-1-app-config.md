@@ -315,14 +315,14 @@ Expected: no errors.
 ### Task 2: `events.app_configs` migration
 
 **Files:**
-- Create: `supabase/migrations/20261108230000_app_configs.sql`
+- Create: `supabase/migrations/20261109000000_app_configs.sql`
 
 **Interfaces:**
 - Produces the table `events.app_configs(project_id uuid unique, config jsonb, updated_by uuid, created_at, updated_at)`. Read by Task 3 (dashboard, RLS) and Task 5 (portal, service role).
 
 - [ ] **Step 1: Write the migration**
 
-Create `supabase/migrations/20261108230000_app_configs.sql`:
+Create `supabase/migrations/20261109000000_app_configs.sql`:
 
 ```sql
 -- @up
@@ -396,11 +396,11 @@ drop table if exists events.app_configs;
 - [ ] **Step 2: Check it is pending**
 
 Run: `npm run db:status`
-Expected: `20261108230000_app_configs.sql` is listed as pending, and no other drift is reported.
+Expected: `20261109000000_app_configs.sql` is listed as pending, and no other drift is reported.
 
 - [ ] **Step 3: Hand off the push**
 
-Tell the user: "Migration `20261108230000_app_configs.sql` is ready. Please run `! npm run db:push`." Do not run it yourself. Tasks 3–7 can be written before the push. Only the user's on-device check needs it.
+Tell the user: "Migration `20261109000000_app_configs.sql` is ready. Please run `! npm run db:push`." Do not run it yourself. Tasks 3–7 can be written before the push. Only the user's on-device check needs it.
 
 ---
 

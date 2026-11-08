@@ -41,14 +41,14 @@
 ### Task 1: `events.suite_access_for_email` migration
 
 **Files:**
-- Create: `supabase/migrations/20261108230100_suite_access_lookup.sql`
+- Create: `supabase/migrations/20261109000100_suite_access_lookup.sql`
 
 **Interfaces:**
 - Produces: `events.suite_access_for_email(p_email text) → table(organization_id uuid, organization_name text, project_count int, invited boolean)`. It is executable by `service_role` only. Used by Task 2.
 
 - [ ] **Step 1: Write the migration**
 
-Create `supabase/migrations/20261108230100_suite_access_lookup.sql`:
+Create `supabase/migrations/20261109000100_suite_access_lookup.sql`:
 
 ```sql
 -- @up
@@ -104,11 +104,11 @@ drop function if exists events.suite_access_for_email(text);
 - [ ] **Step 2: Check it is pending**
 
 Run: `npm run db:status`
-Expected: `20261108230100_suite_access_lookup.sql` is listed as pending, with no other drift.
+Expected: `20261109000100_suite_access_lookup.sql` is listed as pending, with no other drift.
 
 - [ ] **Step 3: Hand off the push**
 
-Tell the user: "Migration `20261108230100_suite_access_lookup.sql` is ready. Please run `! npm run db:push`." Continue with the next tasks; only the device check needs the push.
+Tell the user: "Migration `20261109000100_suite_access_lookup.sql` is ready. Please run `! npm run db:push`." Continue with the next tasks; only the device check needs the push.
 
 ---
 
