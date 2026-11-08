@@ -14,7 +14,7 @@ There is **one** Geiger Events app in the stores.
 - When the app detects that the signed-in person is also on an event team, it offers **Control**: a second mode for running events. Control opens after a one-time team sign-in. From then on, switching between modes is instant.
 - Someone with a team account and no tickets can sign straight into Control from the sign-in screen.
 
-On the dashboard, **Branded App** becomes the single place to configure the app. **Mobile Event App** is retired and its conference sections fold into Branded App. Every toggle on that screen must change what the app does. A toggle that does nothing is removed until its phase makes it real.
+On the dashboard, **Branded App** becomes the single place to configure the app. **Mobile Event App** is retired and its conference sections fold into Branded App. Every toggle on that screen must change what the app does. A toggle that does nothing is removed until its phase makes it real, except the conference sections and the white-label card, which stay and are labelled with the phase in which they take effect.
 
 ## 2. Where things stand (8 Nov 2026)
 
@@ -60,8 +60,8 @@ Detection grants nothing. Showing organisation names to the holder of an email-v
 The app uses `@supabase/supabase-js` **for Auth only**. It never queries tables. The session is stored in chunked SecureStore.
 
 - **Email + password:** `signInWithPassword`, in-app. This is the same thing the desktop shell does.
-- **Google, GitHub, SSO, passkey:** the app opens `https://geiger.studio/events/desktop/handoff?state=m_…` in an auth session. The existing handoff route signs in on dash if needed and mints a one-time magic-link `token_hash`.
-  - The return page sees the `m_` state prefix and deep-links to `geigerevents://team-auth` instead of `geiger-events://auth`.
+- **Google, GitHub, SSO, passkey:** the app opens `https://geiger.studio/events/desktop/handoff?state=mobile_…` in an auth session. The existing handoff route signs in on dash if needed and mints a one-time magic-link `token_hash`.
+  - The return page sees the `mobile_` state prefix and deep-links to `geigerevents://team-auth` instead of `geiger-events://auth`.
   - The app calls `verifyOtp({ token_hash, type: "magiclink" })`.
   - **No geiger-dash change is needed.** Dash's `next=` allowlist matches the handoff path, and the state rides in the query.
 
