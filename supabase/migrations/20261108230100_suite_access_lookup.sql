@@ -12,6 +12,7 @@ as $$
     select u.id
       from auth.users u
      where lower(u.email) = lower(btrim(p_email))
+     order by u.created_at
      limit 1
   ),
   orgs as (
@@ -38,6 +39,7 @@ as $$
    where lower(pm.email) = lower(btrim(p_email))
      and pm.user_id is null
      and pm.status = 'invited'
+     and pm.deleted_at is null
   having count(*) > 0;
 $$;
 
