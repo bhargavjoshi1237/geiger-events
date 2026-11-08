@@ -58,6 +58,9 @@
     },
     "extra": {
       "apiBaseUrl": "https://geigerevents.vercel.app/events",
+      "supabaseUrl": "https://dyjiyzcsdaeuxtueslqr.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5aml5emNzZGFldXh0dWVzbHFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4OTA2MzgsImV4cCI6MjA4NTQ2NjYzOH0.IBtX7rXiZi4ciaqyWeg62sMv_RUD510ktUib0oPy11A",
+      "suiteOrigin": "https://geiger.studio",
       "router": {},
       "eas": {
         "projectId": "79fe52bd-cac4-4dc9-956c-c5bed0896f14"
