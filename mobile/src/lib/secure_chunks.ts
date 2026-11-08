@@ -21,7 +21,14 @@ async function getItem(key: string): Promise<string | null> {
 async function setItem(key: string, value: string): Promise<void> {
   await removeItem(key);
   const parts: string[] = [];
-  for (let i = 0; i < value.length; i += CHUNK) parts.push(value.slice(i, i + CHUNK));
+  for (let i = 0; i < value.length; ) {
+    let end = Math.min(i + CHUNK, value.length);
+    // A chunk must not end on a high surrogate, or the pair would split across keys.
+    const last = value.charCodeAt(end - 1);
+    if (end < value.length && last >= 0xd800 && last <= 0xdbff) end -= 1;
+    parts.push(value.slice(i, end));
+    i = end;
+  }
   await Promise.all(parts.map((part, i) => SecureStore.setItemAsync(`${key}.${i}`, part)));
   await SecureStore.setItemAsync(`${key}.n`, String(parts.length));
 }

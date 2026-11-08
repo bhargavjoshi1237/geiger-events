@@ -84,6 +84,8 @@ export function Button({
         selectionFeedback();
         onPress?.();
       }}
+      // The 36pt small button gets a 44pt touch target.
+      hitSlop={size === "sm" ? 4 : undefined}
       style={[styles.wrap, fullWidth && styles.fullWidth]}
     >
       <Animated.View

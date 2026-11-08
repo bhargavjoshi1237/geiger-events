@@ -51,7 +51,7 @@ export function ProjectSection({ project, onOpenEvent }: Props) {
           <Text style={styles.note}>
             {project.role
               ? "Your role here doesn't include events."
-              : "Open this project in the dashboard once to set up your access."}
+              : "You don't have a role in this project yet. Ask a project admin to add you."}
           </Text>
         </Card>
       </View>

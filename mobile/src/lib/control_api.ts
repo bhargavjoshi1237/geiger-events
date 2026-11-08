@@ -6,7 +6,7 @@ export async function controlApi<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<ApiResult<T>> {
-  const token = await teamAccessToken();
+  const token = await teamAccessToken().catch(() => null);
   if (!token) return { ok: false, error: "Sign in to Control to continue.", status: 401 };
   return api<T>(path, { ...init, token, onUnauthorized: "ignore" });
 }
