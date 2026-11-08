@@ -16,6 +16,7 @@ import { InboxSkeleton } from "@/components/ui/Skeleton";
 import { fmtCompactTime } from "@/lib/format";
 import { tapFeedback } from "@/lib/haptics";
 import { usePoll } from "@/lib/use_poll";
+import { useAppConfig } from "@/state/app_config";
 import { usePortalData } from "@/state/data";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
@@ -57,13 +58,14 @@ export default function InboxScreen() {
     refreshChannels,
   } = usePortalData();
   const [filter, setFilter] = useState<"all" | Source>("all");
+  const { isOn } = useAppConfig();
 
   usePoll(refreshChannels, POLL_MS, true);
 
   const items = useMemo<InboxItem[]>(() => {
     const orderCode = new Map((data?.orders || []).map((o) => [o.id, o.orderCode]));
 
-    const fromThreads: InboxItem[] = (threads || []).map((t) => ({
+    const fromThreads: InboxItem[] = (isOn("messages") ? threads || [] : []).map((t) => ({
       key: `thread:${t.id}`,
       source: "organiser",
       title: t.subject || "Organiser",
@@ -79,7 +81,7 @@ export default function InboxScreen() {
           : undefined,
     }));
 
-    const fromNotifications: InboxItem[] = (notifications.items || []).map((n) => ({
+    const fromNotifications: InboxItem[] = (isOn("notifications") ? notifications.items || [] : []).map((n) => ({
       key: `note:${n.id}`,
       source: "updates",
       title: n.title,
@@ -92,8 +94,8 @@ export default function InboxScreen() {
     }));
 
     const fromChannels: InboxItem[] = [
-      ...(channels || []).map((c) => ({ c, base: "/community" })),
-      ...(qaChannels || []).map((c) => ({ c, base: "/qa" })),
+      ...(isOn("community") ? channels || [] : []).map((c) => ({ c, base: "/community" })),
+      ...(isOn("qa") ? qaChannels || [] : []).map((c) => ({ c, base: "/qa" })),
     ].map(({ c, base }) => ({
       key: `chan:${c.id}`,
       source: "chats" as const,
@@ -119,7 +121,7 @@ export default function InboxScreen() {
     return [...fromThreads, ...fromNotifications, ...fromChannels].sort(
       (a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime(),
     );
-  }, [data, threads, notifications, channels, qaChannels]);
+  }, [data, threads, notifications, channels, qaChannels, isOn]);
 
   const visible = filter === "all" ? items : items.filter((i) => i.source === filter);
   const first = loading.threads || loading.notifications || loading.channels;
@@ -130,13 +132,15 @@ export default function InboxScreen() {
       <ScreenTitle
         title="Inbox"
         right={
-          <IconButton
-            icon="square-pen"
-            label="New message"
-            variant="primary"
-            iconSize={20}
-            onPress={() => router.push("/messages/new")}
-          />
+          isOn("messages") ? (
+            <IconButton
+              icon="square-pen"
+              label="New message"
+              variant="primary"
+              iconSize={20}
+              onPress={() => router.push("/messages/new")}
+            />
+          ) : undefined
         }
       />
 
@@ -146,9 +150,11 @@ export default function InboxScreen() {
           onChange={(v) => setFilter(v as "all" | Source)}
           options={[
             { value: "all", label: "All", count: counts.inbox },
-            { value: "organiser", label: "Organiser", count: counts.messages },
-            { value: "updates", label: "Updates", count: counts.notifications },
-            { value: "chats", label: "Chats", count: counts.chats },
+            ...(isOn("messages") ? [{ value: "organiser", label: "Organiser", count: counts.messages }] : []),
+            ...(isOn("notifications")
+              ? [{ value: "updates", label: "Updates", count: counts.notifications }]
+              : []),
+            ...(isOn("community") || isOn("qa") ? [{ value: "chats", label: "Chats", count: counts.chats }] : []),
           ]}
         />
       </View>
