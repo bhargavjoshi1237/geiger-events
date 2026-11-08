@@ -1227,7 +1227,7 @@ Create `lib/desktop/handoff_link.js`:
 ```js
 import { DEEP_LINK_SCHEME } from "./config.js";
 
-// The mobile app starts its browser sign-in with an "mobile_" state, so the same handoff (and dash's next= allowlist) can return to it.
+// The mobile app starts its browser sign-in with a "mobile_" state, so the same handoff (and dash's next= allowlist) can return to it.
 export const MOBILE_STATE_PREFIX = "mobile_";
 export const MOBILE_RETURN = "geigerevents://team-auth";
 
@@ -1835,16 +1835,18 @@ Expected: no new errors. Every state set in these effects happens after an `awai
 
 ### Task 10: Routing and the team sign-in screen
 
+Control is a real route segment (`control`), not a `(control)` group, because a group made `/` ambiguous in expo-router 57.
+
 **Files:**
 - Modify: `mobile/src/app/index.tsx`
 - Modify: `mobile/src/app/(app)/_layout.tsx` (guest redirect)
-- Modify: `mobile/src/app/_layout.tsx` (register `(control)` and `team-sign-in`)
+- Modify: `mobile/src/app/_layout.tsx` (register `control` and `team-sign-in`)
 - Modify: `mobile/src/app/(auth)/sign-in.tsx` (team link)
 - Create: `mobile/src/app/team-sign-in.tsx`
 
 **Interfaces:**
 - Consumes: `useControl()` (Task 9), `useSession()`.
-- Produces: the routes `/team-sign-in` and `/(control)`. The latter's screens come in Task 11.
+- Produces: the routes `/team-sign-in` and `/control`. The latter's screens come in Task 11.
 
 - [ ] **Step 1: The entry route picks the mode**
 
@@ -1864,7 +1866,7 @@ export default function Index() {
 
   const team = teamStatus === "signedIn";
   // Control when it was the last mode, or when the team account is the only one signed in.
-  if (team && (mode === "control" || status !== "authed")) return <Redirect href="/(control)" />;
+  if (team && (mode === "control" || status !== "authed")) return <Redirect href="/control" />;
   if (status === "authed") return <Redirect href="/(app)/home" />;
   return <Redirect href="/(auth)/sign-in" />;
 }
@@ -1887,7 +1889,7 @@ with:
   const { teamStatus } = useControl();
   const insets = useSafeAreaInsets();
   if (status === "guest") {
-    return <Redirect href={teamStatus === "signedIn" ? "/(control)" : "/(auth)/sign-in"} />;
+    return <Redirect href={teamStatus === "signedIn" ? "/control" : "/(auth)/sign-in"} />;
   }
 ```
 
@@ -1904,7 +1906,7 @@ with:
 
 ```tsx
         <Stack.Screen name="(app)" />
-        <Stack.Screen name="(control)" />
+        <Stack.Screen name="control" />
         <Stack.Screen name="team-sign-in" options={{ animation: "slide_from_bottom" }} />
         <Stack.Screen name="pass/[id]" options={{ animation: "fade_from_bottom" }} />
 ```
@@ -1985,7 +1987,7 @@ export default function TeamSignInScreen() {
       return;
     }
     await control.setMode("control");
-    router.replace("/(control)");
+    router.replace("/control");
   };
 
   const submitPassword = async () => {
@@ -2122,7 +2124,7 @@ export function teamOrgsLabel(hint: RolesHint): string {
 
 - [ ] **Step 7: Typecheck after Task 11**
 
-Typed routes reject `"/(control)"` until `app/(control)/index.tsx` exists. Tasks 10 and 11 are therefore reviewed together: run `cd mobile && npx tsc --noEmit` at the end of Task 11 and expect exit 0 there. Running it now is expected to report only the `/(control)` route errors.
+Typed routes reject `"/control"` until `app/control/index.tsx` exists. Tasks 10 and 11 are therefore reviewed together: run `cd mobile && npx tsc --noEmit` at the end of Task 11 and expect exit 0 there. Running it now is expected to report only the `/control` route errors.
 
 ---
 
@@ -2130,17 +2132,17 @@ Typed routes reject `"/(control)"` until `app/(control)/index.tsx` exists. Tasks
 
 **Files:**
 - Modify: `mobile/src/components/ui/icons.tsx` (register `chart-column`)
-- Create: `mobile/src/app/(control)/_layout.tsx`
-- Create: `mobile/src/app/(control)/index.tsx`
-- Create: `mobile/src/app/(control)/event/[id].tsx`
+- Create: `mobile/src/app/control/_layout.tsx`
+- Create: `mobile/src/app/control/index.tsx`
+- Create: `mobile/src/app/control/event/[id].tsx`
 - Create: `mobile/src/components/control/ProjectSection.tsx`
 - Create: `mobile/src/lib/control_meta.ts`
 
 **Interfaces:**
 - Consumes: `useControl()`, `controlApi`, `ControlEvent`, `ControlEventDetail`, `ControlProject`, `SUITE_ORIGIN`.
 - Produces:
-  - `/(control)` (Control home)
-  - `/(control)/event/[id]`
+  - `/control` (Control home)
+  - `/control/event/[id]`
   - `CAPABILITY_META: Record<ControlCapability, { icon: IconName; label: string; detail: string }>`
   - `whenLabel(event: ControlEvent): string`
 
@@ -2181,7 +2183,7 @@ export function whenLabel(event: ControlEvent): string {
 
 - [ ] **Step 3: Control stack layout**
 
-Create `mobile/src/app/(control)/_layout.tsx`:
+Create `mobile/src/app/control/_layout.tsx`:
 
 ```tsx
 import { Redirect, Stack } from "expo-router";
@@ -2328,7 +2330,7 @@ const styles = StyleSheet.create({
 
 - [ ] **Step 5: Control home**
 
-Create `mobile/src/app/(control)/index.tsx`:
+Create `mobile/src/app/control/index.tsx`:
 
 ```tsx
 import { useRouter } from "expo-router";
@@ -2393,7 +2395,7 @@ export default function ControlHomeScreen() {
           <ProjectSection
             key={project.id}
             project={project}
-            onOpenEvent={(event) => router.push({ pathname: "/(control)/event/[id]", params: { id: event.id } })}
+            onOpenEvent={(event) => router.push({ pathname: "/control/event/[id]", params: { id: event.id } })}
           />
         ))
       )}
@@ -2464,7 +2466,7 @@ const styles = StyleSheet.create({
 
 - [ ] **Step 6: Control event screen**
 
-Create `mobile/src/app/(control)/event/[id].tsx`:
+Create `mobile/src/app/control/event/[id].tsx`:
 
 ```tsx
 import { useLocalSearchParams } from "expo-router";
@@ -2620,7 +2622,7 @@ const styles = StyleSheet.create({
 - [ ] **Step 7: Typecheck and lint**
 
 Run: `cd mobile && npx tsc --noEmit`
-Expected: exit 0, including the typed route `"/(control)/event/[id]"`.
+Expected: exit 0, including the typed route `"/control/event/[id]"`.
 
 Run (root): `npm run lint:mobile`
 Expected: no new errors.
@@ -2684,7 +2686,7 @@ function TeamEntry() {
       title: "Switch to Control",
       subtitle: count ? `${count} ${pluralize(count, "project", "projects")}` : "Run your events from here",
       onPress: () => {
-        void setMode("control").then(() => router.replace("/(control)"));
+        void setMode("control").then(() => router.replace("/control"));
       },
     };
   } else if (hint?.team.available) {
