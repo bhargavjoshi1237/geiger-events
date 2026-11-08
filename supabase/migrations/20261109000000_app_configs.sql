@@ -29,7 +29,7 @@ create policy app_configs_member_all on events.app_configs
 grant select, insert, update, delete on events.app_configs to authenticated;
 
 -- Carry over the retired Mobile Event App screen's singleton so nobody loses their toggles.
--- That screen auto-created its row with placeholder copy on first visit, so its untouched defaults are dropped, not copied to phones.
+-- That screen auto-created its row with placeholder copy and networking off on first visit, so those untouched defaults are dropped, not copied to phones.
 insert into events.app_configs (project_id, config)
 select distinct on (r.project_id)
   r.project_id,
@@ -39,7 +39,7 @@ select distinct on (r.project_id)
       'agenda', r.config -> 'tabs' -> 'agenda',
       'speakers', r.config -> 'tabs' -> 'speakers',
       'map', r.config -> 'tabs' -> 'maps',
-      'networking', r.config -> 'tabs' -> 'networking',
+      'networking', nullif(r.config -> 'tabs' -> 'networking', 'false'::jsonb),
       'sponsors', r.config -> 'tabs' -> 'sponsors',
       'live', r.config -> 'tabs' -> 'live',
       'notifications', r.config -> 'tabs' -> 'notifications'

@@ -27,7 +27,7 @@ as $$
     from orgs o
     left join public.organizations org on org.id = o.id
   union all
-  select null::uuid, 'Your projects', count(*)::int, false
+  select null::uuid, 'your own projects', count(*)::int, false
     from public.projects p
     join target t on p.created_by = t.id
    where p.organization_id is null
