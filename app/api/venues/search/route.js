@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { geocode, configuredProviders, MERGE_ORDER } from "@/lib/venues/providers";
-import { mergeResults } from "@/lib/venues/normalize";
+import { distMeters, mergeResults } from "@/lib/venues/normalize";
+
+const MAX_RESULTS = 60;
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") || "").trim();
   const near = searchParams.get("near");
-  const radius = Math.min(Number(searchParams.get("radius")) || 5000, 50000);
+  const radius = Math.min(Math.max(Number(searchParams.get("radius")) || 5000, 500), 50000);
   const type = searchParams.get("type") || "all";
 
   let center = null;
@@ -25,7 +27,10 @@ export async function GET(request) {
   }
   if (!center) {
     return NextResponse.json(
-      { error: "Enter a city or area to search near.", results: [] },
+      {
+        error: q ? `Couldn't find "${q}" — try a city, neighbourhood or full address.` : "Enter a city or area to search near.",
+        results: [],
+      },
       { status: 400 },
     );
   }
@@ -39,6 +44,17 @@ export async function GET(request) {
     return [];
   });
 
-  const results = mergeResults(lists, { order: MERGE_ORDER });
+  // Every provider failing is an outage, not an empty area — say so instead of "no venues".
+  if (settled.every((s) => s.status === "rejected")) {
+    return NextResponse.json(
+      { error: "OpenStreetMap's venue search is busy right now — try again in a moment.", center, label, results: [] },
+      { status: 502 },
+    );
+  }
+
+  const results = mergeResults(lists, { order: MERGE_ORDER })
+    .map((r) => ({ ...r, distanceM: Math.round(distMeters(center, r)) }))
+    .sort((a, b) => a.distanceM - b.distanceM)
+    .slice(0, MAX_RESULTS);
   return NextResponse.json({ center, label, count: results.length, results });
 }
