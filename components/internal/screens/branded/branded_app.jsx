@@ -6,6 +6,7 @@ import {
   Award,
   Bell,
   CalendarDays,
+  CloudOff,
   Download,
   Handshake,
   HelpCircle,
@@ -25,6 +26,7 @@ import {
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
+  EmptyState,
   Field,
   ScreenHeader,
   SectionCard,
@@ -197,29 +199,43 @@ function ColorField({ label, hint, value, onChange }) {
 export function BrandedAppScreen() {
   const projectId = useOptionalProject()?.projectId ?? null;
   // Keyed by project so a project switch shows the loader instead of the previous project's settings.
-  const [loaded, setLoaded] = useState({ projectId: undefined, config: null });
+  const [loaded, setLoaded] = useState({ projectId: undefined, config: null, failed: false });
+  const [reloadKey, setReloadKey] = useState(0);
   const [saveState, setSaveState] = useState("saved");
   const configRef = useRef(null);
   const pendingRef = useRef(null);
   const timerRef = useRef(null);
   const userIdRef = useRef(null);
+  const inflightRef = useRef(Promise.resolve());
+  const activeProjectRef = useRef(projectId);
 
-  const config = loaded.projectId === projectId ? loaded.config : null;
+  const isCurrent = loaded.projectId === projectId;
+  const config = isCurrent ? loaded.config : null;
+  const loadFailed = isCurrent && loaded.failed;
+
+  useEffect(() => {
+    activeProjectRef.current = projectId;
+  }, [projectId]);
 
   useEffect(() => {
     let alive = true;
     Promise.all([getAppConfig(projectId), getUser()]).then(([res, user]) => {
       if (!alive) return;
       userIdRef.current = user?.id ?? null;
+      // A failed read must not show the editor, or the first edit would overwrite the stored config with defaults.
+      if (!res && projectId) {
+        configRef.current = null;
+        setLoaded({ projectId, config: null, failed: true });
+        return;
+      }
       const next = res?.config ?? normalizeAppConfig(null);
       configRef.current = next;
-      setLoaded({ projectId, config: next });
-      if (!res && projectId) toast.error("Couldn't load the app settings — showing defaults.");
+      setLoaded({ projectId, config: next, failed: false });
     });
     return () => {
       alive = false;
     };
-  }, [projectId]);
+  }, [projectId, reloadKey]);
 
   const flush = useCallback(async () => {
     clearTimeout(timerRef.current);
@@ -228,11 +244,19 @@ export function BrandedAppScreen() {
     pendingRef.current = null;
     if (!next || !projectId) return;
     setSaveState("saving");
-    const saved = await saveAppConfig(projectId, next, { userId: userIdRef.current });
-    // A newer edit is already queued; its own save reports the state.
-    if (pendingRef.current) return;
-    setSaveState(saved ? "saved" : "error");
-    if (!saved) toast.error("Couldn't save the app settings.");
+    // Chain saves so an older payload can never land after a newer one.
+    inflightRef.current = inflightRef.current.then(async () => {
+      const saved = await saveAppConfig(projectId, next, { userId: userIdRef.current });
+      const active = activeProjectRef.current === projectId;
+      // A newer edit is queued, or the project changed; neither should touch this status.
+      const newerQueued = Boolean(pendingRef.current);
+      // Keep a failed payload so the next edit or the unmount flush retries it (same project only).
+      if (!saved && active && !newerQueued) pendingRef.current = next;
+      if (!active || newerQueued) return;
+      setSaveState(saved ? "saved" : "error");
+      if (!saved) toast.error("Couldn't save the app settings.");
+    });
+    await inflightRef.current;
   }, [projectId]);
 
   // Save whatever is still queued when leaving the screen or switching project.
@@ -267,6 +291,24 @@ export function BrandedAppScreen() {
 
   const description =
     "One app for every attendee. Choose what it shows for this project's events — changes reach phones the next time the app opens.";
+
+  if (loadFailed) {
+    return (
+      <MainScreenWrapper>
+        <ScreenHeader title="Branded App" description={description} />
+        <EmptyState
+          icon={CloudOff}
+          title="Couldn't load the app settings"
+          description="Your saved settings are untouched. Check your connection and try again."
+          action={
+            <Button type="button" variant="secondary" onClick={() => setReloadKey((k) => k + 1)}>
+              Try again
+            </Button>
+          }
+        />
+      </MainScreenWrapper>
+    );
+  }
 
   if (!config) {
     return (
