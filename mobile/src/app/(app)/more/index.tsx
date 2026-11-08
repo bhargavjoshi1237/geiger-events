@@ -189,7 +189,10 @@ function TeamEntry() {
       title: "Switch to Control",
       subtitle: count ? `${count} ${pluralize(count, "project", "projects")}` : "Run your events from here",
       onPress: () => {
-        void setMode("control").then(() => router.replace("/(control)"));
+        void setMode("control").then(() => {
+          if (router.canDismiss()) router.dismissAll();
+          router.replace("/control");
+        });
       },
     };
   } else if (hint?.team.available) {

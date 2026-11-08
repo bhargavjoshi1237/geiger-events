@@ -32,22 +32,27 @@ export default function TeamSignInScreen() {
       return;
     }
     await control.setMode("control");
-    router.replace("/(control)");
+    if (router.canDismiss()) router.dismissAll();
+    router.replace("/control");
   };
 
   const submitPassword = async () => {
     if (!email.trim() || !password) return error("Enter your Geiger email and password.");
     setBusy("password");
-    const result = await control.signInWithPassword(email, password);
-    setBusy(null);
-    await finish(result);
+    try {
+      await finish(await control.signInWithPassword(email, password));
+    } finally {
+      setBusy(null);
+    }
   };
 
   const continueInBrowser = async () => {
     setBusy("browser");
-    const result = await control.signInWithBrowser();
-    setBusy(null);
-    await finish(result);
+    try {
+      await finish(await control.signInWithBrowser());
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (

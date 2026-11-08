@@ -23,6 +23,7 @@ export default function ControlHomeScreen() {
 
   const toAttendee = async () => {
     await setMode("attendee");
+    if (router.canDismiss()) router.dismissAll();
     router.replace("/(app)/home");
   };
 
@@ -60,7 +61,7 @@ export default function ControlHomeScreen() {
           <ProjectSection
             key={project.id}
             project={project}
-            onOpenEvent={(event) => router.push({ pathname: "/(control)/event/[id]", params: { id: event.id } })}
+            onOpenEvent={(event) => router.push({ pathname: "/control/event/[id]", params: { id: event.id } })}
           />
         ))
       )}

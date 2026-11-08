@@ -11,7 +11,7 @@ export default function Index() {
 
   const team = teamStatus === "signedIn";
   // Control when it was the last mode, or when the team account is the only one signed in.
-  if (team && (mode === "control" || status !== "authed")) return <Redirect href="/(control)" />;
+  if (team && (mode === "control" || status !== "authed")) return <Redirect href="/control" />;
   if (status === "authed") return <Redirect href="/(app)/home" />;
   return <Redirect href="/(auth)/sign-in" />;
 }

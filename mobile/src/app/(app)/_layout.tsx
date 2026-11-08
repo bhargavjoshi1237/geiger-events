@@ -14,7 +14,7 @@ export default function AppLayout() {
   const { teamStatus } = useControl();
   const insets = useSafeAreaInsets();
   if (status === "guest") {
-    return <Redirect href={teamStatus === "signedIn" ? "/(control)" : "/(auth)/sign-in"} />;
+    return <Redirect href={teamStatus === "signedIn" ? "/control" : "/(auth)/sign-in"} />;
   }
 
   return (
