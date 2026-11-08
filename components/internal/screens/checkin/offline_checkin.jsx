@@ -7,6 +7,7 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { EmptyState, ScreenHeader, SegmentedTabs, StatsBar, Toolbar } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
 import { LogoLoading } from "@geiger/ui";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { listEvents } from "@/lib/supabase/events";
 import { getCheckinSettings } from "@/lib/supabase/checkin";
@@ -21,7 +22,7 @@ import { DevicesTab } from "./offline/devices_tab";
 import { ConflictsTab } from "./offline/conflicts_tab";
 import { SyncLogTab } from "./offline/sync_log_tab";
 import { OfflineSettings, offlineOnForEvent, offlineSlice } from "./offline/offline_settings";
-import { ONLINE_MS, staffRouteUrl } from "./offline/shared";
+import { CONFLICT_FILTER_OPTIONS, ONLINE_MS, staffRouteUrl } from "./offline/shared";
 
 const REFRESH_MS = 15000;
 
@@ -33,6 +34,7 @@ export function OfflineCheckinScreen() {
   const [config, setConfig] = useState(null);
   const [configRev, setConfigRev] = useState(0);
   const [tab, setTab] = useState("devices");
+  const [conflictFilter, setConflictFilter] = useState("open");
   const [data, setData] = useState({ devices: [], conflicts: [], log: [], offlineAdmits: 0 });
   const [loadedFor, setLoadedFor] = useState("");
   const [now, setNow] = useState(() => Date.now());
@@ -137,6 +139,14 @@ export function OfflineCheckinScreen() {
           <Toolbar>
             <div className="flex flex-wrap items-center gap-2">
               <EventPicker events={events} value={eventId} onChange={setEventId} />
+              {tab === "conflicts" ? (
+                <FilterDropdown
+                  value={conflictFilter}
+                  onValueChange={setConflictFilter}
+                  options={CONFLICT_FILTER_OPTIONS}
+                  height="h-9"
+                />
+              ) : null}
               <span
                 className={
                   offlineOn
@@ -166,6 +176,7 @@ export function OfflineCheckinScreen() {
             <ConflictsTab
               conflicts={data.conflicts}
               devicesById={devicesById}
+              filter={conflictFilter}
               onChange={(conflicts) => setData((d) => ({ ...d, conflicts }))}
             />
           ) : tab === "log" ? (

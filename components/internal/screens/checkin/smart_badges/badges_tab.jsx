@@ -25,6 +25,7 @@ import { exportPrinterCsv } from "./export";
 const STATUS_ORDER = { active: 0, lost: 1, revoked: 2, unassigned: 3, replaced: 4 };
 
 export function BadgesTab({
+  tabs,
   badges,
   batches,
   batchesById,
@@ -254,11 +255,10 @@ export function BadgesTab({
   return (
     <div className="min-w-0 space-y-4">
       <Toolbar>
-        <div className="flex flex-wrap items-center gap-2">
+        {tabs}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
           <FilterDropdown value={status} onValueChange={setStatus} options={BADGE_STATUS_FILTER_OPTIONS} height="h-9" />
           <FilterDropdown value={batch} onValueChange={setBatch} options={batchOptions} height="h-9" />
-        </div>
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           <SearchInput value={search} onChange={setSearch} placeholder="Search UID, serial or holder…" />
           <Button variant="outline" size="sm" className={`h-9 ${ghost}`} onClick={() => exportRows(rows)}>
             <Download className="h-4 w-4" /> Export

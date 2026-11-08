@@ -100,6 +100,7 @@ export function EventNetworking({ eventId, member, onBack }) {
     { value: "meetings", label: <>My meetings<CountPill>{upcoming}</CountPill></>, icon: CalendarClock },
     { value: "profile", label: "My profile", icon: UserRound },
   ];
+  const tabSwitch = <SegmentedTabs tabs={tabs} value={active} onChange={setTab} />;
 
   return (
     <MainScreenWrapper>
@@ -113,10 +114,12 @@ export function EventNetworking({ eventId, member, onBack }) {
 
       <WindowNotice state={state} />
 
-      <SegmentedTabs tabs={tabs} value={active} onChange={setTab} />
+      {/* People places the switcher in its own toolbar row. */}
+      {active !== "people" ? tabSwitch : null}
 
       {active === "people" ? (
         <PeopleTab
+          tabs={tabSwitch}
           eventId={eventId}
           state={state}
           tz={tz}

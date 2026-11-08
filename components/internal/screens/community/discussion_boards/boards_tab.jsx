@@ -130,7 +130,7 @@ function BoardRow({ board, index, total, eventName, drag, setDrag, onDrop, onMov
   );
 }
 
-export function BoardsTab({ boards, eventNames, onCreate, onEdit, onArchive, onDelete, onReorder }) {
+export function BoardsTab({ tabs, boards, eventNames, onCreate, onEdit, onArchive, onDelete, onReorder }) {
   const [view, setView] = useState("active");
   const [search, setSearch] = useState("");
   const [drag, setDrag] = useState(null);
@@ -158,17 +158,20 @@ export function BoardsTab({ boards, eventNames, onCreate, onEdit, onArchive, onD
 
   if (!boards?.length) {
     return (
-      <div className="rounded-xl border border-border bg-surface-subtle">
-        <EmptyState
-          icon={MessagesSquare}
-          title="No boards yet"
-          description="Create a board for members to start topics, ask questions and keep talking between events."
-          action={
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={onCreate}>
-              <Plus className="h-4 w-4" /> New board
-            </Button>
-          }
-        />
+      <div className="space-y-5">
+        {tabs}
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={MessagesSquare}
+            title="No boards yet"
+            description="Create a board for members to start topics, ask questions and keep talking between events."
+            action={
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={onCreate}>
+                <Plus className="h-4 w-4" /> New board
+              </Button>
+            }
+          />
+        </div>
       </div>
     );
   }
@@ -176,10 +179,11 @@ export function BoardsTab({ boards, eventNames, onCreate, onEdit, onArchive, onD
   return (
     <div className="space-y-5">
       <Toolbar>
-        <div className="flex flex-wrap items-center gap-2">
+        {tabs}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
           <FilterDropdown value={view} onValueChange={setView} options={VIEW_FILTER} height="h-9" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search boards…" />
         </div>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search boards…" />
       </Toolbar>
 
       {shown.length ? (

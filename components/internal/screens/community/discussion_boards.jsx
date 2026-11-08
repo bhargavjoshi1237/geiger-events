@@ -367,6 +367,20 @@ export function DiscussionBoardsScreen() {
       </Button>
     ) : null;
 
+  const tabSwitch = (
+    <SegmentedTabs
+      className="w-fit sm:w-fit"
+      value={tab}
+      onChange={setTab}
+      tabs={[
+        { value: "boards", label: "Boards", icon: LayoutList },
+        { value: "topics", label: "Topics", icon: MessagesSquare },
+        { value: "moderation", label: queue ? `Moderation (${queue})` : "Moderation", icon: ShieldAlert },
+        { value: "settings", label: "Settings", icon: Settings2 },
+      ]}
+    />
+  );
+
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -377,22 +391,14 @@ export function DiscussionBoardsScreen() {
 
       <StatsBar stats={statTiles} />
 
-      <SegmentedTabs
-        className="w-fit sm:w-fit"
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { value: "boards", label: "Boards", icon: LayoutList },
-          { value: "topics", label: "Topics", icon: MessagesSquare },
-          { value: "moderation", label: queue ? `Moderation (${queue})` : "Moderation", icon: ShieldAlert },
-          { value: "settings", label: "Settings", icon: Settings2 },
-        ]}
-      />
+      {/* Boards and Topics place the switcher in their own toolbar row. */}
+      {loading || (tab !== "boards" && tab !== "topics") ? tabSwitch : null}
 
       {loading ? (
         <LoadingArea size={48} panel label="Loading discussion boards" />
       ) : tab === "boards" ? (
         <BoardsTab
+          tabs={tabSwitch}
           boards={boards}
           eventNames={eventNames}
           onCreate={() => setBoardDialog((d) => ({ open: true, board: null, key: d.key + 1 }))}
@@ -403,6 +409,7 @@ export function DiscussionBoardsScreen() {
         />
       ) : tab === "topics" ? (
         <TopicsTab
+          tabs={tabSwitch}
           topics={liveTopics}
           boards={boards}
           onOpen={(t) => setOpenTopicId(t.id)}

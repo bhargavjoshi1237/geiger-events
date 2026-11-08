@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CalendarCheck, Handshake, Inbox, Loader2, Send, Users } from "lucide-react";
 
-import { EmptyState, SearchInput } from "@/components/internal/shared/screen_kit";
+import { EmptyState, SearchInput, Toolbar } from "@/components/internal/shared/screen_kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Textarea } from "@geiger/ui/textarea";
@@ -223,7 +223,7 @@ function PersonDialog({ person, windowOpen, onClose, onRequest, onGoRequests }) 
   );
 }
 
-export function PeopleTab({ eventId, state, tz, onChanged, onGoProfile, onGoRequests }) {
+export function PeopleTab({ tabs, eventId, state, tz, onChanged, onGoProfile, onGoRequests }) {
   const [people, setPeople] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState("");
@@ -264,23 +264,26 @@ export function PeopleTab({ eventId, state, tz, onChanged, onGoProfile, onGoRequ
 
   if (!state.canNetwork) {
     return (
-      <div className="rounded-xl border border-border bg-surface-subtle">
-        <EmptyState
-          icon={Users}
-          title={state.profile.hidden ? "Your networking profile is paused" : "Join networking to see who's here"}
-          description={
-            state.profile.hidden
-              ? "The organiser has paused your profile. Contact them if you think this is a mistake."
-              : "Create your profile so other attendees can find you — then browse everyone who's open to meeting."
-          }
-          action={
-            state.profile.hidden ? null : (
-              <Button onClick={onGoProfile} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                Set up my profile
-              </Button>
-            )
-          }
-        />
+      <div className="space-y-4">
+        {tabs}
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={Users}
+            title={state.profile.hidden ? "Your networking profile is paused" : "Join networking to see who's here"}
+            description={
+              state.profile.hidden
+                ? "The organiser has paused your profile. Contact them if you think this is a mistake."
+                : "Create your profile so other attendees can find you — then browse everyone who's open to meeting."
+            }
+            action={
+              state.profile.hidden ? null : (
+                <Button onClick={onGoProfile} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  Set up my profile
+                </Button>
+              )
+            }
+          />
+        </div>
       </div>
     );
   }
@@ -289,12 +292,15 @@ export function PeopleTab({ eventId, state, tz, onChanged, onGoProfile, onGoRequ
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-text-secondary">
-          {people === null ? "Loading people…" : `${people.length} ${people.length === 1 ? "person" : "people"} open to meeting`}
-        </p>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search names, companies, interests…" />
-      </div>
+      <Toolbar>
+        {tabs}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
+          <p className="text-sm text-text-secondary">
+            {people === null ? "Loading people…" : `${people.length} ${people.length === 1 ? "person" : "people"} open to meeting`}
+          </p>
+          <SearchInput value={search} onChange={setSearch} placeholder="Search names, companies, interests…" />
+        </div>
+      </Toolbar>
 
       {topInterests.length ? (
         <div className="flex gap-1.5 overflow-x-auto pb-1">

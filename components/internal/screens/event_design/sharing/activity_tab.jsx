@@ -10,7 +10,7 @@ import { formatAgo } from "@/lib/event_design";
 
 // Recent saves across every plan, newest first, with preview and restore.
 
-export function ActivityTab({ versions, plansById, placeOf, now, onPreview, onOpenPlan, onEditNote }) {
+export function ActivityTab({ tabs, versions, plansById, placeOf, now, onPreview, onOpenPlan, onEditNote }) {
   const [planFilter, setPlanFilter] = useState("all");
   const [search, setSearch] = useState("");
 
@@ -137,10 +137,11 @@ export function ActivityTab({ versions, plansById, placeOf, now, onPreview, onOp
   return (
     <div className="space-y-4">
       <Toolbar>
-        <div className="flex flex-wrap items-center gap-2">
+        {tabs}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
           <FilterDropdown value={planFilter} onValueChange={setPlanFilter} options={planOptions} height="h-9" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search notes or people…" />
         </div>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search notes or people…" />
       </Toolbar>
 
       <DataTable

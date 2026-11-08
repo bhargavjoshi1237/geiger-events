@@ -18,7 +18,7 @@ const STATUS_OPTIONS = [
   { value: "revoked", label: "Revoked" },
 ];
 
-export function LinksTab({ shares, plansById, placeOf, now, actions, onNew, onOpenPlan }) {
+export function LinksTab({ tabs, shares, plansById, placeOf, now, actions, onNew, onOpenPlan }) {
   const [status, setStatus] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -109,11 +109,12 @@ export function LinksTab({ shares, plansById, placeOf, now, actions, onNew, onOp
   return (
     <div className="space-y-4">
       <Toolbar>
-        <div className="flex flex-wrap items-center gap-2">
+        {tabs}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
           <FilterDropdown value={status} onValueChange={setStatus} options={STATUS_OPTIONS} height="h-9" />
           <FilterDropdown value={planFilter} onValueChange={setPlanFilter} options={planOptions} height="h-9" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search links…" />
         </div>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search links…" />
       </Toolbar>
 
       <DataTable

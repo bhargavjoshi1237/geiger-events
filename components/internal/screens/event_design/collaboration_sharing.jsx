@@ -189,6 +189,8 @@ export function CollaborationSharingScreen() {
   }
 
   const previewPlan = preview ? plansById.get(preview.planId) : null;
+  // Each tab places the switcher in its own toolbar row, beside its filters.
+  const tabSwitch = <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />;
 
   return (
     <MainScreenWrapper>
@@ -209,10 +211,10 @@ export function CollaborationSharingScreen() {
       ) : (
         <>
           <StatsBar stats={stats} />
-          <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
 
           {tab === "links" ? (
             <LinksTab
+              tabs={tabSwitch}
               shares={data.shares}
               plansById={plansById}
               placeOf={placeOf}
@@ -223,6 +225,7 @@ export function CollaborationSharingScreen() {
             />
           ) : tab === "comments" ? (
             <CommentsTab
+              tabs={tabSwitch}
               comments={data.comments}
               plansById={plansById}
               placeOf={placeOf}
@@ -235,6 +238,7 @@ export function CollaborationSharingScreen() {
             />
           ) : (
             <ActivityTab
+              tabs={tabSwitch}
               versions={data.versions}
               plansById={plansById}
               placeOf={placeOf}

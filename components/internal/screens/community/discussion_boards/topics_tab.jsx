@@ -43,7 +43,7 @@ const FLAG_FILTER = [
   { value: "noreplies", label: "No replies yet" },
 ];
 
-export function TopicsTab({ topics, boards, onOpen, onUpdate, onMove, onDelete }) {
+export function TopicsTab({ tabs, topics, boards, onOpen, onUpdate, onMove, onDelete }) {
   const [boardId, setBoardId] = useState("all");
   const [status, setStatus] = useState("all");
   const [flag, setFlag] = useState("all");
@@ -152,12 +152,13 @@ export function TopicsTab({ topics, boards, onOpen, onUpdate, onMove, onDelete }
   return (
     <div className="space-y-5">
       <Toolbar>
-        <div className="flex flex-wrap items-center gap-2">
+        {tabs}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
           <FilterDropdown value={boardId} onValueChange={setBoardId} options={boardOptions} height="h-9" />
           <FilterDropdown value={status} onValueChange={setStatus} options={STATUS_FILTER} height="h-9" />
           <FilterDropdown value={flag} onValueChange={setFlag} options={FLAG_FILTER} height="h-9" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search topics, authors, tags…" />
         </div>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search topics, authors, tags…" />
       </Toolbar>
 
       <DataTable

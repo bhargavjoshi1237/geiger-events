@@ -17,7 +17,7 @@ const STATUS_OPTIONS = [
   { value: "all", label: "All comments" },
 ];
 
-export function CommentsTab({ comments, plansById, placeOf, now, youId, onOpenPlan, onReply, onResolve, onDelete }) {
+export function CommentsTab({ tabs, comments, plansById, placeOf, now, youId, onOpenPlan, onReply, onResolve, onDelete }) {
   const [status, setStatus] = useState("open");
   const [planFilter, setPlanFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -68,11 +68,12 @@ export function CommentsTab({ comments, plansById, placeOf, now, youId, onOpenPl
   return (
     <div className="space-y-4">
       <Toolbar>
-        <div className="flex flex-wrap items-center gap-2">
+        {tabs}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
           <FilterDropdown value={status} onValueChange={setStatus} options={STATUS_OPTIONS} height="h-9" />
           <FilterDropdown value={planFilter} onValueChange={setPlanFilter} options={planOptions} height="h-9" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search comments…" />
         </div>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search comments…" />
       </Toolbar>
 
       {filtered.length ? (

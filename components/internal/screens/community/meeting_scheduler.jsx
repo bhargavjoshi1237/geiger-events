@@ -287,6 +287,8 @@ export function MeetingSchedulerScreen() {
     />
   );
 
+  const tabSwitch = <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />;
+
   if (events === null) {
     return (
       <MainScreenWrapper>
@@ -343,7 +345,8 @@ export function MeetingSchedulerScreen() {
         <>
           <StatsBar stats={stats} />
 
-          <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
+          {/* Requests and Directory place the switcher in their own toolbar row. */}
+          {tab !== "requests" && tab !== "directory" ? tabSwitch : null}
 
           {tab === "schedule" ? (
             <ScheduleTab
@@ -360,6 +363,7 @@ export function MeetingSchedulerScreen() {
             />
           ) : tab === "requests" ? (
             <RequestsTab
+              tabs={tabSwitch}
               requests={current.requests}
               people={people}
               settings={current.settings}
@@ -371,6 +375,7 @@ export function MeetingSchedulerScreen() {
             />
           ) : tab === "directory" ? (
             <DirectoryTab
+              tabs={tabSwitch}
               profiles={current.profiles}
               people={people}
               meetings={current.meetings}

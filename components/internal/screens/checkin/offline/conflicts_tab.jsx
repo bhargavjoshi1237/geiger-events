@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, GitCompareArrows, Loader2, RotateCcw } from "lucide-react";
 
-import { DataTable, EmptyState, Field, StatusPill, Toolbar } from "@/components/internal/shared/screen_kit";
+import { DataTable, EmptyState, Field, StatusPill } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
 import { Textarea } from "@geiger/ui/textarea";
 import {
@@ -15,11 +15,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@geiger/ui/dialog";
-import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { getUser } from "@/lib/supabase/user";
 import { reopenCheckinConflict, resolveCheckinConflict } from "@/lib/supabase/checkin_offline";
 import {
-  CONFLICT_FILTER_OPTIONS,
   CONFLICT_KIND_MAP,
   CONFLICT_STATUS_MAP,
   RESOLUTION_LABELS,
@@ -163,8 +161,8 @@ function ReviewDialog({ conflict, devicesById, onOpenChange, onSaved }) {
   );
 }
 
-export function ConflictsTab({ conflicts, devicesById, onChange }) {
-  const [filter, setFilter] = useState("open");
+// `filter` lives on the screen so its dropdown can share the screen's toolbar row.
+export function ConflictsTab({ conflicts, devicesById, filter, onChange }) {
   const [reviewing, setReviewing] = useState(null);
 
   const rows = useMemo(
@@ -248,11 +246,6 @@ export function ConflictsTab({ conflicts, devicesById, onChange }) {
 
   return (
     <div className="space-y-4">
-      <Toolbar>
-        <div className="flex items-center gap-2">
-          <FilterDropdown value={filter} onValueChange={setFilter} options={CONFLICT_FILTER_OPTIONS} height="h-9" />
-        </div>
-      </Toolbar>
       <DataTable
         columns={columns}
         data={rows}

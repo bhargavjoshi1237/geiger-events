@@ -4,9 +4,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CalendarX2, Cpu, Layers, Plus, Radio, ScanLine, Wand2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { EmptyState, ScreenHeader, StatsBar } from "@/components/internal/shared/screen_kit";
+import { EmptyState, ScreenHeader, SegmentedTabs, StatsBar } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
-import { LogoLoading, Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui";
+import { LogoLoading } from "@geiger/ui";
 import {
   Select,
   SelectContent,
@@ -186,6 +186,20 @@ export function SmartBadgesScreen() {
     if (typeof openScreen === "function") openScreen("RFID / NFC");
   };
 
+  const tabSwitch = (
+    <SegmentedTabs
+      className="w-fit sm:w-fit"
+      value={tab}
+      onChange={setTab}
+      tabs={[
+        { value: "badges", label: "Badges", icon: Cpu },
+        { value: "batches", label: "Batches", icon: Layers },
+        { value: "desk", label: "Binding desk", icon: ScanLine },
+        { value: "points", label: "Entry points", icon: Radio },
+      ]}
+    />
+  );
+
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -240,82 +254,63 @@ export function SmartBadgesScreen() {
         <>
           <StatsBar stats={statCards} />
 
-          <Tabs value={tab} onValueChange={setTab} className="min-w-0 gap-4">
-            <TabsList className="flex w-fit max-w-full flex-wrap justify-start">
-              <TabsTrigger value="badges" className="gap-1.5">
-                <Cpu className="h-4 w-4" /> Badges
-              </TabsTrigger>
-              <TabsTrigger value="batches" className="gap-1.5">
-                <Layers className="h-4 w-4" /> Batches
-              </TabsTrigger>
-              <TabsTrigger value="desk" className="gap-1.5">
-                <ScanLine className="h-4 w-4" /> Binding desk
-              </TabsTrigger>
-              <TabsTrigger value="points" className="gap-1.5">
-                <Radio className="h-4 w-4" /> Entry points
-              </TabsTrigger>
-            </TabsList>
+          {/* Badges places the switcher in its own toolbar row. */}
+          {tab !== "badges" ? tabSwitch : null}
 
-            <TabsContent value="badges" className="min-w-0">
-              <BadgesTab
-                badges={badges}
-                batches={batches}
-                batchesById={batchesById}
-                rosterByKey={rosterByKey}
-                tapSummary={tapSummary}
-                loading={loadingEvent}
-                eventName={event?.name}
-                onOpen={(b) => setOpenId(b.id)}
-                onAdd={() => setAdding(true)}
-                onChanged={refresh}
-              />
-            </TabsContent>
-
-            <TabsContent value="batches" className="min-w-0">
-              <BatchesTab
-                batches={batches}
-                badges={badges}
-                batchesById={batchesById}
-                rosterByKey={rosterByKey}
-                loading={loadingEvent}
-                eventName={event?.name}
-                onAdd={() => setAdding(true)}
-                onAssign={(id) => setAssignBatch(id)}
-                onChanged={refresh}
-              />
-            </TabsContent>
-
-            <TabsContent value="desk" className="min-w-0">
-              {loadingEvent ? (
-                <div className="flex items-center justify-center rounded-xl border border-border bg-surface-subtle px-6 py-16">
-                  <LogoLoading size={48} label="Loading roster" />
-                </div>
-              ) : (
-                <BindingDesk
-                  key={eventId}
-                  eventId={eventId}
-                  roster={roster}
-                  batches={batches}
-                  liveByHolder={liveByHolder}
-                  onChanged={refresh}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="points" className="min-w-0">
-              <EntryPointsTab
+          {tab === "badges" ? (
+            <BadgesTab
+              tabs={tabSwitch}
+              badges={badges}
+              batches={batches}
+              batchesById={batchesById}
+              rosterByKey={rosterByKey}
+              tapSummary={tapSummary}
+              loading={loadingEvent}
+              eventName={event?.name}
+              onOpen={(b) => setOpenId(b.id)}
+              onAdd={() => setAdding(true)}
+              onChanged={refresh}
+            />
+          ) : tab === "batches" ? (
+            <BatchesTab
+              batches={batches}
+              badges={badges}
+              batchesById={batchesById}
+              rosterByKey={rosterByKey}
+              loading={loadingEvent}
+              eventName={event?.name}
+              onAdd={() => setAdding(true)}
+              onAssign={(id) => setAssignBatch(id)}
+              onChanged={refresh}
+            />
+          ) : tab === "desk" ? (
+            loadingEvent ? (
+              <div className="flex items-center justify-center rounded-xl border border-border bg-surface-subtle px-6 py-16">
+                <LogoLoading size={48} label="Loading roster" />
+              </div>
+            ) : (
+              <BindingDesk
                 key={eventId}
                 eventId={eventId}
-                projectId={projectId}
-                event={event}
-                points={points}
-                userId={userId}
-                loading={loadingEvent}
+                roster={roster}
+                batches={batches}
+                liveByHolder={liveByHolder}
                 onChanged={refresh}
-                onOpenRfid={goRfid}
               />
-            </TabsContent>
-          </Tabs>
+            )
+          ) : (
+            <EntryPointsTab
+              key={eventId}
+              eventId={eventId}
+              projectId={projectId}
+              event={event}
+              points={points}
+              userId={userId}
+              loading={loadingEvent}
+              onChanged={refresh}
+              onOpenRfid={goRfid}
+            />
+          )}
         </>
       )}
 

@@ -264,25 +264,34 @@ export function SetupStylesCapacityScreen() {
           <StatsBar stats={stats} />
 
           <Tabs value={tab} onValueChange={setTab} className="min-w-0 gap-4">
-            <TabsList className="flex w-fit max-w-full flex-wrap justify-start">
-              <TabsTrigger value="matrix" className="gap-1.5">
-                <Grid3x3 className="h-4 w-4" /> Capacity chart
-              </TabsTrigger>
-              <TabsTrigger value="checks" className="gap-1.5">
-                <ClipboardCheck className="h-4 w-4" /> Plan checks
-              </TabsTrigger>
-              <TabsTrigger value="rules" className="gap-1.5">
-                <SlidersHorizontal className="h-4 w-4" /> Planning rules
-              </TabsTrigger>
-            </TabsList>
+            {/* The tab list shares one row with the active tab's filters. */}
+            <Toolbar>
+              <TabsList className="flex w-fit max-w-full flex-wrap justify-start">
+                <TabsTrigger value="matrix" className="gap-1.5">
+                  <Grid3x3 className="h-4 w-4" /> Capacity chart
+                </TabsTrigger>
+                <TabsTrigger value="checks" className="gap-1.5">
+                  <ClipboardCheck className="h-4 w-4" /> Plan checks
+                </TabsTrigger>
+                <TabsTrigger value="rules" className="gap-1.5">
+                  <SlidersHorizontal className="h-4 w-4" /> Planning rules
+                </TabsTrigger>
+              </TabsList>
+              {tab === "matrix" ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
+                  <FilterDropdown value={venueFilter} onValueChange={setVenueFilter} options={venueOptions} height="h-9" />
+                  <SearchInput value={search} onChange={setSearch} placeholder="Search spaces…" />
+                </div>
+              ) : tab === "checks" ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
+                  <FilterDropdown value={kindFilter} onValueChange={setKindFilter} options={KIND_OPTIONS} height="h-9" />
+                  <FilterDropdown value={checkFilter} onValueChange={setCheckFilter} options={CHECK_OPTIONS} height="h-9" />
+                  <SearchInput value={search} onChange={setSearch} placeholder="Search plans…" />
+                </div>
+              ) : null}
+            </Toolbar>
 
             <TabsContent value="matrix" className="min-w-0 space-y-4">
-              <Toolbar>
-                <div className="flex items-center gap-2">
-                  <FilterDropdown value={venueFilter} onValueChange={setVenueFilter} options={venueOptions} height="h-9" />
-                </div>
-                <SearchInput value={search} onChange={setSearch} placeholder="Search spaces…" />
-              </Toolbar>
               <CapacityMatrix
                 rows={rows}
                 unit={unit}
@@ -298,13 +307,6 @@ export function SetupStylesCapacityScreen() {
             </TabsContent>
 
             <TabsContent value="checks" className="min-w-0 space-y-4">
-              <Toolbar>
-                <div className="flex items-center gap-2">
-                  <FilterDropdown value={kindFilter} onValueChange={setKindFilter} options={KIND_OPTIONS} height="h-9" />
-                  <FilterDropdown value={checkFilter} onValueChange={setCheckFilter} options={CHECK_OPTIONS} height="h-9" />
-                </div>
-                <SearchInput value={search} onChange={setSearch} placeholder="Search plans…" />
-              </Toolbar>
               <PlanChecks
                 rows={filteredChecks}
                 onOpen={openRecord}

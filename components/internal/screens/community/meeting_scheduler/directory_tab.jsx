@@ -35,7 +35,7 @@ function Tags({ list }) {
 }
 
 // Networking profiles: who opted in, their role, and moderation (hide abusive profiles).
-export function DirectoryTab({ profiles, people, meetings, onUpdateProfile }) {
+export function DirectoryTab({ tabs, profiles, people, meetings, onUpdateProfile }) {
   const [status, setStatus] = useState("opted_in");
   const [role, setRole] = useState("all");
   const [search, setSearch] = useState("");
@@ -140,11 +140,12 @@ export function DirectoryTab({ profiles, people, meetings, onUpdateProfile }) {
   return (
     <div className="space-y-4">
       <Toolbar>
-        <div className="flex flex-wrap items-center gap-2">
+        {tabs}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
           <FilterDropdown value={status} onValueChange={setStatus} options={DIRECTORY_FILTER_OPTIONS} height="h-9" />
           <FilterDropdown value={role} onValueChange={setRole} options={ROLE_FILTER_OPTIONS} height="h-9" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search names, companies, interests…" />
         </div>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search names, companies, interests…" />
       </Toolbar>
 
       <DataTable

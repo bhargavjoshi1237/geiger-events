@@ -86,7 +86,7 @@ function RequestDetail({ request, onOpenChange, people, tz, onSchedule, onCancel
   );
 }
 
-export function RequestsTab({ requests, people, settings, tz, sessions, meetings, onCancel, onForceSchedule }) {
+export function RequestsTab({ tabs, requests, people, settings, tz, sessions, meetings, onCancel, onForceSchedule }) {
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState(null);
@@ -177,10 +177,11 @@ export function RequestsTab({ requests, people, settings, tz, sessions, meetings
   return (
     <div className="space-y-4">
       <Toolbar>
-        <div className="flex flex-wrap items-center gap-2">
+        {tabs}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full sm:justify-end">
           <FilterDropdown value={status} onValueChange={setStatus} options={REQUEST_FILTER_OPTIONS} height="h-9" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search people or messages…" />
         </div>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search people or messages…" />
       </Toolbar>
 
       <DataTable
