@@ -11,6 +11,7 @@ import { EventCover } from "@/components/EventCover";
 import { ScreenTitle } from "@/components/ScreenTitle";
 import { ShareTicketSheet } from "@/components/ShareTicketSheet";
 import { TicketQr } from "@/components/TicketQr";
+import { TeamCard } from "@/components/TeamCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -112,6 +113,8 @@ export default function HomeScreen() {
               <Text style={styles.welcome}>{home.welcome}</Text>
             </Card>
           ) : null}
+
+          <TeamCard />
 
           {nextTicket ? (
             <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>

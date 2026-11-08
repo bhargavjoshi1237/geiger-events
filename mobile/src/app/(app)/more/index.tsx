@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import type { Href } from "expo-router";
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Icon, type IconName } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
@@ -12,7 +12,10 @@ import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
-import { firstName } from "@/lib/format";
+import { teamOrgsLabel } from "@/lib/control_hint";
+import { firstName, pluralize } from "@/lib/format";
+import { SUITE_ORIGIN } from "@/lib/team_auth";
+import { useControl } from "@/state/control";
 import { useAppConfig } from "@/state/app_config";
 import { usePortalData } from "@/state/data";
 import { useSession } from "@/state/session";
@@ -114,6 +117,7 @@ export default function MoreScreen() {
         <Icon name="chevron-right" size={19} color={colors.textTertiary} />
       </Pressable>
 
+      <TeamEntry />
       <RowGroup rows={library} onGo={(href) => router.push(href)} />
       <RowGroup rows={conversations} onGo={(href) => router.push(href)} />
 
@@ -170,6 +174,49 @@ export default function MoreScreen() {
         </View>
       </Sheet>
     </Screen>
+  );
+}
+
+// Only a hint until the team account signs in; tapping it never unlocks Control on the attendee session alone.
+function TeamEntry() {
+  const router = useRouter();
+  const { teamStatus, hint, profile, setMode } = useControl();
+
+  let row: { title: string; subtitle: string; onPress: () => void } | null = null;
+  if (teamStatus === "signedIn") {
+    const count = profile?.projects.length ?? 0;
+    row = {
+      title: "Switch to Control",
+      subtitle: count ? `${count} ${pluralize(count, "project", "projects")}` : "Run your events from here",
+      onPress: () => {
+        void setMode("control").then(() => router.replace("/(control)"));
+      },
+    };
+  } else if (hint?.team.available) {
+    row = {
+      title: "Sign in to Control",
+      subtitle: `You're on the team at ${teamOrgsLabel(hint)}`,
+      onPress: () => router.push("/team-sign-in"),
+    };
+  } else if (hint?.team.invited) {
+    row = {
+      title: "Team invitation waiting",
+      subtitle: "Accept it on geiger.studio, then sign in to Control here",
+      onPress: () => void Linking.openURL(SUITE_ORIGIN),
+    };
+  }
+  if (!row) return null;
+
+  return (
+    <View style={styles.group}>
+      <ListRow
+        leading={<IconTile icon="briefcase" size={34} />}
+        title={row.title}
+        subtitle={row.subtitle}
+        onPress={row.onPress}
+        divider={false}
+      />
+    </View>
   );
 }
 
