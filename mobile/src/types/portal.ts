@@ -238,3 +238,29 @@ export type PortalData = {
   entitlements: Record<string, Entitlement[]>;
   tickets: Ticket[];
 };
+
+export type AppSection =
+  | "memberships"
+  | "live"
+  | "watch"
+  | "orders"
+  | "community"
+  | "qa"
+  | "messages"
+  | "notifications"
+  | "agenda"
+  | "speakers"
+  | "sponsors"
+  | "map"
+  | "networking"
+  | "discussions";
+
+export type AppConfig = {
+  sections: Record<AppSection, boolean>;
+  home: {
+    welcome: string;
+    liveStrip: boolean;
+    recentOrders: boolean;
+    shortcuts: AppSection[];
+  };
+};

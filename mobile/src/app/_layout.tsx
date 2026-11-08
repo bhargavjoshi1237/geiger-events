@@ -16,6 +16,7 @@ import {
   notificationRoute,
 } from "@/lib/push";
 import { PortalDataProvider } from "@/state/data";
+import { AppConfigProvider } from "@/state/app_config";
 import { LivePlayerProvider } from "@/state/live_player";
 import { SessionProvider, useSession } from "@/state/session";
 import { NavHistoryRecorder } from "@/lib/nav_history";
@@ -31,11 +32,13 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ToastProvider>
           <SessionProvider>
-            <PortalDataProvider>
-              <LivePlayerProvider>
-                <RootNavigator />
-              </LivePlayerProvider>
-            </PortalDataProvider>
+            <AppConfigProvider>
+              <PortalDataProvider>
+                <LivePlayerProvider>
+                  <RootNavigator />
+                </LivePlayerProvider>
+              </PortalDataProvider>
+            </AppConfigProvider>
           </SessionProvider>
         </ToastProvider>
       </SafeAreaProvider>
