@@ -26,20 +26,22 @@ function FlagButton({ count, label, onClick }) {
   );
 }
 
-export function StatusBar({ stats, unit, setupStyle, capacity, dirty, version, saving, onSelectIds, extra }) {
+export function StatusBar({ stats, unit, setupStyle, capacity, dirty, version, saving, onSelectIds, extra, showSeats = true }) {
   const over = capacity && stats.seats > capacity;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border bg-surface-subtle px-4 py-2.5 text-xs text-text-secondary tabular-nums">
       <Item>
         <span className="font-medium text-foreground">{stats.objectCount}</span> objects
       </Item>
-      <Item>
-        <span className={cn("font-medium", over ? "text-red-600 dark:text-red-400" : "text-foreground")}>
-          {stats.seats}
-          {capacity ? ` / ${capacity}` : ""}
-        </span>
-        seats{capacity ? ` · ${setupStyleLabel(setupStyle).toLowerCase()} capacity` : " placed"}
-      </Item>
+      {showSeats ? (
+        <Item>
+          <span className={cn("font-medium", over ? "text-red-600 dark:text-red-400" : "text-foreground")}>
+            {stats.seats}
+            {capacity ? ` / ${capacity}` : ""}
+          </span>
+          seats{capacity ? ` · ${setupStyleLabel(setupStyle).toLowerCase()} capacity` : " placed"}
+        </Item>
+      ) : null}
       <Item>{formatArea(stats.areaM2, unit)}</Item>
       <FlagButton count={stats.outsideIds.length} label="outside the room" onClick={() => onSelectIds(stats.outsideIds)} />
       <FlagButton count={stats.overlappingIds.length} label="overlapping" onClick={() => onSelectIds(stats.overlappingIds)} />

@@ -60,18 +60,23 @@ export function EventExpoSection({ event, headerItem }) {
   const tickets = Array.isArray(event?.tickets) ? event.tickets : [];
   const pricing = expo.pricing === "direct" ? "direct" : "tier";
 
+  // Every live hall in the project, the event's own venue first — a hall need not belong to the venue it's sold at.
   useEffect(() => {
-    if (!event?.venueId) return undefined;
+    if (!event?.projectId) return undefined;
     let alive = true;
-    listHallMaps(event.venueId).then((rows) => {
+    listHallMaps(null, { projectId: event.projectId }).then((rows) => {
       if (!alive) return;
-      setMaps(rows ?? []);
+      const live = (rows ?? []).filter((m) => m.status !== "Archived" || m.id === expo.hallMapId);
+      const own = (m) => (event.venueId && m.venueId === event.venueId ? 0 : 1);
+      setMaps(live.sort((a, b) => own(a) - own(b)));
       setLoadingMaps(false);
     });
     return () => {
       alive = false;
     };
-  }, [event?.venueId]);
+    // The chosen hall only matters for keeping an archived pick listed; re-listing on every pick isn't needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.projectId, event?.venueId]);
 
   useEffect(() => {
     if (!event?.id || !expo.hallMapId) return undefined;
@@ -172,21 +177,6 @@ export function EventExpoSection({ event, headerItem }) {
     return { price: price === null ? null : currency(price) };
   };
 
-  if (!event?.venueId) {
-    return (
-      <>
-        {headerItem ? (
-          <EditorSectionHeader title={headerItem.label} description={headerItem.desc} />
-        ) : null}
-        <EmptyState
-          icon={Store}
-          title="Pick a venue first"
-          description="Exhibitor halls belong to a venue. Set this event's venue on the Location tab, then build or choose a hall here."
-        />
-      </>
-    );
-  }
-
   if (loadingMaps) {
     return (
       <div className="flex h-40 items-center justify-center text-text-secondary">
@@ -203,8 +193,8 @@ export function EventExpoSection({ event, headerItem }) {
         ) : null}
         <EmptyState
           icon={Store}
-          title="This venue has no exhibitor halls"
-          description="Open the venue and lay out a hall — booths, zones and aisles — then come back to attach it to this event."
+          title="No exhibitor halls yet"
+          description="Draw a hall and its booths under Sponsors & Expo → Floor Plan & Booths, then come back to sell it at this event."
         />
       </>
     );
@@ -221,7 +211,7 @@ export function EventExpoSection({ event, headerItem }) {
         description="Which floor this event sells, and how its booths are priced."
       >
         <div className="grid gap-4">
-          <Field label="Exhibitor hall" hint="Built on the venue, reusable across events.">
+          <Field label="Exhibitor hall" hint="Drawn under Floor Plan & Booths, reusable across events.">
             <Select
               value={expo.hallMapId || NONE}
               onValueChange={(v) => patch({ hallMapId: v === NONE ? "" : v })}

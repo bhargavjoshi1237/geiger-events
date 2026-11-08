@@ -267,6 +267,7 @@ function GenerateLayoutAction({ doc, space, apply, select }) {
 
 export const CAPACITY_EXTENSION = {
   key: "capacity",
+  kinds: ["plan", "template", "library"],
   HeaderAction: GenerateLayoutAction,
   StatusItem: CapacityStatus,
   CanvasOverlay: CapacityOverlay,

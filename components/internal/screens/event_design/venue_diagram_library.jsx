@@ -2,48 +2,87 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, CalendarPlus, Copy, Library, Plus, SquarePen, Trash2 } from "lucide-react";
+import { Building2, CalendarPlus, Copy, DoorOpen, Library, Plus, SquarePen, Trash2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { EmptyState, ScreenHeader, SearchInput, StatsBar, Toolbar } from "@/components/internal/shared/screen_kit";
-import { Button, LogoLoading } from "@geiger/ui";
+import { EmptyState, ScreenHeader, SearchInput, Toolbar } from "@/components/internal/shared/screen_kit";
+import { ActionMenu, Button, LogoLoading } from "@geiger/ui";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getUser } from "@/lib/supabase/user";
 import { copyFloorPlan, listFloorPlans, softDeleteFloorPlan } from "@/lib/supabase/floor_plans";
-import { formatDimensions, setupStyleLabel } from "@/lib/event_design";
-import { cn } from "@/lib/utils";
+import { formatDimensions, planSummary, SETUP_STYLES, setupStyleLabel } from "@/lib/event_design";
 import { FloorPlanEditor } from "./editor/plan_editor";
 import { NewPlanDialog } from "./dialogs/new_plan_dialog";
 import { NewSpaceDialog } from "./dialogs/space_picker";
 import { ConfirmDeleteDialog } from "./dialogs/plan_dialogs";
-import { PlanCard } from "./plan_card";
+import { PlanRenderer } from "./plan_renderer";
 import { createPlanFrom } from "./create_plan";
 import { useDesignContext } from "./use_design_context";
 import { SETUP_STYLE_FILTER_OPTIONS } from "./constants";
 
-// Venue Diagram Library: each venue space's standard diagrams (floor_plans kind "library"), copied into event plans on demand.
+// Venue Diagram Library: each room's standard layouts (floor_plans kind "library"), grouped venue → room, copied into event plans on demand.
 
-function NavRow({ active, onClick, label, meta, count, indent }) {
+const STYLE_ORDER = new Map(SETUP_STYLES.map((s, i) => [s.value, i]));
+const outline = "border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground";
+
+const byStyleThenName = (a, b) =>
+  (STYLE_ORDER.get(a.setupStyle) ?? 99) - (STYLE_ORDER.get(b.setupStyle) ?? 99) ||
+  (a.name || "").localeCompare(b.name || "");
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+function DiagramTile({ diagram, onOpen, actions }) {
+  const summary = useMemo(() => planSummary(diagram), [diagram]);
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-        indent && "pl-7",
-        active
-          ? "bg-surface-card font-medium text-foreground dark:text-white"
-          : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
+    <div className="overflow-hidden rounded-lg border border-border bg-surface-card transition-colors hover:border-border-strong">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${diagram.name || "diagram"}`}
+        className="relative block h-28 w-full border-b border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
+        <PlanRenderer plan={diagram} showLabels={false} padding={0.08} className="pointer-events-none" />
+      </button>
+      <div className="flex items-start gap-1 py-2 pl-3 pr-1.5">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">{diagram.name || "Untitled diagram"}</p>
+          <p className="truncate text-xs text-text-tertiary">
+            {setupStyleLabel(diagram.setupStyle)} · {plural(summary.seats, "seat")}
+          </p>
+        </div>
+        <ActionMenu label={`Actions for ${diagram.name || "diagram"}`} items={actions} />
+      </div>
+    </div>
+  );
+}
+
+function RoomRow({ space, diagrams, onNew, renderTile }) {
+  const meta = [
+    space.widthM && space.lengthM ? formatDimensions(space.widthM, space.lengthM, space.unit) : null,
+    space.floor || null,
+    plural(diagrams.length, "layout"),
+  ].filter(Boolean);
+  return (
+    <div className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">{space.name || "Untitled room"}</p>
+          <p className="truncate text-xs text-text-secondary">{meta.join(" · ")}</p>
+        </div>
+        <Button variant="outline" size="sm" className={`h-8 shrink-0 ${outline}`} onClick={onNew}>
+          <Plus className="h-3.5 w-3.5" /> New layout
+        </Button>
+      </div>
+      {diagrams.length ? (
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+          {diagrams.map(renderTile)}
+        </div>
+      ) : (
+        <p className="mt-2 text-xs text-text-tertiary">No standard layouts for this room yet.</p>
       )}
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block truncate">{label}</span>
-        {meta ? <span className="block truncate text-[11px] font-normal text-text-tertiary">{meta}</span> : null}
-      </span>
-      <span className="shrink-0 text-xs tabular-nums text-text-tertiary">{count}</span>
-    </button>
+    </div>
   );
 }
 
@@ -54,11 +93,11 @@ export function VenueDiagramLibraryScreen() {
   const [diagrams, setDiagrams] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [scope, setScope] = useState({ venueId: null, spaceId: null });
+  const [venueFilter, setVenueFilter] = useState("all");
   const [style, setStyle] = useState("all");
   const [search, setSearch] = useState("");
-  const [newOpen, setNewOpen] = useState(false);
-  const [spaceOpen, setSpaceOpen] = useState(false);
+  const [newFor, setNewFor] = useState(null);
+  const [spaceFor, setSpaceFor] = useState(null);
   const [useTarget, setUseTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -77,43 +116,57 @@ export function VenueDiagramLibraryScreen() {
     };
   }, [projectId]);
 
-  const countBy = useMemo(() => {
-    const venue = new Map();
-    const space = new Map();
-    diagrams.forEach((d) => {
-      if (d.venueId) venue.set(d.venueId, (venue.get(d.venueId) || 0) + 1);
-      if (d.venueSpaceId) space.set(d.venueSpaceId, (space.get(d.venueSpaceId) || 0) + 1);
-    });
-    return { venue, space };
-  }, [diagrams]);
+  const filtering = style !== "all" || Boolean(search.trim());
 
-  const stats = useMemo(
-    () => [
-      { label: "Diagrams", value: String(diagrams.length), footer: "Standard layouts on file" },
-      { label: "Venues", value: String(countBy.venue.size), footer: "With a diagram" },
-      { label: "Spaces covered", value: String(countBy.space.size), footer: `Of ${ctx.spaces.length} spaces` },
-      {
-        label: "Setup styles",
-        value: String(new Set(diagrams.map((d) => d.setupStyle)).size),
-        footer: "Covered across rooms",
-      },
-    ],
-    [diagrams, countBy, ctx.spaces.length],
-  );
-
-  const filtered = useMemo(() => {
+  // Venue → rooms → matching diagrams; while filtering, rooms (and venues) with no match drop out.
+  const { groups, unfiled, roomless, shownCount } = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return diagrams.filter((d) => {
-      if (scope.spaceId && d.venueSpaceId !== scope.spaceId) return false;
-      if (!scope.spaceId && scope.venueId && d.venueId !== scope.venueId) return false;
-      if (style !== "all" && d.setupStyle !== style) return false;
-      if (q && !`${d.name} ${d.notes}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [diagrams, scope, style, search]);
+    const matches = (d) =>
+      (style === "all" || d.setupStyle === style) && (!q || `${d.name} ${d.notes}`.toLowerCase().includes(q));
 
-  const scopeVenue = scope.venueId ? ctx.venueById.get(scope.venueId) : null;
-  const scopeSpace = scope.spaceId ? ctx.spaceById.get(scope.spaceId) : null;
+    const bySpace = new Map();
+    const loose = [];
+    for (const d of diagrams) {
+      if (!matches(d)) continue;
+      if (d.venueSpaceId && ctx.spaceById.has(d.venueSpaceId)) {
+        if (!bySpace.has(d.venueSpaceId)) bySpace.set(d.venueSpaceId, []);
+        bySpace.get(d.venueSpaceId).push(d);
+      } else {
+        loose.push(d);
+      }
+    }
+
+    const out = [];
+    let count = 0;
+    for (const venue of ctx.venues) {
+      if (venueFilter !== "all" && venue.id !== venueFilter) continue;
+      const rooms = ctx.spaces
+        .filter((s) => s.venueId === venue.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder || (a.name || "").localeCompare(b.name || ""))
+        .map((space) => ({ space, diagrams: (bySpace.get(space.id) || []).sort(byStyleThenName) }))
+        .filter((room) => !filtering || room.diagrams.length);
+      if (!rooms.length) continue;
+      count += rooms.reduce((n, r) => n + r.diagrams.length, 0);
+      out.push({ venue, rooms });
+    }
+    const showLoose = venueFilter === "all" ? loose.sort(byStyleThenName) : [];
+    return {
+      groups: out,
+      unfiled: showLoose,
+      roomless: ctx.venues.filter((v) => !ctx.spaces.some((s) => s.venueId === v.id)),
+      shownCount: count + showLoose.length,
+    };
+  }, [diagrams, ctx.venues, ctx.spaces, ctx.spaceById, venueFilter, style, search, filtering]);
+
+  const venueOptions = useMemo(
+    () => [
+      { value: "all", label: "All venues" },
+      ...ctx.venues
+        .filter((v) => ctx.spaces.some((s) => s.venueId === v.id))
+        .map((v) => ({ value: v.id, label: v.name || "Untitled venue" })),
+    ],
+    [ctx.venues, ctx.spaces],
+  );
 
   const createDiagram = async (input) => {
     const created = await createPlanFrom(input, { projectId, kind: "library" });
@@ -171,11 +224,28 @@ export function VenueDiagramLibraryScreen() {
     );
   }
 
-  const heading = scopeSpace
-    ? `${scopeVenue?.name || "Venue"} · ${scopeSpace.name}`
-    : scopeVenue
-      ? scopeVenue.name
-      : "All diagrams";
+  const openNew = (initial) => (ctx.spaces.length ? setNewFor(initial) : setSpaceFor({ venueId: initial.venueId ?? null }));
+
+  const renderTile = (d) => (
+    <DiagramTile
+      key={d.id}
+      diagram={d}
+      onOpen={() => openRecord(d.id)}
+      actions={[
+        { icon: CalendarPlus, label: "Use for event", disabled: !ctx.events.length, onSelect: () => setUseTarget(d) },
+        { icon: SquarePen, label: "Edit layout", onSelect: () => openRecord(d.id) },
+        { icon: Copy, label: "Duplicate", onSelect: () => duplicate(d) },
+        { separator: true },
+        { icon: Trash2, label: "Delete", destructive: true, onSelect: () => setDeleteTarget(d) },
+      ]}
+    />
+  );
+
+  const roomlessNames = roomless.map((v) => v.name || "Untitled venue");
+  const roomlessLabel =
+    roomlessNames.length > 2
+      ? `${roomlessNames.slice(0, 2).join(", ")} and ${roomlessNames.length - 2} more`
+      : roomlessNames.join(" and ");
 
   return (
     <MainScreenWrapper>
@@ -186,14 +256,12 @@ export function VenueDiagramLibraryScreen() {
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={!ctx.venues.length}
-            onClick={() => (ctx.spaces.length ? setNewOpen(true) : setSpaceOpen(true))}
+            onClick={() => openNew({ source: "space", venueId: venueFilter !== "all" ? venueFilter : null })}
           >
             <Plus className="h-4 w-4" /> New diagram
           </Button>
         }
       />
-
-      <StatsBar stats={stats} />
 
       {loading || ctx.loading ? (
         <div className="flex items-center justify-center rounded-xl border border-border bg-surface-subtle px-6 py-16">
@@ -207,131 +275,108 @@ export function VenueDiagramLibraryScreen() {
             description="Add a venue under Venues first — diagrams are filed against its rooms."
           />
         </div>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className="space-y-0.5 lg:sticky lg:top-0 lg:self-start">
-            <NavRow
-              active={!scope.venueId}
-              onClick={() => setScope({ venueId: null, spaceId: null })}
-              label="All diagrams"
-              count={diagrams.length}
-            />
-            {ctx.venues.map((venue) => {
-              const spaces = ctx.spaces.filter((s) => s.venueId === venue.id);
-              return (
-                <div key={venue.id} className="pt-2">
-                  <NavRow
-                    active={scope.venueId === venue.id && !scope.spaceId}
-                    onClick={() => setScope({ venueId: venue.id, spaceId: null })}
-                    label={venue.name || "Untitled venue"}
-                    meta={spaces.length ? `${spaces.length} space${spaces.length === 1 ? "" : "s"}` : "No spaces yet"}
-                    count={countBy.venue.get(venue.id) || 0}
-                  />
-                  {spaces.map((space) => (
-                    <NavRow
-                      key={space.id}
-                      indent
-                      active={scope.spaceId === space.id}
-                      onClick={() => setScope({ venueId: venue.id, spaceId: space.id })}
-                      label={space.name}
-                      meta={space.widthM && space.lengthM ? formatDimensions(space.widthM, space.lengthM, space.unit) : null}
-                      count={countBy.space.get(space.id) || 0}
-                    />
-                  ))}
-                </div>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => setSpaceOpen(true)}
-              className="mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-subtle hover:text-foreground"
-            >
-              <Plus className="h-4 w-4" /> New space
-            </button>
-          </aside>
-
-          <div className="min-w-0 space-y-4">
-            <Toolbar>
-              <div className="flex min-w-0 items-center gap-2">
-                <FilterDropdown value={style} onValueChange={setStyle} options={SETUP_STYLE_FILTER_OPTIONS} height="h-9" />
-                <span className="hidden truncate text-sm font-medium text-foreground sm:inline">{heading}</span>
-              </div>
-              <SearchInput value={search} onChange={setSearch} placeholder="Search diagrams…" />
-            </Toolbar>
-
-            {filtered.length === 0 ? (
-              <div className="rounded-xl border border-border bg-surface-subtle">
-                <EmptyState
-                  icon={Library}
-                  title={diagrams.length ? "No diagrams here" : "No venue diagrams yet"}
-                  description={
-                    scopeVenue && !ctx.spaces.some((s) => s.venueId === scopeVenue.id)
-                      ? "This venue has no spaces yet — add one, then file its standard layouts."
-                      : "Draw a room's standard layout once and reuse it for every event held there. Any plan can be added from its editor too."
-                  }
-                  action={
-                    scopeVenue && !ctx.spaces.some((s) => s.venueId === scopeVenue.id) ? (
-                      <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setSpaceOpen(true)}>
-                        <Plus className="h-4 w-4" /> New space
-                      </Button>
-                    ) : ctx.spaces.length ? (
-                      <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setNewOpen(true)}>
-                        <Plus className="h-4 w-4" /> New diagram
-                      </Button>
-                    ) : null
-                  }
-                />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-                {filtered.map((d) => {
-                  const space = d.venueSpaceId ? ctx.spaceById.get(d.venueSpaceId) : null;
-                  const venue = d.venueId ? ctx.venueById.get(d.venueId) : null;
-                  return (
-                    <PlanCard
-                      key={d.id}
-                      plan={d}
-                      showStatus={false}
-                      subtitle={[scope.spaceId ? null : venue?.name, space?.name || "No space", setupStyleLabel(d.setupStyle)]
-                        .filter(Boolean)
-                        .join(" · ")}
-                      onOpen={() => openRecord(d.id)}
-                      footerAction={
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                          disabled={!ctx.events.length}
-                          onClick={() => setUseTarget(d)}
-                        >
-                          <CalendarPlus className="h-3.5 w-3.5" /> Use for event
-                        </Button>
-                      }
-                      actions={[
-                        { icon: CalendarPlus, label: "Use for event", disabled: !ctx.events.length, onSelect: () => setUseTarget(d) },
-                        { icon: SquarePen, label: "Edit layout", onSelect: () => openRecord(d.id) },
-                        { icon: Copy, label: "Duplicate", onSelect: () => duplicate(d) },
-                        { separator: true },
-                        { icon: Trash2, label: "Delete", destructive: true, onSelect: () => setDeleteTarget(d) },
-                      ]}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
+      ) : !ctx.spaces.length ? (
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={DoorOpen}
+            title="No rooms yet"
+            description="Add a room to one of your venues, then file its standard layouts here."
+            action={
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setSpaceFor({ venueId: null })}>
+                <Plus className="h-4 w-4" /> Add room
+              </Button>
+            }
+          />
         </div>
+      ) : (
+        <>
+          <Toolbar>
+            <div className="flex flex-wrap items-center gap-2">
+              <FilterDropdown value={venueFilter} onValueChange={setVenueFilter} options={venueOptions} height="h-9" />
+              <FilterDropdown value={style} onValueChange={setStyle} options={SETUP_STYLE_FILTER_OPTIONS} height="h-9" />
+              <span className="text-xs tabular-nums text-text-tertiary">{plural(shownCount, "layout")}</span>
+            </div>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search diagrams…" />
+          </Toolbar>
+
+          {groups.length || unfiled.length ? (
+            <div className="space-y-8">
+              {groups.map(({ venue, rooms }) => (
+                <section key={venue.id} className="space-y-3">
+                  <div className="flex items-end justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="truncate text-sm font-semibold text-foreground">{venue.name || "Untitled venue"}</h2>
+                      <p className="text-xs text-text-tertiary">
+                        {[venue.city, plural(rooms.length, "room")].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 shrink-0 text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                      onClick={() => setSpaceFor({ venueId: venue.id })}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add room
+                    </Button>
+                  </div>
+                  <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-subtle">
+                    {rooms.map(({ space, diagrams: list }) => (
+                      <RoomRow
+                        key={space.id}
+                        space={space}
+                        diagrams={list}
+                        renderTile={renderTile}
+                        onNew={() => openNew({ source: "space", venueId: venue.id, spaceId: space.id })}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+
+              {unfiled.length ? (
+                <section className="space-y-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Not filed to a room</h2>
+                    <p className="text-xs text-text-tertiary">Their room was removed — open one to link it to another room.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-surface-subtle p-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                    {unfiled.map(renderTile)}
+                  </div>
+                </section>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-surface-subtle">
+              <EmptyState
+                icon={Library}
+                title="No diagrams match"
+                description="Try another venue, setup style or search."
+              />
+            </div>
+          )}
+
+          {roomless.length && venueFilter === "all" && !filtering ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-subtle px-4 py-3">
+              <p className="min-w-0 text-sm text-text-secondary">
+                {roomlessLabel} {roomless.length === 1 ? "has" : "have"} no rooms yet — add one to file its layouts.
+              </p>
+              <Button variant="outline" size="sm" className={`h-8 ${outline}`} onClick={() => setSpaceFor({ venueId: roomless[0].id })}>
+                <Plus className="h-3.5 w-3.5" /> Add room
+              </Button>
+            </div>
+          ) : null}
+        </>
       )}
 
       <NewPlanDialog
-        open={newOpen}
-        onOpenChange={setNewOpen}
+        open={!!newFor}
+        onOpenChange={(o) => !o && setNewFor(null)}
         ctx={ctx}
         projectId={projectId}
         templates={templates}
         kind="library"
         requireSpace
-        initial={{ source: "space", venueId: scope.venueId, spaceId: scope.spaceId }}
+        initial={newFor || {}}
         title="New venue diagram"
         description="A standard layout for one of the venue's rooms, drawn at the room's real size."
         submitLabel="Create diagram"
@@ -352,15 +397,12 @@ export function VenueDiagramLibraryScreen() {
       />
 
       <NewSpaceDialog
-        open={spaceOpen}
-        onOpenChange={setSpaceOpen}
+        open={!!spaceFor}
+        onOpenChange={(o) => !o && setSpaceFor(null)}
         projectId={projectId}
         venues={ctx.venues}
-        defaultVenueId={scope.venueId}
-        onCreated={(space) => {
-          ctx.addSpace(space);
-          setScope({ venueId: space.venueId, spaceId: space.id });
-        }}
+        defaultVenueId={spaceFor?.venueId ?? null}
+        onCreated={(space) => ctx.addSpace(space)}
       />
 
       <ConfirmDeleteDialog

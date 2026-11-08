@@ -19,12 +19,6 @@ export const PACKAGE_STATUS_MAP = {
   Draft: { label: "Draft", variant: "neutral", dotClass: "bg-[#737373]" },
 };
 
-export const BOOTH_STATUS_MAP = {
-  Available: { label: "Available", variant: "success", dotClass: "bg-emerald-400" },
-  Reserved: { label: "Reserved", variant: "info", dotClass: "bg-sky-400" },
-  Occupied: { label: "Occupied", variant: "purple", dotClass: "bg-violet-400" },
-};
-
 export const VENUE_LEAD_STATUS_MAP = {
   Shortlisted: { label: "Shortlisted", variant: "info", dotClass: "bg-sky-400" },
   Contacted: { label: "Contacted", variant: "purple", dotClass: "bg-violet-400" },

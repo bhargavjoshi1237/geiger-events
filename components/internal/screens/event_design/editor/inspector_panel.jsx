@@ -149,8 +149,21 @@ export function ObjectInspector({ instance, catalogObject, unit, onPatch, onDupl
             {locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
           </IconAction>
         </div>
-        <Field label="Label" hint={instance.category === "tables" ? "Table number or name — seating charts use it." : undefined}>
-          <Input value={instance.label} onChange={(e) => patch("label")(e.target.value, `label-${instance.id}`)} placeholder="e.g. 12 or Head table" />
+        <Field
+          label={instance.category === "expo" ? "Booth number" : "Label"}
+          hint={
+            instance.category === "tables"
+              ? "Table number or name — seating charts use it."
+              : instance.category === "expo"
+                ? "What exhibitors pick and what's printed on the floor."
+                : undefined
+          }
+        >
+          <Input
+            value={instance.label}
+            onChange={(e) => patch("label")(e.target.value, `label-${instance.id}`)}
+            placeholder={instance.category === "expo" ? "e.g. A12" : "e.g. 12 or Head table"}
+          />
         </Field>
       </Section>
 

@@ -205,7 +205,13 @@ export function NewPlanDialog({
               autoFocus
               value={draft.name}
               onChange={(e) => set("name")(e.target.value)}
-              placeholder={kind === "template" ? "e.g. Gala dinner — 20 rounds" : "e.g. Awards dinner layout"}
+              placeholder={
+                kind === "template"
+                  ? "e.g. Gala dinner — 20 rounds"
+                  : kind === "expo"
+                    ? "e.g. Hall A — main expo floor"
+                    : "e.g. Awards dinner layout"
+              }
             />
           </Field>
 
@@ -267,6 +273,7 @@ export function NewPlanDialog({
             <UnitToggle value={draft.unit} onChange={set("unit")} className="mb-1" />
           </div>
 
+          {kind === "expo" ? null : (
           <div className={kind !== "library" ? "grid gap-4 sm:grid-cols-2" : "grid gap-4"}>
             <Field label="Setup style">
               <SetupStyleSelect value={draft.setupStyle} onChange={set("setupStyle")} />
@@ -298,6 +305,7 @@ export function NewPlanDialog({
               </Field>
             ) : null}
           </div>
+          )}
 
           {sourcePlan && outsideCount > 0 ? (
             <p className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">

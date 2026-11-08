@@ -24,6 +24,7 @@ import { getUser } from "@/lib/supabase/user";
 import { listDesignObjects } from "@/lib/supabase/design_objects";
 import { createFloorPlan, getFloorPlan, saveFloorPlan, updateFloorPlan } from "@/lib/supabase/floor_plans";
 import {
+  BOOTH_CATEGORY,
   alignInstances,
   arrayInstances,
   catalogById as indexCatalog,
@@ -32,7 +33,10 @@ import {
   distributeInstances,
   duplicateInstances,
   gridStepFor,
+  isBooth,
+  nextBoothLabel,
   nextTableLabel,
+  numberNewBooths,
   nudgeStepFor,
   planContent,
   planStats,
@@ -52,11 +56,11 @@ import { LibraryPanel } from "./library_panel";
 import { MultiInspector, ObjectInspector, RoomInspector } from "./inspector_panel";
 import { StatusBar } from "./status_bar";
 import { usePlanHistory } from "./use_plan_history";
-import { EDITOR_EXTENSIONS } from "./extensions";
+import { extensionsFor } from "./extensions";
 
 // The floor plan editor: header (name, setup style, extension slots incl. Share, Save) → library | canvas | inspector → status dock.
 
-const KIND_LABEL = { template: "Template", library: "Venue diagram" };
+const KIND_LABEL = { template: "Template", library: "Venue diagram", expo: "Expo hall" };
 
 const metaOf = (p) => ({
   name: p.name,
@@ -178,7 +182,11 @@ export function FloorPlanEditor({ planId, onBack, backLabel = "Floor Plans", onS
     setPlan(result);
     setSaved({ doc: JSON.stringify(sentDoc), meta: JSON.stringify(sentMeta) });
     onSaved?.(result);
-    toast.success(`Saved · version ${result.version}`);
+    if (result.boothSync === "failed") {
+      toast.error(`Saved version ${result.version}, but the booths didn't reach sales — save again to retry.`);
+    } else {
+      toast.success(`Saved · version ${result.version}`);
+    }
     return true;
   };
 
@@ -247,7 +255,12 @@ export function FloorPlanEditor({ planId, onBack, backLabel = "Floor Plans", onS
         y += 0.5;
       }
     }
-    const label = object.category === "tables" && object.seats > 0 ? nextTableLabel(doc.objects) : "";
+    const label =
+      object.category === BOOTH_CATEGORY
+        ? nextBoothLabel(doc.objects)
+        : object.category === "tables" && object.seats > 0
+          ? nextTableLabel(doc.objects)
+          : "";
     const instance = createInstance(object, { x, y, label });
     history.apply((d) => ({ ...d, objects: [...d.objects, instance] }));
     setSelection([instance.id]);
@@ -262,7 +275,8 @@ export function FloorPlanEditor({ planId, onBack, backLabel = "Floor Plans", onS
     if (!selection.length) return;
     const step = gridStepFor(doc.unit);
     const { objects, ids } = duplicateInstances(doc.objects, selection, step, step);
-    history.apply((d) => ({ ...d, objects }));
+    const source = selectedObjects.find(isBooth);
+    history.apply((d) => ({ ...d, objects: source ? numberNewBooths(objects, ids, source.label) : objects }));
     setSelection(ids);
   };
 
@@ -278,7 +292,8 @@ export function FloorPlanEditor({ planId, onBack, backLabel = "Floor Plans", onS
     const source = selectedObjects[0];
     if (!source) return;
     const { objects, ids } = arrayInstances(doc.objects, source.id, opts);
-    history.apply((d) => ({ ...d, objects }));
+    const numbered = isBooth(source) ? numberNewBooths(objects, ids.slice(1), source.label) : objects;
+    history.apply((d) => ({ ...d, objects: numbered }));
     setSelection(ids);
     toast.success(`Laid out ${ids.length}.`);
   };
@@ -390,6 +405,8 @@ export function FloorPlanEditor({ planId, onBack, backLabel = "Floor Plans", onS
   };
   // `apply` is the undoable change path (history.apply); `select` focuses objects.
   const extProps = { plan, doc, selectedIds: selection, flaggedIds, space, dirty, save, apply: history.apply, select: focusIds };
+  const extensions = extensionsFor(plan.kind);
+  const isExpo = plan.kind === "expo";
   const leave = () => (dirty ? setLeaveOpen(true) : onBack());
 
   const selectedSingle = selectedObjects.length === 1 ? selectedObjects[0] : null;
@@ -416,13 +433,15 @@ export function FloorPlanEditor({ planId, onBack, backLabel = "Floor Plans", onS
         }
         actions={
           <>
-            <div className="w-44">
-              <SetupStyleSelect
-                value={doc.setupStyle}
-                onChange={(v) => history.apply((d) => ({ ...d, setupStyle: v }))}
-              />
-            </div>
-            {EDITOR_EXTENSIONS.map((ext) => (ext.HeaderAction ? <ext.HeaderAction key={ext.key} {...extProps} /> : null))}
+            {isExpo ? null : (
+              <div className="w-44">
+                <SetupStyleSelect
+                  value={doc.setupStyle}
+                  onChange={(v) => history.apply((d) => ({ ...d, setupStyle: v }))}
+                />
+              </div>
+            )}
+            {extensions.map((ext) => (ext.HeaderAction ? <ext.HeaderAction key={ext.key} {...extProps} /> : null))}
             <ActionMenu
               label="More plan actions"
               items={[
@@ -471,17 +490,17 @@ export function FloorPlanEditor({ planId, onBack, backLabel = "Floor Plans", onS
               onDropObject={(objectId, point) => addObject(catalogIndex.get(objectId), point)}
               rendererRef={rendererRef}
               extensionOverlay={
-                EDITOR_EXTENSIONS.some((e) => e.CanvasOverlay)
+                extensions.some((e) => e.CanvasOverlay)
                   ? (view) =>
-                      EDITOR_EXTENSIONS.map((ext) =>
+                      extensions.map((ext) =>
                         ext.CanvasOverlay ? <ext.CanvasOverlay key={ext.key} {...extProps} view={view} /> : null,
                       )
                   : null
               }
               extensionHud={
-                EDITOR_EXTENSIONS.some((e) => e.CanvasHud)
+                extensions.some((e) => e.CanvasHud)
                   ? (view) =>
-                      EDITOR_EXTENSIONS.map((ext) =>
+                      extensions.map((ext) =>
                         ext.CanvasHud ? <ext.CanvasHud key={ext.key} {...extProps} view={view} /> : null,
                       )
                   : null
@@ -534,7 +553,7 @@ export function FloorPlanEditor({ planId, onBack, backLabel = "Floor Plans", onS
                 </div>
               </>
             )}
-            {EDITOR_EXTENSIONS.map((ext) =>
+            {extensions.map((ext) =>
               ext.InspectorSection ? <ext.InspectorSection key={ext.key} {...extProps} /> : null,
             )}
           </aside>
@@ -545,11 +564,12 @@ export function FloorPlanEditor({ planId, onBack, backLabel = "Floor Plans", onS
           unit={doc.unit}
           setupStyle={doc.setupStyle}
           capacity={capacity}
+          showSeats={!isExpo}
           dirty={dirty}
           version={plan.version}
           saving={saving}
           onSelectIds={focusIds}
-          extra={EDITOR_EXTENSIONS.map((ext) => (ext.StatusItem ? <ext.StatusItem key={ext.key} {...extProps} /> : null))}
+          extra={extensions.map((ext) => (ext.StatusItem ? <ext.StatusItem key={ext.key} {...extProps} /> : null))}
         />
       </div>
 

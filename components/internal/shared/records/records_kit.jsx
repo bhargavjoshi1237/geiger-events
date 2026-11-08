@@ -271,7 +271,8 @@ export function RecordDetail({ mod, record, onBack, onUpdate, onDelete }) {
   );
 }
 
-export function RecordsScreen({ mod, api }) {
+// `headerActions` leads the header's action row (e.g. a screen's own view switcher).
+export function RecordsScreen({ mod, api, headerActions = null }) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -507,7 +508,8 @@ export function RecordsScreen({ mod, api }) {
         title={mod.title}
         description={mod.description}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {headerActions}
             {mod.settingsAction ? (
               <mod.settingsAction api={api} projectId={projectId} />
             ) : null}

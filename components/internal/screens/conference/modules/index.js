@@ -4,9 +4,9 @@
 // field panels). Every module is backed by events.conference_records,
 // discriminated by `key`.
 //
-// Bespoke screens (Agenda Builder, Floor Plan & Booths) live
+// Bespoke screens (Agenda Builder, Floor Plan & Booths, Expo Booths) live
 // in their own files. Assign Agenda is a module here that reuses the "session"
-// records; Floor Plan reuses the "booth" records.
+// records.
 //
 // Column/stat/filter/field factories are shared (records/builders.jsx); the
 // helpers specific to this area (media section, schedule label, presence sum)
@@ -15,7 +15,6 @@
 import { SPEAKER_MODULE } from "./speaker";
 import { SPONSOR_MODULE } from "./sponsor";
 import { PACKAGE_MODULE } from "./package";
-import { BOOTH_MODULE } from "./booth";
 import { VENUE_LEAD_MODULE } from "./venue_lead";
 import { HOUSING_MODULE } from "./housing";
 import { PAPER_MODULE } from "./paper";
@@ -37,7 +36,6 @@ export const MODULES = {
   speaker: SPEAKER_MODULE,
   sponsor: SPONSOR_MODULE,
   package: PACKAGE_MODULE,
-  booth: BOOTH_MODULE,
   venue_lead: VENUE_LEAD_MODULE,
   housing: HOUSING_MODULE,
   paper: PAPER_MODULE,

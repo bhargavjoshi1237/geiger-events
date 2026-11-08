@@ -75,6 +75,8 @@ export function PlaygroundWorkspaceUrlProvider({ children }) {
       closeVenue: () => apply({ venue: null, section: null }),
       openRecord: (id) => apply({ record: id, section: null }),
       closeRecord: () => apply({ record: null, section: null }),
+      openRecordInTab: (id, tab) =>
+        apply({ tab, record: id, event: null, section: null, workflow: null, venue: null }),
     }),
     [state, apply],
   );

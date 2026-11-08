@@ -5,6 +5,7 @@ import {
   Music,
   Presentation,
   Speaker,
+  Store,
   UtensilsCrossed,
   Wine,
 } from "lucide-react";
@@ -22,6 +23,7 @@ export const CATEGORY_ICONS = {
   av: Speaker,
   decor: Flower2,
   structure: DoorOpen,
+  expo: Store,
 };
 
 export const PLAN_STATUS_MAP = {

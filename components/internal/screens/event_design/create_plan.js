@@ -3,12 +3,13 @@
 import { getUser } from "@/lib/supabase/user";
 import { copyFloorPlan, createFloorPlan } from "@/lib/supabase/floor_plans";
 
-// New plan from a template / library diagram (objects keep absolute positions) or a blank room.
-export async function createPlanFrom(input, { projectId, kind = "plan" } = {}) {
+// New plan from a template / library diagram (objects keep absolute positions) or a blank room; `hallMapId` links an expo hall.
+export async function createPlanFrom(input, { projectId, kind = "plan", hallMapId = null } = {}) {
   const user = await getUser();
   const base = {
     projectId,
     kind,
+    hallMapId,
     name: input.name,
     venueId: input.venueId ?? null,
     venueSpaceId: input.venueSpaceId ?? null,

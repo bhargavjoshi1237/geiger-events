@@ -7,11 +7,13 @@ import { conferenceApi } from "@/lib/supabase/conference";
 import { MODULES } from "./modules";
 
 // Bespoke screens that outgrow the flat record list live in their own files and
-// are re-exported here: Agenda Builder (event → schedule) and Floor Plan & Booths
-// (interactive expo map).
+// are re-exported here: Agenda Builder (event → schedule), Floor Plan & Booths
+// (expo halls in the Event Design editor) and Expo Booths (sellable booths + edit
+// page).
 export { AgendaBuilderScreen } from "./agenda_builder";
 export { DisplayBoardsScreen } from "./display_boards";
-export { FloorPlanScreen } from "./floor_plan";
+export { ExpoHallsScreen } from "./expo_halls";
+export { ExpoBoothsScreen } from "./expo_booths";
 export { CaptionsTranscriptionScreen } from "./captions";
 export { VenueSourcingScreen } from "./venue_sourcing";
 export { HousingTravelScreen } from "./housing_travel";
@@ -32,7 +34,6 @@ const screen = (key) => {
 export const SpeakersScreen = screen("speaker");
 export const SponsorsScreen = screen("sponsor");
 export const SponsorshipPackagesScreen = screen("package");
-export const ExpoBoothsScreen = screen("booth");
 export const CallForPapersScreen = screen("paper");
 export const CertificatesScreen = screen("certificate");
 export const RecordingsScreen = screen("recording");

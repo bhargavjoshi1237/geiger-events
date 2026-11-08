@@ -40,6 +40,7 @@ export const CATEGORY_TONE = {
   av: "fill-cyan-400/15 stroke-cyan-600/70 dark:stroke-cyan-400/70",
   decor: "fill-lime-400/20 stroke-lime-700/60 dark:stroke-lime-400/60",
   structure: "fill-zinc-400/40 stroke-zinc-600 dark:fill-zinc-500/40 dark:stroke-zinc-400",
+  expo: "fill-orange-400/15 stroke-orange-600/70 dark:stroke-orange-400/70",
 };
 
 const NSS = "non-scaling-stroke";
