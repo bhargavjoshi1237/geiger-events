@@ -1,3 +1,4 @@
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -56,7 +57,9 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
     }, 2000);
     void auth
       .getSession()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Offline with an expired token resolves null plus a retryable error; supabase-js keeps the session, so leave state to the fallback/onAuthStateChange.
+        if (error && isAuthRetryableFetchError(error)) return;
         settled = true;
         clearTimeout(timer);
         if (!active) return;
