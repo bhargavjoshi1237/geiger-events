@@ -11,8 +11,10 @@ import { EventCover } from "@/components/EventCover";
 import { ScreenTitle } from "@/components/ScreenTitle";
 import { ShareTicketSheet } from "@/components/ShareTicketSheet";
 import { TicketQr } from "@/components/TicketQr";
+import { TeamCard } from "@/components/TeamCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
@@ -35,10 +37,11 @@ import {
   pluralize,
 } from "@/lib/format";
 import { ORDER_STATUS, statusPill } from "@/lib/status";
+import { useAppConfig } from "@/state/app_config";
 import { usePortalData } from "@/state/data";
 import { useSession } from "@/state/session";
 import { colors, radius, spacing, type } from "@/theme/tokens";
-import type { Entitlement, LiveRoom, Ticket } from "@/types/portal";
+import type { AppSection, Entitlement, LiveRoom, Ticket } from "@/types/portal";
 
 const stagger = (i: number) => Math.min(i, 11) * 40;
 
@@ -46,6 +49,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { member } = useSession();
   const { data, live, channels, counts } = usePortalData();
+  const { home, isOn } = useAppConfig();
 
   const nextTicket = useMemo(() => {
     const upcoming = (data?.tickets || [])
@@ -104,6 +108,14 @@ export default function HomeScreen() {
         <HomeSkeleton />
       ) : (
         <Animated.View layout={LinearTransition} style={styles.stack}>
+          {home.welcome ? (
+            <Card tone="subtle">
+              <Text style={styles.welcome}>{home.welcome}</Text>
+            </Card>
+          ) : null}
+
+          <TeamCard />
+
           {nextTicket ? (
             <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
               {eventDay ? (
@@ -136,7 +148,7 @@ export default function HomeScreen() {
             />
           )}
 
-          {liveRoom ? (
+          {liveRoom && home.liveStrip && isOn("live") ? (
             <Animated.View entering={FadeInDown.delay(stagger(1)).springify()}>
               <LiveStrip room={liveRoom} onPress={() => router.push(`/live/${liveRoom.id}`)} />
             </Animated.View>
@@ -151,17 +163,24 @@ export default function HomeScreen() {
             </Animated.View>
           ) : null}
 
-          <Animated.View entering={FadeInDown.delay(stagger(3)).springify()}>
-            <Shortcuts
-              chats={chatCount}
-              chatsUnread={chatUnread}
-              watch={counts.watch || 0}
-              plan={activePlan?.planName || null}
-              onGo={(href) => router.push(href as Href)}
-            />
-          </Animated.View>
+          {home.shortcuts.length ? (
+            <Animated.View entering={FadeInDown.delay(stagger(3)).springify()}>
+              <Shortcuts
+                keys={home.shortcuts}
+                counts={{
+                  chats: chatCount,
+                  chatsUnread: chatUnread,
+                  watch: counts.watch || 0,
+                  plan: activePlan?.planName || null,
+                  liveNow: counts.liveNow || 0,
+                  orders: counts.orders || 0,
+                }}
+                onGo={(href) => router.push(href)}
+              />
+            </Animated.View>
+          ) : null}
 
-          {recentOrders.length ? (
+          {recentOrders.length > 0 && home.recentOrders && isOn("orders") ? (
             <Animated.View entering={FadeInDown.delay(stagger(4)).springify()}>
               <SectionTitle
                 action={
@@ -421,51 +440,82 @@ function ActionRow({
   );
 }
 
-type Shortcut = {
-  href: string;
-  icon: IconName;
-  label: string;
-  value: string;
-};
-
-// The design brief calls Home "next event, live, shortcuts" — this is the third.
-function Shortcuts({
-  chats,
-  chatsUnread,
-  watch,
-  plan,
-  onGo,
-}: {
+type ShortcutCounts = {
   chats: number;
   chatsUnread: number;
   watch: number;
   plan: string | null;
-  onGo: (href: string) => void;
-}) {
-  const items: Shortcut[] = [
-    {
-      href: "/community",
-      icon: "message-circle",
-      label: "Group chat",
-      value: chatsUnread
-        ? `${chatsUnread} unread`
-        : chats
-          ? `${chats} ${pluralize(chats, "chat", "chats")}`
+  liveNow: number;
+  orders: number;
+};
+
+type ShortcutMeta = {
+  href: Href;
+  icon: IconName;
+  label: string;
+  value: (c: ShortcutCounts) => string;
+};
+
+// Sections an organiser can pin to Home; keys match SHORTCUT_KEYS in lib/app_config/model.js.
+const SHORTCUTS: Partial<Record<AppSection, ShortcutMeta>> = {
+  community: {
+    href: "/community",
+    icon: "message-circle",
+    label: "Group chat",
+    value: (c) =>
+      c.chatsUnread
+        ? `${c.chatsUnread} unread`
+        : c.chats
+          ? `${c.chats} ${pluralize(c.chats, "chat", "chats")}`
           : "No chats yet",
-    },
-    {
-      href: "/watch",
-      icon: "circle-play",
-      label: "Watch",
-      value: watch ? `${watch} ${pluralize(watch, "video", "videos")}` : "Nothing yet",
-    },
-    {
-      href: "/memberships",
-      icon: "award",
-      label: "Membership",
-      value: plan || "Not a member",
-    },
-  ];
+  },
+  watch: {
+    href: "/watch",
+    icon: "circle-play",
+    label: "Watch",
+    value: (c) => (c.watch ? `${c.watch} ${pluralize(c.watch, "video", "videos")}` : "Nothing yet"),
+  },
+  memberships: {
+    href: "/memberships",
+    icon: "award",
+    label: "Membership",
+    value: (c) => c.plan || "Not a member",
+  },
+  live: {
+    href: "/live",
+    icon: "radio",
+    label: "Live",
+    value: (c) => (c.liveNow ? `${c.liveNow} live now` : "Nothing live"),
+  },
+  orders: {
+    href: "/orders",
+    icon: "shopping-bag",
+    label: "Orders",
+    value: (c) => (c.orders ? `${c.orders} ${pluralize(c.orders, "order", "orders")}` : "No orders yet"),
+  },
+  qa: {
+    href: "/qa",
+    icon: "circle-question-mark",
+    label: "Q&A",
+    value: () => "Ask the organisers",
+  },
+};
+
+// The design brief calls Home "next event, live, shortcuts" — this is the third, chosen per project in Branded App.
+function Shortcuts({
+  keys,
+  counts,
+  onGo,
+}: {
+  keys: AppSection[];
+  counts: ShortcutCounts;
+  onGo: (href: Href) => void;
+}) {
+  const items = keys.flatMap((key) => {
+    const meta = SHORTCUTS[key];
+    return meta ? [{ key, ...meta, valueText: meta.value(counts) }] : [];
+  });
+  if (!items.length) return null;
 
   return (
     <View>
@@ -478,9 +528,9 @@ function Shortcuts({
       >
         {items.map((s) => (
           <Pressable
-            key={s.href}
+            key={s.key}
             accessibilityRole="button"
-            accessibilityLabel={`${s.label}, ${s.value}`}
+            accessibilityLabel={`${s.label}, ${s.valueText}`}
             onPress={() => onGo(s.href)}
             style={({ pressed }) => [styles.shortcut, pressed && styles.pressed]}
           >
@@ -490,7 +540,7 @@ function Shortcuts({
                 {s.label}
               </Text>
               <Text style={styles.shortcutValue} numberOfLines={1}>
-                {s.value}
+                {s.valueText}
               </Text>
             </View>
           </Pressable>
@@ -532,6 +582,10 @@ function LiveStrip({ room, onPress }: { room: LiveRoom; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  welcome: {
+    ...type.body,
+    color: colors.foreground,
+  },
   stack: {
     gap: spacing.xl,
   },

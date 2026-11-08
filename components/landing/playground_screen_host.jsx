@@ -7,7 +7,7 @@ import { ComingSoonScreen } from "@/components/internal/screens/coming_soon";
 
 // The resolved screen, or the same Coming Soon fallback the workspace uses for a
 // nav item without one. `demo` is passed to every screen: the ones that support
-// it (Insights, Floor Plan & Booths, Mobile Event App, Real-time Attendance…)
+// it (Insights, Floor Plan & Booths, Real-time Attendance…)
 // self-seed sample data and skip fetching; the rest ignore it and render their
 // real empty states, since the playground has no project.
 function ScreenSlot({ Screen, activeItem }) {

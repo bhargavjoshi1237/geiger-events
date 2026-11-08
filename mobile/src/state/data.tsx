@@ -9,6 +9,7 @@ import React, {
 } from "react";
 
 import { api } from "@/lib/api";
+import { useAppConfig } from "@/state/app_config";
 import { useSession } from "@/state/session";
 import type {
   Channel,
@@ -70,6 +71,7 @@ const PortalDataContext = createContext<PortalDataState | null>(null);
 
 export function PortalDataProvider({ children }: { children: React.ReactNode }) {
   const { status, token, member } = useSession();
+  const { isOn } = useAppConfig();
   const [data, setData] = useState<PortalData | null>(null);
   const [plans, setPlans] = useState<PlansState>(EMPTY_PLANS);
   const [watch, setWatch] = useState<WatchItem[] | null>(null);
@@ -211,23 +213,24 @@ export function PortalDataProvider({ children }: { children: React.ReactNode }) 
   }, [token]);
 
   const counts = useMemo<Counts>(() => {
-    const unreadThreads = (threads || []).filter((t) => t.unread).length;
-    const unreadChats = [...(channels || []), ...(qaChannels || [])].reduce(
-      (sum, c) => sum + (c.unread || 0),
-      0,
-    );
+    const unreadThreads = isOn("messages") ? (threads || []).filter((t) => t.unread).length : 0;
+    const unreadNotes = isOn("notifications") ? notifications.unread : 0;
+    const unreadChats = [
+      ...(isOn("community") ? channels || [] : []),
+      ...(isOn("qa") ? qaChannels || [] : []),
+    ].reduce((sum, c) => sum + (c.unread || 0), 0);
     return {
       tickets: data?.tickets?.length || null,
       orders: data?.orders?.length || null,
       memberships: data?.memberships?.length || null,
       watch: watch?.length || null,
       messages: unreadThreads || null,
-      notifications: notifications.unread || null,
+      notifications: unreadNotes || null,
       chats: unreadChats || null,
-      inbox: unreadThreads + notifications.unread + unreadChats || null,
+      inbox: unreadThreads + unreadNotes + unreadChats || null,
       liveNow: (live || []).filter((r) => r.openNow).length || null,
     };
-  }, [data, watch, threads, notifications, live, channels, qaChannels]);
+  }, [data, watch, threads, notifications, live, channels, qaChannels, isOn]);
 
   const value = useMemo(
     () => ({

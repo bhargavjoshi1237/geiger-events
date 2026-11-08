@@ -7,12 +7,11 @@ import { conferenceApi } from "@/lib/supabase/conference";
 import { MODULES } from "./modules";
 
 // Bespoke screens that outgrow the flat record list live in their own files and
-// are re-exported here: Agenda Builder (event → schedule), Floor Plan & Booths
-// (interactive expo map), Mobile Event App (singleton config + live preview).
+// are re-exported here: Agenda Builder (event → schedule) and Floor Plan & Booths
+// (interactive expo map).
 export { AgendaBuilderScreen } from "./agenda_builder";
 export { DisplayBoardsScreen } from "./display_boards";
 export { FloorPlanScreen } from "./floor_plan";
-export { MobileAppScreen } from "./mobile_app";
 export { CaptionsTranscriptionScreen } from "./captions";
 export { VenueSourcingScreen } from "./venue_sourcing";
 export { HousingTravelScreen } from "./housing_travel";

@@ -1,9 +1,10 @@
 # Geiger Events — members mobile app
 
 Expo SDK 57 / React Native 0.86 / React 19 / expo-router v57, **TypeScript**.
-This app is the buyer-facing members app. It is a **client of the Next.js portal
-API** in the parent directory (`../app/api/portal/*`) — it never talks to
-Supabase directly except for the chat Realtime subscription.
+This app is the buyer-facing members app, plus **Control** for event teams. It is a
+**client of the Next.js API** in the parent directory (`../app/api/portal/*` for
+attendees, `../app/api/control/*` for Control). It never queries Supabase directly;
+the only Supabase use is **Auth** for the team sign-in (`src/lib/team_auth.ts`).
 
 ## Non-negotiables
 
@@ -79,6 +80,9 @@ relative path.
 - Every request sends `x-geiger-client: mobile`.
 - A `401` from any call means the session is gone: clear the token and send the
   user to `(auth)/sign-in`.
+- Control uses a **separate** team session (Supabase Auth, chunked into SecureStore)
+  sent as the Bearer token to `/api/control/*` via `src/lib/control_api.ts`. A 401
+  there never signs the attendee out, and the attendee token is never sent to Control.
 - Server view models are already camelCase. Do not re-map them.
 
 ## Motion

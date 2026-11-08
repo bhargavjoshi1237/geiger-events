@@ -11,6 +11,7 @@ import Animated, {
 import { Icon, type IconName } from "@/components/ui/icons";
 import { selectionFeedback } from "@/lib/haptics";
 import { usePortalData } from "@/state/data";
+import { useAppConfig } from "@/state/app_config";
 import { colors, fonts, spacing, spring, type } from "@/theme/tokens";
 
 export const TAB_BAR_HEIGHT = 62;
@@ -34,9 +35,11 @@ const tabOf = (routeName: string) => routeName.split("/")[0];
 
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const { counts } = usePortalData();
+  const { isOn } = useAppConfig();
 
   type TabEntry = { tab: (typeof TAB_ORDER)[number]; route: (typeof state.routes)[number] };
-  const visible = TAB_ORDER.map((tab) => {
+  // Home, Tickets, Inbox and More are the app's frame; only Memberships is a section an organiser can switch off.
+  const visible = TAB_ORDER.filter((tab) => tab !== "memberships" || isOn("memberships")).map((tab) => {
     const route =
       state.routes.find((r) => r.name === `${tab}/index`) ||
       state.routes.find((r) => r.name === tab);

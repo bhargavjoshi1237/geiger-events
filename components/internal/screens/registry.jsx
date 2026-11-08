@@ -121,7 +121,6 @@ import {
   CaptionsTranscriptionScreen,
   AssignAgendaScreen,
   FloorPlanScreen,
-  MobileAppScreen,
 } from "./conference/screens";
 import {
   PollsScreen,
@@ -421,10 +420,9 @@ export const SCREEN_REGISTRY = {
   "Simulive & On-demand": SimuliveOnDemandScreen,
   "Captions & Transcription": CaptionsTranscriptionScreen,
   // Assign Agenda — a record module (curate sessions + assign to a targeted
-  // guest audience, Community-style). Floor Plan & Mobile App are bespoke files.
+  // guest audience, Community-style). Floor Plan is a bespoke file.
   "Assign Agenda": AssignAgendaScreen,
   "Floor Plan & Booths": FloorPlanScreen,
-  "Mobile Event App": MobileAppScreen,
   "Branded App": BrandedAppScreen,
 
   // Community area — engagement records (events.community_records) + live chat.

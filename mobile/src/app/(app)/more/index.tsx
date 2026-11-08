@@ -1,8 +1,9 @@
 import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Icon } from "@/components/ui/icons";
+import { Icon, type IconName } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { IconTile } from "@/components/ui/IconTile";
@@ -11,14 +12,23 @@ import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
-import { firstName } from "@/lib/format";
+import { teamOrgsLabel } from "@/lib/control_hint";
+import { firstName, pluralize } from "@/lib/format";
+import { SUITE_ORIGIN } from "@/lib/team_auth";
+import { useControl } from "@/state/control";
+import { useAppConfig } from "@/state/app_config";
 import { usePortalData } from "@/state/data";
 import { useSession } from "@/state/session";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
+type MoreRow = { key: string; icon: IconName; title: string; trailing?: React.ReactNode; href: Href };
+
+const when = (on: boolean, row: MoreRow): MoreRow[] => (on ? [row] : []);
+
 export default function MoreScreen() {
   const router = useRouter();
   const { counts, data } = usePortalData();
+  const { isOn } = useAppConfig();
   const { member, signOut, pushStatus, setPushEnabled } = useSession();
   const { success, error } = useToast();
   const [confirmOut, setConfirmOut] = useState(false);
@@ -37,6 +47,55 @@ export default function MoreScreen() {
     }
     success(next ? "Push notifications on." : "Push notifications off.");
   };
+
+  const library: MoreRow[] = [
+    ...when(isOn("memberships"), {
+      key: "memberships",
+      icon: "award",
+      title: "Memberships",
+      trailing: activePlan ? <Trailing label={activePlan.planName} /> : null,
+      href: "/memberships",
+    }),
+    ...when(isOn("orders"), {
+      key: "orders",
+      icon: "shopping-bag",
+      title: "Orders & receipts",
+      trailing: counts.orders ? <Trailing label={String(counts.orders)} /> : null,
+      href: "/orders",
+    }),
+    ...when(isOn("watch"), {
+      key: "watch",
+      icon: "circle-play",
+      title: "Watch library",
+      trailing: counts.watch ? <Trailing label={String(counts.watch)} /> : null,
+      href: "/watch",
+    }),
+    ...when(isOn("qa"), { key: "qa", icon: "circle-question-mark", title: "Q&A threads", href: "/qa" }),
+  ];
+
+  const conversations: MoreRow[] = [
+    ...when(isOn("community"), {
+      key: "community",
+      icon: "message-circle",
+      title: "Group chats",
+      trailing: counts.chats ? <Badge value={counts.chats} /> : null,
+      href: "/community",
+    }),
+    ...when(isOn("messages"), {
+      key: "messages",
+      icon: "mail",
+      title: "Organiser messages",
+      trailing: counts.messages ? <Badge value={counts.messages} /> : null,
+      href: "/messages",
+    }),
+    ...when(isOn("notifications"), {
+      key: "notifications",
+      icon: "bell",
+      title: "Updates",
+      trailing: counts.notifications ? <Badge value={counts.notifications} /> : null,
+      href: "/notifications",
+    }),
+  ];
 
   return (
     <Screen scroll>
@@ -58,54 +117,9 @@ export default function MoreScreen() {
         <Icon name="chevron-right" size={19} color={colors.textTertiary} />
       </Pressable>
 
-      <View style={styles.group}>
-        <ListRow
-          leading={<IconTile icon="award" size={34} />}
-          title="Memberships"
-          trailing={activePlan ? <Trailing label={activePlan.planName} /> : null}
-          onPress={() => router.push("/memberships")}
-        />
-        <ListRow
-          leading={<IconTile icon="shopping-bag" size={34} />}
-          title="Orders & receipts"
-          trailing={counts.orders ? <Trailing label={String(counts.orders)} /> : null}
-          onPress={() => router.push("/orders")}
-        />
-        <ListRow
-          leading={<IconTile icon="circle-play" size={34} />}
-          title="Watch library"
-          trailing={counts.watch ? <Trailing label={String(counts.watch)} /> : null}
-          onPress={() => router.push("/watch")}
-        />
-        <ListRow
-          leading={<IconTile icon="circle-question-mark" size={34} />}
-          title="Q&A threads"
-          onPress={() => router.push("/qa")}
-          divider={false}
-        />
-      </View>
-
-      <View style={styles.group}>
-        <ListRow
-          leading={<IconTile icon="message-circle" size={34} />}
-          title="Group chats"
-          trailing={counts.chats ? <Badge value={counts.chats} /> : null}
-          onPress={() => router.push("/community")}
-        />
-        <ListRow
-          leading={<IconTile icon="mail" size={34} />}
-          title="Organiser messages"
-          trailing={counts.messages ? <Badge value={counts.messages} /> : null}
-          onPress={() => router.push("/messages")}
-        />
-        <ListRow
-          leading={<IconTile icon="bell" size={34} />}
-          title="Updates"
-          trailing={counts.notifications ? <Badge value={counts.notifications} /> : null}
-          onPress={() => router.push("/notifications")}
-          divider={false}
-        />
-      </View>
+      <TeamEntry />
+      <RowGroup rows={library} onGo={(href) => router.push(href)} />
+      <RowGroup rows={conversations} onGo={(href) => router.push(href)} />
 
       <View style={styles.group}>
         <ListRow
@@ -160,6 +174,71 @@ export default function MoreScreen() {
         </View>
       </Sheet>
     </Screen>
+  );
+}
+
+// Only a hint until the team account signs in; tapping it never unlocks Control on the attendee session alone.
+function TeamEntry() {
+  const router = useRouter();
+  const { teamStatus, hint, profile, setMode } = useControl();
+
+  let row: { title: string; subtitle: string; onPress: () => void } | null = null;
+  if (teamStatus === "signedIn") {
+    const count = profile?.projects.length ?? 0;
+    row = {
+      title: "Switch to Control",
+      subtitle: count ? `${count} ${pluralize(count, "project", "projects")}` : "Run your events from here",
+      onPress: () => {
+        void setMode("control").then(() => {
+          if (router.canDismiss()) router.dismissAll();
+          router.replace("/control");
+        });
+      },
+    };
+  } else if (hint?.team.available) {
+    row = {
+      title: "Sign in to Control",
+      subtitle: `You're on the team at ${teamOrgsLabel(hint)}`,
+      onPress: () => router.push("/team-sign-in"),
+    };
+  } else if (hint?.team.invited) {
+    row = {
+      title: "Team invitation waiting",
+      subtitle: "Accept it on geiger.studio, then sign in to Control here",
+      onPress: () => void Linking.openURL(SUITE_ORIGIN),
+    };
+  }
+  if (!row) return null;
+
+  return (
+    <View style={styles.group}>
+      <ListRow
+        leading={<IconTile icon="briefcase" size={34} />}
+        title={row.title}
+        subtitle={row.subtitle}
+        onPress={row.onPress}
+        divider={false}
+      />
+    </View>
+  );
+}
+
+// An organiser can switch every row of a group off, so an empty group renders nothing.
+function RowGroup({ rows, onGo }: { rows: MoreRow[]; onGo: (href: Href) => void }) {
+  if (!rows.length) return null;
+  return (
+    <View style={styles.group}>
+      {rows.map((row, i) => (
+        <ListRow
+          key={row.key}
+          leading={<IconTile icon={row.icon} size={34} />}
+          title={row.title}
+          trailing={row.trailing}
+          onPress={() => onGo(row.href)}
+          divider={i < rows.length - 1}
+        />
+      ))}
+    </View>
   );
 }
 

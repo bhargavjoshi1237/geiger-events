@@ -5,13 +5,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DockedPlayer } from "@/components/DockedPlayer";
 import { TAB_BAR_HEIGHT, TabBar } from "@/components/TabBar";
+import { useControl } from "@/state/control";
 import { useSession } from "@/state/session";
 import { spacing } from "@/theme/tokens";
 
 export default function AppLayout() {
   const { status } = useSession();
+  const { teamStatus } = useControl();
   const insets = useSafeAreaInsets();
-  if (status === "guest") return <Redirect href="/(auth)/sign-in" />;
+  if (status === "guest") {
+    return <Redirect href={teamStatus === "signedIn" ? "/control" : "/(auth)/sign-in"} />;
+  }
 
   return (
     <>

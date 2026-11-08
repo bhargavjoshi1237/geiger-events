@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-// The mobile app's web preview calls the portal API cross-origin, so these
+// The mobile app's web preview calls the portal and Control APIs cross-origin, so these
 // routes answer preflights and send CORS headers. Native apps are unaffected.
+// Control is Bearer-only, so Access-Control-Allow-Credentials must never be added here.
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
@@ -22,5 +23,10 @@ export default function proxy(request) {
 
 // Both variants: dev has no basePath, prod serves under /events.
 export const config = {
-  matcher: ["/api/portal/:path*", "/events/api/portal/:path*"],
+  matcher: [
+    "/api/portal/:path*",
+    "/events/api/portal/:path*",
+    "/api/control/:path*",
+    "/events/api/control/:path*",
+  ],
 };
