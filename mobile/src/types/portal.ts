@@ -264,3 +264,45 @@ export type AppConfig = {
     shortcuts: AppSection[];
   };
 };
+
+export type RolesHint = {
+  team: {
+    available: boolean;
+    invited: boolean;
+    organizations: { id: string | null; name: string; projectCount: number }[];
+  };
+  crew: { eventId: string; eventName: string; eventDate: string | null; roles: string[] }[];
+};
+
+export type ControlCapability = "events" | "checkIn" | "guests" | "orders" | "analytics" | "operations";
+
+export type ControlProject = {
+  id: string;
+  name: string;
+  organizationName: string | null;
+  role: { key: string; name: string } | null;
+  can: Record<ControlCapability, boolean>;
+};
+
+export type ControlProfile = { projects: ControlProject[] };
+
+export type ControlEvent = {
+  id: string;
+  name: string;
+  status: string;
+  date: string | null;
+  time: string | null;
+  venue: string | null;
+  city: string | null;
+  timezone: string;
+  capacity: number;
+  sold: number;
+  coverUrl: string | null;
+  when: "today" | "upcoming" | "unscheduled" | "past";
+};
+
+export type ControlEventDetail = {
+  event: ControlEvent;
+  projectId: string;
+  can: Record<ControlCapability, boolean>;
+};

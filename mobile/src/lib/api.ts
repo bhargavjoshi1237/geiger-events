@@ -15,6 +15,8 @@ type ApiInit = {
   body?: unknown;
   token?: string;
   signal?: AbortSignal;
+  // Control calls carry the team token; their 401 must not sign the attendee out.
+  onUnauthorized?: "signOut" | "ignore";
 };
 
 let unauthorizedHandler: (() => void) | null = null;
@@ -56,7 +58,7 @@ export async function api<T>(
 
   const data = parseJson<T>(await res.text().catch(() => "{}"));
   if (res.status === 401) {
-    unauthorizedHandler?.();
+    if (init.onUnauthorized !== "ignore") unauthorizedHandler?.();
     return { ok: false, error: errorText(data), status: 401 };
   }
   if (!res.ok) {
