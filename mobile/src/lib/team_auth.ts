@@ -15,7 +15,8 @@ const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || text(extr
 export const SUITE_ORIGIN = (text(extra.suiteOrigin) || "https://geiger.studio").replace(/\/+$/, "");
 
 // Must match MOBILE_STATE_PREFIX / MOBILE_RETURN in ../../lib/desktop/handoff_link.js.
-const STATE_PREFIX = "m_";
+const STATE_PREFIX = "mobile_";
+const SESSION_KEY = "geiger.team.session";
 const RETURN_URL = "geigerevents://team-auth";
 
 export const teamAuthConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -25,7 +26,7 @@ export const teamAuth = teamAuthConfigured
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         storage: Platform.OS === "web" ? undefined : secureChunkStorage,
-        storageKey: "geiger.team.session",
+        storageKey: SESSION_KEY,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
@@ -47,33 +48,55 @@ const NOT_CONFIGURED: TeamAuthResult = { ok: false, error: "Team sign-in isn't s
 
 export async function signInWithPassword(email: string, password: string): Promise<TeamAuthResult> {
   if (!teamAuth) return NOT_CONFIGURED;
-  const { error } = await teamAuth.signInWithPassword({ email: email.trim(), password });
-  if (!error) return { ok: true };
-  return {
-    ok: false,
-    error:
-      error.status === 400
-        ? "That email and password don't match a Geiger account."
-        : "Couldn't sign in. Check your connection and try again.",
-  };
+  try {
+    const { error } = await teamAuth.signInWithPassword({ email: email.trim(), password });
+    if (!error) return { ok: true };
+    return {
+      ok: false,
+      error:
+        error.status === 400
+          ? "That email and password don't match a Geiger account."
+          : "Couldn't sign in. Check your connection and try again.",
+    };
+  } catch {
+    return { ok: false, error: "Couldn't sign in. Check your connection and try again." };
+  }
 }
 
 // Google, GitHub, SSO and passkeys all run on geiger.studio; the desktop handoff mints a one-time token and deep-links it back here.
 export async function signInWithBrowser(): Promise<TeamAuthResult> {
   if (!teamAuth) return NOT_CONFIGURED;
-  const state = `${STATE_PREFIX}${Crypto.randomUUID().replace(/-/g, "")}${Crypto.randomUUID().slice(0, 8)}`;
-  const url = `${SUITE_ORIGIN}/events/desktop/handoff?state=${encodeURIComponent(state)}`;
-  const result = await WebBrowser.openAuthSessionAsync(url, RETURN_URL);
-  if (result.type !== "success") return { ok: false, error: "" };
+  try {
+    const state = `${STATE_PREFIX}${Crypto.randomUUID().replace(/-/g, "")}${Crypto.randomUUID().slice(0, 8)}`;
+    const url = `${SUITE_ORIGIN}/events/desktop/handoff?state=${encodeURIComponent(state)}`;
+    const result = await WebBrowser.openAuthSessionAsync(url, RETURN_URL);
+    if (result.type !== "success") return { ok: false, error: "" };
 
-  const params = new URL(result.url).searchParams;
-  if (params.get("state") !== state) return { ok: false, error: "That sign-in didn't come from this request. Try again." };
-  const tokenHash = params.get("token_hash");
-  if (params.get("error") || !tokenHash) return { ok: false, error: "The browser sign-in didn't finish. Try again." };
+    const params = new URL(result.url).searchParams;
+    if (params.get("state") !== state) return { ok: false, error: "That sign-in didn't come from this request. Try again." };
+    const tokenHash = params.get("token_hash");
+    if (params.get("error") || !tokenHash) return { ok: false, error: "The browser sign-in didn't finish. Try again." };
 
-  const { data, error } = await teamAuth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
-  if (error || !data.session) return { ok: false, error: "That sign-in link expired. Try again." };
-  return { ok: true };
+    const { data, error } = await teamAuth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
+    if (error || !data.session) return { ok: false, error: "That sign-in link expired. Try again." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "The browser sign-in didn't finish. Try again." };
+  }
+}
+
+// Reads the persisted session without a network call, so startup can show the last-known user while a refresh is slow.
+export async function storedTeamUser(): Promise<{ id: string; email: string | null } | null> {
+  if (Platform.OS === "web") return null;
+  try {
+    const raw = await secureChunkStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const user = (JSON.parse(raw) as { user?: { id?: unknown; email?: unknown } } | null)?.user;
+    if (!user || typeof user.id !== "string" || !user.id) return null;
+    return { id: user.id, email: typeof user.email === "string" ? user.email : null };
+  } catch {
+    return null;
+  }
 }
 
 export async function signOutTeam(): Promise<void> {

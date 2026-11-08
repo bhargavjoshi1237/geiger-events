@@ -7,7 +7,7 @@
 **Architecture:**
 - **Detection.** `/api/portal/roles` runs on the attendee session and only hints; it grants nothing. It uses a `service_role`-only SQL function for suite membership by email, plus `ops_identity_links` for crew.
 - **Team identity.** It is a separate Supabase Auth session in the app, used for Auth only. It is sent as a Bearer token to new `/api/control/*` routes. Those routes reuse the operations stack: `resolveStaffPrincipal`, verified org membership, and `@geiger/rbac` `evaluate`.
-- **Browser sign-in.** It reuses the desktop `/events/desktop/handoff`. An `m_` state prefix makes the return page deep-link to `geigerevents://team-auth`.
+- **Browser sign-in.** It reuses the desktop `/events/desktop/handoff`. A `mobile_` state prefix makes the return page deep-link to `geigerevents://team-auth`.
 - **Mode.** The mode is persisted on the device. The root route picks attendee or Control.
 
 **Tech Stack:** Next.js 16 route handlers (plain JS), Supabase (SQL function, Auth), `@geiger/rbac`, Expo SDK 57 / expo-router / TypeScript strict, `@supabase/supabase-js` (already a mobile dependency), `expo-web-browser`, `expo-secure-store`, `expo-crypto` (new).
@@ -1178,7 +1178,7 @@ Expected: `401`.
 
 **Interfaces:**
 - Produces:
-  - `MOBILE_STATE_PREFIX = "m_"`
+  - `MOBILE_STATE_PREFIX = "mobile_"`
   - `MOBILE_RETURN = "geigerevents://team-auth"`
   - `handoffDeepLink({ error, tokenHash, type, state, email }) → string`
 
@@ -1200,16 +1200,16 @@ test("desktop states keep returning to the desktop shell", () => {
   assert.equal(new URLSearchParams(link.split("?")[1]).get("token_hash"), "th");
 });
 
-test("an m_ state returns to the mobile app", () => {
-  const link = handoffDeepLink({ ...ok, state: `m_${"b".repeat(40)}` });
+test("a mobile_ state returns to the mobile app", () => {
+  const link = handoffDeepLink({ ...ok, state: `mobile_${"b".repeat(40)}` });
   assert.ok(link.startsWith("geigerevents://team-auth?"));
   const params = new URLSearchParams(link.split("?")[1]);
-  assert.equal(params.get("state"), `m_${"b".repeat(40)}`);
+  assert.equal(params.get("state"), `mobile_${"b".repeat(40)}`);
   assert.equal(params.get("type"), "magiclink");
 });
 
 test("errors carry only the error and state", () => {
-  const link = handoffDeepLink({ error: "mint_failed", tokenHash: "", type: "", email: "", state: `m_${"c".repeat(40)}` });
+  const link = handoffDeepLink({ error: "mint_failed", tokenHash: "", type: "", email: "", state: `mobile_${"c".repeat(40)}` });
   const params = new URLSearchParams(link.split("?")[1]);
   assert.deepEqual([...params.keys()].sort(), ["error", "state"]);
 });
@@ -1227,8 +1227,8 @@ Create `lib/desktop/handoff_link.js`:
 ```js
 import { DEEP_LINK_SCHEME } from "./config.js";
 
-// The mobile app starts its browser sign-in with an "m_" state, so the same handoff (and dash's next= allowlist) can return to it.
-export const MOBILE_STATE_PREFIX = "m_";
+// The mobile app starts its browser sign-in with an "mobile_" state, so the same handoff (and dash's next= allowlist) can return to it.
+export const MOBILE_STATE_PREFIX = "mobile_";
 export const MOBILE_RETURN = "geigerevents://team-auth";
 
 export function handoffDeepLink(handoff) {
@@ -1391,7 +1391,7 @@ const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || text(extr
 export const SUITE_ORIGIN = (text(extra.suiteOrigin) || "https://geiger.studio").replace(/\/+$/, "");
 
 // Must match MOBILE_STATE_PREFIX / MOBILE_RETURN in ../../lib/desktop/handoff_link.js.
-const STATE_PREFIX = "m_";
+const STATE_PREFIX = "mobile_";
 const RETURN_URL = "geigerevents://team-auth";
 
 export const teamAuthConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
