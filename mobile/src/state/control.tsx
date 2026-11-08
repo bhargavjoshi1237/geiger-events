@@ -44,9 +44,21 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
     const auth = team.teamAuth;
     if (!auth) return;
     let active = true;
+    let settled = false;
+    // supabase-js can spend ~30s refreshing an expired session offline, so show the stored user after 2s.
+    const timer = setTimeout(() => {
+      void team.storedTeamUser().then((user) => {
+        if (!active || settled) return;
+        setTeamEmail(user?.email ?? null);
+        setTeamUserId(user?.id ?? null);
+        setTeamStatus(user ? "signedIn" : "signedOut");
+      });
+    }, 2000);
     void auth
       .getSession()
       .then(({ data }) => {
+        settled = true;
+        clearTimeout(timer);
         if (!active) return;
         setTeamEmail(data.session?.user.email ?? null);
         setTeamUserId(data.session?.user.id ?? null);
@@ -54,6 +66,8 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         // A failed read counts as signed out so the splash never hangs.
+        settled = true;
+        clearTimeout(timer);
         if (!active) return;
         setTeamEmail(null);
         setTeamUserId(null);
@@ -66,6 +80,7 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
     });
     return () => {
       active = false;
+      clearTimeout(timer);
       data.subscription.unsubscribe();
     };
   }, []);
