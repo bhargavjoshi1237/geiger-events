@@ -4,7 +4,7 @@
 // field panels). Every module is backed by events.conference_records,
 // discriminated by `key`.
 //
-// Bespoke screens (Agenda Builder, Floor Plan & Booths, Mobile Event App) live
+// Bespoke screens (Agenda Builder, Floor Plan & Booths) live
 // in their own files. Assign Agenda is a module here that reuses the "session"
 // records; Floor Plan reuses the "booth" records.
 //
