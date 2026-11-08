@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { CircleAlert, CircleCheck, Compass } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
-import { DEEP_LINK_SCHEME, suiteUrl } from "@/lib/desktop/config";
+import { suiteUrl } from "@/lib/desktop/config";
+import { handoffDeepLink } from "@/lib/desktop/handoff_link";
 import { DesktopLoading, DesktopShell, StatePanel, useHydrated } from "./desktop_states";
 
 // The handoff route puts the result in the fragment; null when there's nothing to hand over.
@@ -22,16 +23,9 @@ function readHandoff() {
   };
 }
 
-function deepLinkFor(handoff) {
-  const query = handoff.error
-    ? { error: handoff.error, state: handoff.state }
-    : { token_hash: handoff.tokenHash, type: handoff.type, state: handoff.state, email: handoff.email };
-  return `${DEEP_LINK_SCHEME}://auth?${new URLSearchParams(query).toString()}`;
-}
-
 function ReturnContent() {
   const [handoff] = useState(readHandoff);
-  const deepLink = handoff ? deepLinkFor(handoff) : "";
+  const deepLink = handoff ? handoffDeepLink(handoff) : "";
   // Strict mode re-runs effects; the app should only be opened once.
   const firedRef = useRef(false);
 
