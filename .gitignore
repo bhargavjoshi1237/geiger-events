@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Meta/Instagram publishing token (never commit)
+studio meta token.txt
+
 # vercel
 .vercel
 

@@ -1,0 +1,49 @@
+name: Instagram drip
+
+# Instagram has no native scheduling in its API, so this workflow is the
+# scheduler: it runs at the three posting slots and publishes at most one due
+# post per run. Queue state lives in Supabase Storage, so runs never commit to
+# the repo.
+
+on:
+  schedule:
+    # 09:00, 13:00 and 18:00 UTC - the same slots build.mjs schedules into.
+    - cron: "0 9,13,18 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print the next due post without publishing"
+        type: boolean
+        default: false
+      limit:
+        description: "Maximum posts this run (1-10)"
+        type: string
+        default: "1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: instagram-drip
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Publish due post
+        run: node marketing/ads/instagram/publish.mjs --due --limit "$LIMIT" $DRY_RUN
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LIMIT: ${{ inputs.limit || '1' }}
+          DRY_RUN: ${{ inputs.dry_run == true && '--dry-run' || '' }}
