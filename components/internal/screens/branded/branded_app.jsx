@@ -246,15 +246,23 @@ export function BrandedAppScreen() {
     setSaveState("saving");
     // Chain saves so an older payload can never land after a newer one.
     inflightRef.current = inflightRef.current.then(async () => {
-      const saved = await saveAppConfig(projectId, next, { userId: userIdRef.current });
-      const active = activeProjectRef.current === projectId;
-      // A newer edit is queued, or the project changed; neither should touch this status.
-      const newerQueued = Boolean(pendingRef.current);
-      // Keep a failed payload so the next edit or the unmount flush retries it (same project only).
-      if (!saved && active && !newerQueued) pendingRef.current = next;
-      if (!active || newerQueued) return;
-      setSaveState(saved ? "saved" : "error");
-      if (!saved) toast.error("Couldn't save the app settings.");
+      // Never let a throw leave the chain rejected, or every later save would be skipped.
+      try {
+        const saved = await saveAppConfig(projectId, next, { userId: userIdRef.current });
+        const active = activeProjectRef.current === projectId;
+        // A newer edit is queued, or the project changed; neither should touch this status.
+        const newerQueued = Boolean(pendingRef.current);
+        // Keep a failed payload so the next edit or the unmount flush retries it (same project only).
+        if (!saved && active && !newerQueued) pendingRef.current = next;
+        if (!active || newerQueued) return;
+        setSaveState(saved ? "saved" : "error");
+        if (!saved) toast.error("Couldn't save the app settings.");
+      } catch {
+        if (activeProjectRef.current === projectId && !pendingRef.current) {
+          pendingRef.current = next;
+          setSaveState("error");
+        }
+      }
     });
     await inflightRef.current;
   }, [projectId]);
@@ -301,7 +309,11 @@ export function BrandedAppScreen() {
           title="Couldn't load the app settings"
           description="Your saved settings are untouched. Check your connection and try again."
           action={
-            <Button type="button" variant="secondary" onClick={() => setReloadKey((k) => k + 1)}>
+            <Button type="button" variant="secondary" onClick={() => {
+                // Back to the loader while the retry is in flight.
+                setLoaded({ projectId: undefined, config: null, failed: false });
+                setReloadKey((k) => k + 1);
+              }}>
               Try again
             </Button>
           }
