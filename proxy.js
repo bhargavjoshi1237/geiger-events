@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 // The mobile app's web preview calls the portal and Control APIs cross-origin, so these
 // routes answer preflights and send CORS headers. Native apps are unaffected.
+// Control is Bearer-only, so Access-Control-Allow-Credentials must never be added here.
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",

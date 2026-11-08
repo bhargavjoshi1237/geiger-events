@@ -24,5 +24,7 @@ export async function GET() {
     for (const row of data || []) configured.set(row.project_id, row.config);
   }
 
-  return NextResponse.json(mergeForMember(projectIds.map((id) => configured.get(id) ?? null)));
+  return NextResponse.json(mergeForMember(projectIds.map((id) => configured.get(id) ?? null)), {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
