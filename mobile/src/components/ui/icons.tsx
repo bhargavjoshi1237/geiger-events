@@ -5,6 +5,7 @@ import Bell from "lucide-react-native/icons/bell";
 import BellOff from "lucide-react-native/icons/bell-off";
 import Briefcase from "lucide-react-native/icons/briefcase";
 import Calendar from "lucide-react-native/icons/calendar";
+import ChartColumn from "lucide-react-native/icons/chart-column";
 import Check from "lucide-react-native/icons/check";
 import ChevronLeft from "lucide-react-native/icons/chevron-left";
 import ChevronRight from "lucide-react-native/icons/chevron-right";
@@ -67,6 +68,7 @@ export const ICONS = {
   "bell-off": BellOff,
   briefcase: Briefcase,
   calendar: Calendar,
+  "chart-column": ChartColumn,
   check: Check,
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
