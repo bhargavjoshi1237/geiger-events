@@ -5,7 +5,7 @@ import { AlertTriangle, CircleAlert, Info, Loader2, RotateCcw, Upload } from "lu
 import {
   Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Label,
 } from "@geiger/ui";
-import { SectionCard } from "@/components/internal/shared/screen_kit";
+import { SectionCard } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 import { formatDateTime, timeAgo } from "../state/format";
 

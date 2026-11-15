@@ -4,21 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarX2, CheckCircle2, FileQuestion, Loader2, Lock, MailCheck, RotateCw } from "lucide-react";
-import { Button } from "@geiger/ui";
+import { Button, Card, EmptyState } from "@geiger/ui";
 import { CodeSignIn } from "@/components/workspace_portal/render/code_sign_in";
 import { usePortalApp } from "./portal_app";
 
-function FullScreen({ icon: Icon, title, text, children }) {
-  return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-6 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-surface-subtle text-text-secondary"><Icon className="h-7 w-7" /></div>
-      <div className="grid gap-1">
-        <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-        <p className="max-w-sm text-sm text-text-secondary">{text}</p>
-      </div>
-      {children}
-    </div>
-  );
+function FullScreen({ icon, title, text, children }) {
+  return <EmptyState className="min-h-[100dvh]" icon={icon} title={title} description={text} action={children} />;
 }
 
 export function ClosedScreen({ error, onRetry }) {
@@ -41,17 +32,8 @@ export function MissingScreen() {
 }
 
 // Inside the shell: a centred message with an optional action.
-export function Notice({ icon: Icon = FileQuestion, title, text, children }) {
-  return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-16 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface-card text-text-secondary"><Icon className="h-6 w-6" /></div>
-      <div className="grid gap-1">
-        <h1 className="text-base font-semibold text-foreground">{title}</h1>
-        {text ? <p className="text-sm text-text-secondary">{text}</p> : null}
-      </div>
-      {children}
-    </div>
-  );
+export function Notice({ icon = FileQuestion, title, text, children }) {
+  return <EmptyState icon={icon} title={title} description={text} action={children} />;
 }
 
 export function NotFound() {
@@ -104,7 +86,7 @@ export function SignInScreen({ next }) {
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sign in</h1>
         <p className="whitespace-pre-line text-sm text-text-secondary">{welcome || `Use your email to open your space for ${event?.name ?? "this event"}. We'll send you a code — no password needed.`}</p>
       </div>
-      <div className="rounded-xl border border-border bg-surface-card p-5">
+      <Card className="gap-0 p-5 shadow-none">
         {done ? (
           <div className="flex items-center gap-2 text-sm text-text-secondary"><Loader2 className="h-4 w-4 animate-spin" />Opening your space…</div>
         ) : (
@@ -114,7 +96,7 @@ export function SignInScreen({ next }) {
             router.push(target);
           }} />
         )}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -145,11 +127,11 @@ export function InviteScreen({ token }) {
         <p className="text-sm text-text-secondary">The organisers of {event?.name ?? "this event"} invited you to their portal.</p>
       </div>
       {state.error ? (
-        <div className="grid gap-4 rounded-xl border border-border bg-surface-card p-5">
+        <Card className="gap-4 p-5 shadow-none">
           <p className="text-sm text-foreground">{state.error.message}</p>
           <p className="text-sm text-text-secondary">You can still sign in with a code sent to your email.</p>
           <Button asChild variant="outline"><Link href={href("sign-in")}>Sign in with email</Link></Button>
-        </div>
+        </Card>
       ) : (
         <Button size="lg" onClick={accept} disabled={state.busy}>
           {state.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Continue to {event?.name ?? "the portal"}

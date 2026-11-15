@@ -2,16 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertCircle, ArrowDown, ArrowUp, Check, Copy, ExternalLink, Loader2, Monitor, MoreHorizontal, Settings2, Smartphone, Trash2, Users, X,
+  AlertCircle, ArrowDown, ArrowUp, Check, Copy, ExternalLink, Loader2, Monitor, Settings2, Smartphone, Trash2, Users, X,
 } from "lucide-react";
 import {
-  Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, IconPicker, Input, Label, LogoLoading, LucideIcon, Popover, PopoverContent,
-  PopoverTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, ToggleGroup, ToggleGroupItem,
+  ActionMenu, Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  IconPicker, Input, Label, LoadingArea, LucideIcon, Popover, PopoverContent,
+  PopoverTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Textarea, ToggleGroup, ToggleGroupItem,
 } from "@geiger/ui";
 import { toast } from "sonner";
-import { SegmentedTabs, Toolbar } from "@/components/internal/shared/screen_kit";
+import { SegmentedTabs } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
+import { PortalPageHeader } from "@/components/workspace_portal/render/page_header";
+import { PageToolbar } from "../shell/page";
 import { workspaceApi } from "@/lib/workspace/client";
 import { BLOCK_KINDS, defaultBlockConfig } from "@/lib/workspace/portal/blocks.js";
 import { toBlocks, toCanvas } from "@/lib/workspace/portal/pages.js";
@@ -118,6 +120,27 @@ function PageSettings({ open, onOpenChange, draft, page, eventId, onSave }) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// The heading at the top of a page: on by default, with an optional different title and a description.
+function PageHeading({ header, title, onChange }) {
+  const set = (patch) => onChange({ ...header, ...patch });
+  return (
+    <div className="grid gap-2.5">
+      <label className="flex items-center justify-between gap-3">
+        <span className="grid gap-0.5"><span className="text-xs font-medium text-text-secondary">Page heading</span>
+          <span className="text-xs text-text-tertiary">Turn off when a Welcome block opens the page.</span></span>
+        <Switch checked={!header.hidden} onCheckedChange={(on) => set({ hidden: !on })} />
+      </label>
+      {!header.hidden ? (
+        <>
+          <Input value={header.title ?? ""} maxLength={120} placeholder={title} aria-label="Heading" onChange={(e) => set({ title: e.target.value })} />
+          <Textarea rows={3} value={header.description ?? ""} maxLength={600} placeholder="A sentence under the heading (optional)" aria-label="Description"
+            onChange={(e) => set({ description: e.target.value })} />
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -247,7 +270,7 @@ export function PageEditor({ eventId, ws, portal, page, toolbar, movable, onMove
 
   let preview;
   if (page.kind === "record" && !sample) preview = <p className="py-16 text-center text-sm text-text-secondary">Add a record to {object?.plural ?? "this list"} to preview its page.</p>;
-  else if (!data && !view.error) preview = <div className="flex justify-center py-20"><LogoLoading size={48} aria-label="Loading preview" /></div>;
+  else if (!data && !view.error) preview = <LoadingArea size={48} label="Loading preview" className="py-20" />;
   else if (view.error && fresh) {
     preview = <p className="py-16 text-center text-sm text-text-secondary">{view.error.code === "not_found" ? "This role or person can't open this record." : view.error.message}</p>;
   } else {
@@ -271,45 +294,45 @@ export function PageEditor({ eventId, ws, portal, page, toolbar, movable, onMove
   const blockMeta = selectedBlock ? BLOCK_KINDS[selectedBlock.kind] : null;
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
-      <Toolbar className="sm:flex-wrap">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <PageToolbar>
         {toolbar}
-        <div className="flex flex-wrap items-center gap-2 sm:ml-auto sm:justify-end">
-          <span className="inline-flex items-center gap-1.5 text-xs text-text-tertiary">
+        <div className="flex items-center gap-2">
+          <span className="hidden shrink-0 items-center gap-1.5 text-xs text-text-tertiary xl:inline-flex">
             {save.state === "saving" ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Saving</> : save.state === "dirty" ? "Unsaved"
               : save.state === "error" ? <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400"><AlertCircle className="h-3.5 w-3.5" />Not saved</span>
                 : <><Check className="h-3.5 w-3.5" />Saved to draft</>}
           </span>
           {page.kind === "record" && object ? <SampleRecord eventId={eventId} objectId={object.id} value={sample} onChange={setSample} /> : null}
           <PreviewAs portal={portal} value={as} onChange={setAs} allowTeam={Boolean(draft.audience?.team)} />
-          <SegmentedTabs className="w-auto" value={mode} onChange={setMode} tabs={[{ label: "Edit", value: "edit" }, { label: "Try it", value: "preview" }]} />
-          <ToggleGroup type="single" variant="outline" size="sm" value={device} onValueChange={(value) => value && setDevice(value)} aria-label="Preview width">
+          <SegmentedTabs className="w-auto shrink-0" value={mode} onChange={setMode} tabs={[{ label: "Edit", value: "edit" }, { label: "Try it", value: "preview" }]} />
+          <ToggleGroup type="single" variant="outline" size="sm" className="shrink-0" value={device} onValueChange={(value) => value && setDevice(value)} aria-label="Preview width">
             <ToggleGroupItem value="desktop" aria-label="Desktop width"><Monitor /></ToggleGroupItem>
             <ToggleGroupItem value="phone" aria-label="Phone width"><Smartphone /></ToggleGroupItem>
           </ToggleGroup>
         </div>
-      </Toolbar>
+      </PageToolbar>
 
       {save.state === "error" ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm">
+        <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-red-500/30 bg-red-500/5 px-4 py-2 text-sm sm:px-6">
           <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
           <span className="min-w-0 flex-1 text-foreground">{save.error?.message}</span>
           {save.error?.code === "revision_conflict" ? <Button size="sm" variant="outline" onClick={async () => { await reload(); onReset?.(); }}>Reload</Button> : null}
         </div>
       ) : null}
 
-      <div className="flex min-w-0 flex-col overflow-clip rounded-xl border border-border bg-background xl:flex-row">
-        <div className="min-w-0 flex-1 bg-surface-subtle p-3 sm:p-5">
-          <div className={cn("mx-auto min-w-0 rounded-lg border border-border bg-background p-4 sm:p-6", device === "phone" ? "max-w-[390px] p-3 sm:p-4" : "max-w-6xl")}>
-            {page.kind === "page" && !editing ? <h1 className="mb-5 text-2xl font-semibold tracking-tight text-foreground">{draft.title}</h1> : null}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+        <div className="scrollbar-subtle min-w-0 flex-1 bg-surface-subtle px-3 py-5 sm:px-5 sm:py-6 lg:min-h-0 lg:overflow-auto">
+          <div className={cn("mx-auto min-w-0 overflow-hidden rounded-xl border border-border bg-background shadow-lg", device === "phone" ? "max-w-[390px] p-3 sm:p-4" : "max-w-6xl p-4 sm:p-6")}>
+            {page.kind === "page" ? <PortalPageHeader page={livePage} eventName={ws.data?.event?.name} timeZone={ctx.timeZone} /> : null}
             {draft.layout === "canvas" && device === "phone" && mode === "edit" ? (
               <p className="mb-3 text-xs text-text-tertiary">On phones, canvas blocks stack top to bottom. Switch to desktop width to arrange them.</p>
             ) : null}
             {preview}
           </div>
         </div>
-        <div className="w-full shrink-0 border-t border-border xl:w-72 xl:border-l xl:border-t-0">
-          <aside className="xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-y-auto">
+        <div className="w-full shrink-0 border-t border-border/70 lg:w-[280px] lg:border-l lg:border-t-0">
+          <aside className="scrollbar-subtle lg:h-full lg:overflow-y-auto">
             {selectedBlock ? (
               <>
                 <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
@@ -320,14 +343,11 @@ export function PageEditor({ eventId, ws, portal, page, toolbar, movable, onMove
                     <span className="truncate text-sm font-semibold text-foreground">{blockMeta?.label ?? "Block"}</span>
                     {blockMeta?.hint ? <span className="truncate text-xs text-text-tertiary">{blockMeta.hint}</span> : null}
                   </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button size="icon-sm" variant="ghost" aria-label="Block options"><MoreHorizontal /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => { const next = duplicateBlock(draft.body, selectedBlock.id); change({ body: next.body }); setSelected(next.id); }}><Copy />Duplicate</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem variant="destructive" onSelect={() => { change({ body: removeBlock(draft.body, selectedBlock.id) }); setSelected(null); }}><Trash2 />Delete block</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <ActionMenu label="Block options" items={[
+                    { icon: Copy, label: "Duplicate", onSelect: () => { const next = duplicateBlock(draft.body, selectedBlock.id); change({ body: next.body }); setSelected(next.id); } },
+                    { separator: true },
+                    { icon: Trash2, label: "Delete block", destructive: true, onSelect: () => { change({ body: removeBlock(draft.body, selectedBlock.id) }); setSelected(null); } },
+                  ]} />
                   <Button size="icon-sm" variant="ghost" aria-label="Back to page" onClick={() => setSelected(null)}><X /></Button>
                 </div>
                 <div className="p-4">
@@ -345,22 +365,15 @@ export function PageEditor({ eventId, ws, portal, page, toolbar, movable, onMove
                     <span className="truncate text-sm font-semibold text-foreground">{draft.title}</span>
                     <span className="truncate text-xs text-text-tertiary">{page.kind === "record" ? `Record page · ${object?.name ?? "list"}` : `/${draft.slug}`}</span>
                   </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button size="icon-sm" variant="ghost" aria-label="Page options"><MoreHorizontal /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => setSettings(true)}><Settings2 />Page settings</DropdownMenuItem>
-                      {page.kind === "page" ? <DropdownMenuItem onSelect={() => window.open(`${portalUrl(eventId)}/${draft.slug}`, "_blank", "noopener")}><ExternalLink />Open live page</DropdownMenuItem> : null}
-                      {movable ? (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem disabled={!movable.up} onSelect={() => onMove?.(-1)}><ArrowUp />Move up</DropdownMenuItem>
-                          <DropdownMenuItem disabled={!movable.down} onSelect={() => onMove?.(1)}><ArrowDown />Move down</DropdownMenuItem>
-                        </>
-                      ) : null}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem variant="destructive" onSelect={remove}><Trash2 />{page.kind === "record" ? "Use the default record page" : "Delete page"}</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <ActionMenu label="Page options" contentClassName="w-56" items={[
+                    { icon: Settings2, label: "Page settings", onSelect: () => setSettings(true) },
+                    page.kind === "page" && { icon: ExternalLink, label: "Open live page", href: `${portalUrl(eventId)}/${draft.slug}` },
+                    movable && { separator: true },
+                    movable && { icon: ArrowUp, label: "Move up", disabled: !movable.up, onSelect: () => onMove?.(-1) },
+                    movable && { icon: ArrowDown, label: "Move down", disabled: !movable.down, onSelect: () => onMove?.(1) },
+                    { separator: true },
+                    { icon: Trash2, label: page.kind === "record" ? "Use the default record page" : "Delete page", destructive: true, onSelect: remove },
+                  ]} />
                 </div>
                 <div className="grid gap-5 p-4">
                   {page.kind === "page" ? (
@@ -368,6 +381,10 @@ export function PageEditor({ eventId, ws, portal, page, toolbar, movable, onMove
                       <p className="text-xs font-medium text-text-secondary">Who sees it</p>
                       <Audience audience={draft.audience} roles={portal.roles} onChange={(audience) => change({ audience })} />
                     </div>
+                  ) : null}
+                  {page.kind === "page" ? (
+                    <PageHeading header={draft.body.header ?? {}} title={draft.title}
+                      onChange={(header) => change({ body: { ...draft.body, header } })} />
                   ) : null}
                   <div className="grid gap-1.5">
                     <p className="text-xs font-medium text-text-secondary">Layout</p>

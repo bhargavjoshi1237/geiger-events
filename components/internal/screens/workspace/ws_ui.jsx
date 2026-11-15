@@ -1,13 +1,30 @@
 "use client";
 
+import { createElement } from "react";
 import { Check, Lock, Paperclip, Star } from "lucide-react";
 import { LucideIcon } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 import { workspaceApi } from "@/lib/workspace/client";
-import { OPTION_COLORS, optionOf, valueText } from "./state/format";
+import { OPTION_COLORS, optionOf, typeIcon, valueText } from "./state/format";
 
 export function ObjectIcon({ icon, className = "h-4 w-4" }) {
   return <LucideIcon name={icon || "database"} className={className} />;
+}
+
+// A field type's icon (the lookup returns a static lucide component).
+export function TypeIcon({ type, className = "h-3.5 w-3.5" }) {
+  return createElement(typeIcon(type), { className });
+}
+
+// One stable icon component per icon name, so nav items and header bars don't remount it on every render.
+const iconCache = new Map();
+export function iconFor(name) {
+  if (!iconCache.has(name)) {
+    const Icon = (props) => <LucideIcon name={name || "database"} {...props} />;
+    Icon.displayName = `WorkspaceIcon(${name})`;
+    iconCache.set(name, Icon);
+  }
+  return iconCache.get(name);
 }
 
 export function OptionChip({ option, className }) {

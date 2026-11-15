@@ -6,7 +6,8 @@ import {
   Badge, Button, Checkbox, Input, Label, LogoLoading, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Textarea,
 } from "@geiger/ui";
 import { toast } from "sonner";
-import { SearchInput, SectionCard, Toolbar } from "@/components/internal/shared/screen_kit";
+import { SearchInput, Toolbar } from "@/components/internal/shared/screen_kit";
+import { LoadingArea, SectionCard } from "@geiger/ui";
 import { BUILTIN_ROLES } from "@/lib/workspace/portal/contracts.js";
 import { timeAgo } from "../state/format";
 import { liveFieldsOf } from "../state/use_workspace";
@@ -169,7 +170,7 @@ function People({ portal }) {
   return (
     <SectionCard title="People" description="Invite links are personal, work once and last 7 days. People can always sign in with a code instead.">
       {!portal.portal?.peopleObjectId ? <p className="text-sm text-text-secondary">Choose the people list above first.</p> : rows === null ? (
-        <div className="flex justify-center py-8"><LogoLoading size={36} aria-label="Loading people" /></div>
+        <LoadingArea size={36} label="Loading people" className="py-8" />
       ) : (
         <div className="grid gap-3">
           <Toolbar>

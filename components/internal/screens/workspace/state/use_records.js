@@ -44,6 +44,17 @@ export function useRecords(eventId, objectId, spec, refresh) {
       ...current,
       rows: current.rows.map((row) => (row.id === record.id ? { ...row, ...record, links: row.links, computed: row.computed } : row)),
     })),
+    // Moves a row right after `afterId` (or before `beforeId`) with `patch` applied, ahead of the server confirming it.
+    placeRow: (recordId, patch, { afterId = null, beforeId = null } = {}) => setPage((current) => {
+      const row = current.rows.find((item) => item.id === recordId);
+      if (!row) return current;
+      const rest = current.rows.filter((item) => item.id !== recordId);
+      const after = afterId ? rest.findIndex((item) => item.id === afterId) : -1;
+      const before = beforeId ? rest.findIndex((item) => item.id === beforeId) : -1;
+      const at = after >= 0 ? after + 1 : before >= 0 ? before : current.rows.indexOf(row);
+      rest.splice(at, 0, { ...row, ...patch });
+      return { ...current, rows: rest };
+    }),
   };
 }
 

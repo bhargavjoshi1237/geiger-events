@@ -148,6 +148,18 @@ if (hasCommands) {
     const verify = (await import(script))[name];
     assertions += await verify({ db, one, all, project, otherProject, owner, viewer });
   }
+  // Board order shipped without an @up marker, so geiger-orm ran it whole (its @down too); the fix migration repairs that.
+  const boardFix = "20261121100000_workspace_board_order_fix.sql";
+  if (hasPortals && await readFile(new URL(`../supabase/migrations/${boardFix}`, import.meta.url)).then(() => true, () => false)) {
+    await apply("20261120100000_workspace_board_order.sql");
+    await apply(boardFix);
+    const text = await readFile(new URL(`../supabase/migrations/${boardFix}`, import.meta.url), "utf8");
+    await db.exec(text.split("-- @down")[1]);
+    eq(await one("select to_regclass('events.workspace_records_rank_idx') as t"), { t: null }, "board order fix down removes the rank index");
+    await apply(boardFix);
+    const { verifyBoardOrder } = await import("./verify-workspace-board-order-db.mjs");
+    assertions += await verifyBoardOrder({ db, one, project, owner });
+  }
 }
 
 console.log(`verify-workspace-db: ${assertions} assertions passed`);

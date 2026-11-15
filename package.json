@@ -16,11 +16,14 @@
     "ui:update": "npm update @geiger/ui"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@geiger/notify": "github:bhargavjoshi1237/geiger-notify#400b90fabefe15df2ef80bf7857d5b2228272277",
     "@geiger/orm": "github:bhargavjoshi1237/geiger-orm#master",
     "@geiger/pay": "github:bhargavjoshi1237/geiger-pay#6e95eff9cdc339440fcd7c9ac7bf783c2663d6bc",
     "@geiger/rbac": "github:bhargavjoshi1237/geiger-rbac#1835de3735cf9c86df5adebdbc7458dd4302e40d",
-    "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#1e33dcdb1c62f35d1be6675fc95c9f6612d7d950",
+    "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#d08898d7ecfecef486cfdb9d1f71b657271b23d1",
     "@jitl/quickjs-singlefile-cjs-release-sync": "^0.32.0",
     "@maplibre/maplibre-gl-leaflet": "^0.1.4",
     "@modelcontextprotocol/server": "^2.4.0",

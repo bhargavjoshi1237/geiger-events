@@ -2,13 +2,14 @@
 
 import { useRef, useState } from "react";
 import { Bold, Heading2, Heading3, Italic, Link2, List, Pilcrow, Plus, Trash2, X } from "lucide-react";
-import { Button, Input, Label, Textarea } from "@geiger/ui";
+import { Button, Checkbox, Input, Label, Textarea } from "@geiger/ui";
 import { SegmentedTabs } from "@/components/internal/shared/screen_kit";
 import { defaultBlockConfig } from "@/lib/workspace/portal/blocks.js";
 import { TOKENS } from "@/lib/workspace/portal/contracts.js";
 import { getType } from "@/lib/workspace/schema/types/index.js";
 import { localInputToUtc, utcToLocalInput } from "../state/format";
 import { Choice, FieldChoice, FieldList, fieldsOf, ListChoice, Row, RuleField, SortField, TextInput, Toggle } from "./inspector_controls";
+import { ButtonItemsEditor, DatesSettings, FactsSettings, HeroSettings, NoticeSettings, ScheduleViewSettings } from "./event_block_settings";
 
 const EXPOSABLE = new Set(["single_select", "multi_select", "checkbox", "date", "datetime", "short_text", "email", "number"]);
 const numeric = (field) => getType(field.type).cast === "numeric" || field.type === "rollup" || (field.type === "formula" && field.config.result === "number");
@@ -156,9 +157,12 @@ function ScheduleSettings(props) {
           <Row label="Flag a person in two places" hint="Optional: the link field that holds speakers or staff.">
             <FieldChoice ws={ctx.ws} objectId={objectId} value={config.peopleField} allowNone noneLabel="Don't check" test={(field) => field.type === "link_record"} onChange={(peopleField) => set({ ...config, peopleField })} />
           </Row>
-          <Row label="On each item"><FieldList ws={ctx.ws} objectId={objectId} value={config.fields ?? []} max={3} onChange={(fields) => set({ ...config, fields })} /></Row>
+          <ScheduleViewSettings ctx={ctx} config={config} set={set} />
+          <Row label="On each item" hint={config.view === "agenda" || config.view === "glance" ? "The first shows with a coloured dot, the second as a tag. Choice fields become filters." : undefined}>
+            <FieldList ws={ctx.ws} objectId={objectId} value={config.fields ?? []} max={3} onChange={(fields) => set({ ...config, fields })} />
+          </Row>
           <StartDate config={config} set={set} />
-          <Row label="Days at a time"><Choice value={String(config.days ?? 3)} onChange={(days) => set({ ...config, days: Number(days) })} options={[1, 2, 3, 4, 5, 7, 10, 14].map((n) => ({ value: String(n), label: String(n) }))} /></Row>
+          <Row label={config.view === "agenda" || config.view === "glance" ? "Days" : "Days at a time"}><Choice value={String(config.days ?? 3)} onChange={(days) => set({ ...config, days: Number(days) })} options={[1, 2, 3, 4, 5, 7, 10, 14].map((n) => ({ value: String(n), label: String(n) }))} /></Row>
           <Toggle label="Open records" checked={config.open} onChange={(open) => set({ ...config, open })} />
         </>
       ) : null}
@@ -332,7 +336,7 @@ function FormFields({ ctx, objectId, items, onChange, test = editable }) {
             {items.filter((item) => byId.has(item.fieldId)).map((item) => (
               <div key={item.fieldId} className="grid gap-1">
                 <label className="flex items-center gap-2 text-sm text-foreground">
-                  <input type="checkbox" checked={item.required} onChange={(e) => onChange(items.map((x) => (x.fieldId === item.fieldId ? { ...x, required: e.target.checked } : x)))} />
+                  <Checkbox checked={item.required} onCheckedChange={(on) => onChange(items.map((x) => (x.fieldId === item.fieldId ? { ...x, required: on === true } : x)))} />
                   {byId.get(item.fieldId).name} is required
                 </label>
                 <Input className="h-8" value={item.help ?? ""} maxLength={300} placeholder="Help text"
@@ -531,7 +535,7 @@ const TEXT_TOOLS = [
 ];
 
 // A small formatted-text editor: headings, bold, italic, lists and links. The server cleans the markup on save.
-function TextSettings({ config, set }) {
+function TextSettings({ config, set, align = true }) {
   const ref = useRef(null);
   const [initial] = useState(config.html ?? "");
   const exec = (command, value) => {
@@ -559,7 +563,12 @@ function TextSettings({ config, set }) {
           dangerouslySetInnerHTML={{ __html: initial }} onInput={(event) => set({ ...config, html: event.currentTarget.innerHTML })} />
       </div>
       <p className="text-xs text-text-tertiary">Use {"{{person.name}}"} and {"{{event.name}}"} to greet people by name.</p>
-      <Row label="Align"><SegmentedTabs className="w-auto" value={config.align ?? "left"} onChange={(align) => set({ ...config, align })} tabs={[{ label: "Left", value: "left" }, { label: "Centre", value: "center" }]} /></Row>
+      {align ? (
+        <>
+          <Row label="Align"><SegmentedTabs className="w-auto" value={config.align ?? "left"} onChange={(next) => set({ ...config, align: next })} tabs={[{ label: "Left", value: "left" }, { label: "Centre", value: "center" }]} /></Row>
+          <Toggle label="Show as a card" hint="A bordered box, e.g. for “Need help?”." checked={config.card} onChange={(card) => set({ ...config, card })} />
+        </>
+      ) : null}
     </>
   );
 }
@@ -577,24 +586,9 @@ function ImageSettings({ config, set }) {
 }
 
 function ButtonsSettings({ ctx, config, set }) {
-  const items = config.items ?? [];
-  const update = (index, patch) => set({ ...config, items: items.map((item, i) => (i === index ? { ...item, ...patch } : item)) });
-  const pages = ctx.pages.filter((page) => page.kind === "page");
   return (
     <>
-      {items.map((item, index) => (
-        <div key={index} className="grid gap-2 rounded-lg border border-border p-2.5">
-          <div className="flex items-center gap-2">
-            <Input className="h-8" value={item.label ?? ""} maxLength={40} placeholder="Label" onChange={(e) => update(index, { label: e.target.value })} />
-            <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="Remove" onClick={() => set({ ...config, items: items.filter((_, i) => i !== index) })}><Trash2 className="h-3.5 w-3.5" /></Button>
-          </div>
-          <SegmentedTabs className="w-auto" value={item.kind ?? "page"} onChange={(kind) => update(index, { kind, target: "" })} tabs={[{ label: "Page", value: "page" }, { label: "Website", value: "url" }]} />
-          {item.kind === "url" ? <TextInput value={item.target} maxLength={500} placeholder="https://… or mailto:…" onChange={(target) => update(index, { target })} />
-            : <Choice value={item.target || null} options={pages.map((page) => ({ value: page.slug, label: page.title }))} placeholder="Choose a page" onChange={(target) => update(index, { target })} />}
-          <SegmentedTabs className="w-auto" value={item.style ?? "primary"} onChange={(style) => update(index, { style })} tabs={[{ label: "Solid", value: "primary" }, { label: "Outline", value: "outline" }]} />
-        </div>
-      ))}
-      {items.length < 4 ? <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => set({ ...config, items: [...items, { label: "Open", kind: "page", target: "", style: "outline" }] })}><Plus className="h-4 w-4" />Add button</Button> : null}
+      <ButtonItemsEditor ctx={ctx} items={config.items ?? []} onChange={(items) => set({ ...config, items })} />
       <Row label="Align"><SegmentedTabs className="w-auto" value={config.align ?? "left"} onChange={(align) => set({ ...config, align })} tabs={[{ label: "Left", value: "left" }, { label: "Centre", value: "center" }]} /></Row>
     </>
   );
@@ -613,7 +607,12 @@ const SETTINGS = {
   table: TableSettings, cards: CardsSettings, board: BoardSettings, calendar: CalendarSettings, record: RecordSettings, form: FormSettings,
   stats: StatsSettings, chart: ChartSettings, text: TextSettings, image: ImageSettings, buttons: ButtonsSettings, divider: DividerSettings,
   schedule: ScheduleSettings, timeline: TimelineSettings, placement: PlacementSettings, scanner: ScannerSettings, pass: PassSettings, custom: CustomSettings,
+  hero: HeroSettings, notice: NoticeBlockSettings, facts: FactsSettings, dates: DatesSettings,
 };
+
+function NoticeBlockSettings(props) {
+  return <NoticeSettings {...props} TextEditor={TextSettings} />;
+}
 const TITLED = new Set(["table", "cards", "board", "calendar", "record", "form", "stats", "chart", "schedule", "timeline", "placement", "scanner", "pass", "custom"]);
 
 // The settings panel for the selected block. `ctx` carries the workspace, the page and the tokens rules may use.

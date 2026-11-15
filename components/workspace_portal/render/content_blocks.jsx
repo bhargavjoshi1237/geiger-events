@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpRight, ImageIcon } from "lucide-react";
-import { Button } from "@geiger/ui";
+import { Button, Card } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 import { fillVariables, usePortalView } from "./portal_context";
 
@@ -15,10 +15,12 @@ export const RICH_TEXT = cn(
 );
 
 // Builder-written text (cleaned on save) with {{event.name}} and {{person.name}} filled in.
-export function TextBlock({ block }) {
+export function TextBlock({ block, fill }) {
   const { session } = usePortalView();
   const html = fillVariables(block.config.html, { event: session?.event, person: session?.person ?? (session?.member ? { name: session.member.name } : null) });
-  return <div className={cn(RICH_TEXT, block.config.align === "center" && "text-center")} dangerouslySetInnerHTML={{ __html: html }} />;
+  const text = <div className={cn(RICH_TEXT, block.config.align === "center" && "text-center", block.config.card && "[&_h3]:text-[14.5px] [&_p]:text-[13.5px]")} dangerouslySetInnerHTML={{ __html: html }} />;
+  if (!block.config.card) return text;
+  return <Card className={cn("gap-0 rounded-2xl bg-surface-subtle px-5 py-[18px] shadow-none", fill && "@4xl/page:h-full")}>{text}</Card>;
 }
 
 export function ImageBlock({ block, fill }) {
@@ -47,14 +49,14 @@ export function ButtonsBlock({ block }) {
         const variant = item.style === "outline" ? "outline" : "default";
         if (item.kind === "url") {
           return (
-            <Button key={index} variant={variant} asChild>
+            <Button key={index} variant={variant} className="h-10 rounded-lg px-4" asChild>
               <a href={item.target || "#"} target={item.target?.startsWith("mailto:") ? undefined : "_blank"} rel="noopener noreferrer">
                 {item.label}{item.target?.startsWith("mailto:") ? null : <ArrowUpRight className="h-4 w-4" />}
               </a>
             </Button>
           );
         }
-        return <Button key={index} variant={variant} onClick={() => item.target && api.navigate?.(item.target)}>{item.label}</Button>;
+        return <Button key={index} variant={variant} className="h-10 rounded-lg px-4" onClick={() => item.target && api.navigate?.(item.target)}>{item.label}</Button>;
       })}
     </div>
   );

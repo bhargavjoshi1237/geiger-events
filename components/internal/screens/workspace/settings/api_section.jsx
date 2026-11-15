@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { Button } from "@geiger/ui";
-import { SectionCard } from "@/components/internal/shared/screen_kit";
+import { Button, SectionCard } from "@geiger/ui";
 import { API_BASE_URL } from "@/lib/api_webhooks/catalog";
 import { useProject } from "@/context/project-context";
 

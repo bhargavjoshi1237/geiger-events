@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowDownUp, Filter, Plus, Trash2, X } from "lucide-react";
+import { ArrowDownUp, Columns3, Filter, Plus, Save, Trash2, X } from "lucide-react";
 import {
-  Button, Checkbox, Input, Popover, PopoverContent, PopoverTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Badge, Button, Checkbox, Input, Popover, PopoverContent, PopoverTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@geiger/ui";
 import { CAST_OPERATORS } from "@/lib/workspace/contracts.js";
 import { FORMULA_RESULTS } from "@/lib/workspace/schema/types/computed.js";
 import { getType } from "@/lib/workspace/schema/types/index.js";
+import { cn } from "@/lib/utils";
 import { LIST_OPERATORS, NO_VALUE_OPERATORS, OPERATOR_LABELS } from "../state/format";
 import { OptionChip } from "../ws_ui";
 import { LinkPicker } from "../record/link_picker";
@@ -106,16 +107,19 @@ export function toApiFilter(node) {
   return items.length ? { op: node.op, items } : undefined;
 }
 
-export function FilterButton({ filter, onChange, fields, statuses, eventId, label = "Filter", intro = "Show records that match", emptyText = "No filters. Every record is shown.", align = "end" }) {
+export function FilterButton({ filter, onChange, fields, statuses, eventId, label = "Filter", intro = "Show records that match", emptyText = "No filters. Every record is shown.", align = "end", open, onOpenChange }) {
   const targets = filterTargets(fields);
   const node = filter ?? { op: "and", items: [] };
   const count = countConditions(node);
   const blank = () => ({ field: targets[0].id, operator: targets[0].operators[0] });
   const setItems = (items) => onChange(items.length ? { ...node, items } : null);
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="shrink-0"><Filter className="h-4 w-4" />{label}{count ? ` · ${count}` : ""}</Button>
+        <Button variant="outline" size="sm" className={cn("shrink-0", count && "border-border-strong bg-surface-card")}>
+          <Filter className="h-4 w-4" />{label}
+          {count ? <Badge variant="neutral" className="px-1.5 py-0 tabular-nums">{count}</Badge> : null}
+        </Button>
       </PopoverTrigger>
       <PopoverContent align={align} className="w-[min(40rem,calc(100vw-2rem))] space-y-3 p-3">
         {node.items.length ? (
@@ -162,7 +166,7 @@ export function FilterButton({ filter, onChange, fields, statuses, eventId, labe
   );
 }
 
-export function SortButton({ sort, onChange, fields }) {
+export function SortButton({ sort, onChange, fields, compact = false }) {
   const targets = [
     { id: "number", name: "Number" }, { id: "title", name: "Title" }, { id: "created_at", name: "Created" }, { id: "updated_at", name: "Last changed" },
     ...fields.filter((field) => !["link_record", "link_event", "multi_select", "attachments"].includes(field.type)).map((field) => ({ id: field.id, name: field.name })),
@@ -171,7 +175,11 @@ export function SortButton({ sort, onChange, fields }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="shrink-0"><ArrowDownUp className="h-4 w-4" />Sort{rows.length ? ` · ${rows.length}` : ""}</Button>
+        {compact ? (
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" aria-label="Sort" title="Sort"><ArrowDownUp className="h-3.5 w-3.5" /></Button>
+        ) : (
+          <Button variant="outline" size="sm" className="shrink-0"><ArrowDownUp className="h-4 w-4" />Sort{rows.length ? ` · ${rows.length}` : ""}</Button>
+        )}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2rem))] space-y-2 p-3">
         {!rows.length ? <p className="text-sm text-text-secondary">Sorted by record number.</p> : null}
@@ -193,5 +201,83 @@ export function SortButton({ sort, onChange, fields }) {
         ) : null}
       </PopoverContent>
     </Popover>
+  );
+}
+
+// Which fields show as columns in this view.
+export function FieldsButton({ columns, fields, titleFieldId, onChange, compact = false, label = "Fields", heading = "Show in this view" }) {
+  const shown = columns.filter((column) => column.fieldId !== titleFieldId);
+  const hidden = shown.filter((column) => column.hidden).length;
+  const toggle = (fieldId) => onChange(columns.map((column) => (column.fieldId === fieldId ? { ...column, hidden: !column.hidden } : column)));
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        {compact ? (
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" aria-label={label} title={label}><Columns3 className="h-3.5 w-3.5" /></Button>
+        ) : (
+          <Button variant="outline" size="sm" className="shrink-0"><Columns3 className="h-4 w-4" />{label}{hidden ? ` · ${hidden} hidden` : ""}</Button>
+        )}
+      </PopoverTrigger>
+      <PopoverContent align="end" className="max-h-80 w-64 overflow-y-auto p-1">
+        <p className="px-2 pb-1 pt-1.5 text-xs font-medium text-text-secondary">{heading}</p>
+        {shown.map((column) => {
+          const field = fields.find((item) => item.id === column.fieldId);
+          if (!field) return null;
+          return (
+            <label key={column.fieldId} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] hover:bg-surface-hover">
+              <Checkbox checked={!column.hidden} onCheckedChange={() => toggle(column.fieldId)} />
+              <span className={cn("min-w-0 flex-1 truncate", column.hidden && "text-text-secondary")}>{field.name}</span>
+            </label>
+          );
+        })}
+        {hidden ? (
+          <Button variant="ghost" size="sm" className="mt-1 w-full justify-start" onClick={() => onChange(columns.map(({ hidden: _hidden, ...rest }) => rest))}>Show all</Button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function valueLabel(target, value, statuses) {
+  if (value === undefined || value === null || value === "") return null;
+  const options = target.id === "status" ? statuses.map((status) => ({ id: status.key, label: status.label })) : target.field?.config?.options;
+  const one = (item) => {
+    if (typeof item === "object" && item) return item.label ?? "Selected";
+    return options?.find((option) => option.id === item)?.label ?? String(item);
+  };
+  if (Array.isArray(value)) return value.length > 2 ? `${value.length} chosen` : value.map(one).join(", ");
+  return one(value);
+}
+
+// The active conditions as removable chips under the toolbar, plus the view's unsaved-changes actions.
+export function FilterChips({ filter, onChange, fields, statuses, onOpen, onAdd, dirtyLabel, onReset, onSave }) {
+  const targets = filterTargets(fields);
+  const items = filter?.items ?? [];
+  const remove = (index) => {
+    const next = items.filter((_, i) => i !== index);
+    onChange(next.length ? { ...filter, items: next } : null);
+  };
+  return (
+    <div className="flex min-h-[42px] shrink-0 items-center gap-1.5 overflow-x-auto border-b border-border/70 px-4 py-2 sm:px-6 [scrollbar-width:none]">
+      {items.map((item, index) => {
+        const target = item.items ? null : targets.find((entry) => entry.id === item.field);
+        const value = target && !NO_VALUE_OPERATORS.has(item.operator) ? valueLabel(target, item.value, statuses) : null;
+        return (
+          <Badge key={index} variant="outline" className="h-6 shrink-0 gap-1 pr-0.5 text-xs font-normal">
+            <button type="button" onClick={onOpen} className="max-w-[18rem] truncate hover:text-foreground">
+              {item.items ? `Group · ${countConditions(item)} conditions` : (
+                <><span className="text-foreground">{target?.name ?? "Field"}</span> {OPERATOR_LABELS[item.operator] ?? item.operator}{value ? <> <span className="text-foreground">{value}</span></> : null}</>
+              )}
+            </button>
+            <Button variant="ghost" size="icon-xs" className="size-5 text-text-secondary" aria-label="Remove filter" onClick={() => remove(index)}><X /></Button>
+          </Badge>
+        );
+      })}
+      <Button variant="ghost" size="xs" className="shrink-0 text-text-secondary" onClick={onAdd}><Plus />Add filter</Button>
+      <span className="flex-1" />
+      {dirtyLabel ? <span className="hidden shrink-0 text-xs text-text-tertiary lg:inline">{dirtyLabel}</span> : null}
+      {onReset ? <Button variant="ghost" size="xs" className="shrink-0 text-muted-foreground" onClick={onReset}>Reset</Button> : null}
+      {onSave ? <Button variant="outline" size="xs" className="shrink-0" onClick={onSave}><Save className="h-3 w-3" />Save view</Button> : null}
+    </div>
   );
 }

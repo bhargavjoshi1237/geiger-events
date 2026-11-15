@@ -6,6 +6,7 @@ import {
   Button, IconPicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Sheet, SheetContent, SheetDescription,
   SheetFooter, SheetHeader, SheetTitle,
 } from "@geiger/ui";
+import { cn } from "@/lib/utils";
 import { getType } from "@/lib/workspace/schema/types/index.js";
 import { liveFieldsOf } from "../state/use_workspace";
 import { toKebab } from "../state/format";
@@ -25,7 +26,12 @@ export function ObjectSheet({ open, onOpenChange, data, object, run, onCreated, 
   );
 }
 
-function ObjectSheetBody({ onOpenChange, data, object, run, onCreated, onDeleted }) {
+// The same settings inline, for the Edit structure panel's "List settings" tab.
+export function ObjectSettingsForm({ data, object, run, onDeleted }) {
+  return <ObjectSheetBody key={`${object.id}:${object.revision}`} inline onOpenChange={() => {}} data={data} object={object} run={run} onDeleted={onDeleted} />;
+}
+
+function ObjectSheetBody({ onOpenChange, data, object, run, onCreated, onDeleted, inline = false }) {
   const [name, setName] = useState(object?.name ?? "");
   const [plural, setPlural] = useState(object?.plural ?? "");
   const [icon, setIcon] = useState(object?.icon ?? "database");
@@ -60,11 +66,13 @@ function ObjectSheetBody({ onOpenChange, data, object, run, onCreated, onDeleted
 
   return (
     <>
-        <SheetHeader className="border-b border-border px-5 py-4">
-          <SheetTitle className="text-base">{object ? "List settings" : "New list"}</SheetTitle>
-          <SheetDescription>{object ? "Names, numbering, the title field and statuses." : "A list holds one kind of thing, like papers, reviewers or booths."}</SheetDescription>
-        </SheetHeader>
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+        {inline ? null : (
+          <SheetHeader className="border-b border-border px-5 py-4">
+            <SheetTitle className="text-base">{object ? "List settings" : "New list"}</SheetTitle>
+            <SheetDescription>{object ? "Names, numbering, the title field and statuses." : "A list holds one kind of thing, like papers, reviewers or booths."}</SheetDescription>
+          </SheetHeader>
+        )}
+        <div className={cn("min-h-0 flex-1 space-y-5 overflow-y-auto", inline ? "p-4" : "px-5 py-4")}>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="ws-object-name">One is called</Label>
@@ -106,7 +114,7 @@ function ObjectSheetBody({ onOpenChange, data, object, run, onCreated, onDeleted
             <OptionsEditor items={statuses} idKey="key" makeId={tempKey} onChange={setStatuses} addLabel="Add status" placeholder="Status name" />
           </div>
         </div>
-        <SheetFooter className="flex-row items-center justify-between gap-2 border-t border-border px-5 py-3">
+        <SheetFooter className={cn("flex-row items-center justify-between gap-2 border-t border-border", inline ? "px-4 py-3" : "px-5 py-3")}>
           <div>
             {object ? (
               <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-600 dark:text-red-400" onClick={remove}>
@@ -115,8 +123,8 @@ function ObjectSheetBody({ onOpenChange, data, object, run, onCreated, onDeleted
             ) : null}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={submit} disabled={busy || !name.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{object ? "Save" : "Create list"}</Button>
+            {inline ? null : <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>}
+            <Button size={inline ? "sm" : "default"} onClick={submit} disabled={busy || !name.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{object ? "Save" : "Create list"}</Button>
           </div>
         </SheetFooter>
     </>

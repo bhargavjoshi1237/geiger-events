@@ -223,7 +223,7 @@ export function RecordDetails({ record: initial, comments, config, activity = []
       </div>
 
       {dirty ? (
-        <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border bg-surface-card px-4 py-3 @xl/block:px-6">
+        <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border bg-surface-subtle px-4 py-3 @xl/block:px-6">
           <span className="text-sm text-text-secondary">You have unsaved changes.</span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={saving} onClick={() => { setValues(null); setStatus(undefined); setErrors({}); }}>Discard</Button>

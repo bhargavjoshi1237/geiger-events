@@ -11,7 +11,10 @@ async function eventFor(id) {
   try {
     const row = await portalStore.eventRow(id.toLowerCase());
     if (!row) return null;
-    return { id: row.id, name: row.name ?? "", timeZone: row.timezone || "UTC", design: row.metadata?.pageDesign ?? null };
+    return {
+      id: row.id, name: row.name ?? "", timeZone: row.timezone || "UTC", design: row.metadata?.pageDesign ?? null,
+      date: row.event_date ?? null, place: row.city || row.venue || null,
+    };
   } catch (error) {
     console.error("[workspace portal] event read failed", error);
     return null;

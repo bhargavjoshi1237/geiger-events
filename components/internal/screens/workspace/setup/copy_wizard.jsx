@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, SlidersHorizontal } from "lucide-react";
 import {
-  Button, Checkbox, Label, LogoLoading, Popover, PopoverContent, PopoverTrigger, Progress, Select, SelectContent, SelectItem, SelectTrigger,
+  Button, Checkbox, Label, LoadingArea, Popover, PopoverContent, PopoverTrigger, Progress, Select, SelectContent, SelectItem, SelectTrigger,
   SelectValue, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Switch,
 } from "@geiger/ui";
 import { toast } from "sonner";
@@ -17,23 +17,24 @@ const MODES = [{ label: "Skip", value: "skip" }, { label: "Structure", value: "s
 const ALL = "__all__";
 
 // Copy lists (and optionally records) from an earlier event or a saved template, with a plain-language review first.
-export function CopyWizard({ open, onOpenChange, eventId, ws, startWith = "event" }) {
+// `chosen` preselects the earlier event or saved template to copy from.
+export function CopyWizard({ open, onOpenChange, eventId, ws, startWith = "event", chosen = "" }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
-        {open ? <CopyWizardBody onOpenChange={onOpenChange} eventId={eventId} ws={ws} startWith={startWith} /> : null}
+        {open ? <CopyWizardBody onOpenChange={onOpenChange} eventId={eventId} ws={ws} startWith={startWith} chosen={chosen} /> : null}
       </SheetContent>
     </Sheet>
   );
 }
 
-function CopyWizardBody({ onOpenChange, eventId, ws, startWith }) {
+function CopyWizardBody({ onOpenChange, eventId, ws, startWith, chosen }) {
   const [source, setSource] = useState(startWith);
   const [step, setStep] = useState("source");
   const [events, setEvents] = useState(null);
   const [templates, setTemplates] = useState(null);
-  const [eventChoice, setEventChoice] = useState("");
-  const [templateChoice, setTemplateChoice] = useState("");
+  const [eventChoice, setEventChoice] = useState(startWith === "event" ? chosen : "");
+  const [templateChoice, setTemplateChoice] = useState(startWith === "template" ? chosen : "");
   const [definition, setDefinition] = useState(null);
   const [choices, setChoices] = useState({});
   const [attachments, setAttachments] = useState(false);
@@ -110,7 +111,7 @@ function CopyWizardBody({ onOpenChange, eventId, ws, startWith }) {
             <div className="space-y-4">
               <SegmentedTabs value={source} onChange={setSource} tabs={[{ label: "Another event", value: "event" }, { label: "A template", value: "template" }]} />
               {source === "event" ? (
-                events === null ? <div className="flex justify-center py-10"><LogoLoading size={40} aria-label="Loading events" /></div>
+                events === null ? <LoadingArea size={40} label="Loading events" className="py-10" />
                   : events.length ? (
                     <div className="space-y-1.5">
                       <Label>Event</Label>
@@ -120,7 +121,7 @@ function CopyWizardBody({ onOpenChange, eventId, ws, startWith }) {
                       </Select>
                     </div>
                   ) : <p className="text-sm text-text-secondary">No other event in this project has a workspace yet.</p>
-              ) : templates === null ? <div className="flex justify-center py-10"><LogoLoading size={40} aria-label="Loading templates" /></div>
+              ) : templates === null ? <LoadingArea size={40} label="Loading templates" className="py-10" />
                 : templates.length ? (
                   <div className="space-y-2">
                     {templates.map((template) => (

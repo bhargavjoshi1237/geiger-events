@@ -7,6 +7,7 @@ import { CardsBlock } from "./cards_block";
 import { ChartBlock } from "./chart_block";
 import { ButtonsBlock, DividerBlock, ImageBlock, TextBlock } from "./content_blocks";
 import { CustomBlock } from "./custom_block";
+import { DatesBlock, FactsBlock, HeroBlock, NoticeBlock } from "./event_blocks";
 import { FormBlock } from "./form_block";
 import { PassBlock } from "./pass_block";
 import { PlacementBlock } from "./placement_block";
@@ -21,6 +22,7 @@ const BLOCKS = {
   table: TableBlock, cards: CardsBlock, board: BoardBlock, calendar: CalendarBlock, record: RecordBlock, form: FormBlock,
   stats: StatsBlock, chart: ChartBlock, text: TextBlock, image: ImageBlock, buttons: ButtonsBlock, divider: DividerBlock,
   schedule: ScheduleBlock, timeline: TimelineBlock, placement: PlacementBlock, scanner: ScannerBlock, pass: PassBlock, custom: CustomBlock,
+  hero: HeroBlock, notice: NoticeBlock, facts: FactsBlock, dates: DatesBlock,
 };
 
 // One block of a page. `fill` makes it take its whole cell on a canvas page.

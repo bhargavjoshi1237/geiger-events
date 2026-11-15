@@ -15,13 +15,13 @@ const SPAN = {
 function RowsLayout({ page }) {
   const blocks = page.body?.blocks ?? [];
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-6 @3xl/page:gap-7">
       {(page.body?.rows ?? []).map((row) => (
-        <div key={row.id} className="grid grid-cols-1 gap-4 @3xl/page:grid-cols-12">
+        <div key={row.id} className="grid grid-cols-1 gap-5 @3xl/page:grid-cols-12">
           {row.widths.map((width, col) => {
             const items = blocks.filter((block) => block.at?.row === row.id && block.at?.col === col).sort((a, b) => a.at.order - b.at.order);
             return (
-              <div key={col} className={cn("grid min-w-0 content-start gap-4", SPAN[width], !items.length && "@max-3xl/page:hidden")}>
+              <div key={col} className={cn("grid min-w-0 content-start gap-5", SPAN[width], !items.length && "@max-3xl/page:hidden")}>
                 {items.map((block) => <BlockView key={block.id} block={block} />)}
               </div>
             );

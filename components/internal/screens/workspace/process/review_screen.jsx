@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Loader2, Pencil, Plus, Users } from "lucide-react";
 import {
-  Badge, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, LogoLoading,
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Badge, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DataTable, LoadingArea, Progress,
+  SegmentedTabs, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatsBar,
 } from "@geiger/ui";
 import { toast } from "sonner";
-import { DataTable, EditorSectionHeader, EmptyState, Toolbar } from "@/components/internal/shared/screen_kit";
+import { EmptyState } from "@/components/internal/shared/screen_kit";
 import { OptionChip } from "../ws_ui";
+import { PageBar, PageBody, PageToolbar, WorkspacePage } from "../shell/page";
 import { ReviewSetupSheet } from "./review_setup_sheet";
 import { useProcess } from "./use_process";
 
@@ -34,7 +35,7 @@ function AssignDialog({ process, setupId, onClose, onDone }) {
           <DialogTitle>Assign reviewers</DialogTitle>
           <DialogDescription>A preview of the new reviews. Existing reviews are kept and count towards each reviewer&apos;s load.</DialogDescription>
         </DialogHeader>
-        {!plan && !state.error ? <div className="flex justify-center py-10"><LogoLoading size={40} aria-label="Planning" /></div> : null}
+        {!plan && !state.error ? <LoadingArea size={40} label="Planning" className="py-10" /> : null}
         {state.error ? <p className="text-sm text-red-600">{state.error.message}</p> : null}
         {plan ? (
           <div className="max-h-[50vh] space-y-3 overflow-y-auto">
@@ -63,6 +64,8 @@ function AssignDialog({ process, setupId, onClose, onDone }) {
   );
 }
 
+const round = (n) => Math.round(n * 10) / 10;
+
 // Peer review: results per submission (score, spread, flags), reviewer assignment and decisions.
 export function ReviewScreen({ eventId, ws }) {
   const process = useProcess(eventId);
@@ -70,6 +73,7 @@ export function ReviewScreen({ eventId, ws }) {
   const [editing, setEditing] = useState(null);
   const [assigning, setAssigning] = useState(false);
   const [version, setVersion] = useState(0);
+  const [show, setShow] = useState("all");
   const [state, setState] = useState({ key: null, data: null, error: null });
   const setupId = chosen ?? process.setups[0]?.id ?? null;
   const key = setupId ? `${setupId}:${version}` : null;
@@ -83,71 +87,113 @@ export function ReviewScreen({ eventId, ws }) {
     return () => controller.abort();
   }, [process.api, key]);
 
-  if (!process.data && process.status !== "error") return <div className="flex justify-center py-20"><LogoLoading size={56} aria-label="Loading review" /></div>;
   const canConfigure = Boolean(ws.can?.configure);
+  const setup = process.setups.find((item) => item.id === setupId);
   const sheet = (
     <ReviewSetupSheet open={Boolean(editing)} onOpenChange={(open) => { if (!open) setEditing(null); }} eventId={eventId} ws={ws} process={process}
-      setup={editing?.id ? editing : null} onSaved={(setup) => { setChosen(setup.id); setVersion((n) => n + 1); }} />
+      setup={editing?.id ? editing : null} onSaved={(saved) => { setChosen(saved.id); setVersion((n) => n + 1); }} />
   );
+  const bar = (
+    <PageBar icon={Users} title="Review" actions={canConfigure && setup ? (
+      <>
+        <Button variant="outline" size="sm" onClick={() => setEditing(setup)}><Pencil className="h-3.5 w-3.5" />Edit setup</Button>
+        <Button size="sm" onClick={() => setAssigning(true)}><Users className="h-4 w-4" />Assign reviewers</Button>
+      </>
+    ) : null} />
+  );
+
+  if (!process.data && process.status !== "error") {
+    return <WorkspacePage>{bar}<LoadingArea size={56} label="Loading review" /></WorkspacePage>;
+  }
   if (!process.setups.length) {
     return (
-      <div className="space-y-5">
-        <EditorSectionHeader title="Review" description="Assign reviewers to submissions, score them with a rubric and decide." />
-        <div className="rounded-xl border border-border bg-surface-subtle">
-          <EmptyState icon={Users} title="No review set up yet" description="Connect your submissions, reviews and reviewers lists to assign and score reviews."
+      <WorkspacePage>
+        {bar}
+        <PageBody className="flex items-center justify-center">
+          <EmptyState icon={Users} title="No review set up yet" description="Connect your submissions, reviews and reviewers lists to assign reviewers, score with a rubric and decide."
             action={canConfigure ? <Button onClick={() => setEditing({})}><Plus className="h-4 w-4" />Set up review</Button> : null} />
-        </div>
+        </PageBody>
         {sheet}
-      </div>
+      </WorkspacePage>
     );
   }
 
-  const setup = process.setups.find((item) => item.id === setupId);
   const submissions = ws.objects.find((object) => object.id === setup?.config?.submissionsObjectId);
-  const decisions = (setup?.config?.decisions ?? []).map((key) => submissions?.statuses?.find((status) => status.key === key)).filter(Boolean);
+  const decisionKeys = setup?.config?.decisions ?? [];
+  const decisions = decisionKeys.map((item) => submissions?.statuses?.find((status) => status.key === item)).filter(Boolean);
   const decide = async (row, status) => {
     const { error } = await process.api.reviewAction({ action: "decide", recordId: row.id, status });
     if (error) toast.error(error.message); else { toast.success("Decision saved"); setVersion((n) => n + 1); }
   };
-  const results = state.key === key ? state.data?.results ?? [] : state.data?.results ?? [];
+  const results = state.data?.results ?? [];
+  const undecided = results.filter((row) => !decisionKeys.includes(row.status));
+  const flagged = results.filter((row) => row.flagged);
+  const rows = show === "decide" ? undecided : show === "spread" ? flagged : results;
+  const done = results.reduce((n, row) => n + row.done, 0);
+  const assigned = results.reduce((n, row) => n + row.assigned, 0);
+  const scored = results.filter((row) => row.average !== null);
+  const average = scored.length ? round(scored.reduce((n, row) => n + row.average, 0) / scored.length) : null;
+  const loading = state.key !== key && !state.data;
   const columns = [
-    { key: "title", header: submissions?.name ?? "Submission", render: (row) => <span className="font-medium text-foreground">{row.title || `#${row.number}`}</span> },
-    { key: "status", header: "Status", render: (row) => { const status = submissions?.statuses?.find((item) => item.key === row.status); return status ? <OptionChip option={status} /> : null; } },
-    { key: "done", header: "Reviews", render: (row) => <span className="text-text-secondary">{row.done} of {row.assigned}</span> },
+    { key: "title", header: submissions?.name ?? "Submission", render: (row) => <span className="font-medium text-foreground">{row.title || `${submissions?.numberPrefix ?? "#"}-${row.number}`}</span> },
+    { key: "status", header: "Status", headClassName: "hidden md:table-cell", className: "hidden md:table-cell", render: (row) => {
+      const status = submissions?.statuses?.find((item) => item.key === row.status);
+      return status ? <OptionChip option={status} /> : null;
+    } },
+    { key: "done", header: "Reviews", headClassName: "hidden md:table-cell", className: "hidden md:table-cell", render: (row) => (
+      <span className="flex items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
+        <Progress value={row.assigned ? (row.done / row.assigned) * 100 : 0} className="h-1 w-14" />{row.done} of {row.assigned}
+      </span>
+    ) },
     { key: "average", header: "Score", align: "right", render: (row) => (row.average === null ? <span className="text-text-tertiary">—</span> : <span className="tabular-nums">{row.average}</span>) },
-    { key: "spread", header: "Spread", align: "right", render: (row) => (row.flagged ? <Badge variant="warning"><AlertTriangle className="h-3 w-3" />{row.spread}</Badge> : <span className="tabular-nums text-text-secondary">{row.done > 1 ? row.spread : "—"}</span>) },
-    {
-      key: "decide", header: "", align: "right", render: (row) => (
-        <div className="flex justify-end gap-1">
-          {decisions.filter((status) => status.key !== row.status).map((status) => (
-            <Button key={status.key} size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => decide(row, status.key)}>{status.label}</Button>
-          ))}
-        </div>
-      ),
-    },
+    { key: "spread", header: "Spread", align: "right", headClassName: "hidden sm:table-cell", className: "hidden sm:table-cell", render: (row) => (row.flagged
+      ? <Badge variant="warning"><AlertTriangle className="h-3 w-3" />{row.spread}</Badge>
+      : <span className="tabular-nums text-text-secondary">{row.done > 1 ? row.spread : "—"}</span>) },
+    { key: "decide", header: "Decide", align: "right", render: (row) => (
+      <span className="flex flex-wrap justify-end gap-1">
+        {decisions.filter((item) => item.key !== row.status).map((item) => (
+          <Button key={item.key} size="xs" variant="outline" onClick={() => decide(row, item.key)}>{item.label}</Button>
+        ))}
+      </span>
+    ) },
   ];
 
   return (
-    <div className="space-y-5">
-      <EditorSectionHeader title="Review" description="Scores are the weighted rubric average of finished reviews. A wide spread means reviewers disagree."
-        action={canConfigure ? (
-          <>
-            <Button variant="outline" onClick={() => setEditing(setup)}><Pencil className="h-4 w-4" />Edit setup</Button>
-            <Button onClick={() => setAssigning(true)}><Users className="h-4 w-4" />Assign reviewers</Button>
-          </>
-        ) : null} />
-      <Toolbar>
-        <Select value={setupId} onValueChange={setChosen}>
-          <SelectTrigger className="h-9 w-56"><SelectValue /></SelectTrigger>
-          <SelectContent>{process.setups.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent>
-        </Select>
-        {canConfigure ? <Button variant="ghost" size="sm" onClick={() => setEditing({})}><Plus className="h-4 w-4" />New setup</Button> : null}
-      </Toolbar>
-      {state.key !== key && !state.data ? <div className="flex justify-center py-16"><LogoLoading size={48} aria-label="Loading results" /></div>
-        : state.error ? <EmptyState title="Couldn't load the results" description={state.error.message} action={<Button variant="outline" onClick={() => setVersion((n) => n + 1)}>Try again</Button>} />
-          : <DataTable columns={columns} data={results} getRowKey={(row) => row.id} empty={<div className="rounded-xl border border-border bg-surface-subtle"><EmptyState icon={Users} title="No submissions match" /></div>} />}
+    <WorkspacePage>
+      {bar}
+      <PageToolbar>
+        <div className="flex items-center gap-2">
+          <Select value={setupId} onValueChange={setChosen}>
+            <SelectTrigger className="h-9 w-60 shrink-0"><SelectValue /></SelectTrigger>
+            <SelectContent>{process.setups.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent>
+          </Select>
+          {canConfigure ? <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground" onClick={() => setEditing({})}><Plus className="h-4 w-4" />New setup</Button> : null}
+        </div>
+        <SegmentedTabs value={show} onChange={setShow} className="w-auto shrink-0" tabs={[
+          { label: <span className="inline-flex items-center gap-1.5">All<span className="text-xs text-text-secondary">{results.length}</span></span>, value: "all" },
+          { label: <span className="inline-flex items-center gap-1.5">Needs a decision<span className="text-xs text-text-secondary">{undecided.length}</span></span>, value: "decide" },
+          { label: <span className="inline-flex items-center gap-1.5">Wide spread<span className="text-xs text-text-secondary">{flagged.length}</span></span>, value: "spread" },
+        ]} />
+      </PageToolbar>
+      <PageBody padded>
+        {loading ? <LoadingArea size={48} label="Loading results" />
+          : state.error ? <EmptyState title="Couldn't load the results" description={state.error.message} action={<Button variant="outline" onClick={() => setVersion((n) => n + 1)}>Try again</Button>} />
+            : (
+              <div className="grid gap-4">
+                <StatsBar stats={[
+                  { label: submissions?.plural ?? "Submissions", value: String(results.length) },
+                  { label: "Reviews done", value: String(done), footer: `of ${assigned} assigned` },
+                  { label: "Average score", value: average === null ? "—" : String(average) },
+                  { label: "Wide spread", value: String(flagged.length) },
+                ]} />
+                <p className="text-xs text-text-secondary">Scores are the weighted rubric average of finished reviews. A wide spread means reviewers disagree.</p>
+                <DataTable columns={columns} data={rows} getRowKey={(row) => row.id}
+                  empty={<div className="rounded-xl border border-border bg-surface-subtle"><EmptyState icon={Users} title={show === "all" ? `No ${submissions?.plural?.toLowerCase() ?? "submissions"} yet` : "Nothing here"} /></div>} />
+              </div>
+            )}
+      </PageBody>
       {assigning ? <AssignDialog process={process} setupId={setupId} onClose={() => setAssigning(false)} onDone={() => { setAssigning(false); setVersion((n) => n + 1); }} /> : null}
       {sheet}
-    </div>
+    </WorkspacePage>
   );
 }

@@ -2,36 +2,37 @@
 
 import { Component } from "react";
 import { AlertCircle, Lock, RefreshCcw } from "lucide-react";
-import { Button, LogoLoading } from "@geiger/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, LoadingArea } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 
-// The card every data block sits in: an optional title row with actions, then the body. On a canvas it fills its cell.
-export function BlockFrame({ title, actions, children, fill = false, bodyClassName, className }) {
+// The card every data block sits in: an optional title row (with a quiet note and actions), then the body. On a canvas it fills its cell.
+export function BlockFrame({ title, note, actions, children, fill = false, bodyClassName, className }) {
   return (
-    <section className={cn("flex min-w-0 flex-col rounded-xl border border-border bg-surface-card", fill && "@4xl/page:h-full", className)}>
+    <Card className={cn("min-w-0 gap-0 overflow-hidden rounded-2xl border-border bg-surface-subtle py-0 shadow-none", fill && "@4xl/page:h-full", className)}>
       {title || actions ? (
-        <header className="flex min-h-12 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border px-4 py-2.5">
-          {title ? <h2 className="min-w-0 truncate text-sm font-semibold text-foreground">{title}</h2> : <span />}
+        <CardHeader className="flex min-h-[54px] flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border py-2.5 pl-5 pr-3 [.border-b]:pb-2.5">
+          {title ? (
+            <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1">
+              <CardTitle className="min-w-0 truncate text-[14.5px] leading-normal text-foreground">{title}</CardTitle>
+              {note ? <CardDescription className="text-xs text-text-secondary">{note}</CardDescription> : null}
+            </span>
+          ) : <span />}
           {actions ? <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div> : null}
-        </header>
+        </CardHeader>
       ) : null}
-      <div className={cn("min-h-0 min-w-0 flex-1", fill && "@4xl/page:overflow-auto", bodyClassName)}>{children}</div>
-    </section>
+      <CardContent className={cn("min-h-0 min-w-0 flex-1 px-0", fill && "@4xl/page:overflow-auto", bodyClassName)}>{children}</CardContent>
+    </Card>
   );
 }
 
 export function BlockLoading({ label = "Loading" }) {
-  return <div className="flex justify-center py-10"><LogoLoading size={40} aria-label={label} /></div>;
+  return <LoadingArea size={40} label={label} className="py-10" />;
 }
 
-export function BlockMessage({ icon: Icon = AlertCircle, title, text, onRetry }) {
+export function BlockMessage({ icon = AlertCircle, title, text, onRetry }) {
   return (
-    <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-      <Icon className="h-5 w-5 text-text-tertiary" />
-      {title ? <p className="text-sm font-medium text-foreground">{title}</p> : null}
-      {text ? <p className="max-w-sm text-sm text-text-secondary">{text}</p> : null}
-      {onRetry ? <Button size="sm" variant="outline" className="mt-1" onClick={onRetry}><RefreshCcw className="h-3.5 w-3.5" />Try again</Button> : null}
-    </div>
+    <EmptyState className="py-10" icon={icon} title={title} description={text}
+      action={onRetry ? <Button size="sm" variant="outline" onClick={onRetry}><RefreshCcw className="h-3.5 w-3.5" />Try again</Button> : null} />
   );
 }
 
@@ -68,9 +69,9 @@ export class BlockBoundary extends Component {
   render() {
     if (this.state.failed) {
       return (
-        <section className="rounded-xl border border-border bg-surface-card">
+        <Card className="gap-0 rounded-2xl bg-surface-subtle py-0 shadow-none">
           <BlockMessage title="This section couldn't be shown" text="Reload the page to try again." />
-        </section>
+        </Card>
       );
     }
     return this.props.children;

@@ -16,16 +16,14 @@ import { PageDesignSection, defaultPageDesign } from "./page_design";
 import { NAV_GROUPS, SECTIONS } from "./event_sections";
 import { updateEventMeta } from "@/lib/supabase/events";
 import { useWorkspace } from "../workspace/state/use_workspace";
-import { usePortal } from "../workspace/portal/use_portal";
 import { isWorkspaceSection, withWorkspaceNav } from "../workspace/nav";
-import { WorkspaceSection } from "../workspace/workspace_section";
+import { WorkspaceShell } from "../workspace/shell/workspace_shell";
 
-export function EventDetailScreen({ event, onBack, onUpdate }) {
-  const { section: active, setSection: setActive } = useWorkspaceUrl();
+export function EventDetailScreen({ event, events, onBack, onUpdate }) {
+  const { section: active, setSection: setActive, openEventSection } = useWorkspaceUrl();
   const { isEnabled } = useAddons();
   const workspace = useWorkspace(event?.id);
-  const portal = usePortal(event?.id, { enabled: workspace.exists });
-  const nav = withWorkspaceNav(NAV_GROUPS, workspace, portal);
+  const nav = withWorkspaceNav(NAV_GROUPS, workspace);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [design, setDesign] = useState(
     () => event?.pageDesign || defaultPageDesign(),
@@ -39,6 +37,13 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
   }
 
   if (!event) return null;
+
+  if (isWorkspaceSection(active)) {
+    return (
+      <WorkspaceShell event={form} events={events} section={active} onNavigate={setActive} onExit={() => setActive("overview")}
+        onSwitchEvent={openEventSection ? (id) => openEventSection(id, "workspace") : undefined} />
+    );
+  }
 
   const patch = (partial) => setForm((f) => ({ ...f, ...partial }));
 
@@ -143,9 +148,6 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
               onPatch={patch}
             />
           );
-        }
-        if (isWorkspaceSection(active)) {
-          return <WorkspaceSection event={form} sectionKey={active} onNavigate={setActive} />;
         }
         const ActiveSection = SECTIONS[active] || SECTIONS.overview;
         return (

@@ -6,9 +6,10 @@ import {
   Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger, Input, Label, LucideIcon, Separator,
 } from "@geiger/ui";
-import { EmptyState, Toolbar } from "@/components/internal/shared/screen_kit";
+import { EmptyState } from "@/components/internal/shared/screen_kit";
 import { slugifyPage } from "@/lib/workspace/portal/pages.js";
 import { ObjectIcon } from "../ws_ui";
+import { PageBody, PageToolbar } from "../shell/page";
 import { PageEditor } from "./page_editor";
 
 function NewPage({ open, onOpenChange, portal, onCreated }) {
@@ -86,12 +87,12 @@ export function PagesTab({ eventId, ws, portal, pageId, onPageChange, tabs }) {
   };
 
   const leading = (
-    <div className="flex items-center gap-2">
+    <div className="flex shrink-0 items-center gap-2">
       {tabs}
       <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-5" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="max-w-56 font-normal" aria-label="Switch page">
+          <Button variant="outline" size="sm" className="max-w-56 bg-surface-card font-normal" aria-label="Switch page">
             <LucideIcon name={current?.icon || "file"} className="text-text-secondary" />
             <span className="truncate">{current?.title ?? "No pages yet"}</span>
             <ChevronDown className="text-text-tertiary" />
@@ -141,11 +142,11 @@ export function PagesTab({ eventId, ws, portal, pageId, onPageChange, tabs }) {
           onDeleted={() => onPageChange(null)} onReset={() => setReset((n) => n + 1)} />
       ) : (
         <>
-          <Toolbar>{leading}</Toolbar>
-          <div className="rounded-xl border border-border bg-surface-subtle">
+          <PageToolbar>{leading}</PageToolbar>
+          <PageBody className="flex items-center justify-center">
             <EmptyState icon={FileText} title="Add your first page" description="A home page, a form people fill in, a list of their reviews — each page is made of blocks."
               action={<Button onClick={() => setCreating(true)}><Plus className="h-4 w-4" />New page</Button>} />
-          </div>
+          </PageBody>
         </>
       )}
       <NewPage open={creating} onOpenChange={setCreating} portal={portal} onCreated={onPageChange} />

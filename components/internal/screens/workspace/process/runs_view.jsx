@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { History, Loader2, RotateCw } from "lucide-react";
 import {
-  Badge, Button, LogoLoading, LucideIcon, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
+  Badge, Button, LoadingArea, LucideIcon, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@geiger/ui";
 import { DataTable, EmptyState } from "@/components/internal/shared/screen_kit";
 import { formatDateTime, timeAgo } from "../state/format";
@@ -89,7 +89,7 @@ export function RunsView({ process, status, automationId, canRetry, timeZone, on
     if (!error) { setOpen(null); setVersion((n) => n + 1); }
   };
 
-  if (state.key !== key && !state.runs.length) return <div className="flex justify-center py-16"><LogoLoading size={48} aria-label="Loading runs" /></div>;
+  if (state.key !== key && !state.runs.length) return <LoadingArea size={48} label="Loading runs" />;
   if (state.error) return <EmptyState title="Couldn't load the runs" description={state.error.message} action={<Button variant="outline" onClick={() => setVersion((n) => n + 1)}>Try again</Button>} />;
 
   const columns = [

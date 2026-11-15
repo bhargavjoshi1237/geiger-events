@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, Loader2, Lock } from "lucide-react";
-import { Button, Label, Progress } from "@geiger/ui";
+import { ArrowLeft, ArrowRight, CalendarClock, Check, CheckCircle2, Loader2, Lock } from "lucide-react";
+import { Button, Card, Label } from "@geiger/ui";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getType } from "@/lib/workspace/schema/types/index.js";
@@ -21,8 +21,8 @@ function FormField({ field, item, value, error, onChange, api, readOnly, record,
   const { eventId, timeZone } = usePortalView();
   const id = `wp-form-${field.id}`;
   return (
-    <div className={cn("grid min-w-0 content-start gap-1.5", WIDE.has(field.type) && "@xl/block:col-span-2")}>
-      <Label htmlFor={id} className="text-sm font-medium text-foreground">
+    <div className={cn("grid min-w-0 content-start gap-2", WIDE.has(field.type) && "@xl/block:col-span-2")}>
+      <Label htmlFor={id} className="text-[13px] font-medium text-foreground">
         {field.name}{item.required ? <span className="ml-0.5 text-red-500" aria-hidden>*</span> : null}
       </Label>
       {item.help ? <p className="-mt-0.5 text-xs text-text-secondary">{item.help}</p> : null}
@@ -60,12 +60,20 @@ function FormBody({ block, data }) {
   const personItems = needsPerson ? (config.signup.personFields ?? []).filter((item) => personById.has(item.fieldId)) : [];
   const sections = (config.sections ?? []).map((section) => ({ ...section, fields: section.fields.filter((item) => byId.has(item.fieldId)) }))
     .filter((section) => section.fields.length || section.description);
-  const stepped = config.steps && sections.length > 1;
+  // A stepped form gives "Your details" (sign-up) its own first step, then one step per section.
+  const personStep = Boolean(personItems.length) && config.steps;
+  const stepCount = sections.length + (personStep ? 1 : 0);
+  const stepped = config.steps && stepCount > 1;
   const allItems = sections.flatMap((section) => section.fields);
 
   const [values, setValues] = useState(() => (isEdit ? startValues(editRecord, allItems, byId) : { ...(data.draft?.values ?? {}) }));
   const [person, setPerson] = useState(() => ({ ...(data.draft?.person ?? {}) }));
-  const [step, setStep] = useState(() => Math.min(Math.max(0, data.draft?.step ?? 0), Math.max(0, sections.length - 1)));
+  const [step, setStep] = useState(() => Math.min(Math.max(0, data.draft?.step ?? 0), Math.max(0, stepCount - 1)));
+  const sectionAt = (index) => (personStep ? (index === 0 ? null : sections[index - 1]) : sections[index]);
+  const stepOf = (problems) => {
+    if (personStep && Object.keys(problems).some((key) => key.startsWith("person:"))) return 0;
+    return Math.max(0, sections.findIndex((section) => section.fields.some((item) => problems[item.fieldId]))) + (personStep ? 1 : 0);
+  };
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
@@ -106,17 +114,18 @@ function FormBody({ block, data }) {
     .filter((item) => !isEdit || editable.has(item.fieldId)).map((item) => [`${prefix}${item.fieldId}`, "Required."]));
 
   const next = () => {
-    const problems = { ...(step === 0 ? missing(personItems, person, "person:") : {}), ...missing(sections[step].fields, values) };
+    const current = sectionAt(step);
+    const problems = { ...(step === 0 ? missing(personItems, person, "person:") : {}), ...(current ? missing(current.fields, values) : {}) };
     if (Object.keys(problems).length) { setErrors(problems); return; }
     touched.current = true;
-    setStep((n) => Math.min(sections.length - 1, n + 1));
+    setStep((n) => Math.min(stepCount - 1, n + 1));
   };
 
   const submit = async () => {
     const problems = { ...missing(personItems, person, "person:"), ...missing(allItems, values) };
     if (Object.keys(problems).length) {
       setErrors(problems);
-      if (stepped) setStep(Math.max(0, sections.findIndex((section) => section.fields.some((item) => problems[item.fieldId]))));
+      if (stepped) setStep(stepOf(problems));
       toast.error("Fill in the required answers.");
       return;
     }
@@ -146,10 +155,7 @@ function FormBody({ block, data }) {
     if (error) {
       if (error.fields) {
         setErrors(error.fields);
-        if (stepped) {
-          const index = sections.findIndex((section) => section.fields.some((item) => error.fields[item.fieldId]));
-          if (index >= 0) setStep(index);
-        }
+        if (stepped) setStep(stepOf(error.fields));
       }
       toast.error(error.message);
       return;
@@ -175,56 +181,43 @@ function FormBody({ block, data }) {
     );
   }
 
-  const visible = stepped ? [sections[step]] : sections;
-  const last = !stepped || step === sections.length - 1;
+  const current = sectionAt(step);
+  const visible = stepped ? (current ? [current] : []) : sections;
+  const showPerson = personItems.length > 0 && (!stepped || step === 0);
+  const last = !stepped || step === stepCount - 1;
+  const titles = [...(personStep ? ["Your details"] : []), ...sections.map((section, index) => section.title || `Step ${index + 1 + (personStep ? 1 : 0)}`)];
+  const required = [...(showPerson ? personItems : []), ...visible.flatMap((section) => section.fields)].some((item) => item.required);
+  const draftNote = api.readOnly ? api.readOnly : keepsDrafts ? (savingDraft ? "Saving draft…" : saved ? `Draft saved ${timeAgo(saved)}` : "Your answers are saved as you go.") : "";
 
   return (
-    <div className="grid gap-6">
-      {stepped ? (
-        <div className="grid gap-2">
-          <div className="flex items-center justify-between gap-3 text-xs text-text-secondary">
-            <span>Step {step + 1} of {sections.length}</span>
-            {sections[step].title ? <span className="truncate font-medium text-foreground">{sections[step].title}</span> : null}
-          </div>
-          <Progress value={((step + 1) / sections.length) * 100} className="h-1.5" />
-        </div>
-      ) : null}
+    <div className="@container/block">
+      {stepped ? <Stepper titles={titles} step={step} /> : null}
 
-      {personItems.length && (!stepped || step === 0) ? (
-        <section className="grid gap-4">
-          <div className="grid gap-1 border-b border-border pb-2">
-            <h3 className="text-sm font-semibold text-foreground">Your details</h3>
-            <p className="text-xs text-text-secondary">We&apos;ll use these to set up your account for this event.</p>
-          </div>
-          <div className="grid gap-x-6 gap-y-5 @xl/block:grid-cols-2">
+      {showPerson ? (
+        <FormSection title="Your details" description="We'll use these to set up your account for this event.">
+          <div className="grid gap-5 @xl/block:grid-cols-2">
             {personItems.map((item) => (
               <FormField key={item.fieldId} field={personById.get(item.fieldId)} item={item} value={person[item.fieldId]} api={scopedApi}
                 error={errors[`person:${item.fieldId}`]} onChange={(value) => setPersonValue(item.fieldId, value)} />
             ))}
           </div>
-        </section>
+        </FormSection>
       ) : null}
 
       {visible.map((section, index) => (
-        <section key={`${step}-${index}`} className="grid gap-4">
-          {section.title || section.description ? (
-            <div className="grid gap-1 border-b border-border pb-2">
-              {section.title && !stepped ? <h3 className="text-sm font-semibold text-foreground">{section.title}</h3> : null}
-              {section.description ? <p className="whitespace-pre-line text-sm text-text-secondary">{section.description}</p> : null}
-            </div>
-          ) : null}
-          <div className="grid gap-x-6 gap-y-5 @xl/block:grid-cols-2">
+        <FormSection key={`${step}-${index}`} title={section.title} description={section.description} divided={showPerson || index > 0}>
+          <div className="grid gap-5 @xl/block:grid-cols-2">
             {section.fields.map((item) => (
               <FormField key={item.fieldId} field={byId.get(item.fieldId)} item={item} value={values[item.fieldId]} api={scopedApi}
                 error={errors[item.fieldId]} onChange={(value) => setValue(item.fieldId, value)}
                 readOnly={isEdit && !editable.has(item.fieldId)} record={editRecord} list={list} />
             ))}
           </div>
-        </section>
+        </FormSection>
       ))}
 
       {verifying ? (
-        <div className="grid gap-3 rounded-xl border border-border bg-surface-subtle p-4">
+        <Card className="mx-5 mb-5 gap-3 bg-background p-4 shadow-none sm:mx-6">
           <div className="grid gap-1">
             <p className="text-sm font-semibold text-foreground">Confirm your email to submit</p>
             <p className="text-sm text-text-secondary">We&apos;ll send a code so you can come back to your submission later.</p>
@@ -232,24 +225,61 @@ function FormBody({ block, data }) {
           {api.signIn ? (
             <CodeSignIn signIn={api.signIn} submitLabel="Send code" onDone={async () => { setVerifying(false); await send(); api.onSignedIn?.(); }} />
           ) : <p className="text-sm text-text-secondary">Signing in isn&apos;t available here.</p>}
-          <Button variant="ghost" size="sm" className="justify-self-start" onClick={() => setVerifying(false)}>Back to the form</Button>
-        </div>
+          <Button variant="ghost" size="sm" className="self-start" onClick={() => setVerifying(false)}>Back to the form</Button>
+        </Card>
       ) : (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <span className="text-xs text-text-tertiary">
-            {api.readOnly ? api.readOnly : keepsDrafts ? (savingDraft ? "Saving draft…" : saved ? `Draft saved ${timeAgo(saved)}` : "Your answers are saved as you go.") : ""}
+        <div className="flex flex-wrap items-center gap-2.5 border-t border-border bg-background/40 px-5 py-3.5">
+          <span className="min-w-0 flex-1 text-[12.5px] text-text-secondary">
+            {required ? <><span className="text-red-500">*</span> Required</> : null}
+            {required && draftNote ? " · " : null}{draftNote}
           </span>
-          <div className="flex gap-2">
-            {stepped && step > 0 ? <Button variant="outline" onClick={() => setStep((n) => n - 1)}><ArrowLeft className="h-4 w-4" />Back</Button> : null}
-            {last ? (
-              <Button onClick={submit} disabled={busy || Boolean(api.readOnly)}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{config.submitLabel || (isEdit ? "Save changes" : "Submit")}
-              </Button>
-            ) : <Button onClick={next}>Next<ArrowRight className="h-4 w-4" /></Button>}
-          </div>
+          {stepped && step > 0 ? <Button variant="outline" className="bg-surface-card" onClick={() => setStep((n) => n - 1)}><ArrowLeft className="h-4 w-4" />Back</Button> : null}
+          {last ? (
+            <Button onClick={submit} disabled={busy || Boolean(api.readOnly)}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{config.submitLabel || (isEdit ? "Save changes" : "Submit")}
+            </Button>
+          ) : <Button onClick={next}>Continue<ArrowRight className="h-4 w-4" /></Button>}
         </div>
       )}
     </div>
+  );
+}
+
+// Numbered steps across the top of a stepped form: done ones ticked, the current one in the event colour.
+function Stepper({ titles, step }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3.5">
+      {titles.map((title, index) => (
+        <span key={index} className="contents">
+          {index ? <span className="hidden h-px w-10 bg-border-strong sm:block" aria-hidden /> : null}
+          <span className={cn("inline-flex items-center gap-2.5 text-[13.5px] font-medium", index <= step ? "text-foreground" : "text-text-secondary")}>
+            <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
+              index <= step ? "bg-primary text-primary-foreground" : "border border-border-strong text-text-secondary")}>
+              {index < step ? <Check className="h-3.5 w-3.5" /> : index + 1}
+            </span>
+            <span className={cn(index !== step && "hidden sm:inline")}>{title}</span>
+          </span>
+        </span>
+      ))}
+      <span className="flex-1" />
+      <span className="font-mono text-xs text-text-secondary">Step {step + 1} of {titles.length}</span>
+    </div>
+  );
+}
+
+// One part of a form: its title and description on the left, the fields on the right (stacked on narrow screens).
+function FormSection({ title, description, divided = false, children }) {
+  const side = Boolean(title || description);
+  return (
+    <section className={cn("grid gap-x-10 gap-y-5 px-5 py-7 sm:px-6", side && "@2xl/block:grid-cols-[minmax(0,240px)_minmax(0,1fr)]", divided && "border-t border-border")}>
+      {side ? (
+        <div className="grid content-start gap-1.5">
+          {title ? <h3 className="text-[14.5px] font-semibold text-foreground">{title}</h3> : null}
+          {description ? <p className="whitespace-pre-line text-[13px] leading-relaxed text-text-secondary">{description}</p> : null}
+        </div>
+      ) : null}
+      <div className="min-w-0">{children}</div>
+    </section>
   );
 }
 
@@ -286,22 +316,19 @@ export function FormBlock({ block, fill }) {
     body = <FormBody key={`${data.record?.id ?? "new"}:${data.record?.revision ?? 0}`} block={block} data={data} />;
   }
 
+  const filling = body?.type === FormBody;
   return (
     <BlockFrame fill={fill}>
-      <div className="@container/block">
-        <div className="mx-auto grid max-w-3xl gap-6 p-5 @xl/block:p-8">
-          {config.title || config.intro ? (
-            <div className="grid gap-1.5">
-              {config.title ? <h2 className="text-xl font-semibold text-foreground">{config.title}</h2> : null}
-              {config.intro ? <p className="whitespace-pre-line text-sm text-text-secondary">{config.intro}</p> : null}
-              {data?.state === "open" && config.closesAt ? (
-                <p className="flex items-center gap-1.5 text-xs text-text-tertiary"><CalendarClock className="h-3.5 w-3.5" />Closes {formatDateTime(config.closesAt, timeZone)}</p>
-              ) : null}
-            </div>
+      {config.title || config.intro ? (
+        <div className="grid gap-1.5 border-b border-border px-5 py-5 sm:px-6">
+          {config.title ? <h2 className="text-lg font-semibold text-foreground">{config.title}</h2> : null}
+          {config.intro ? <p className="whitespace-pre-line text-sm leading-relaxed text-text-secondary">{config.intro}</p> : null}
+          {data?.state === "open" && config.closesAt ? (
+            <p className="flex items-center gap-1.5 text-xs text-text-tertiary"><CalendarClock className="h-3.5 w-3.5" />Closes {formatDateTime(config.closesAt, timeZone)}</p>
           ) : null}
-          {body}
         </div>
-      </div>
+      ) : null}
+      {filling ? body : <div className="px-5 py-2">{body}</div>}
     </BlockFrame>
   );
 }

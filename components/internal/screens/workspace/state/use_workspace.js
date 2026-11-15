@@ -72,6 +72,7 @@ export function useWorkspace(eventId) {
       return { data: null, error };
     }
     if (STRUCTURAL.test(action) || action.startsWith("records.")) await store.load();
+    else if (action === "record.create") store.load();
     if (!quiet) {
       const label = success ?? UNDO_LABELS[action];
       const undoIt = async () => {

@@ -10,6 +10,7 @@ Design: [`docs/superpowers/specs/2026-11-14-workspace-foundation-design.md`](../
    - `20261114100000_retire_operations.sql` — drops every `ops_*` table and function (keeps the four role-write guards), removes the `operations` bucket, and rewrites stored `events.operations.*` permissions to `events.workspace.*`. If Supabase refuses to delete storage rows from SQL, it logs a notice and leaves the bucket; delete it from the dashboard.
    - `20261114110000_workspace_foundation.sql` — tables, indexes, the private `workspace` bucket (50 MB files) and `events.workspace_can`.
    - `20261114120000_workspace_command.sql` — `events.workspace_command`, `events.workspace_query`, `events.workspace_purge`.
+   - `20261120100000_workspace_board_order.sql` — `workspace_records.rank` (manual board order) and the `rank` sort in `events.workspace_query`. Boards ask for this sort, so they fail to load until it's pushed.
 2. Environment: `SUPABASE_SERVICE_ROLE_KEY` (already required) and `CRON_SECRET` (already set).
 3. `vercel.json` runs `/events/api/internal/workspace/maintenance` daily: empties trash older than 30 days (and orphaned files) and resumes stalled copies.
 4. geiger-dash: `'/events/operations/'` was removed from `PUBLIC_PREFIXES` in `utils/supabase/middleware.js`.
@@ -27,7 +28,8 @@ Design: [`docs/superpowers/specs/2026-11-14-workspace-foundation-design.md`](../
 | API | `app/api/events/[eventId]/workspace/**` |
 | Writes | one action per request → `events.workspace_command` (one transaction, permission re-check, change log, replay-safe receipts) |
 | Reads | `events.workspace_query` builds SQL from a plan `compileQuery` already validated; it re-checks every field and operator |
-| UI | `components/internal/screens/workspace/*`; the event editor sidebar gets a Workspace group (`workspace/nav.jsx`) |
+| Board | `object/board_view.jsx` on `@dnd-kit` (same as Geiger Flow's issue board). Manual order is the default: a drop sends `record.rank` with the neighbouring cards, and the server stores the midpoint (`coalesce(rank, number)`, so unranked records keep creation order). Ordering isn't a record change, so it skips the revision and change log. A view with a sort switches to sorted placement |
+| UI | `components/internal/screens/workspace/*`. The event editor has one Workspace entry (`workspace/nav.jsx`); opening it switches the editor into the workspace's own edge-to-edge layout (`workspace/shell/workspace_shell.jsx`: lists with counts, team pages, process, portal, settings). Every screen is a header bar, a toolbar row and a body (`workspace/shell/page.jsx`); records open in a panel docked beside the table on wide screens |
 
 ## Rules worth knowing
 
@@ -55,7 +57,8 @@ Deploy: `npm run db:push` applies `20261115100000_workspace_portals.sql` (portal
 | Builder API | `app/api/events/[eventId]/workspace/portal/**` |
 | Shared renderer (portal, builder preview, team pages) | `components/workspace_portal/render/*` — blocks talk to an adapter, never to an API directly |
 | Portal app | `app/e/[id]/workspace/**`, `components/workspace_portal/shell/*` |
-| Builder | `components/internal/screens/workspace/portal/*` (sidebar: Workspace → Portal, plus one item per team page) |
+| Builder | `components/internal/screens/workspace/portal/*` (workspace sidebar: Outside the team → Portal, plus one item per team page) |
+| Event-page blocks | Welcome (`hero`), Notice, Details (`facts`) and Key dates (`dates`) in `render/event_blocks.jsx`; the schedule block also shows as an agenda or at a glance (`render/schedule_views.jsx`); pages carry an optional heading in `body.header` (`render/page_header.jsx`) |
 
 Rules worth knowing:
 

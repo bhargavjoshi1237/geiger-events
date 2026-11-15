@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, LogoLoading } from "@geiger/ui";
+import { Button, LoadingArea } from "@geiger/ui";
 import { RotateCw } from "lucide-react";
 import { FileViewer } from "@/components/workspace_portal/render/pdf_viewer";
 import { PageView } from "@/components/workspace_portal/render/page_view";
+import { PortalPageHeader } from "@/components/workspace_portal/render/page_header";
 import { PortalViewProvider } from "@/components/workspace_portal/render/portal_context";
 import { RecordView } from "@/components/workspace_portal/render/record_view";
 import { usePortalApp } from "./portal_app";
@@ -47,7 +48,7 @@ function usePortalPage(target) {
 }
 
 function Loading() {
-  return <div className="flex justify-center py-24"><LogoLoading size={56} aria-label="Loading page" /></div>;
+  return <LoadingArea size={56} label="Loading page" className="py-24" />;
 }
 
 function LoadFailed({ error, onRetry }) {
@@ -75,10 +76,10 @@ function PortalPage({ target }) {
         {isRecord ? (
           <RecordView backLabel="Back" onBack={() => (window.history.length > 1 ? router.back() : router.push(href()))} />
         ) : (
-          <div className="grid gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{data.page.title}</h1>
+          <>
+            <PortalPageHeader page={data.page} eventName={event?.name} timeZone={session?.event?.timeZone ?? event?.timeZone} />
             <PageView />
-          </div>
+          </>
         )}
       </FileViewer>
     </PortalViewProvider>

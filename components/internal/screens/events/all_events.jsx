@@ -455,6 +455,7 @@ export function AllEventsScreen() {
     return (
       <EventDetailScreen
         event={selectedEvent}
+        events={events}
         onBack={closeEvent}
         onUpdate={handleUpdate}
         onDelete={(ev) => {

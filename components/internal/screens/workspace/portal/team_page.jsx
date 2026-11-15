@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PanelsTopLeft, Pencil } from "lucide-react";
-import { Button, LogoLoading } from "@geiger/ui";
-import { EditorSectionHeader, EmptyState } from "@/components/internal/shared/screen_kit";
+import { Button, LoadingArea } from "@geiger/ui";
+import { EmptyState } from "@/components/internal/shared/screen_kit";
+import { iconFor } from "../ws_ui";
+import { PageBar, PageBody, WorkspacePage } from "../shell/page";
 import { FileViewer } from "@/components/workspace_portal/render/pdf_viewer";
 import { PageView } from "@/components/workspace_portal/render/page_view";
 import { PortalViewProvider } from "@/components/workspace_portal/render/portal_context";
@@ -41,26 +43,31 @@ export function TeamPage({ eventId, ws, pageId, onNavigate }) {
       const target = portal.pages.find((item) => item.kind === "page" && item.slug === slug && item.audience?.team);
       if (target) onNavigate?.(teamPageKey(target.id));
     },
-  }), [eventId, view.data?.page, ws.data, ws.objects, portal.pages, onNavigate]);
+  }), [eventId, view.data?.page, ws.data, ws.objects, portal.pages, onNavigate, setSheet]);
 
+  const bar = (
+    <PageBar icon={iconFor(page?.icon || "file")} title={page?.title ?? "Team page"} note="A portal page shared with the team"
+      actions={page && portal.can.configure ? <Button variant="outline" size="sm" onClick={() => onNavigate?.("workspace-portal")}><Pencil className="h-3.5 w-3.5" />Edit page</Button> : null} />
+  );
   if (!portal.data || (view.key !== key && !view.data)) {
-    return <div className="flex justify-center py-20"><LogoLoading size={56} aria-label="Loading page" /></div>;
+    return <WorkspacePage>{bar}<LoadingArea size={56} label="Loading page" /></WorkspacePage>;
   }
   if (!page || (view.error && view.key === key)) {
-    return <EmptyState icon={PanelsTopLeft} title="Page not found" description={view.error?.message ?? "It may have been removed or is no longer a team page."} />;
+    return <WorkspacePage>{bar}<EmptyState icon={PanelsTopLeft} title="Page not found" description={view.error?.message ?? "It may have been removed or is no longer a team page."} /></WorkspacePage>;
   }
 
   return (
-    <div className="space-y-5">
-      <EditorSectionHeader title={page.title} description="A portal page shared with the team."
-        action={portal.can.configure ? <Button variant="outline" onClick={() => onNavigate?.("workspace-portal")}><Pencil className="h-4 w-4" />Edit page</Button> : null} />
-      <PortalViewProvider api={adapter} mode="team" eventId={eventId} timeZone={view.data.session?.event?.timeZone} page={view.data.page} lists={view.data.lists}
-        session={view.data.session} revision={bump}>
-        <FileViewer api={adapter}><PageView /></FileViewer>
-      </PortalViewProvider>
+    <WorkspacePage>
+      {bar}
+      <PageBody padded>
+        <PortalViewProvider api={adapter} mode="team" eventId={eventId} timeZone={view.data.session?.event?.timeZone} page={view.data.page} lists={view.data.lists}
+          session={view.data.session} revision={bump}>
+          <FileViewer api={adapter}><PageView /></FileViewer>
+        </PortalViewProvider>
+      </PageBody>
       <RecordSheet open={sheet.open} onOpenChange={(open) => setSheet((current) => ({ ...current, open }))} eventId={eventId} data={ws.data}
         objectId={sheet.objectId} recordId={sheet.recordId} timeZone={ws.data?.event?.timeZone ?? "UTC"} can={ws.can} run={ws.run}
         onSaved={() => setBump((n) => n + 1)} onOpenRecord={(id, objectId) => setSheet({ open: true, recordId: id, objectId: objectId ?? sheet.objectId })} />
-    </div>
+    </WorkspacePage>
   );
 }

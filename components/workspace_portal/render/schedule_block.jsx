@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@geiger/ui";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { addDays, parseDay, useAnchor } from "./dated";
 import { useList, useOpenRecord, usePortalView } from "./portal_context";
 import { useBlockData } from "./use_block_data";
 import { CellValue, fieldName, isVisibleOn } from "./values";
+import { AgendaView, GlanceView, zoneNote } from "./schedule_views";
 
 const PX = 1.1;
 const LANE_WIDTH = 168;
@@ -117,6 +118,22 @@ export function ScheduleBlock({ block, fill }) {
     const target = lanes[Math.max(0, Math.min(lanes.length - 1, laneIndex + current.dLane))]?.id;
     if (current.dMin || (target && target !== laneOf(item))) commit(item, { startMin: Math.max(0, item.startMin + current.dMin), laneId: target });
   };
+
+  // The agenda (day-by-day list) and at-a-glance views cover the whole configured span instead of one day at a time.
+  if (config.view === "agenda" || config.view === "glance") {
+    const state = !list || !startField ? <Restricted /> : loading || start === null ? <BlockLoading label="Loading the programme" />
+      : error ? <BlockError error={error} onRetry={reload} /> : data?.restricted ? <Restricted /> : null;
+    const views = {
+      list, config, items, days: Array.from({ length: days }, (_, i) => addDays(from, i)),
+      laneLabel: (item) => lanes.find((lane) => lane.id === laneOf(item) && lane.id !== NO_LANE)?.label ?? null,
+      onOpen: config.open ? openRecord : null,
+    };
+    if (config.view === "agenda") return state ? <BlockFrame title={config.title} fill={fill}>{state}</BlockFrame> : <AgendaView {...views} />;
+    const more = config.more?.page && api.navigate ? (
+      <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => api.navigate(config.more.page)}>{config.more.label || "See all"}<ArrowRight className="h-3.5 w-3.5" /></Button>
+    ) : null;
+    return <BlockFrame title={config.title} note={zoneNote(timeZone)} actions={more} fill={fill}>{state ?? <GlanceView {...views} />}</BlockFrame>;
+  }
 
   const actions = (
     <div className="flex items-center gap-1">

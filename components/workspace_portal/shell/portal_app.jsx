@@ -3,11 +3,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { LogoLoading } from "@geiger/ui";
+import { LoadingScreen, SidebarInset, SidebarProvider } from "@geiger/ui";
 import { cn } from "@/lib/utils";
 import { resolveTheme, themeChromeStyle, themeForMode } from "@/lib/events/theme";
 import { portalApi } from "@/lib/workspace/portal/client";
-import { PortalNav, PortalTabs, PortalTopBar } from "./portal_nav";
+import { PortalFooter, PortalNav, PortalTopBar } from "./portal_nav";
 import { ClosedScreen, MissingScreen } from "./screens";
 
 const PortalAppContext = createContext(null);
@@ -62,27 +62,29 @@ export function PortalApp({ eventId, event, children }) {
   }, [themed, design, mode]);
   const style = brand ? themeChromeStyle(brand) : undefined;
 
+  // The event as the chrome shows it: the server-rendered name, and the date and place once the session says them.
+  const shown = useMemo(() => (event ? { ...event, ...(state.session?.event ?? {}), name: event.name } : null), [event, state.session]);
   const value = useMemo(() => ({
-    eventId, event, api, session: state.session, status: state.status, base, href, navigate, reloadSession, signOut, pathname,
+    eventId, event: shown, api, session: state.session, status: state.status, base, href, navigate, reloadSession, signOut, pathname,
     mode, toggleMode: () => setTheme(mode === "light" ? "dark" : "light"), brand,
-  }), [eventId, event, api, state, base, href, navigate, reloadSession, signOut, pathname, mode, setTheme, brand]);
+  }), [eventId, shown, api, state, base, href, navigate, reloadSession, signOut, pathname, mode, setTheme, brand]);
 
   let content;
   if (state.status === "loading") {
-    content = <div className="flex min-h-[100dvh] items-center justify-center"><LogoLoading size={80} aria-label="Loading" /></div>;
+    content = <LoadingScreen label="Loading" />;
   } else if (state.status === "closed") content = <ClosedScreen onRetry={reloadSession} />;
   else if (state.status === "missing" || !event) content = <MissingScreen />;
   else if (state.status === "error") content = <ClosedScreen error={state.error} onRetry={reloadSession} />;
   else {
     content = (
-      <div className="flex min-h-[100dvh]">
+      <SidebarProvider className="h-[100dvh] overflow-hidden">
         <PortalNav />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <SidebarInset className="min-w-0 overflow-y-auto">
           <PortalTopBar />
-          <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 pb-28 pt-5 sm:px-6 lg:px-10 lg:pb-12 lg:pt-10">{children}</main>
-        </div>
-        <PortalTabs />
-      </div>
+          <div className="mx-auto w-full min-w-0 max-w-[1168px] flex-1 px-[clamp(16px,4vw,48px)] pb-[72px] pt-[clamp(20px,4vw,44px)]">{children}</div>
+          <PortalFooter />
+        </SidebarInset>
+      </SidebarProvider>
     );
   }
 

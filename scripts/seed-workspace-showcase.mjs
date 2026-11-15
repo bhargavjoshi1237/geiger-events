@@ -658,17 +658,40 @@ async function buildPortal() {
   // A person has several roles at once (everyone is also a public visitor), so "my" lists filter to their own records.
   const mine = { op: "and", items: [me("review", "reviewer")] };
 
-  await page({ title: "Home", slug: "home", icon: "house", audience: audience([], { public: true }), body: stacked([
-    full({ kind: "text", config: { html: "<h2>Welcome to ICAML 2026</h2><p>The International Conference on Applied Machine Learning, 8–10 December in Lisbon. Use this space to submit late-breaking posters, review papers, follow the programme and run your sessions.</p>", align: "left" } }),
-    full({ kind: "buttons", config: { items: [
-      { label: "Submit a poster", kind: "page", target: "submit", style: "primary" },
-      { label: "See the programme", kind: "page", target: "programme", style: "outline" },
-    ], align: "left" } }),
+  // The programme as a schedule block: sessions by start, length and room, with the track as a coloured dot and the type as a tag.
+  const programmeOf = (view, extra = {}) => ({
+    kind: "schedule", config: {
+      title: "", source: { objectId: sessions, filter: null, sort: [] }, startField: fid("session", "starts"), endField: null, durationField: fid("session", "length"),
+      laneField: fid("session", "room"), peopleField: null, startDate: "first", days: 3, open: false, fields: [fid("session", "track"), fid("session", "type")], view, more: null, ...extra,
+    },
+  });
+  const help = (extra = "") => ({ kind: "text", config: { html: `<h3>Need help?</h3><p>Write to <a href="mailto:programme@icaml.example.org">programme@icaml.example.org</a>.${extra}</p>`, align: "left", card: true } });
+
+  // Home opens with a Welcome block, so the page's own heading is off.
+  await page({ title: "Home", slug: "home", icon: "house", audience: audience([], { public: true }), body: { ...stacked([
+    full({ kind: "hero", config: {
+      image: "", badge: "countdown", heading: "Welcome to ICAML 2026",
+      text: "The International Conference on Applied Machine Learning, 8–10 December in Lisbon. Use this space to submit late-breaking posters, review papers, follow the programme and run your sessions.",
+      buttons: [{ label: "Submit a poster", kind: "page", target: "submit", style: "primary" }, { label: "See the programme", kind: "page", target: "programme", style: "outline" }],
+      facts: [
+        { icon: "calendar", label: "When", value: "Mon 8 – Wed 10 December 2026" },
+        { icon: "map-pin", label: "Where", value: "Harbourfront Congress Centre, Lisbon" },
+        { icon: "clock", label: "Poster submissions close", value: "30 November, 11:59 PM" },
+      ],
+    } }),
+    full({ kind: "notice", config: { icon: "megaphone", html: "<p><strong>New:</strong> registration for the workshop day opens on 20 November.</p>" } }),
     [
-      { width: 8, blocks: [{ kind: "calendar", config: { title: "Conference week", source: { objectId: sessions, filter: null, sort: [] }, dateField: fid("session", "starts"), view: "week", open: false } }] },
-      { width: 4, blocks: [{ kind: "text", config: { html: "<h3>Need help?</h3><p>Write to <a href=\"mailto:programme@icaml.example.org\">programme@icaml.example.org</a>. Reviewers: please finish by 15 September.</p>", align: "left" } }] },
+      { width: 8, blocks: [programmeOf("glance", { title: "Programme at a glance", fields: [fid("session", "track")], more: { label: "Full programme", page: "programme" } })] },
+      { width: 4, blocks: [
+        { kind: "dates", config: { title: "Key dates", items: [
+          { date: "2026-11-20", label: "Workshop day registration opens", note: "" },
+          { date: "2026-11-30", label: "Poster submissions close", note: "" },
+          { date: "2026-12-08", label: "Conference opens in Lisbon", note: "" },
+        ] } },
+        help(" Reviewers: please finish by 15 September."),
+      ] },
     ],
-  ]) });
+  ]), header: { hidden: true } } });
 
   await page({ title: "My reviews", slug: "my-reviews", icon: "glasses", audience: audience([reviewer]), body: stacked([
     full({ kind: "text", config: { html: "<p>Papers are anonymous: you won't see the authors, and they won't see you. Scores and comments are saved as you go; set the status to <strong>Submitted</strong> when you're done.</p>", align: "left" } }),
@@ -692,14 +715,16 @@ async function buildPortal() {
       cover: null, fields: ["track", "keywords", "abstract"].map((key) => fid("paper", key)), columns: 1, search: false, filters: [], pageSize: 3, open: true } }] },
   ]]) });
 
-  await page({ title: "Submit a poster", slug: "submit", icon: "send", audience: audience([author], { public: true }), body: stacked([
-    full({ kind: "form", config: {
-      title: "Late-breaking poster", intro: "Two pages, PDF. Posters are presented in Poster session A on 9 December. New here? Fill in your details and confirm your email.",
+  // The form's title and intro live in the page heading, which also shows when submissions close.
+  await page({ title: "Submit a poster", slug: "submit", icon: "send", audience: audience([author], { public: true }), body: { ...stacked([[
+    { width: 8, blocks: [{ kind: "form", config: {
+      title: "", intro: "",
       mode: "create", objectId: papers, steps: true, drafts: true, status: statusKey("paper", "Submitted"),
       sections: [
-        { title: "Your poster", description: "", fields: [{ fieldId: fid("paper", "title"), required: true, help: "" }, { fieldId: fid("paper", "abstract"), required: true, help: "Up to 250 words." },
-          { fieldId: fid("paper", "track"), required: true, help: "" }, { fieldId: fid("paper", "keywords"), required: false, help: "" }] },
-        { title: "Files", description: "Upload the PDF you want reviewed.", fields: [{ fieldId: fid("paper", "paper_pdf"), required: true, help: "PDF only." }, { fieldId: fid("paper", "pages"), required: false, help: "" }] },
+        { title: "Your poster", description: "Shown in the programme and on the poster board.", fields: [
+          { fieldId: fid("paper", "title"), required: true, help: "" }, { fieldId: fid("paper", "abstract"), required: true, help: "Up to 250 words." },
+          { fieldId: fid("paper", "track"), required: true, help: "" }, { fieldId: fid("paper", "paper_pdf"), required: true, help: "Two pages, PDF." },
+        ] },
       ],
       defaults: [{ fieldId: fid("paper", "authors"), value: ["@me"] }, { fieldId: fid("paper", "submitted_on"), value: "@today" }, { fieldId: fid("paper", "format"), value: opt("Poster") }],
       closesAt: "2026-11-30T23:59:00.000Z", submitLabel: "Submit poster",
@@ -707,8 +732,16 @@ async function buildPortal() {
       signup: { enabled: true, objectId: people.id,
         personFields: [{ fieldId: fid("person", "name"), required: true, help: "" }, { fieldId: fid("person", "affiliation"), required: true, help: "" }, { fieldId: fid("person", "country"), required: false, help: "" }],
         personDefaults: [{ fieldId: fid("person", "roles"), value: [opt("Author")] }] },
-    } }),
-  ]) });
+    } }] },
+    { width: 4, blocks: [
+      { kind: "facts", config: { title: "Where it's presented", items: [
+        { icon: "users", label: "Session", value: "Poster session A · Plenary" },
+        { icon: "calendar", label: "When", value: "Tue 9 December, from 15:00" },
+        { icon: "map-pin", label: "Where", value: "Poster Hall, Lisbon" },
+      ] } },
+      help(),
+    ] },
+  ]]), header: { title: "Late-breaking poster", description: "Two pages, PDF. Posters are presented in Poster session A on 9 December. New here? Fill in your details and confirm your email." } } });
 
   await page({ title: "My submissions", slug: "my-submissions", icon: "files", audience: audience([author]), body: stacked([
     full({ kind: "table", config: { title: "Papers", source: { objectId: papers, filter: { op: "and", items: [me("paper", "authors")] }, sort: [{ field: fid("paper", "submitted_on"), dir: "desc" }] },
@@ -726,11 +759,9 @@ async function buildPortal() {
       emptyText: "Reviews appear here once they're submitted." } }),
   ]) });
 
-  await page({ title: "Programme", slug: "programme", icon: "calendar-days", audience: audience([], { public: true }), body: stacked([
-    full({ kind: "calendar", config: { title: "Sessions", source: { objectId: sessions, filter: null, sort: [] }, dateField: fid("session", "starts"), view: "week", open: false } }),
-    full({ kind: "table", config: { title: "All sessions", source: { objectId: sessions, filter: null, sort: [{ field: fid("session", "starts"), dir: "asc" }] },
-      columns: ["type", "track", "starts", "room", "paper_titles"].map((key) => fid("session", key)), search: true, filters: [fid("session", "type"), fid("session", "track")], pageSize: 20, open: false } }),
-  ]) });
+  await page({ title: "Programme", slug: "programme", icon: "calendar-days", audience: audience([], { public: true }), body: { ...stacked([
+    full(programmeOf("agenda")),
+  ]), header: { description: "Three days in Lisbon, 8–10 December. All times are local (WET)." } } });
 
   await page({ title: "Session attendance", slug: "attendance", icon: "user-check", audience: audience([chair]), body: stacked([
     full({ kind: "text", config: { html: "<p>Drag people between columns as they arrive. Only the sessions you chair are shown.</p>", align: "left" } }),
@@ -765,11 +796,11 @@ async function buildPortal() {
   log(`published portal version ${published.version.number}`);
 
   // One unpublished change, so the Publish tab has something to show.
-  const home = (await portalStaff.state(context)).pages.find((item) => item.slug === "home");
-  const row = { id: newRowId(), widths: [12] };
-  const note = { id: newBlockId(), kind: "text", config: { html: "<p><strong>New:</strong> registration for the workshop day opens on 20 November.</p>", align: "left" }, at: { row: row.id, col: 0, order: 0 } };
-  await portalRun("page.save", { page: { id: home.id, body: { rows: [...home.body.rows, row], blocks: [...home.body.blocks, note] } }, expectedRevision: home.revision });
-  log("portal draft: one unpublished change on Home");
+  const programmePage = (await portalStaff.state(context)).pages.find((item) => item.slug === "programme");
+  await portalRun("page.save", { page: { id: programmePage.id, body: { ...programmePage.body, header: {
+    ...programmePage.body.header, description: "Three days in Lisbon, 8–10 December. All times are local (WET). Workshops on day three need their own registration.",
+  } } }, expectedRevision: programmePage.revision });
+  log("portal draft: one unpublished change on Programme");
 }
 
 // ---------------------------------------------------------------- process, automations and documents
