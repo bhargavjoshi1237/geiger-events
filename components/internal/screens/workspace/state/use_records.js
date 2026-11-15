@@ -1,45 +1,52 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePageState } from "@/components/internal/shared/pagination";
 import { workspaceApi } from "@/lib/workspace/client";
 
 const PAGE = 100;
 
-// Pages of records for one list under the current view; `refresh` changing (e.g. the definition reloading) refetches.
-export function useRecords(eventId, objectId, spec, refresh) {
+// Records for one list under the current view; `refresh` changing (e.g. the definition reloading) refetches.
+// `paged` fetches one page at a time (a table, driven by `pager`); otherwise the rows grow with loadMore (a board).
+export function useRecords(eventId, objectId, spec, refresh, { paged = false } = {}) {
   const key = JSON.stringify({ objectId, spec });
   const [page, setPage] = useState({ key: null, rows: [], total: 0, error: null });
   const [version, setVersion] = useState(0);
   const [more, setMore] = useState(null);
+  const pager = usePageState(page.total, { resetKey: `${key}|${paged}` });
+  const limit = paged ? pager.pageSize : PAGE;
+  const offset = paged ? (pager.page - 1) * pager.pageSize : 0;
+  const fetchKey = `${key}|${limit}|${offset}`;
 
   useEffect(() => {
     if (!objectId) return undefined;
     const controller = new AbortController();
     const { spec: current } = JSON.parse(key);
-    workspaceApi.records(eventId, objectId, { ...current, limit: PAGE, offset: 0 }, controller.signal)
-      .then(({ data, error }) => setPage(error ? { key, rows: [], total: 0, error } : { key, rows: data.rows, total: data.total, error: null }))
+    workspaceApi.records(eventId, objectId, { ...current, limit, offset }, controller.signal)
+      .then(({ data, error }) => setPage(error ? { key: fetchKey, rows: [], total: 0, error } : { key: fetchKey, rows: data.rows, total: data.total, error: null }))
       .catch(() => {});
     return () => controller.abort();
-  }, [eventId, objectId, key, version, refresh]);
+  }, [eventId, objectId, key, fetchKey, limit, offset, version, refresh]);
 
   const loadMore = useCallback(async () => {
-    const offset = page.rows.length;
-    setMore(offset);
-    const { data } = await workspaceApi.records(eventId, objectId, { ...JSON.parse(key).spec, limit: PAGE, offset });
+    const from = page.rows.length;
+    setMore(from);
+    const { data } = await workspaceApi.records(eventId, objectId, { ...JSON.parse(key).spec, limit: PAGE, offset: from });
     setMore(null);
-    if (data) setPage((current) => (current.key === key ? { ...current, rows: [...current.rows, ...data.rows], total: data.total } : current));
-  }, [eventId, objectId, key, page.rows.length]);
+    if (data) setPage((current) => (current.key === fetchKey ? { ...current, rows: [...current.rows, ...data.rows], total: data.total } : current));
+  }, [eventId, objectId, key, fetchKey, page.rows.length]);
 
-  const fresh = page.key === key;
+  const fresh = page.key === fetchKey;
   return {
     rows: page.rows,
     total: page.total,
     error: page.error,
     status: page.error && fresh ? "error" : page.key === null ? "loading" : fresh ? "ready" : "refreshing",
     reload: () => setVersion((n) => n + 1),
+    pager: paged ? pager : null,
     loadMore,
     loadingMore: more !== null,
-    hasMore: fresh && page.rows.length < page.total,
+    hasMore: !paged && fresh && page.rows.length < page.total,
     patchRow: (record) => setPage((current) => ({
       ...current,
       rows: current.rows.map((row) => (row.id === record.id ? { ...row, ...record, links: row.links, computed: row.computed } : row)),

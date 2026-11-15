@@ -19,6 +19,8 @@ import { objectSectionKey, WorkspaceSection } from "../workspace_section";
 const initials = (text) => String(text || "?").replace(/[—–-].*$/, "").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
 const eventMeta = (event) => [formatDate(event?.date), event?.venue].filter(Boolean).join(" · ");
 const STATUS = { live: ["Live", "bg-emerald-400"], draft: ["Draft", "bg-amber-400"], off: ["Off", "bg-text-tertiary"] };
+// Centres the 20px badge on the 36px rows; it must use the library's own peer variant, or its top-1.5 (sized for 32px rows) wins.
+const BADGE_TOP = "peer-data-[size=default]/menu-button:top-2";
 
 // One workspace screen in the sidebar, styled like the app sidebar's own items.
 function NavItem({ item, active, onSelect }) {
@@ -33,9 +35,9 @@ function NavItem({ item, active, onSelect }) {
         <span>{item.label}</span>
       </SidebarMenuButton>
       {status ? (
-        <SidebarMenuBadge className="top-2 gap-1.5 text-[11px] font-normal text-muted-foreground"><span className={cn("h-1.5 w-1.5 rounded-full", status[1])} />{status[0]}</SidebarMenuBadge>
+        <SidebarMenuBadge className={cn(BADGE_TOP, "gap-1.5 text-[11px] font-normal text-muted-foreground")}><span className={cn("h-1.5 w-1.5 rounded-full", status[1])} />{status[0]}</SidebarMenuBadge>
       ) : badge ? (
-        <SidebarMenuBadge className={cn("top-2 tabular-nums", item.badge ? "rounded-full bg-foreground px-1.5 text-[11px] text-background" : "text-xs font-normal text-text-tertiary")}>{badge}</SidebarMenuBadge>
+        <SidebarMenuBadge className={cn(BADGE_TOP, "tabular-nums", item.badge ? "rounded-full bg-foreground px-1.5 text-[11px] text-background" : "text-xs font-normal text-text-tertiary")}>{badge}</SidebarMenuBadge>
       ) : null}
     </SidebarMenuItem>
   );

@@ -42,13 +42,12 @@ function pageWindow(page, totalPages, span = 3) {
   return out;
 }
 
-// Client-side paging over an in-memory array. `resetKey` is any string that
-// describes the active filters — change it and the user lands back on page 1.
-export function usePagination(items, { pageSize: initialSize = 25, resetKey } = {}) {
+// Page and page size for a list of `total` items; a server-paged list passes the total it reported and fetches
+// `page`. `resetKey` is any string that describes the active filters — change it and the user lands back on page 1.
+export function usePageState(total, { pageSize: initialSize = 25, resetKey } = {}) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialSize);
 
-  const total = items?.length ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   // Clamp on read instead of syncing state, so a list that shrinks under the
   // user never renders an empty page.
@@ -70,20 +69,25 @@ export function usePagination(items, { pageSize: initialSize = 25, resetKey } = 
     setPage(Math.floor(anchor / next) + 1);
   };
 
-  const pageItems = useMemo(() => {
-    const start = (safePage - 1) * pageSize;
-    return (items ?? []).slice(start, start + pageSize);
-  }, [items, safePage, pageSize]);
-
   return {
     page: safePage,
     pageSize,
     total,
     totalPages,
-    pageItems,
     onPageChange: setPage,
     onPageSizeChange,
   };
+}
+
+// Client-side paging over an in-memory array (same options as usePageState).
+export function usePagination(items, options) {
+  const state = usePageState(items?.length ?? 0, options);
+  const { page, pageSize } = state;
+  const pageItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return (items ?? []).slice(start, start + pageSize);
+  }, [items, page, pageSize]);
+  return { ...state, pageItems };
 }
 
 function PageSizeSelect({ pageSize, options, onPageSizeChange }) {
@@ -132,6 +136,7 @@ export function ListPagination({
   onPageSizeChange,
   pageSizeOptions = PAGE_SIZE_OPTIONS,
   itemLabel = "items",
+  note,
   className,
 }) {
   if (!total) return null;
@@ -164,6 +169,7 @@ export function ListPagination({
           </span>{" "}
           of {total.toLocaleString("en-US")} {itemLabel}
         </span>
+        {note ? <span className="hidden text-text-tertiary md:inline">· {note}</span> : null}
       </div>
 
       <nav aria-label="Pagination" className="flex items-center gap-1">

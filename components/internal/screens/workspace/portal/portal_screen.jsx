@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ExternalLink, Globe, Upload } from "lucide-react";
 import { Badge, Button, LoadingArea } from "@geiger/ui";
 import { EmptyState, SegmentedTabs } from "@/components/internal/shared/screen_kit";
-import { PageBar, PageBody, PageToolbar, WorkspacePage } from "../shell/page";
+import { PageBar, PageBody, PageToolbar, TOOLBAR_TABS, WorkspacePage } from "../shell/page";
 import { PagesTab } from "./pages_tab";
 import { PeopleTab, portalUrl } from "./people_tab";
 import { PublishTab, usePublish } from "./publish_tab";
@@ -38,7 +38,7 @@ export function PortalScreen({ eventId, ws }) {
   const ready = Boolean(settings?.peopleObjectId && settings?.emailFieldId);
   const active = tab ?? (ready ? "pages" : "people");
   const changes = portal.data.changes?.length ?? 0;
-  const tabs = <SegmentedTabs className="w-auto shrink-0" buttonClassName="h-7" value={active} onChange={setTab} tabs={TABS} />;
+  const tabs = <SegmentedTabs {...TOOLBAR_TABS} value={active} onChange={setTab} tabs={TABS} />;
 
   return (
     <WorkspacePage>
@@ -47,7 +47,7 @@ export function PortalScreen({ eventId, ws }) {
         note={`${portal.data.published ? `Live: version ${portal.data.published.number}` : "Not published yet"}${changes ? ` · ${changes} unpublished change${changes === 1 ? "" : "s"}` : ""}`}
         actions={(
           <>
-            <Button variant="outline" size="sm" asChild><a href={portalUrl(eventId)} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" />Open portal</a></Button>
+            <Button variant="outline" size="sm" asChild><a href={portalUrl(eventId)} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" />Open Portal</a></Button>
             <Button size="sm" onClick={openPublish}><Upload className="h-4 w-4" />Publish{changes ? ` · ${changes}` : ""}</Button>
           </>
         )} />

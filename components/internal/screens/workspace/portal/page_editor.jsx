@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { SegmentedTabs } from "@/components/internal/shared/screen_kit";
 import { cn } from "@/lib/utils";
 import { PortalPageHeader } from "@/components/workspace_portal/render/page_header";
-import { PageToolbar } from "../shell/page";
+import { PageToolbar, TOOLBAR_TABS } from "../shell/page";
 import { workspaceApi } from "@/lib/workspace/client";
 import { BLOCK_KINDS, defaultBlockConfig } from "@/lib/workspace/portal/blocks.js";
 import { toBlocks, toCanvas } from "@/lib/workspace/portal/pages.js";
@@ -141,6 +141,21 @@ function PageHeading({ header, title, onChange }) {
         </>
       ) : null}
     </div>
+  );
+}
+
+// The autosave state as one icon (its name on hover); each change pops in, saving spins.
+function SaveStatus({ state }) {
+  const [Icon, label, tone] = state === "saving" ? [Loader2, "Saving", "animate-spin"]
+    : state === "dirty" ? [null, "Unsaved changes", ""]
+      : state === "error" ? [AlertCircle, "Not saved", "text-red-600 dark:text-red-400"]
+        : [Check, "Saved as draft", ""];
+  return (
+    <span role="status" aria-label={label} title={label} className="mx-0.5 flex h-7 w-7 shrink-0 items-center justify-center text-text-tertiary">
+      <span key={state} className="flex animate-in fade-in zoom-in-50 duration-300">
+        {Icon ? <Icon className={cn("h-3.5 w-3.5", tone)} /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+      </span>
+    </span>
   );
 }
 
@@ -298,14 +313,10 @@ export function PageEditor({ eventId, ws, portal, page, toolbar, movable, onMove
       <PageToolbar>
         {toolbar}
         <div className="flex items-center gap-2">
-          <span className="hidden shrink-0 items-center gap-1.5 text-xs text-text-tertiary xl:inline-flex">
-            {save.state === "saving" ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Saving</> : save.state === "dirty" ? "Unsaved"
-              : save.state === "error" ? <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400"><AlertCircle className="h-3.5 w-3.5" />Not saved</span>
-                : <><Check className="h-3.5 w-3.5" />Saved to draft</>}
-          </span>
+          <SaveStatus state={save.state} />
           {page.kind === "record" && object ? <SampleRecord eventId={eventId} objectId={object.id} value={sample} onChange={setSample} /> : null}
           <PreviewAs portal={portal} value={as} onChange={setAs} allowTeam={Boolean(draft.audience?.team)} />
-          <SegmentedTabs className="w-auto shrink-0" value={mode} onChange={setMode} tabs={[{ label: "Edit", value: "edit" }, { label: "Try it", value: "preview" }]} />
+          <SegmentedTabs {...TOOLBAR_TABS} value={mode} onChange={setMode} tabs={[{ label: "Edit", value: "edit" }, { label: "Try it", value: "preview" }]} />
           <ToggleGroup type="single" variant="outline" size="sm" className="shrink-0" value={device} onValueChange={(value) => value && setDevice(value)} aria-label="Preview width">
             <ToggleGroupItem value="desktop" aria-label="Desktop width"><Monitor /></ToggleGroupItem>
             <ToggleGroupItem value="phone" aria-label="Phone width"><Smartphone /></ToggleGroupItem>

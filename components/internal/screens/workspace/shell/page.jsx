@@ -46,13 +46,17 @@ export function PageBar({ icon: Icon, title, note, badge, actions, crumb = "Work
 }
 
 // The row under the header: the suite Toolbar, so pass two lanes — tabs on the left, filters and search on the right.
+// Every control on it is 32px; the input token brings search fields (42px by default) down to match.
 export function PageToolbar({ children, className }) {
   return (
-    <div className={cn("shrink-0 border-b border-border/70 px-4 py-2.5 sm:px-6", className)}>
+    <div className={cn("shrink-0 border-b border-border/70 px-4 py-2.5 [--input-box-padding-y:5px] sm:px-6", className)}>
       <Toolbar>{children}</Toolbar>
     </div>
   );
 }
+
+// SegmentedTabs props that size its track to the toolbar's small buttons (32px); the library default is 42px.
+export const TOOLBAR_TABS = { className: "w-auto shrink-0 gap-0.5 p-0.5", buttonClassName: "h-[26px]" };
 
 // The scrolling area under the bars. `padded` gives document-like screens their margins.
 export function PageBody({ children, className, padded = false }) {

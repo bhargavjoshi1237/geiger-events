@@ -9,7 +9,7 @@ import {
 import { toast } from "sonner";
 import { EmptyState, SearchInput, SegmentedTabs } from "@/components/internal/shared/screen_kit";
 import { RecordSheet } from "../record/record_sheet";
-import { PageBar, PageBody, PageToolbar, WorkspacePage } from "../shell/page";
+import { PageBar, PageBody, PageToolbar, TOOLBAR_TABS, WorkspacePage } from "../shell/page";
 import { timeAgo } from "../state/format";
 import { useDocuments } from "../process/use_documents";
 import { CertificatesView } from "./certificates_view";
@@ -99,11 +99,11 @@ export function DocumentsScreen({ eventId, ws }) {
     <WorkspacePage>
       <PageBar icon={FileText} title="Documents" note="Emails and PDFs made from a record's fields" actions={newMenu} />
       <PageToolbar>
-        <SegmentedTabs value={tab} onChange={setTab} tabs={TABS} className="w-auto shrink-0" />
+        <SegmentedTabs {...TOOLBAR_TABS} value={tab} onChange={setTab} tabs={TABS} />
         <div className="flex items-center gap-2">
           {tab === "certificates" ? (
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="h-9 w-36 shrink-0"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 w-36 shrink-0"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="valid">Valid</SelectItem><SelectItem value="revoked">Revoked</SelectItem></SelectContent>
             </Select>
           ) : null}

@@ -9,7 +9,7 @@ import {
 import { toast } from "sonner";
 import { EmptyState } from "@/components/internal/shared/screen_kit";
 import { OptionChip } from "../ws_ui";
-import { PageBar, PageBody, PageToolbar, WorkspacePage } from "../shell/page";
+import { PageBar, PageBody, PageToolbar, TOOLBAR_TABS, WorkspacePage } from "../shell/page";
 import { ReviewSetupSheet } from "./review_setup_sheet";
 import { useProcess } from "./use_process";
 
@@ -164,12 +164,12 @@ export function ReviewScreen({ eventId, ws }) {
       <PageToolbar>
         <div className="flex items-center gap-2">
           <Select value={setupId} onValueChange={setChosen}>
-            <SelectTrigger className="h-9 w-60 shrink-0"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-60 shrink-0"><SelectValue /></SelectTrigger>
             <SelectContent>{process.setups.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent>
           </Select>
           {canConfigure ? <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground" onClick={() => setEditing({})}><Plus className="h-4 w-4" />New setup</Button> : null}
         </div>
-        <SegmentedTabs value={show} onChange={setShow} className="w-auto shrink-0" tabs={[
+        <SegmentedTabs {...TOOLBAR_TABS} value={show} onChange={setShow} tabs={[
           { label: <span className="inline-flex items-center gap-1.5">All<span className="text-xs text-text-secondary">{results.length}</span></span>, value: "all" },
           { label: <span className="inline-flex items-center gap-1.5">Needs a decision<span className="text-xs text-text-secondary">{undecided.length}</span></span>, value: "decide" },
           { label: <span className="inline-flex items-center gap-1.5">Wide spread<span className="text-xs text-text-secondary">{flagged.length}</span></span>, value: "spread" },

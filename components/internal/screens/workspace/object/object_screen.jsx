@@ -20,7 +20,7 @@ import { StructurePanel } from "../edit/structure_panel";
 import { StagesSheet } from "../process/stages_sheet";
 import { useProcess } from "../process/use_process";
 import { RecordPanel, RecordSheet } from "../record/record_sheet";
-import { PageBar, PageToolbar, Spacer, useWide, WorkspacePage } from "../shell/page";
+import { PageBar, PageToolbar, Spacer, TOOLBAR_TABS, useWide, WorkspacePage } from "../shell/page";
 import { BoardView } from "./board_view";
 import { BulkBar } from "./bulk_bar";
 import { CsvImportSheet } from "./csv_import";
@@ -296,7 +296,7 @@ export function ObjectScreen({ eventId, ws, object }) {
 
       <PageToolbar>
         <div className="flex items-center gap-2">
-          <SegmentedTabs tabs={tabs} value={viewId} onChange={setViewId} className="w-auto shrink-0" />
+          <SegmentedTabs {...TOOLBAR_TABS} tabs={tabs} value={viewId} onChange={setViewId} />
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-text-secondary" aria-label="Save as a new view" title="New view" onClick={() => setSaving(true)}>
             <Plus className="h-4 w-4" />
           </Button>

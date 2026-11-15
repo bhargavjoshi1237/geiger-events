@@ -30,7 +30,7 @@ export function PortalPageHeader({ page, eventName, timeZone = "UTC" }) {
           {eventShortName(eventName)}<ChevronRight className="h-3 w-3 text-text-tertiary" />{page.title}
         </span>
       ) : null}
-      <ScreenHeader title={title} description={header.description ? <span className="whitespace-pre-line">{header.description}</span> : null}
+      <ScreenHeader className="pb-3.5" title={title} description={header.description ? <span className="whitespace-pre-line">{header.description}</span> : null}
         actions={closesAt ? (
           <Card className="flex-row items-center gap-3 bg-surface-subtle px-3.5 py-2.5 shadow-none">
             <Clock className="h-4 w-4 shrink-0 text-primary" />

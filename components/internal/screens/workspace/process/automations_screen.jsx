@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { EmptyState, SearchInput, SegmentedTabs } from "@/components/internal/shared/screen_kit";
 import { RecordSheet } from "../record/record_sheet";
 import { timeAgo } from "../state/format";
-import { PageBar, PageBody, PageToolbar, WorkspacePage } from "../shell/page";
+import { PageBar, PageBody, PageToolbar, TOOLBAR_TABS, WorkspacePage } from "../shell/page";
 import { AutomationSheet } from "./automation_sheet";
 import { RunBadge, RunsView } from "./runs_view";
 import { useDocuments } from "./use_documents";
@@ -126,7 +126,7 @@ export function AutomationsScreen({ eventId, ws }) {
       {bar}
       <PageToolbar>
         <div className="flex items-center gap-3">
-          <SegmentedTabs value={tab} onChange={setTab} className="w-auto shrink-0"
+          <SegmentedTabs {...TOOLBAR_TABS} value={tab} onChange={setTab}
             tabs={[
               { label: <span className="inline-flex items-center gap-1.5">Automations<span className="text-xs text-text-secondary">{all.length}</span></span>, value: "automations" },
               { label: "Runs", value: "runs" },
@@ -139,7 +139,7 @@ export function AutomationsScreen({ eventId, ws }) {
         </div>
         {tab === "automations" ? <SearchInput value={search} onChange={setSearch} placeholder="Search automations" /> : (
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="h-9 w-40 shrink-0"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-40 shrink-0"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All runs</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>

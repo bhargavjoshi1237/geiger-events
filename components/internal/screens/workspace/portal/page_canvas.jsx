@@ -35,7 +35,7 @@ function ToolButton({ label, onClick, children, disabled }) {
 function BlockChrome({ block, selected, onSelect, interactive, tools, dragProps, fill = false, children }) {
   return (
     <div onClick={(event) => { event.stopPropagation(); onSelect(block.id); }}
-      className={cn("group/block relative rounded-xl outline-2 outline-offset-4", selected ? "outline outline-primary" : "hover:outline hover:outline-1 hover:outline-border", fill && "h-full")}>
+      className={cn("group/block relative rounded-xl outline-offset-4", selected ? "outline-2 outline-solid outline-primary" : "hover:outline-2 hover:outline-dotted hover:outline-text-tertiary", fill && "h-full")}>
       <div className={cn("absolute -top-3.5 left-3 z-20 items-center gap-0.5 rounded-md border border-border bg-surface-card px-1 py-0.5 shadow-sm",
         selected ? "flex" : "hidden group-hover/block:flex")}>
         <span {...dragProps} className={cn("flex h-6 items-center gap-1 px-1 text-xs font-medium text-text-secondary", dragProps && "cursor-grab active:cursor-grabbing")}>

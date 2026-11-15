@@ -52,7 +52,7 @@ function Settings({ eventId, ws, portal }) {
   return (
     <SectionCard title="Sign-in" description="People sign in with a code sent to the email on their record in the people list.">
       <div className="grid gap-5">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid items-start gap-4 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label>People list</Label>
             <Select value={peopleId ?? NONE} onValueChange={(next) => update({ peopleObjectId: next === NONE ? null : next }, "People list saved")}>
