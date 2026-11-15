@@ -193,48 +193,6 @@ function CreateEventDialog({ open, onOpenChange, onCreate, venues = [] }) {
               <EventTimeField value={draft.time} onChange={set("time")} />
             </Field>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Venue">
-              {venues.length ? (
-                <Select value={draft.venueId || ""} onValueChange={pickVenue}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select venue" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {venues.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.name}
-                        {v.city ? ` · ${v.city}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Select value={draft.venue} onValueChange={set("venue")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select venue" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VENUES.map((v) => (
-                      <SelectItem key={v} value={v}>
-                        {v}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </Field>
-            <Field label="Capacity">
-              <Input
-                type="number"
-                min={0}
-                value={draft.capacity}
-                onChange={(e) => set("capacity")(e.target.value)}
-                placeholder="e.g. 120"
-              />
-            </Field>
-          </div>
         </div>
 
         <DialogFooter>

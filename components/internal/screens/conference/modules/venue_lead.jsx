@@ -26,7 +26,7 @@ export const VENUE_LEAD_MODULE = {
   icon: MapPin,
   description:
     "Prospective venues under evaluation — track the pipeline from shortlist to booked, with quotes and contacts.",
-  createLabel: "Add venue lead",
+  createLabel: "Add Venue lead",
   searchPlaceholder: "Search venues, cities, contacts…",
   search: (r) => `${r.name} ${r.config.city || ""} ${r.config.contactName || ""}`,
   statusMap: VENUE_LEAD_STATUS_MAP,

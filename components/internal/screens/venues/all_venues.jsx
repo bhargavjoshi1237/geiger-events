@@ -76,7 +76,7 @@ function CreateVenueDialog({ open, onOpenChange, onCreate }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg bg-background">
         <DialogHeader>
-          <DialogTitle>Add venue</DialogTitle>
+          <DialogTitle>Add Venue</DialogTitle>
           <DialogDescription>
             Set the essentials now — you can add location, capacity, amenities,
             and photos in the venue editor.
@@ -135,7 +135,7 @@ function CreateVenueDialog({ open, onOpenChange, onCreate }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={submit}
           >
-            Add venue
+            Add Venue
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -359,7 +359,7 @@ export function VenuesScreen() {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setCreateOpen(true)}
           >
-            <Plus className="h-4 w-4" /> Add venue
+            <Plus className="h-4 w-4" /> Add Venue
           </Button>
         }
       />
@@ -414,7 +414,7 @@ export function VenuesScreen() {
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={() => setCreateOpen(true)}
                   >
-                    <Plus className="h-4 w-4" /> Add venue
+                    <Plus className="h-4 w-4" /> Add Venue
                   </Button>
                 }
               />

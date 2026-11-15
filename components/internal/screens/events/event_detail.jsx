@@ -15,10 +15,17 @@ import { EventCardViewerButton } from "./event_card_viewer";
 import { PageDesignSection, defaultPageDesign } from "./page_design";
 import { NAV_GROUPS, SECTIONS } from "./event_sections";
 import { updateEventMeta } from "@/lib/supabase/events";
+import { useWorkspace } from "../workspace/state/use_workspace";
+import { usePortal } from "../workspace/portal/use_portal";
+import { isWorkspaceSection, withWorkspaceNav } from "../workspace/nav";
+import { WorkspaceSection } from "../workspace/workspace_section";
 
 export function EventDetailScreen({ event, onBack, onUpdate }) {
   const { section: active, setSection: setActive } = useWorkspaceUrl();
   const { isEnabled } = useAddons();
+  const workspace = useWorkspace(event?.id);
+  const portal = usePortal(event?.id, { enabled: workspace.exists });
+  const nav = withWorkspaceNav(NAV_GROUPS, workspace, portal);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [design, setDesign] = useState(
     () => event?.pageDesign || defaultPageDesign(),
@@ -96,7 +103,7 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
           </Button>
         </>
       }
-      nav={NAV_GROUPS}
+      nav={nav}
       subject={form}
       navContext={{ isEnabled }}
       active={active}
@@ -136,6 +143,9 @@ export function EventDetailScreen({ event, onBack, onUpdate }) {
               onPatch={patch}
             />
           );
+        }
+        if (isWorkspaceSection(active)) {
+          return <WorkspaceSection event={form} sectionKey={active} onNavigate={setActive} />;
         }
         const ActiveSection = SECTIONS[active] || SECTIONS.overview;
         return (

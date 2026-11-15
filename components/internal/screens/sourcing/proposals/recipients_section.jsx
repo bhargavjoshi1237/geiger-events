@@ -356,7 +356,7 @@ export function RecipientsSection({
             <EmptyState
               icon={MapPin}
               title="Nothing to suggest yet"
-              description="Add venues to your Venues book or shortlist them in Venue Sourcing and they'll be ranked here."
+              description="Add Venues to your Venues book or shortlist them in Venue Sourcing and they'll be ranked here."
             />
           )}
         </SectionCard>
@@ -368,7 +368,7 @@ export function RecipientsSection({
         initial={EMPTY_CONTACT}
         title="Add a venue by email"
         description="For venues that aren't in your Venues book or pipeline yet."
-        submitLabel="Add venue"
+        submitLabel="Add Venue"
         onOpenChange={setManualOpen}
         onSubmit={async (d) => {
           if (recipients.some((r) => r.email && r.email.toLowerCase() === d.email.trim().toLowerCase())) {

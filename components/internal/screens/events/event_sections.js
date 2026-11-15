@@ -54,7 +54,6 @@ import {
   Layers,
   Inbox,
   LayoutTemplate,
-  Layers3,
   Zap,
   ShieldCheck,
 } from "lucide-react";
@@ -137,7 +136,6 @@ import {
   SessionsSection,
   DoorKioskSection,
 } from "./checkin_section";
-import { WorkspaceSection } from "../operations/workspace_section";
 
 export const NAV_GROUPS = [
   {
@@ -169,16 +167,6 @@ export const NAV_GROUPS = [
         ownHeader: true,
       },
     ],
-  },
-  {
-    group: "Operations",
-    items: [{
-      key: "operations",
-      label: "Operations workspace",
-      icon: Layers3,
-      desc: "Build private modules and records to run this event.",
-      ownHeader: true,
-    }],
   },
   {
     group: "Design",
@@ -705,7 +693,6 @@ export const NAV_GROUPS = [
 ];
 
 export const SECTIONS = {
-  operations: WorkspaceSection,
   overview: OverviewSection,
   alerts: AlertsSection,
   basics: BasicsSection,

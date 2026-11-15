@@ -274,7 +274,7 @@ export type RolesHint = {
   crew: { eventId: string; eventName: string; eventDate: string | null; roles: string[] }[];
 };
 
-export type ControlCapability = "events" | "checkIn" | "guests" | "orders" | "analytics" | "operations";
+export type ControlCapability = "events" | "checkIn" | "guests" | "orders" | "analytics" | "workspace";
 
 export type ControlProject = {
   id: string;

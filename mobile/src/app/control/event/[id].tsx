@@ -17,7 +17,7 @@ import { SUITE_ORIGIN } from "@/lib/team_auth";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { ControlCapability, ControlEventDetail } from "@/types/portal";
 
-const ACCESS_ORDER: ControlCapability[] = ["checkIn", "guests", "orders", "analytics", "operations"];
+const ACCESS_ORDER: ControlCapability[] = ["checkIn", "guests", "orders", "analytics", "workspace"];
 
 export default function ControlEventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

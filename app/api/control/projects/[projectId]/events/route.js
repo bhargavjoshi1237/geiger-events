@@ -2,7 +2,7 @@ import { controlBoundary } from "@/lib/control/boundary";
 import { arrangeEvents } from "@/lib/control/events";
 import { requireId, withControl } from "@/lib/control/http";
 import { CONTROL_CAPABILITIES } from "@/lib/control/profile";
-import { authorizeProjectAction } from "@/lib/operations/server/access";
+import { authorizeProjectAction } from "@/lib/staff_access/access";
 
 export async function GET(request, { params }) {
   const { projectId } = await params;

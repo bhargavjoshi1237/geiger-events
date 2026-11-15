@@ -8,7 +8,7 @@ export const CAPABILITY_META: Record<ControlCapability, { icon: IconName; label:
   guests: { icon: "users", label: "Guests", detail: "Look up attendees" },
   orders: { icon: "shopping-bag", label: "Orders", detail: "View orders and refunds" },
   analytics: { icon: "chart-column", label: "Analytics", detail: "Sales and attendance numbers" },
-  operations: { icon: "briefcase", label: "Operations", detail: "Run the event workspace" },
+  workspace: { icon: "briefcase", label: "Workspace", detail: "Run the event workspace" },
 };
 
 export function whenLabel(event: ControlEvent): string {

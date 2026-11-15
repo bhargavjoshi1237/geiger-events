@@ -55,15 +55,15 @@ const addonPermissions = (ADDON_PERMISSIONS || [])
     group: p.group || "Workspace views",
   }));
 
-const operationPermissions = [
+const workspacePermissions = [
   ...[
-    ["view", "View event operations"],
-    ["configure", "Configure event operations"],
-    ["record_create", "Create operation records"],
-    ["record_update", "Update operation records"],
-    ["record_archive", "Archive operation records"],
+    ["view", "View the event workspace"],
+    ["configure", "Build the event workspace"],
+    ["record_create", "Add workspace records"],
+    ["record_update", "Edit workspace records"],
+    ["record_delete", "Delete workspace records"],
   ].map(([action, label]) => ({
-    key: `events.operations.${action}`, label, group: "Event operations", scopeBy: "event",
+    key: `events.workspace.${action}`, label, group: "Event workspace", scopeBy: "event",
   })),
   {
     key: "events.event.edit",
@@ -126,7 +126,7 @@ const operationPermissions = [
 const permissions = [
   ...navPermissions,
   ...addonPermissions,
-  ...operationPermissions,
+  ...workspacePermissions,
 ];
 
 const uniquePermissions = Array.from(
@@ -162,10 +162,10 @@ const systemRoles = [
       "events.team.assign",
       "events.role.manage",
       "events.settings.manage",
-      "events.operations.configure",
-      "events.operations.record_create",
-      "events.operations.record_update",
-      "events.operations.record_archive",
+      "events.workspace.configure",
+      "events.workspace.record_create",
+      "events.workspace.record_update",
+      "events.workspace.record_delete",
     ],
     sort: 1,
   }),
@@ -181,10 +181,10 @@ const systemRoles = [
       "events.order.refund",
       "events.team.invite",
       "events.team.assign",
-      "events.operations.configure",
-      "events.operations.record_create",
-      "events.operations.record_update",
-      "events.operations.record_archive",
+      "events.workspace.configure",
+      "events.workspace.record_create",
+      "events.workspace.record_update",
+      "events.workspace.record_delete",
     ],
     sort: 2,
   }),

@@ -4,6 +4,10 @@
     {
       "path": "/events/api/webhooks/dispatch",
       "schedule": "15 4 * * *"
+    },
+    {
+      "path": "/events/api/internal/workspace/maintenance",
+      "schedule": "30 4 * * *"
     }
   ]
 }
