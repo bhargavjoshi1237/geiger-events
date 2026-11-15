@@ -26,7 +26,7 @@
 
 | # | Issue | Where | Effect |
 | --- | --- | --- | --- |
-| S1 | Checkout charges the ticket price the browser sends | `app/api/checkout/route.js:145,219-227`; unknown purchasables fall back to the client price (`:30`); `buy_ticket` also accepts a caller price | Anyone can buy any ticket for 50 cents by editing the request. Payments go live to organisers' own Stripe accounts |
+| S1 | Checkout charges the ticket price the browser sends | `app/api/checkout/route.js:145,219-227`; unknown purchasables fall back to the client price (`:30`); `buy_ticket` also accepts a caller price | Anyone can buy any ticket for 50 cents by editing the request. Payments go live to organisers' own Stripe accounts. **Stripe checkout fixed 2026-11-16, not live until pushed:** `/api/checkout` now prices from the event and live seat/booth holds (`lib/events/checkout_pricing.js`). Still open: `buy_ticket` is callable by anon with any price, so the free path, door and kiosk can still record orders without paying |
 | S2 | Approval can be skipped; anyone can trigger an "approved" email | `?approved=1&email=` is unsigned and never checked on the server; `app/api/registrations/approval-email` needs no login | Invite-only events aren't invite-only |
 | S3 | Anonymous read/write on inventory (including the redemption ledger) and NFC tables (including reader device keys) | inventory and `20260908000000_nfc_paid_entry.sql` RLS | The code-gated desks can be bypassed |
 | S4 | Affiliate attribute and reverse functions callable by anyone | `20260729104841_affiliates.sql:717,748` | Commission ledger can be edited from outside |

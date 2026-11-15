@@ -6,7 +6,9 @@ import { getDemoStripe, isDemoConfigured, isStripeConfigured } from "@/lib/strip
 import { checkoutBranding } from "@/lib/stripe/branding";
 import { channelParam, getDemoMode, pay, projectOrganization } from "@/lib/pay/server";
 import { validateEventDiscount, discountBase } from "@/lib/supabase/discounts";
-import { earlybirdReduction } from "@/lib/events/earlybird";
+import { heldBooths, heldSeats } from "@/lib/supabase/held_inventory";
+import { priceCheckout } from "@/lib/events/checkout_pricing";
+import { donationEnabled } from "@/lib/events/donation";
 import { groupDiscountAmount } from "@/lib/events/group";
 import { resolveTicketReleases } from "@/lib/events/ticket_releases";
 import { expressConfig } from "@/lib/events/express_checkout";
@@ -16,24 +18,19 @@ const NOT_READY = {
   status: 409,
 };
 
-// Add-ons as named lines, purchasables at the event's own price; one "Add-ons" line when they don't add up to the charge.
-function addonLineItems({ event, currency, qty, addons, purchasables, selections, slot }) {
-  const unit = toMinorUnits(addons, currency);
+// Add-ons as named lines at the server's prices; one "Add-ons" line when they don't add up to the charge.
+function addonLineItems({ currency, qty, addonUnit, purchasables, selections, slot }) {
+  const unit = toMinorUnits(addonUnit, currency);
   if (unit <= 0) return [];
-  const catalog = new Map(
-    (Array.isArray(event.purchasables) ? event.purchasables : []).map((p) => [String(p?.id), p]),
-  );
 
   const items = [];
-  for (const p of Array.isArray(purchasables) ? purchasables : []) {
-    const known = catalog.get(String(p?.id));
-    const amount = toMinorUnits(Number(known ? known.price : p?.price) || 0, currency);
-    const count = Math.max(0, Math.floor(Number(p?.quantity) || 0));
-    if (amount > 0 && count > 0) items.push({ name: known?.name || p?.name, amount, quantity: count * qty });
+  for (const p of purchasables || []) {
+    const amount = toMinorUnits(p.price, currency);
+    if (amount > 0) items.push({ name: p.name, amount, quantity: p.quantity * qty });
   }
-  for (const o of Array.isArray(selections) ? selections : []) {
-    for (const c of Array.isArray(o?.choices) ? o.choices : []) {
-      const amount = toMinorUnits(Number(c?.price) || 0, currency);
+  for (const o of selections || []) {
+    for (const c of o.choices) {
+      const amount = toMinorUnits(c.price, currency);
       if (amount > 0) items.push({ name: o.offering ? `${o.offering}: ${c.label}` : c.label, amount, quantity: qty });
     }
   }
@@ -113,18 +110,15 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
+  // Prices, add-on totals and ticket names the browser sends are ignored: priceCheckout reads them from the event.
   const {
     eventId,
-    ticketName,
     ticketId = null,
-    ticketPrice,
     quantity,
-    addonUnit = 0,
     name = "",
     email = "",
     selections = null,
     purchasables = null,
-    slot = null,
     slotId = null,
     discountCode = null,
     donation = 0,
@@ -142,18 +136,30 @@ export async function POST(request) {
     returnUrl,
   } = body || {};
 
-  const price = Number(ticketPrice) || 0;
-  const qty = Math.max(1, Number(quantity) || 1);
-  const addons = Number(addonUnit) || 0;
-  const donationAmount = Math.max(0, Number(donation) || 0);
-  const attendeeList = Array.isArray(attendees) && attendees.length ? attendees : null;
-
-  if (!eventId || !returnUrl || price <= 0) {
+  if (!eventId || !returnUrl) {
     return NextResponse.json({ error: "Missing checkout details." }, { status: 400 });
   }
   const event = await getEvent(eventId);
   if (!event) {
     return NextResponse.json({ error: "Event not found." }, { status: 404 });
+  }
+
+  // Seated and booth orders book every live hold on their token, so the charge counts those holds, not the quantity sent.
+  const seats = seatToken ? await heldSeats(eventId, seatToken) : null;
+  const booths = !seatToken && boothToken ? await heldBooths(eventId, boothToken) : null;
+  if ((seatToken && !seats) || (!seatToken && boothToken && !booths)) {
+    return NextResponse.json({ error: "Couldn't check your held seats or booths. Please try again." }, { status: 503 });
+  }
+
+  const pricing = priceCheckout(event, { ticketId, bundleId, quantity, slotId, selections, purchasables, attendees }, { seats, booths });
+  if (!pricing.ok) {
+    return NextResponse.json({ error: pricing.error }, { status: pricing.status });
+  }
+  const { price, qty, addonUnit: addons, unitPrice: effUnit } = pricing;
+  const attendeeList = pricing.attendees;
+  const donationAmount = !bundleId && donationEnabled(event) ? Math.max(0, Number(donation) || 0) : 0;
+  if (price <= 0) {
+    return NextResponse.json({ error: "Missing checkout details." }, { status: 400 });
   }
 
   // Express Lane leaves name and email to Stripe; only an event that turned it on may skip them.
@@ -216,16 +222,20 @@ export async function POST(request) {
     }
   }
 
-  const ebPerUnit = bundleId ? 0 : earlybirdReduction(event, price);
-  const effUnit = Math.max(0, price - ebPerUnit);
-
   const items = [
     {
-      name: `${ticketName || "Ticket"} — ${event.name}`,
+      name: `${pricing.ticketName} — ${event.name}`,
       amount: toMinorUnits(effUnit, currency),
       quantity: qty,
     },
-    ...addonLineItems({ event, currency, qty, addons, purchasables, selections, slot }),
+    ...addonLineItems({
+      currency,
+      qty,
+      addonUnit: addons,
+      purchasables: pricing.purchasables,
+      selections: pricing.selections,
+      slot: pricing.slot,
+    }),
   ];
   if (donationAmount > 0) {
     items.push({
@@ -240,7 +250,13 @@ export async function POST(request) {
     .slice(0, 22)
     .trim();
 
-  const extra = { selections, purchasables, slot, answers, formId };
+  const extra = {
+    selections: pricing.selections,
+    purchasables: pricing.purchasables,
+    slot: pricing.slot,
+    answers,
+    formId,
+  };
   let extraJson = JSON.stringify(extra);
   if (extraJson.length > 480) {
     extra.selections = null;
@@ -296,9 +312,9 @@ export async function POST(request) {
     const separator = returnBase.includes("?") ? "&" : "?";
     const metadata = {
       eventId,
-      ticketName: ticketName || "General Admission",
+      ticketName: pricing.ticketName || "General Admission",
       ticketId: ticketId != null ? String(ticketId) : "",
-      slotId: slotId != null ? String(slotId) : "",
+      slotId: pricing.slot ? String(pricing.slot.id) : "",
       discountCode: appliedCode || "",
       price: String(price),
       quantity: String(qty),
