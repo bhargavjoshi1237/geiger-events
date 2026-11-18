@@ -29,16 +29,22 @@ export function PageBar({ icon: Icon, title, note, badge, actions, crumb = "Work
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         {crumb ? (
           <>
-            <span className="hidden shrink-0 text-[13px] text-text-secondary sm:inline">{crumb}</span>
+            <span className="hidden shrink-0 text-sm leading-5 text-text-secondary sm:inline">{crumb}</span>
             <ChevronRight className="hidden h-3.5 w-3.5 shrink-0 text-text-tertiary sm:block" />
           </>
         ) : null}
-        <h1 className="inline-flex min-w-0 shrink-0 items-center gap-2 text-[15px] font-semibold text-foreground">
-          {Icon ? <Icon className="h-4 w-4 shrink-0 text-muted-foreground" /> : null}
+        {/* Same size and weight as the crumb; only the colour marks the current screen. */}
+        <h1 className="inline-flex min-w-0 shrink-0 items-center gap-1.5 text-sm font-normal leading-5 text-foreground">
+          {Icon ? <Icon className="size-3.5 shrink-0 text-muted-foreground" /> : null}
           <span className="truncate">{title}</span>
         </h1>
         {badge}
-        {note ? <span className="hidden min-w-0 truncate text-[13px] text-text-secondary md:inline">{note}</span> : null}
+        {note ? (
+          <>
+            <span aria-hidden className="hidden h-3.5 w-px shrink-0 bg-border md:block" />
+            <span className="hidden min-w-0 truncate text-[13px] leading-5 text-text-secondary md:inline">{note}</span>
+          </>
+        ) : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
@@ -55,8 +61,8 @@ export function PageToolbar({ children, className }) {
   );
 }
 
-// SegmentedTabs props that size its track to the toolbar's small buttons (32px); the library default is 42px.
-export const TOOLBAR_TABS = { className: "w-auto shrink-0 gap-0.5 p-0.5", buttonClassName: "h-[26px]" };
+// SegmentedTabs props for every workspace tab switcher: the library rail with 28px tabs (as on Approvals).
+export const TOOLBAR_TABS = { className: "w-auto shrink-0", buttonClassName: "h-7" };
 
 // The scrolling area under the bars. `padded` gives document-like screens their margins.
 export function PageBody({ children, className, padded = false }) {

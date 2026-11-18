@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, CheckCircle2, CircleAlert, Loader2, Play, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CheckCircle2, CircleAlert, Clock, Loader2, Play, Plus, Trash2, X } from "lucide-react";
 import {
   Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Input, Label, LucideIcon,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Switch,
@@ -33,18 +33,24 @@ function Section({ title, hint, children, action }) {
   );
 }
 
+// Picked chips keep their colour and gain a check; the rest fade back until hovered.
+function ChoiceChip({ option, on, onClick }) {
+  return (
+    <button type="button" aria-pressed={on} onClick={onClick}
+      className={cn("rounded-md outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-border-strong", on ? "opacity-100" : "opacity-40 hover:opacity-75")}>
+      <OptionChip className="gap-1 px-2 py-1" option={{ ...option, label: <>{on ? <Check className="size-3" strokeWidth={3} /> : null}{option.label}</> }} />
+    </button>
+  );
+}
+
 function StatusToggles({ object, value, onChange, anyLabel }) {
   const chosen = new Set(value ?? []);
   return (
     <div className="flex flex-wrap gap-1.5">
-      <button type="button" onClick={() => onChange([])}
-        className={cn("rounded-full border px-2.5 py-1 text-xs", !chosen.size ? "border-foreground text-foreground" : "border-border text-text-secondary")}>{anyLabel}</button>
+      <ChoiceChip option={{ label: anyLabel, color: "gray" }} on={!chosen.size} onClick={() => onChange([])} />
       {(object?.statuses ?? []).map((status) => (
-        <button key={status.key} type="button" aria-pressed={chosen.has(status.key)}
-          onClick={() => { const next = new Set(chosen); if (next.has(status.key)) next.delete(status.key); else next.add(status.key); onChange([...next]); }}
-          className={cn("rounded-full border p-0.5", chosen.has(status.key) ? "border-foreground" : "border-transparent opacity-70 hover:opacity-100")}>
-          <OptionChip option={status} />
-        </button>
+        <ChoiceChip key={status.key} option={status} on={chosen.has(status.key)}
+          onClick={() => { const next = new Set(chosen); if (next.has(status.key)) next.delete(status.key); else next.add(status.key); onChange([...next]); }} />
       ))}
     </div>
   );
@@ -99,8 +105,9 @@ function TriggerEditor({ data, catalog, value, onChange }) {
               return (
                 <button key={field.id} type="button" aria-pressed={on}
                   onClick={() => set({ fields: on ? value.fields.filter((id) => id !== field.id) : [...(value.fields ?? []), field.id] })}
-                  className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-foreground bg-surface-card text-foreground" : "border-border text-text-secondary")}>
-                  {field.name}
+                  className={cn("inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
+                    on ? "border-transparent bg-surface-strong text-foreground" : "border-border text-text-secondary hover:text-foreground")}>
+                  {on ? <Check className="size-3" strokeWidth={3} /> : null}{field.name}
                 </button>
               );
             })}
@@ -202,10 +209,51 @@ function cleanStep(step) {
   return out;
 }
 
-const RUN_ICON = { succeeded: CheckCircle2, failed: CircleAlert };
+const RUN_STATE = {
+  succeeded: { icon: CheckCircle2, label: "Ran successfully", tone: "text-emerald-600 dark:text-emerald-400" },
+  failed: { icon: CircleAlert, label: "Failed", tone: "text-red-600 dark:text-red-400" },
+  waiting: { icon: Clock, label: "Waiting", tone: "text-amber-600 dark:text-amber-400" },
+};
+const STEP_STATE = {
+  done: { icon: Check, tone: "text-emerald-600 dark:text-emerald-400" },
+  failed: { icon: X, tone: "text-red-600 dark:text-red-400" },
+  waiting: { icon: Clock, tone: "text-amber-600 dark:text-amber-400" },
+};
+
+// One run's outcome: a status line, then each step with what it did.
+function RunResult({ run, catalog }) {
+  const state = RUN_STATE[run.status] ?? { icon: Loader2, label: run.status, tone: "text-text-secondary" };
+  const steps = run.steps ?? [];
+  return (
+    <li className="overflow-hidden rounded-lg border border-border bg-surface-card">
+      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+        <state.icon className={cn("size-4", state.tone)} />
+        <span className="text-sm font-medium text-foreground">{state.label}</span>
+        <span className="ml-auto text-xs text-text-tertiary">{steps.length} step{steps.length === 1 ? "" : "s"}</span>
+      </div>
+      <ol className="divide-y divide-border/70">
+        {steps.map((step, index) => {
+          const meta = catalog[step.kind] ?? { label: `Step ${index + 1}`, icon: "circle" };
+          const mark = STEP_STATE[step.status] ?? STEP_STATE.done;
+          return (
+            <li key={step.id ?? index} className="flex items-center gap-3 px-3 py-2.5">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-subtle text-text-secondary"><LucideIcon name={meta.icon} className="size-3.5" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-foreground">{meta.label}</p>
+                <p className={cn("break-words text-xs", step.status === "failed" ? "text-red-600 dark:text-red-400" : "text-text-secondary")}>{step.status === "failed" ? step.error : step.detail || "Done"}</p>
+              </div>
+              <mark.icon className={cn("size-3.5 shrink-0", mark.tone)} strokeWidth={2.5} />
+            </li>
+          );
+        })}
+      </ol>
+      {run.error && !steps.some((step) => step.status === "failed") ? <p className="border-t border-border px-3 py-2 text-xs text-red-600 dark:text-red-400">{run.error}</p> : null}
+    </li>
+  );
+}
 
 // Runs a saved automation on chosen records and shows what each step did.
-function TryIt({ eventId, process, automation }) {
+function TryIt({ eventId, process, automation, catalog }) {
   const [records, setRecords] = useState([]);
   const [state, setState] = useState({ busy: false, runs: null });
   const objectId = automation.trigger.objectId;
@@ -217,27 +265,19 @@ function TryIt({ eventId, process, automation }) {
   };
   return (
     <div className="space-y-3">
-      {objectId ? <LinkPicker field={field} value={records} onChange={setRecords} eventId={eventId} /> : null}
-      <Button type="button" variant="outline" onClick={run} disabled={state.busy || (objectId && !records.length)}>
-        {state.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}Run now
-      </Button>
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-card p-1.5 pl-2">
+        <div className="min-w-0 flex-1">
+          {objectId ? <LinkPicker field={field} value={records} onChange={setRecords} eventId={eventId} />
+            : <span className="text-[13px] text-text-secondary">Runs once, not for a record.</span>}
+        </div>
+        <Button type="button" size="sm" onClick={run} disabled={state.busy || (objectId && !records.length)}>
+          {state.busy ? <Loader2 className="animate-spin" /> : <Play />}Run now
+        </Button>
+      </div>
       {state.runs ? (
         state.runs.length ? (
-          <ul className="space-y-2">
-            {state.runs.map((run) => {
-              const Icon = RUN_ICON[run.status] ?? Loader2;
-              return (
-                <li key={run.id} className="rounded-lg border border-border p-2 text-sm">
-                  <p className="flex items-center gap-2 font-medium"><Icon className={cn("h-4 w-4", run.status === "failed" ? "text-red-600" : "text-emerald-600")} />{run.status === "succeeded" ? "Done" : run.status}</p>
-                  {(run.steps ?? []).map((step) => (
-                    <p key={step.id} className="pl-6 text-xs text-text-secondary">{step.status === "failed" ? `✕ ${step.error}` : `✓ ${step.detail || "Done"}`}</p>
-                  ))}
-                  {run.error && !(run.steps ?? []).some((step) => step.status === "failed") ? <p className="pl-6 text-xs text-red-600">{run.error}</p> : null}
-                </li>
-              );
-            })}
-          </ul>
-        ) : <p className="text-sm text-text-secondary">Nothing ran. The records may not match the &ldquo;Only if&rdquo; conditions.</p>
+          <ul className="space-y-2">{state.runs.map((run) => <RunResult key={run.id} run={run} catalog={catalog} />)}</ul>
+        ) : <p className="rounded-lg border border-dashed border-border px-3 py-3 text-[13px] text-text-secondary">Nothing ran. The records may not match the &ldquo;Only if&rdquo; conditions.</p>
       ) : null}
     </div>
   );
@@ -333,7 +373,7 @@ function AutomationBody({ eventId, ws, process, automation, documents, onOpenCha
         </Section>
         {automation ? (
           <Section title="Try it" hint={automation.trigger.objectId ? "Runs the saved version on the records you choose — for real, including emails." : "Runs the saved version once now — for real, including emails."}>
-            <TryIt eventId={eventId} process={process} automation={automation} />
+            <TryIt eventId={eventId} process={process} automation={automation} catalog={catalog.steps} />
           </Section>
         ) : null}
       </div>

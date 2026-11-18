@@ -292,36 +292,11 @@ function EventsTab({
   const columns = [
     {
       key: "order",
-      header: "",
-      className: "w-10",
-      render: (e) => {
-        const i = members.findIndex((m) => m.id === e.id);
-        return (
-          <div
-            className="flex flex-col"
-            onClick={(ev) => ev.stopPropagation()}
-          >
-            <button
-              type="button"
-              aria-label="Move up"
-              disabled={i === 0}
-              onClick={() => onMove(i, -1)}
-              className="text-text-tertiary transition-colors hover:text-foreground disabled:opacity-30"
-            >
-              <ArrowUp className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Move down"
-              disabled={i === members.length - 1}
-              onClick={() => onMove(i, 1)}
-              className="text-text-tertiary transition-colors hover:text-foreground disabled:opacity-30"
-            >
-              <ArrowDown className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        );
-      },
+      header: "#",
+      className: "w-12",
+      render: (e) => (
+        <span className="text-sm tabular-nums text-text-secondary">{members.findIndex((m) => m.id === e.id) + 1}</span>
+      ),
     },
     {
       key: "name",
@@ -345,11 +320,36 @@ function EventsTab({
       header: "",
       align: "right",
       className: "text-right",
-      render: (e) => (
+      render: (e) => {
+        const i = members.findIndex((m) => m.id === e.id);
+        return (
         <div
           className="flex items-center justify-end gap-1"
           onClick={(ev) => ev.stopPropagation()}
         >
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Move up"
+            title="Move up"
+            disabled={i === 0}
+            className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={() => onMove(i, -1)}
+          >
+            <ArrowUp className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Move down"
+            title="Move down"
+            disabled={i === members.length - 1}
+            className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            onClick={() => onMove(i, 1)}
+          >
+            <ArrowDown className="h-4 w-4" />
+          </Button>
+          <span aria-hidden className="mx-1 h-4 w-px bg-border" />
           <Button
             size="icon-sm"
             variant="ghost"
@@ -369,13 +369,16 @@ function EventsTab({
             <X className="h-4 w-4" />
           </Button>
         </div>
-      ),
+        );
+      },
     },
   ];
 
   return (
     <SectionCard
       title="Events in this series"
+      // Centres the header's buttons against the title and description.
+      className="[&>div:first-child]:items-center"
       description="Add existing events or spin up a new one. Reorder with the arrows — that's the order attendees follow."
       action={
         <div className="flex items-center gap-2">
@@ -402,6 +405,8 @@ function EventsTab({
       <DataTable
         columns={columns}
         data={members}
+        // Sits flush in the card; the card header already draws the divider above it.
+        className="rounded-none border-0 bg-transparent"
         getRowKey={(e) => e.id}
         onRowClick={(e) => onOpen(e.id)}
         empty={

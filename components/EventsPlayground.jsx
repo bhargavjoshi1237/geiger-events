@@ -41,7 +41,7 @@ function PlaygroundScreen({ activeItem }) {
   const Screen = getScreen(activeItem.title);
   if (!Screen) return <ComingSoonScreen title={activeItem.title} icon={activeItem.icon} />;
   return (
-    <div key={project.id} className="h-full">
+    <div key={`${project.id}:${activeItem.title}`} data-screen-root className="h-full">
       {DEMO_TABS.has(activeItem.title) ? <Screen demo /> : <Screen />}
     </div>
   );

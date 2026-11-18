@@ -140,9 +140,10 @@ export function WorkspaceShell({ event, events, section, onNavigate, onExit, onS
           </Button>
           <EventSwitcher event={event} events={events} onSwitch={onSwitchEvent} />
         </SidebarHeader>
-        <SidebarContent className="py-1">
+        {/* Groups sit flush (no content gap, slim vertical padding) so a label reads as the head of its items, not a free-floating break. */}
+        <SidebarContent className="gap-0 py-1">
           {ws.data ? groups.map((group) => (
-            <SidebarGroup key={group.id}>
+            <SidebarGroup key={group.id} className="py-1.5">
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
               {group.add ? (
                 <SidebarGroupAction title="New list" onClick={() => setCreating(true)}><Plus /><span className="sr-only">New list</span></SidebarGroupAction>

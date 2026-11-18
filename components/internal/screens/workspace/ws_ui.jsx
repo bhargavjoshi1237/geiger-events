@@ -70,12 +70,20 @@ export function FieldValue({ field, record, eventId, timeZone, onOpenRecord, onO
   switch (field.type) {
     case "single_select":
       return <OptionChip option={optionOf(field, value)} />;
-    case "multi_select":
+    case "multi_select": {
+      const options = (value ?? []).map((id) => optionOf(field, id)).filter(Boolean);
+      if (!compact) {
+        return <span className="flex flex-wrap gap-1">{options.map((option) => <OptionChip key={option.id} option={option} />)}</span>;
+      }
+      // Lists and cards keep one line: the first two chips, then a +N count, so a long selection never grows the row.
+      const rest = options.length - 2;
       return (
-        <span className="flex flex-wrap gap-1">
-          {(value ?? []).map((id) => <OptionChip key={id} option={optionOf(field, id)} />)}
+        <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden" title={options.map((option) => option.label).join(", ")}>
+          {options.slice(0, 2).map((option) => <OptionChip key={option.id} option={option} className="min-w-0" />)}
+          {rest > 0 ? <span className="shrink-0 rounded-md border border-border px-1.5 py-0.5 text-xs font-medium tabular-nums text-text-secondary">+{rest}</span> : null}
         </span>
       );
+    }
     case "checkbox":
       return value ? <Check className="h-4 w-4 text-foreground" aria-label="Yes" /> : null;
     case "rating":

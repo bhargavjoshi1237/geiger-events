@@ -1,0 +1,91 @@
+/* App-wide motion layer: one easing curve, three durations; active inside the `.fx` scope set on <body> in app/layout.js. */
+
+:root {
+  --fx-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fx-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --fx-fast: 140ms;
+  --fx-base: 220ms;
+  --fx-slow: 340ms;
+}
+
+@keyframes fx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes fx-rise-sm {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+/* Everything sits behind no-preference so reduced-motion users get the stock UI. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Screen enter: a screen's top-level sections settle in, cascading top to bottom. Fill is `backwards` so no transform lingers once settled. */
+  .fx [data-screen] > * {
+    animation: fx-rise var(--fx-slow) var(--fx-ease) backwards;
+  }
+  .fx [data-screen] > :nth-child(2) { animation-delay: 40ms; }
+  .fx [data-screen] > :nth-child(3) { animation-delay: 80ms; }
+  .fx [data-screen] > :nth-child(4) { animation-delay: 120ms; }
+  .fx [data-screen] > :nth-child(5) { animation-delay: 160ms; }
+  .fx [data-screen] > :nth-child(n + 6) { animation-delay: 200ms; }
+
+  /* Screens without a shared screen wrapper settle in as one piece instead. */
+  .fx [data-screen-root]:not(:has([data-screen])) {
+    animation: fx-rise var(--fx-slow) var(--fx-ease) backwards;
+  }
+
+  /* Table rows: fade up with a short stagger whenever they mount (first load, next page, new filter matches). */
+  .fx tbody > tr {
+    animation: fx-rise-sm var(--fx-base) var(--fx-ease) backwards;
+  }
+  .fx tbody > tr:nth-child(2) { animation-delay: 20ms; }
+  .fx tbody > tr:nth-child(3) { animation-delay: 40ms; }
+  .fx tbody > tr:nth-child(4) { animation-delay: 60ms; }
+  .fx tbody > tr:nth-child(5) { animation-delay: 80ms; }
+  .fx tbody > tr:nth-child(6) { animation-delay: 100ms; }
+  .fx tbody > tr:nth-child(7) { animation-delay: 120ms; }
+  .fx tbody > tr:nth-child(8) { animation-delay: 140ms; }
+  .fx tbody > tr:nth-child(9) { animation-delay: 160ms; }
+  .fx tbody > tr:nth-child(n + 10) { animation-delay: 180ms; }
+
+  /* Press feedback: buttons give slightly under the pointer and spring back. */
+  .fx [data-slot="button"] {
+    transition-timing-function: var(--fx-ease);
+  }
+  .fx [data-slot="button"]:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
+  /* Overlays: eased in, quicker out. */
+  .fx [data-slot="sheet-content"][data-state="open"],
+  .fx [data-slot="sheet-overlay"][data-state="open"] {
+    --tw-duration: 380ms;
+    --tw-ease: var(--fx-ease);
+  }
+  .fx [data-slot="sheet-content"][data-state="closed"],
+  .fx [data-slot="sheet-overlay"][data-state="closed"] {
+    --tw-duration: 220ms;
+    --tw-ease: var(--fx-ease-exit);
+  }
+
+  .fx [data-slot="dialog-content"][data-state="open"],
+  .fx [data-slot="dialog-overlay"][data-state="open"] {
+    --tw-duration: var(--fx-base);
+    --tw-ease: var(--fx-ease);
+  }
+  .fx [data-slot="dialog-content"][data-state="closed"],
+  .fx [data-slot="dialog-overlay"][data-state="closed"] {
+    --tw-duration: var(--fx-fast);
+    --tw-ease: var(--fx-ease-exit);
+  }
+
+  .fx :is([data-slot="dropdown-menu-content"], [data-slot="popover-content"], [data-slot="select-content"])[data-state="open"] {
+    --tw-duration: 180ms;
+    --tw-ease: var(--fx-ease);
+  }
+}

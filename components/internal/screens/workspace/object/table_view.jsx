@@ -194,7 +194,7 @@ export function TableView({
                             </div>
                           </PopoverAnchor>
                           {isEditing ? (
-                            <PopoverContent align="start" className="w-80 p-3" onClick={(event) => event.stopPropagation()}>
+                            <PopoverContent align="start" className="w-80 bg-surface-subtle p-3" onClick={(event) => event.stopPropagation()}>
                               <CellEditor field={column.field} row={row} eventId={eventId} timeZone={timeZone}
                                 onClose={() => setEditing(null)}
                                 onSave={async (value) => { const ok = await onCellSave(row, column.field, value); if (ok) setEditing(null); }} />

@@ -111,7 +111,7 @@ export function StructurePanel({ eventId, data, object, fields, run, onClose, on
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" aria-label="Close" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
-        <SegmentedTabs fullWidth value={tab} onChange={setTab} tabs={tabs} />
+        <SegmentedTabs fullWidth value={tab} onChange={setTab} tabs={tabs} buttonClassName="h-7" />
       </div>
       <div className="scrollbar-subtle flex min-h-0 flex-1 flex-col overflow-y-auto">
         {tab === "fields" ? <FieldsTab object={object} fields={fields} run={run} onEditField={onEditField} onDeleteField={onDeleteField} /> : null}

@@ -24,7 +24,7 @@ function ScreenArea({ activeItem, Screen }) {
   if (!project) return <LoadingArea />;
 
   return (
-    <div key={project.id} className="h-full">
+    <div key={`${project.id}:${activeItem.title}`} data-screen-root className="h-full">
       {Screen ? (
         <Screen />
       ) : (

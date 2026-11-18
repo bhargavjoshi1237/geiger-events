@@ -151,6 +151,7 @@ export function RecordPanel({ onClose, closeOnSave = false, position, initial, e
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("details");
   const [comment, setComment] = useState("");
+  const [posting, setPosting] = useState(false);
 
   useEffect(() => {
     if (!recordId) return undefined;
@@ -262,7 +263,10 @@ export function RecordPanel({ onClose, closeOnSave = false, position, initial, e
   };
 
   const addComment = async () => {
-    const result = await run("comment.add", { recordId, body: comment }, { quiet: true });
+    if (posting || !comment.trim()) return;
+    setPosting(true);
+    const result = await run("comment.add", { recordId, body: comment }, { success: "Comment added", undo: false });
+    setPosting(false);
     if (!result.error) { setComment(""); load(); }
   };
 
@@ -311,7 +315,7 @@ export function RecordPanel({ onClose, closeOnSave = false, position, initial, e
                   <ChevronDown className="h-3.5 w-3.5 text-text-secondary" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-56 bg-surface-card [&_[data-slot=dropdown-menu-item]:focus]:bg-surface-hover">
                 <DropdownMenuLabel className="text-xs font-medium text-text-secondary">Move to</DropdownMenuLabel>
                 {showNone ? <DropdownMenuItem onSelect={() => (isNew ? setDraft((d) => ({ ...d, status: null })) : save({ nextStatus: null, inline: true }))}><Muted>No status</Muted></DropdownMenuItem> : null}
                 {statusOptions.map((option) => (
@@ -369,8 +373,13 @@ export function RecordPanel({ onClose, closeOnSave = false, position, initial, e
           <div className="grid gap-5 pt-3">
             {can.update ? (
               <div className="grid gap-2">
-                <Textarea rows={3} placeholder="Add a comment for your team…" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={5000} />
-                <div className="flex justify-end"><Button size="sm" disabled={!comment.trim()} onClick={addComment}>Comment</Button></div>
+                <Textarea rows={3} placeholder="Add a comment for your team…" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={5000} disabled={posting}
+                  onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addComment(); } }} />
+                <div className="flex justify-end">
+                  <Button size="sm" disabled={!comment.trim() || posting} onClick={addComment}>
+                    {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{posting ? "Posting…" : "Comment"}
+                  </Button>
+                </div>
               </div>
             ) : null}
             <ol className="grid gap-3">

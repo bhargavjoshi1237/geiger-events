@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { COLOR_SWATCH } from "@/components/internal/screens/workspace/state/format";
@@ -8,6 +8,14 @@ import { BlockError, BlockFrame, BlockLoading, EmptyRows, Restricted } from "./b
 import { useList, useOpenRecord, usePortalView } from "./portal_context";
 import { useBlockData } from "./use_block_data";
 import { CellValue, fieldName, isVisibleOn, statusChoices } from "./values";
+
+// A field with nothing in it, so its card row shows a dash instead of a bare label.
+const isBlank = (record, id) => {
+  if (id === "status") return !record.status;
+  if (record.links?.[id]?.length) return false;
+  const value = record.values?.[id] ?? record.computed?.[id];
+  return value === undefined || value === null || value === "" || (Array.isArray(value) && !value.length);
+};
 
 // Columns by status or a choice field. People who may change that value can drag cards between columns.
 export function BoardBlock({ block, fill }) {
@@ -59,7 +67,7 @@ export function BoardBlock({ block, fill }) {
     if (rest.length) columns.push({ key: null, option: { id: null, label: byStatus ? "No status" : "None", color: "gray" }, rows: rest });
     const shown = (config.fields ?? []).filter((id) => id !== list.titleFieldId);
     body = (
-      <div className="flex gap-3 overflow-x-auto p-4">
+      <div className={cn("scrollbar-subtle flex gap-3 overflow-x-auto pb-2", fill && "@4xl/page:min-h-0 @4xl/page:flex-1")}>
         {columns.map((column) => (
           <div key={column.key ?? "none"}
             onDragOver={(event) => { if (dragging && accepts(column.key)) { event.preventDefault(); setOver(column.key); } }}
@@ -72,28 +80,34 @@ export function BoardBlock({ block, fill }) {
               setOver(null);
               if (row && column.key !== null && allowed) move(row, column.key);
             }}
-            className={cn("flex w-72 shrink-0 flex-col rounded-lg border border-border bg-surface-subtle", over === column.key && dragging && "border-foreground/30",
+            className={cn("flex min-w-60 flex-1 basis-0 flex-col rounded-xl border border-border bg-surface-subtle", over === column.key && dragging && "border-foreground/30",
               dragging && !accepts(column.key) && "opacity-50")}>
             <div className="flex items-center gap-2 px-3 py-2.5">
               <span className={cn("h-2 w-2 shrink-0 rounded-full", COLOR_SWATCH[column.option.color] ?? COLOR_SWATCH.gray)} />
               <span className="min-w-0 truncate text-sm font-medium text-foreground">{column.option.label}</span>
-              <span className="ml-auto text-xs tabular-nums text-text-tertiary">{column.rows.length}</span>
+              <span className="ml-auto rounded-full bg-surface-card px-1.5 text-xs tabular-nums text-text-secondary">{column.rows.length}</span>
             </div>
-            <div className="flex min-h-16 flex-col gap-2 px-2 pb-2">
+            <div className={cn("flex min-h-16 flex-col gap-2 px-2 pb-2", fill && "scrollbar-subtle @4xl/page:min-h-0 @4xl/page:flex-1 @4xl/page:overflow-y-auto")}>
               {column.rows.map((row) => (
                 <article key={row.id} draggable={canMove(row)}
                   onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; setDragging(row.id); }}
                   onDragEnd={() => { setDragging(null); setOver(null); }}
                   onClick={config.open ? () => openRecord(row) : undefined}
-                  className={cn("rounded-md border border-border bg-surface-card p-3", config.open && "cursor-pointer hover:border-foreground/25",
+                  className={cn("rounded-lg border border-border bg-surface-card p-3 transition-colors", config.open && "cursor-pointer hover:border-border-strong",
                     canMove(row) && "active:cursor-grabbing", dragging === row.id && "opacity-50")}>
-                  <p className="line-clamp-2 text-sm font-medium text-foreground">{row.title || `${list.numberPrefix}-${row.number}`}</p>
-                  {shown.filter((id) => isVisibleOn(row, id)).map((id) => (
-                    <div key={id} className="mt-2 flex min-w-0 items-center gap-1.5 text-xs">
-                      <span className="shrink-0 text-text-tertiary">{fieldName(list, id)}</span>
-                      <span className="flex min-w-0 text-foreground"><CellValue list={list} fieldId={id} record={row} /></span>
-                    </div>
-                  ))}
+                  <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{row.title || `${list.numberPrefix}-${row.number}`}</p>
+                  {shown.some((id) => isVisibleOn(row, id)) ? (
+                    <dl className="mt-2.5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 text-xs">
+                      {shown.filter((id) => isVisibleOn(row, id)).map((id) => (
+                        <Fragment key={id}>
+                          <dt className="text-text-secondary">{fieldName(list, id)}</dt>
+                          <dd className="flex min-w-0 font-medium tabular-nums text-foreground">
+                            {isBlank(row, id) ? <span className="font-normal text-text-tertiary">—</span> : <CellValue list={list} fieldId={id} record={row} />}
+                          </dd>
+                        </Fragment>
+                      ))}
+                    </dl>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -103,5 +117,5 @@ export function BoardBlock({ block, fill }) {
     );
   }
 
-  return <BlockFrame title={config.title} fill={fill}>{body}</BlockFrame>;
+  return <BlockFrame bare title={config.title} fill={fill}>{body}</BlockFrame>;
 }

@@ -61,7 +61,7 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${poppins.variable} ${playfair.variable} ${merriweather.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${poppins.variable} ${playfair.variable} ${merriweather.variable} antialiased fx`}
       >
         {/* First in the body so its inline script is running before the async
             chunks in <head> have had time to fail. */}

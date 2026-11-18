@@ -97,7 +97,7 @@ function ChangeLog({ eventId, data }) {
   return (
     <SectionCard title="Change log" description="Everything changed in this workspace, newest first.">
       <div className="grid gap-3">
-        <SegmentedTabs value={kind} onChange={setKind} className="w-auto justify-self-start"
+        <SegmentedTabs value={kind} onChange={setKind} className="w-auto justify-self-start" buttonClassName="h-7"
           tabs={[{ label: "Everything", value: "all" }, { label: "Structure", value: "structure" }, { label: "Records", value: "record" }]} />
         <ChangeList key={kind} eventId={eventId} kind={kind} data={data} />
       </div>

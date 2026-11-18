@@ -6,7 +6,26 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Empt
 import { cn } from "@/lib/utils";
 
 // The card every data block sits in: an optional title row (with a quiet note and actions), then the body. On a canvas it fills its cell.
-export function BlockFrame({ title, note, actions, children, fill = false, bodyClassName, className }) {
+// `bare` drops the card so the content sits straight on the page under a plain heading (stats, charts, boards).
+export function BlockFrame({ title, note, actions, children, fill = false, bare = false, bodyClassName, className }) {
+  if (bare) {
+    return (
+      <section className={cn("flex min-w-0 flex-col", fill && "@4xl/page:h-full", className)}>
+        {title || actions ? (
+          <header className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-3">
+            {title ? (
+              <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                <h3 className="min-w-0 truncate text-[14.5px] font-semibold text-foreground">{title}</h3>
+                {note ? <span className="text-xs text-text-secondary">{note}</span> : null}
+              </span>
+            ) : <span />}
+            {actions ? <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div> : null}
+          </header>
+        ) : null}
+        <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", fill && "@4xl/page:overflow-auto", bodyClassName)}>{children}</div>
+      </section>
+    );
+  }
   return (
     <Card className={cn("min-w-0 gap-0 overflow-hidden rounded-2xl border-border bg-surface-subtle py-0 shadow-none", fill && "@4xl/page:h-full", className)}>
       {title || actions ? (

@@ -130,10 +130,10 @@ function MultiSelectInput({ field, value, onChange }) {
           {value.length ? value.map((id) => <OptionChip key={id} option={optionOf(field, id)} />) : <Muted>Choose…</Muted>}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-1">
+      <PopoverContent align="start" className="w-64 bg-surface-card p-1">
         <div className="max-h-64 overflow-y-auto">
           {options.map((option) => (
-            <label key={option.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface-subtle">
+            <label key={option.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface-hover">
               <Checkbox checked={value.includes(option.id)} onCheckedChange={() => toggle(option.id)} />
               <OptionChip option={option} />
             </label>
