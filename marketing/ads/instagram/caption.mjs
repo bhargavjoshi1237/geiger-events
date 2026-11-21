@@ -24,7 +24,7 @@ Return only JSON: {"hook": string, "body": [string], "hashtags": [string]}
 - hook: one line, max ${MAX_HOOK} characters, opens with the main search phrase for the post (e.g. "Event ticketing that..."). No emoji, no hashtags.
 - body: 2 or 3 short sentences, each its own line. Plain, specific, benefit-first. Work in 1-2 related search phrases naturally. No emoji, no hashtags, no links.
 - hashtags: exactly ${MAX_HASHTAGS}, CamelCase, no spaces. First the product brand tag, then 4 specific niche tags a buyer would search. Never generic tags like #love, #instagood, #business.
-- Do not repeat the hook in the body. British spelling. No exclamation marks. No claims the source copy does not support.`;
+- Do not repeat the hook in the body, and leave out any call to action (one is added after the body). British spelling. No exclamation marks. No claims the source copy does not support.`;
 
 function userPrompt(post, product) {
   return [
