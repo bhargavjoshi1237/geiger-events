@@ -11,7 +11,6 @@ import { LoadingArea } from "@/components/internal/workspace/workspace_states";
 import { ProjectProvider, useProject } from "@/context/project-context";
 import { AddonsProvider } from "@/context/addons-context";
 import { NavVisibilityProvider } from "@/context/nav-visibility-context";
-import { RbacProvider } from "@/context/rbac-context";
 import { useWorkspaceUrl, DEFAULT_TAB } from "@/lib/hooks/use-workspace-url";
 import { PlaygroundWorkspaceUrlProvider } from "@/components/landing/playground_workspace_url";
 import { ScreenErrorBoundary } from "@/components/landing/screen_error_boundary";
@@ -77,6 +76,7 @@ function EventsPlaygroundContent() {
 
 // The landing playground: the real Events workspace (shell, sidebar, topbar and every registry screen) on Halcyon Studio's
 // seeded project, served by the in-memory database in lib/playground. Navigation stays in React state, edits last until reload.
+// No RbacProvider: the demo has no roles or grants, so useRbac() falls back to its permissive default and every tab is open.
 export function EventsPlayground() {
   usePlaygroundMode(playgroundHandlers, MODE_OPTIONS);
 
@@ -85,11 +85,9 @@ export function EventsPlayground() {
       <PlaygroundWorkspaceUrlProvider>
         <ProjectProvider>
           <AddonsProvider>
-            <RbacProvider>
-              <NavVisibilityProvider>
-                <EventsPlaygroundContent />
-              </NavVisibilityProvider>
-            </RbacProvider>
+            <NavVisibilityProvider>
+              <EventsPlaygroundContent />
+            </NavVisibilityProvider>
           </AddonsProvider>
         </ProjectProvider>
       </PlaygroundWorkspaceUrlProvider>
