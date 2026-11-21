@@ -11,8 +11,10 @@
 //
 // Env: IG_TOKEN, IG_USER_ID, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //      IG_GRAPH_VERSION (optional, default v23.0)
+//      CAPTION_LLM_* (optional; when set, captions are rewritten before posting, see caption.mjs)
 
 import { loadEnv, storageConfig, readQueue, writeQueue, queueCounts, nextQueued } from "./lib.mjs";
+import { captionLlmConfig, ensureCaption } from "./caption.mjs";
 
 const GRAPH = "https://graph.facebook.com";
 const MAX_POSTS_PER_RUN = 10;
@@ -246,6 +248,10 @@ async function main() {
     : `${pool.length} due, ${postNumber === null ? `${limit} this run` : "manual selection"}.`);
 
   const batch = pool.slice(0, postNumber === null ? limit : 1);
+
+  const captionConfig = captionLlmConfig(env);
+  if (!captionConfig) console.log("Caption LLM not configured; using the stored captions.");
+  for (const post of batch) await ensureCaption(post, captionConfig);
 
   if (dryRun) {
     for (const post of batch) {

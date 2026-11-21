@@ -19,6 +19,10 @@ on:
         description: "Maximum posts this run (1-10)"
         type: string
         default: "1"
+      post:
+        description: "Publish this post number now, even if not due (blank = next due)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -39,7 +43,7 @@ jobs:
           node-version: 22
 
       - name: Publish due post
-        run: node marketing/ads/instagram/publish.mjs --due --limit "$LIMIT" $DRY_RUN
+        run: node marketing/ads/instagram/publish.mjs --due --limit "$LIMIT" ${POST:+--post "$POST"} $DRY_RUN
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
@@ -47,3 +51,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           LIMIT: ${{ inputs.limit || '1' }}
           DRY_RUN: ${{ inputs.dry_run == true && '--dry-run' || '' }}
+          POST: ${{ inputs.post }}
+          # Same OpenAI-compatible LLM as the Dash changelog service; captions fall back to the stored copy without it.
+          CAPTION_LLM_BASE_URL: ${{ vars.CAPTION_LLM_BASE_URL || 'https://api.deepseek.com' }}
+          CAPTION_LLM_MODEL: ${{ vars.CAPTION_LLM_MODEL || 'deepseek-flash' }}
+          CAPTION_LLM_API_KEY: ${{ secrets.CAPTION_LLM_API_KEY }}
