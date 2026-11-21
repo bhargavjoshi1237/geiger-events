@@ -89,7 +89,7 @@ async function waitForContainer(id) {
 }
 
 async function createImageContainer(post, image) {
-  const params = { image_url: image.url };
+  const params = { image_url: image.url, caption: post.caption || "" };
   if (post.alt) params.alt_text = post.alt;
   try {
     return await graph(`${igUser}/media`, { method: "POST", params });
