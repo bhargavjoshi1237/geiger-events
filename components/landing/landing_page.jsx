@@ -7,6 +7,7 @@ import ProductExplorer from "./product_explorer";
 import ConnectedJourney from "./connected_journey";
 import EventsPlaygroundShowcase from "@/components/EventsPlaygroundShowcase";
 import PosterFieldCta from "./poster_field_cta";
+import GuideIndex from "./guide_index";
 import { getEventGuides } from "@/lib/landing/event-guides";
 import styles from "./landing.module.css";
 
@@ -90,12 +91,6 @@ const jsonLd = {
   ],
 };
 
-const guideGroups = [
-  ["features", "Features"],
-  ["useCases", "By event type"],
-  ["compare", "Compare"],
-];
-
 function SectionHeading({ title, description }) {
   return (
     <div className={styles.sectionHeading}>
@@ -162,17 +157,17 @@ export default async function EventsLandingPage() {
         </div>
 
         <section id="platform" className={`${styles.container} ${styles.section}`}>
-          <SectionHeading
+          <ProductExplorer
+            variant="surfaces"
             title="Guests and your team work from the same event"
             description="The event page, the door scanner, the attendee portal and the staff desk all read the same orders and tickets." />
-          <ProductExplorer variant="surfaces" />
         </section>
 
         <section id="workflow" className={`${styles.container} ${styles.section}`}>
-          <SectionHeading
+          <ProductExplorer
+            variant="automation"
             title="Know who bought, and plan what happens next"
             description="Build audiences from tickets, spend and tags, and lay out the follow-up in the workflow builder." />
-          <ProductExplorer variant="automation" />
         </section>
 
         <ConnectedJourney />
@@ -195,10 +190,10 @@ export default async function EventsLandingPage() {
         </section>
 
         <section id="capabilities" className={`${styles.container} ${styles.section}`}>
-          <SectionHeading
+          <ProductExplorer
+            variant="capabilities"
             title="Browse every feature"
             description="Everything in Geiger Events at a glance. The preview plays through each feature in turn, or pick one to jump straight to it." />
-          <ProductExplorer variant="capabilities" />
         </section>
 
         {/* The playground breaks out of the content column so the workspace has room */}
@@ -216,16 +211,7 @@ export default async function EventsLandingPage() {
             <SectionHeading
               title="Guides for every feature"
               description="How each part of Geiger Events works, which events it suits, and how it compares with the tools you may use now." />
-            <div className={styles.guideGroups}>
-              {guideGroups.map(([key, label]) => guides[key].length ? (
-                <div key={key} className={styles.guideGroup}>
-                  <h3>{label}</h3>
-                  <ul>
-                    {guides[key].map((guide) => <li key={guide.href}><a href={guide.href}>{guide.title}</a></li>)}
-                  </ul>
-                </div>
-              ) : null)}
-            </div>
+            <GuideIndex guides={guides} />
           </section>
         ) : null}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
@@ -22,7 +22,8 @@ const surfaces = [
 
 const automation = [
   { label: "Workflows", title: "Plan the follow-up in a workflow builder", description: "Lay out triggers, conditions and actions for what should happen after a sale. The builder is ready; automatic runs are still being built.", points: ["Triggers, conditions and actions", "One canvas per workflow", "Shared with your team"], demo: "workflows" },
-  { label: "Audience segments", title: "Build audiences from tickets, spend and tags", description: "Combine rules on ticket type, attendance, spend and tags. The list of matching guests updates as you edit.", points: ["Combine audience rules", "Preview who matches", "Save segments to reuse"], demo: "segments" },];
+  { label: "Audience segments", title: "Build audiences from tickets, spend and tags", description: "Combine rules on ticket type, attendance, spend and tags. The list of matching guests updates as you edit.", points: ["Combine audience rules", "Preview who matches", "Save segments to reuse"], demo: "segments" },
+];
 
 const categories = [
   { label: "Registration", items: [
@@ -47,7 +48,8 @@ const categories = [
   ] },
   { label: "Hybrid & broadcast", items: [
     { label: "Livestream", demo: "stream", description: "Embed a YouTube, Vimeo or video link in event rooms, with attendee presence and chat." },
-    { label: "On-demand", demo: "replays", description: "Publish session recordings in a replay library and control who can watch." },  ] },
+    { label: "On-demand", demo: "replays", description: "Publish session recordings in a replay library and control who can watch." },
+  ] },
   { label: "Venues & logistics", items: [
     { label: "Venue sourcing", demo: "venues", description: "Search venues on a map and move the promising ones into a shortlist." },
     { label: "Instant booking", demo: "booking", description: "Check a venue's availability and rates before you book." },
@@ -66,90 +68,122 @@ const categories = [
   ] },
 ];
 
-function TabList({ items, selected, onChange, id }) {
-  const handleKey = (event, index) => {
-    let next;
-    if (["ArrowRight", "ArrowDown"].includes(event.key)) next = (index + 1) % items.length;
-    if (["ArrowLeft", "ArrowUp"].includes(event.key)) next = (index - 1 + items.length) % items.length;
-    if (event.key === "Home") next = 0;
-    if (event.key === "End") next = items.length - 1;
-    if (next === undefined) return;
-    event.preventDefault();
-    onChange(next);
-    event.currentTarget.parentElement.querySelectorAll('[role="tab"]')[next]?.focus();
-  };
-  return <div className={styles.explorerTabs} role="tablist" aria-label={`${id} previews`}>
-    {items.map((item, index) => <button key={item.label} type="button" id={`${id}-tab-${index}`} role="tab" aria-selected={selected === index} aria-controls={`${id}-panel`} tabIndex={selected === index ? 0 : -1} onClick={() => onChange(index)} onKeyDown={(event) => handleKey(event, index)}>{item.label}</button>)}
-  </div>;
+// Arrow/Home/End keys move between tabs and focus the new one.
+function handleTabKey(event, index, count, onChange) {
+  let next;
+  if (["ArrowRight", "ArrowDown"].includes(event.key)) next = (index + 1) % count;
+  if (["ArrowLeft", "ArrowUp"].includes(event.key)) next = (index - 1 + count) % count;
+  if (event.key === "Home") next = 0;
+  if (event.key === "End") next = count - 1;
+  if (next === undefined) return;
+  event.preventDefault();
+  onChange(next);
+  event.currentTarget.closest('[role="tablist"]').querySelectorAll('[role="tab"]')[next]?.focus();
 }
 
-// Every feature in one flat, page-ordered list so the tour can walk through all of them.
-const features = categories.flatMap((category) => category.items.map((item) => ({ ...item, category: category.label })));
-
-// All features stay visible at once; the preview tours through them on its own, and any one can be picked to jump there.
-function CapabilityExplorer() {
+// Open stage: a numbered rail whose active row fills as its preview plays; the heading shares the grid so the stage lines up with the description.
+function Showcase({ id, items, title, description }) {
   const [selected, setSelected] = useState(0);
-  const indexRef = useRef(null);
-  const item = features[selected];
-  const next = () => setSelected((current) => (current + 1) % features.length);
-
-  // When the index scrolls sideways (narrow screens), keep the playing feature in view without moving the page.
-  useEffect(() => {
-    const index = indexRef.current;
-    const active = index?.querySelector('[aria-pressed="true"]');
-    if (index && active && index.scrollWidth > index.clientWidth) index.scrollTo({ left: active.offsetLeft - 12, behavior: "smooth" });
-  }, [selected]);
-
-  return (
-    <div className={`${styles.explorer} ${styles.capabilityExplorer}`}>
-      <nav ref={indexRef} className={styles.featureIndex} aria-label="All features">
-        {categories.map((category) => (
-          <div key={category.label} className={styles.featureGroup}>
-            <span>{category.label}</span>
-            <div>
-              {category.items.map((entry) => {
-                const index = features.findIndex((feature) => feature.demo === entry.demo);
-                return <button key={entry.demo} type="button" aria-pressed={selected === index} onClick={() => setSelected(index)}>{entry.label}</button>;
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-      <div className={styles.capabilityStage}>
-        <div className={styles.capabilityCopy} aria-live="polite">
-          <span className={styles.explorerCategory}>{item.category} · {selected + 1} of {features.length}</span>
-          <h3>{item.label}</h3>
-          <p>{item.description}</p>
-        </div>
-        <AutoplayPreview key={item.demo} demo={item.demo} onComplete={next} />
-      </div>
-    </div>
-  );
-}
-
-// Tabbed explorer for the surfaces and automation sections; it moves to the next tab after each preview plays through.
-export default function ProductExplorer({ variant = "surfaces" }) {
-  const [selected, setSelected] = useState(0);
-  if (variant === "capabilities") return <CapabilityExplorer />;
-  const items = variant === "automation" ? automation : surfaces;
+  const progressRef = useRef(null);
   const item = items[selected];
   const next = () => setSelected((current) => (current + 1) % items.length);
 
   return (
-    <div className={styles.explorer}>
-      <TabList items={items} selected={selected} onChange={setSelected} id={variant} />
-      <div role="tabpanel" id={`${variant}-panel`} aria-labelledby={`${variant}-tab-${selected}`} tabIndex={0} className={styles.explorerPanel}>
-        <div className={`${styles.explorerContent} ${variant === "automation" ? styles.automationContent : ""}`}>
-          <div className={styles.explorerCopy}>
-            <h3>{item.title}</h3><p>{item.description}</p>
-            <ul>{item.points.map((point) => <li key={point}><Check size={14} />{point}</li>)}</ul>
-            <Link href="/org" className={styles.textLink}>Create an event<ArrowRight size={14} /></Link>
-          </div>
-          <div className={styles.demoStage}>
-            <AutoplayPreview key={item.demo} demo={item.demo} onComplete={next} />
-          </div>
+    <div className={styles.showcase}>
+      <h2 className={styles.sectionTitle}>{title}</h2>
+      <p className={styles.sectionDescription}>{description}</p>
+      <div className={styles.showcaseRail}>
+        <div role="tablist" aria-orientation="vertical" aria-label={title} className={styles.showcaseList}>
+          {items.map((entry, index) => {
+            const active = index === selected;
+            return (
+              <div key={entry.demo} className={styles.showcaseItem} data-active={active}>
+                <span ref={active ? progressRef : null} className={styles.showcaseProgress} aria-hidden="true" />
+                <button type="button" role="tab" id={`${id}-tab-${index}`} aria-selected={active} aria-controls={`${id}-panel`} tabIndex={active ? 0 : -1} onClick={() => setSelected(index)} onKeyDown={(event) => handleTabKey(event, index, items.length, setSelected)}>
+                  <span>{`0${index + 1}`}</span>{entry.label}
+                </button>
+                <div className={styles.showcaseBody} inert={!active}>
+                  <div>
+                    <div>
+                      <h3>{entry.title}</h3>
+                      <p>{entry.description}</p>
+                      <ul>{entry.points.map((point) => <li key={point}><Check size={14} />{point}</li>)}</ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <Link href="/org" className={styles.textLink}>Create an event<ArrowRight size={14} /></Link>
+      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${selected}`} tabIndex={0} className={styles.showcaseStage}>
+        <div key={item.demo} className={styles.showcaseScene} data-demo={item.demo}>
+          <AutoplayPreview demo={item.demo} controls="chip" progressRef={progressRef} onComplete={next} />
         </div>
       </div>
     </div>
   );
+}
+
+// Every feature in one flat, page-ordered list so the tour can walk through all of them.
+const features = categories.flatMap((category, categoryIndex) => category.items.map((item, position) => ({ ...item, categoryIndex, position })));
+
+// Same open stage, with categories as the numbered rail; the open category lists its features and its line fills across all of them.
+function CapabilityShowcase({ title, description }) {
+  const [selected, setSelected] = useState(0);
+  const progressRef = useRef(null);
+  const item = features[selected];
+  const next = () => setSelected((current) => (current + 1) % features.length);
+  const firstOf = (categoryIndex) => features.findIndex((feature) => feature.categoryIndex === categoryIndex);
+
+  return (
+    <div className={styles.showcase}>
+      <h2 className={styles.sectionTitle}>{title}</h2>
+      <p className={styles.sectionDescription}>{description}</p>
+      <div className={styles.showcaseRail}>
+        <div role="tablist" aria-orientation="vertical" aria-label={title} className={styles.showcaseList}>
+          {categories.map((category, categoryIndex) => {
+            const active = categoryIndex === item.categoryIndex;
+            return (
+              <div key={category.label} className={styles.showcaseItem} data-active={active}>
+                <span ref={active ? progressRef : null} className={styles.showcaseProgress} style={active ? { "--i": item.position, "--n": category.items.length } : undefined} aria-hidden="true" />
+                <button type="button" role="tab" id={`capabilities-tab-${categoryIndex}`} aria-selected={active} aria-controls="capabilities-panel" tabIndex={active ? 0 : -1} onClick={() => setSelected(firstOf(categoryIndex))} onKeyDown={(event) => handleTabKey(event, categoryIndex, categories.length, (index) => setSelected(firstOf(index)))}>
+                  <span>{`0${categoryIndex + 1}`}</span>{category.label}
+                </button>
+                <div className={styles.showcaseBody} inert={!active}>
+                  <div>
+                    <div>
+                      <ul className={styles.featureList}>
+                        {category.items.map((entry) => {
+                          const index = features.findIndex((feature) => feature.demo === entry.demo);
+                          return (
+                            <li key={entry.demo}>
+                              <button type="button" aria-pressed={index === selected} onClick={() => setSelected(index)}>{entry.label}</button>
+                              {index === selected ? <p>{entry.description}</p> : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div role="tabpanel" id="capabilities-panel" aria-labelledby={`capabilities-tab-${item.categoryIndex}`} tabIndex={0} className={styles.showcaseStage}>
+        <div key={item.demo} className={styles.showcaseScene} data-demo={item.demo}>
+          <AutoplayPreview demo={item.demo} controls="chip" progressRef={progressRef} onComplete={next} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Every explorer uses the open-stage showcase; capabilities group their rail by category.
+export default function ProductExplorer({ variant = "surfaces", title, description }) {
+  if (variant === "capabilities") return <CapabilityShowcase title={title} description={description} />;
+  return <Showcase id={variant} items={variant === "automation" ? automation : surfaces} title={title} description={description} />;
 }

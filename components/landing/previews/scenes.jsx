@@ -156,7 +156,7 @@ const SESSIONS = [
 function PortalScene({ view }) {
   const { state } = view;
   return (
-    <SceneCard className="max-w-[310px]" title="Nightshift 2026" meta="Attendee portal · Ada Chen">
+    <SceneCard title="Nightshift 2026" meta="Attendee portal · Ada Chen">
       <Part id="ticket" view={view} className="flex items-center gap-3 bg-foreground p-3 text-background">
         <QrCode className="size-10 shrink-0" strokeWidth={1.5} />
         <div className="min-w-0">

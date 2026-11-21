@@ -46,23 +46,22 @@
 
 /* Hero ticket: inverted against the page so it reads as a printed object in both themes */
 .ticketScene { position: relative; display: flex; justify-content: center; padding-block: 24px; }
-.ticket { position: relative; width: 300px; padding: 22px 22px 18px; border-radius: 14px; background: var(--foreground); color: var(--background); box-shadow: 0 30px 60px -24px rgb(0 0 0 / .45); transform: rotate(-4deg); }
+.ticket { position: relative; width: 300px; color: var(--background); filter: drop-shadow(0 18px 22px rgb(0 0 0 / .3)); transform: rotate(-4deg); }
+/* Top and stub are separate so each can mask a real half-hole at the tear line */
+.ticketTop { padding: 22px 22px 26px; border-radius: 14px 14px 0 0; background: var(--foreground); mask: radial-gradient(circle at 0 100%, #0000 10px, #000 10.5px) left / 51% 100% no-repeat, radial-gradient(circle at 100% 100%, #0000 10px, #000 10.5px) right / 51% 100% no-repeat; }
 .ticketBack { position: absolute; top: 40px; left: 50%; width: 300px; height: 380px; margin-left: -130px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-subtle); transform: rotate(5deg); color: var(--muted-foreground); }
 .ticketBackStub { position: absolute; inset: auto 22px 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1.5px dashed var(--border-strong); }
 .ticketBackStub small { display: block; font-size: 11px; }
 .ticketBackStub strong { display: block; margin-top: 2px; font-family: var(--font-geist-mono), monospace; font-size: 12px; font-weight: 500; color: var(--foreground); }
-.ticketBarcode { width: 92px; height: 26px; background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 4px, currentColor 4px 5px, transparent 5px 8px, currentColor 8px 11px, transparent 11px 13px); opacity: .7; }
+.ticketBarcode { flex-shrink: 0; height: 30px; opacity: .85; }
 .ticketIssuer { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 600; }
 .ticketIssuer > span { display: inline-flex; align-items: center; gap: 8px; }
 .ticketIssuer small { font-family: var(--font-geist-mono), monospace; font-size: 11px; font-weight: 500; opacity: .65; }
 .ticketEvent { margin-top: 36px; font-size: 32px; font-weight: 600; line-height: 1.05; letter-spacing: -0.03em; }
 .ticketWhen { margin-top: 10px; font-size: 14px; opacity: .75; }
-.ticketPerforation { position: relative; margin: 26px -22px 18px; border-top: 1.5px dashed color-mix(in oklab, var(--background) 35%, transparent); }
-.ticketPerforation::before, .ticketPerforation::after { content: ""; position: absolute; top: -10px; width: 20px; height: 20px; border-radius: 50%; background: var(--hero-surface, var(--background)); }
-.ticketPerforation::before { left: -10px; }
-.ticketPerforation::after { right: -10px; }
-.ticketStub { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.ticketStub { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; border-top: 1.5px dashed color-mix(in oklab, var(--background) 35%, transparent); border-radius: 0 0 14px 14px; background: var(--foreground); mask: radial-gradient(circle at 0 0, #0000 10px, #000 10.5px) left / 51% 100% no-repeat, radial-gradient(circle at 100% 0, #0000 10px, #000 10.5px) right / 51% 100% no-repeat; }
 .ticketFields { display: grid; grid-template-columns: auto auto; gap: 10px 20px; }
+.ticketQr { flex-shrink: 0; margin-right: 8px; }
 .ticketFields dt { font-size: 11px; opacity: .6; }
 .ticketFields dd { margin-top: 2px; font-family: var(--font-geist-mono), monospace; font-size: 12px; font-weight: 500; }
 .ticketStamp { position: absolute; top: 74px; right: -22px; display: flex; flex-direction: column; align-items: center; padding: 8px 12px; border: 2px solid var(--foreground); border-radius: 8px; background: var(--background); color: var(--foreground); transform: rotate(9deg); box-shadow: 0 8px 20px -10px rgb(0 0 0 / .35); }
@@ -74,42 +73,57 @@
 .sectionHeading { max-width: 720px; margin-bottom: 40px; }
 .sectionTitle { font-size: clamp(28px, 3.1vw, 40px); font-weight: 600; line-height: 1.12; letter-spacing: -0.03em; text-wrap: balance; }
 .sectionDescription { max-width: 600px; margin-top: 14px; font-size: 16px; line-height: 1.65; color: var(--muted-foreground); }
+.sectionHeadingWide, .sectionHeadingWide .sectionDescription { max-width: none; }
 
-/* Product explorers */
-.explorer { overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
-.explorerTabs { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--border); background: var(--surface-subtle); overflow-x: auto; }
-.explorerTabs button { flex-shrink: 0; padding: 8px 14px; border-radius: 999px; font-size: 14px; color: var(--muted-foreground); white-space: nowrap; cursor: pointer; transition: background-color .15s, color .15s; }
-.explorerTabs button:hover { color: var(--foreground); }
-.explorerTabs button[aria-selected="true"] { background: var(--background); color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
-.explorerPanel:focus-visible { outline-offset: -4px !important; }
-.explorerContent { display: grid; grid-template-columns: 36% 1fr; min-width: 0; }
-.explorerCopy { align-self: center; min-width: 0; padding: 40px 36px; }
-.explorerCategory { display: block; margin-bottom: 10px; font-size: 13px; color: var(--muted-foreground); }
-.explorerCopy h3 { font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; text-wrap: balance; }
-.explorerCopy p { margin-top: 12px; font-size: 15px; line-height: 1.65; color: var(--muted-foreground); }
-.explorerCopy ul { display: grid; gap: 10px; margin-top: 22px; padding: 0; list-style: none; }
-.explorerCopy li { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.explorerCopy li svg { flex-shrink: 0; color: var(--muted-foreground); }
-.explorerCopy .textLink { margin-top: 28px; }
-.demoStage { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; min-height: 540px; padding: 36px 32px 22px; border-left: 1px solid var(--border); background: var(--muted); }
-.automationContent { grid-template-columns: 31% 1fr; }
-.automationContent .demoStage { padding-inline: 24px; }
 .demoLoading { display: grid; place-items: center; height: 100%; }
 
+/* Surfaces showcase: numbered rail that fills as each preview plays, beside an open stage */
+.showcase { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 500px); column-gap: 72px; align-items: start; }
+.showcase > * { grid-column: 1; }
+.showcaseRail { margin-top: 40px; }
+/* The stage starts on the description row and runs down beside the list */
+.showcase > .showcaseStage { grid-column: 2; grid-row: 2 / span 3; }
+.showcaseList { display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+.showcaseItem { position: relative; border-top: 1px solid var(--border); }
+.showcaseProgress { position: absolute; left: 0; top: -1px; height: 1px; width: calc((var(--i, 0) + var(--p, 0)) / var(--n, 1) * 100%); background: var(--foreground); opacity: 0; transition: opacity .3s; }
+.showcaseItem > button { display: flex; width: 100%; align-items: baseline; gap: 16px; padding: 22px 0; text-align: left; font-size: 17px; line-height: 20px; font-weight: 500; letter-spacing: -0.01em; color: var(--muted-foreground); cursor: pointer; transition: color .2s; }
+.showcaseItem > button:hover { color: var(--foreground); }
+.showcaseItem > button > span { width: 20px; flex-shrink: 0; font-family: var(--font-geist-mono), monospace; font-size: 12px; font-weight: 400; color: var(--muted-foreground); }
+.showcaseBody { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .55s cubic-bezier(.2,.7,.2,1); }
+.showcaseBody > div { min-height: 0; overflow: hidden; }
+.showcaseBody > div > div { max-width: 500px; padding: 0 0 28px 36px; opacity: 0; transition: opacity .45s; }
+.showcaseBody h3 { font-size: 24px; font-weight: 600; line-height: 1.25; letter-spacing: -0.02em; text-wrap: balance; }
+.showcaseBody p { margin-top: 10px; font-size: 15px; line-height: 1.6; color: var(--muted-foreground); text-wrap: pretty; }
+.showcaseBody ul { display: grid; gap: 8px; margin-top: 18px; padding: 0; list-style: none; }
+.showcaseBody li { display: flex; align-items: center; gap: 10px; font-size: 14px; line-height: 20px; }
+.showcaseBody li svg { flex-shrink: 0; color: var(--muted-foreground); }
+.showcaseItem[data-active="true"] .showcaseProgress, .showcaseItem[data-active="true"] .showcaseBody > div > div { opacity: 1; }
+.showcaseItem[data-active="true"] > button { color: var(--foreground); }
+.showcaseItem[data-active="true"] .showcaseBody { grid-template-rows: 1fr; }
+.showcase > .textLink { justify-self: start; margin-top: 28px; }
+/* Capabilities: the open category lists its features; the playing one shows its description */
+.showcaseBody .featureList { display: grid; gap: 0; margin: 0; }
+.showcaseBody .featureList li { display: block; }
+.featureList button { padding: 5px 0; font-size: 15px; line-height: 22px; text-align: left; color: var(--muted-foreground); cursor: pointer; transition: color .2s; }
+.featureList button:hover, .featureList button[aria-pressed="true"] { color: var(--foreground); }
+.featureList button[aria-pressed="true"] { font-weight: 500; }
+.showcaseBody .featureList p { margin: 0 0 8px; max-width: 420px; font-size: 14px; line-height: 1.6; }
+.showcaseStage { display: flex; flex-direction: column; align-items: flex-end; }
+.showcaseScene { position: relative; isolation: isolate; display: flex; justify-content: center; width: 100%; max-width: 500px; animation: showcaseEnter .6s cubic-bezier(.2,.7,.2,1) both; }
+/* Lets the player grow past its default 420px cap to fill the stage column */
+.showcaseScene > div { max-width: none; }
+/* Every surface card shares one height so switching previews never shifts the layout */
+.showcaseScene [data-scene-card] { min-height: 460px; }
+.sceneChip { display: flex; width: 100%; align-items: center; gap: 12px; min-height: 46px; margin-top: 32px; padding: 6px 6px 6px 16px; border-radius: 23px; border: 1px solid color-mix(in oklab, var(--foreground) 9%, transparent); background: color-mix(in oklab, var(--popover) 72%, transparent); backdrop-filter: blur(14px); box-shadow: 0 18px 40px -18px rgb(0 0 0 / .75), inset 0 1px 0 color-mix(in oklab, var(--foreground) 6%, transparent); }
+.sceneChip p { flex: 1; min-width: 0; font-size: 13px; line-height: 18px; color: var(--foreground); text-wrap: pretty; }
+.sceneChip button { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 999px; background: color-mix(in oklab, var(--foreground) 7%, transparent); color: var(--foreground); cursor: pointer; transition: background-color .15s; }
+.sceneChip button:hover { background: color-mix(in oklab, var(--foreground) 14%, transparent); }
+.sceneChipDot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 999px; background: oklch(76.5% 0.177 163.223); animation: sceneLive 2s ease-out infinite; }
+@keyframes showcaseEnter { from { opacity: 0; transform: translateY(12px) scale(.985); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes sceneLive { 0% { box-shadow: 0 0 0 0 rgb(52 211 153 / .55); } 80%, 100% { box-shadow: 0 0 0 6px rgb(52 211 153 / 0); } }
+@media (prefers-reduced-motion: reduce) { .showcaseScene, .sceneChipDot { animation: none; } }
 
-/* Capability explorer */
-/* Feature index: every feature visible at once beside a stage that tours through them */
-.capabilityExplorer { display: grid; grid-template-columns: 340px 1fr; }
-.featureIndex { position: relative; display: grid; align-content: start; gap: 18px; padding: 22px; border-right: 1px solid var(--border); background: var(--surface-subtle); }
-.featureGroup > span { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
-.featureGroup > div { display: flex; flex-wrap: wrap; gap: 6px; }
-.featureGroup button { padding: 5px 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--background); font-size: 13px; color: var(--muted-foreground); cursor: pointer; transition: background-color .2s, border-color .2s, color .2s; }
-.featureGroup button:hover { color: var(--foreground); border-color: var(--border-strong); }
-.featureGroup button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
-.capabilityStage { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; padding: 30px 28px 22px; background: var(--muted); }
-.capabilityCopy { width: 100%; max-width: 420px; min-height: 96px; margin-bottom: 18px; }
-.capabilityCopy h3 { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
-.capabilityCopy p { margin-top: 6px; font-size: 14px; line-height: 1.6; color: var(--muted-foreground); }
+
 
 /* Guest journey */
 .journeySection { margin-top: 112px; padding-block: 88px; border-block: 1px solid var(--border); background: var(--surface-subtle); }
@@ -145,12 +159,21 @@
 .formatCard > p { max-width: 320px; margin-top: 8px; font-size: 15px; line-height: 1.6; color: var(--muted-foreground); }
 .formatCard .textLink { margin-top: 14px; }
 /* Guide index: crawlable links to every published feature and solution page */
-.guideGroups { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 24px 40px; }
-.guideGroup h3 { font-family: var(--font-geist-mono), monospace; font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-foreground); }
-.guideGroup ul { margin-top: 14px; display: grid; gap: 8px 24px; }
-.guideGroup:first-child ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.guideGroup a { font-size: 14px; line-height: 1.5; color: var(--foreground); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; transition: text-decoration-color .15s; }
-.guideGroup a:hover { text-decoration-color: var(--border-strong); }
+/* Guide index: features as an icon grid, event types and comparisons as compact chips */
+.guideIndex { display: grid; gap: 48px; }
+.guideHeading { display: flex; align-items: center; gap: 8px; font-family: var(--font-geist-mono), monospace; font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-foreground); }
+.guideHeading span { padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; font-size: 11px; letter-spacing: 0; }
+.guideGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 24px; margin-top: 16px; padding: 0; list-style: none; }
+.guideGrid a { display: flex; align-items: center; gap: 12px; margin-inline: -8px; padding: 7px 8px; border-radius: 10px; font-size: 14px; line-height: 1.35; color: var(--foreground); transition: background-color .15s; }
+.guideGrid a:hover { background: var(--accent); }
+.guideGrid a > span { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--muted-foreground); transition: color .15s, border-color .15s; }
+.guideGrid a:hover > span { color: var(--foreground); border-color: var(--border-strong); }
+.guideGrid a > span svg { display: block; }
+.guideChipGroups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 48px; }
+.guideChips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding: 0; list-style: none; }
+.guideChips a { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; font-size: 13px; line-height: 18px; color: var(--foreground); transition: background-color .15s, border-color .15s; }
+.guideChips a:hover { background: var(--accent); border-color: var(--border-strong); }
+.guideChips svg { flex-shrink: 0; color: var(--muted-foreground); }
 .formatArt { position: relative; display: flex; align-items: center; justify-content: center; height: 230px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-subtle); color: var(--foreground); }
 .orbitCircle { position: absolute; width: 170px; height: 170px; border: 1px solid var(--border-strong); border-radius: 50%; }
 .gatherArt > i { position: absolute; width: 16px; height: 16px; border: 4px solid var(--surface-subtle); border-radius: 50%; background: var(--foreground); box-shadow: 0 0 0 1px var(--border-strong); transform: rotate(calc(var(--i) * 45deg)) translateY(-85px); }
@@ -207,35 +230,31 @@
 @keyframes journeyTimer { to { stroke-dashoffset: 0; } }
 
 @media (max-width: 1024px) {
+  .guideGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .showcase { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); column-gap: 48px; }
   .hero { grid-template-columns: 1fr; gap: 40px; padding-block: 64px 48px; }
   .heroDescription { max-width: 560px; }
-  .explorerCopy { padding: 28px; }
-  .demoStage { padding: 28px; }
   .journeyLayout { gap: 36px; }
   .formatCards { gap: 18px; }
   .formatArt { height: 210px; }
   .faqSection { gap: 36px; }
-  .capabilityExplorer { grid-template-columns: 280px 1fr; }
 }
 @media (max-width: 800px) {
+  .showcase { grid-template-columns: 1fr; }
+  .showcase > .showcaseStage { grid-column: 1; grid-row: auto; margin-top: 40px; }
+  .showcaseStage { align-items: center; }
   .section { padding-top: 80px; }
-  .explorerContent, .automationContent { grid-template-columns: 1fr; }
-  .explorerCopy ul { display: flex; flex-wrap: wrap; gap: 10px 20px; }
-  .demoStage { min-height: 0; border-left: 0; border-top: 1px solid var(--border); padding: 24px; }
   .journeySection { margin-top: 80px; padding-block: 64px; }
   .journeyLayout { grid-template-columns: 1fr; }
   .journeyCopy p { min-height: 0; }
   .formatCards { grid-template-columns: 1fr; gap: 36px; }
-  .guideGroups { grid-template-columns: 1fr; gap: 36px; }
+  .guideChipGroups { grid-template-columns: 1fr; }
   .faqSection { grid-template-columns: 1fr; gap: 28px; padding-bottom: 80px; }
   .mockWorkspace > aside { width: 150px; }
-  .capabilityExplorer { display: block; }
-  .featureIndex { display: flex; gap: 6px; padding: 12px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); scrollbar-width: none; }
-  .featureGroup, .featureGroup > div { display: contents; }
-  .featureGroup > span { display: none; }
-  .featureGroup button { flex-shrink: 0; white-space: nowrap; }
 }
 @media (max-width: 520px) {
+  .guideGrid { grid-template-columns: 1fr; }
+  .showcaseBody > div > div { padding-left: 0; }
   .container { padding-inline: 16px; }
   .hero { padding-block: 40px 32px; }
   .heroPanel { --tear-inset: 18px; margin: 8px 8px 0; border-radius: 18px; }
@@ -248,9 +267,6 @@
   .ticketEvent { font-size: 26px; margin-top: 28px; }
   .ticketStamp { right: -16px; padding: 6px 10px; }
   .ticketStamp strong { font-size: 12px; }
-  .explorerTabs button { padding: 7px 11px; font-size: 13px; }
-  .explorerCopy { padding: 24px 20px; }
-  .demoStage, .automationContent .demoStage, .capabilityStage { padding: 18px 12px; }
   .journeySteps { gap: 6px; }
   .journeySteps button { font-size: 12px; }
   .journeyNode { width: 44px; height: 44px; }

@@ -37,7 +37,7 @@ export function Part({ id, view, className, children }) {
 // Scenes are display-only; the player drives every change.
 export function SceneCard({ title, meta, aside, className, children }) {
   return (
-    <div inert className={cn("w-full overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm", className)}>
+    <div inert data-scene-card className={cn("w-full overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm", className)}>
       <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold">{title}</div>

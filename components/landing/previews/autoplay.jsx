@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { MousePointer2, Pause, Play } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
+import styles from "../landing.module.css";
 import { FRONT_PREVIEWS } from "./scenes";
 import { GROWTH_PREVIEWS } from "./scenes_growth";
 import { ORDER_PREVIEWS } from "./scenes_orders";
@@ -81,8 +82,8 @@ function useTimeline(script, ref) {
   return { time: shown, setTime, paused, setPaused, reduced };
 }
 
-// `onComplete` fires each time the script finishes a full loop, so a parent can move on to the next preview.
-export default function AutoplayPreview({ demo, onComplete }) {
+// `onComplete` fires each time the script finishes a full loop; `progressRef` gets the loop's progress as a `--p` (0–1) style variable.
+export default function AutoplayPreview({ demo, onComplete, controls = "classic", progressRef }) {
   const { script, Scene } = PREVIEWS[demo];
   const rootRef = useRef(null);
   const stageRef = useRef(null);
@@ -92,6 +93,13 @@ export default function AutoplayPreview({ demo, onComplete }) {
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   useEffect(() => { if (time.loops > 0) onCompleteRef.current?.(); }, [time.loops]);
+  useEffect(() => {
+    const el = progressRef?.current;
+    if (!el) return;
+    const totals = script.map((s) => timing(s).total);
+    const done = totals.slice(0, time.step).reduce((sum, t) => sum + t, 0) + Math.min(time.ms, totals[time.step]);
+    el.style.setProperty("--p", Math.min(1, done / totals.reduce((sum, t) => sum + t, 0)).toFixed(4));
+  }, [progressRef, script, time]);
   const entry = script[time.step];
   const frame = frameAt(script, time.step, time.ms);
   const usesCursor = script.some((s) => s.cursor);
@@ -143,7 +151,15 @@ export default function AutoplayPreview({ demo, onComplete }) {
           </div>
         ) : null}
       </div>
-      <div className="w-full">
+      {controls === "chip" ? (
+        <div className={styles.sceneChip}>
+          <span className={styles.sceneChipDot} aria-hidden="true" />
+          <p aria-live="polite">{entry.caption}</p>
+          <button type="button" onClick={() => setPaused(!paused)} aria-label={paused ? "Play preview" : "Pause preview"}>
+            {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
+          </button>
+        </div>
+      ) : <div className="w-full">
         <div className="flex items-start gap-3">
           <div className="flex flex-1 gap-1.5" role="group" aria-label="Preview steps">
             {chapters.map((chapter, index) => {
@@ -164,7 +180,7 @@ export default function AutoplayPreview({ demo, onComplete }) {
           </Button>
         </div>
         <p className="mt-2 min-h-10 text-sm text-foreground" aria-live="polite">{entry.caption}</p>
-      </div>
+      </div>}
     </div>
   );
 }
