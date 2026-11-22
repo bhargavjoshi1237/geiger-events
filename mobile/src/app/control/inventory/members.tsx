@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { MEMBER_META } from "@/components/control/inventory/meta";
 import { PickerField } from "@/components/control/inventory/PickerField";
@@ -11,18 +12,21 @@ import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { TickMeter } from "@/components/ui/TickMeter";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { fmtDate } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { Member, MembershipPlan, MemberStatus } from "@/types/control_inventory";
 
 type Payload = { members: Member[]; plans: MembershipPlan[] };
@@ -68,6 +72,7 @@ export default function MembersScreen() {
   const plans = list.data?.plans ?? [];
   const open = members.find((m) => m.id === openId) ?? null;
   const filtered = status !== "all" || Boolean(term);
+  const tally = (s: MemberStatus) => members.filter((m) => m.status === s).length;
 
   let body: React.ReactNode;
   if (!project) {
@@ -93,29 +98,47 @@ export default function MembersScreen() {
     );
   } else {
     body = (
-      <View style={styles.group}>
-        {members.map((m, i) => {
-          const meta = MEMBER_META[m.status] ?? { label: m.status, tone: "neutral" as const };
-          return (
-            <ListRow
-              key={m.id}
-              leading={<Avatar name={m.name} email={m.email} size={34} />}
-              title={m.name || m.email || "Member"}
-              subtitle={[m.planName || "No plan", m.email, timing(m)].filter(Boolean).join(" · ")}
-              trailing={<Pill label={meta.label} tone={meta.tone} variant="outline" />}
-              onPress={() => setOpenId(m.id)}
-              divider={i < members.length - 1}
-            />
-          );
-        })}
-      </View>
+      <Animated.View entering={FadeInDown.delay(50).springify()}>
+        <ListGroup title={filtered ? `${members.length} matching` : "Roster"}>
+          {members.map((m, i) => {
+            const meta = MEMBER_META[m.status] ?? { label: m.status, tone: "neutral" as const };
+            return (
+              <ListRow
+                key={m.id}
+                leading={<Avatar name={m.name} email={m.email} size={36} />}
+                title={m.name || m.email || "Member"}
+                subtitle={[m.planName || "No plan", m.email, timing(m)].filter(Boolean).join(" · ")}
+                trailing={<Pill label={meta.label} tone={meta.tone} variant="outline" />}
+                onPress={() => setOpenId(m.id)}
+                divider={i < members.length - 1}
+              />
+            );
+          })}
+        </ListGroup>
+      </Animated.View>
     );
   }
+
+  const active = tally("Active");
 
   return (
     <Screen scroll header={<ScreenHeader title="Members" right={project ? <IconButton icon="plus" label="Add a member" variant="solid" onPress={() => setAdding(true)} /> : undefined} />}>
       {list.data ? (
         <View style={styles.controls}>
+          {!filtered && members.length ? (
+            <Animated.View entering={FadeInDown.springify()}>
+              <Readout
+                lead={{ label: "Active members", value: active.toLocaleString("en-US"), hint: `of ${members.length.toLocaleString("en-US")} on the roster` }}
+                items={[
+                  { label: "Expired", value: String(tally("Expired")), tone: tally("Expired") ? "warning" : "neutral" },
+                  { label: "Cancelled", value: String(tally("Cancelled")) },
+                  { label: "Plans", value: String(plans.length) },
+                ]}
+              >
+                <TickMeter value={active} max={members.length} ticks={44} height={16} label={`${active} of ${members.length} members active`} />
+              </Readout>
+            </Animated.View>
+          ) : null}
           <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder="Search name or email…" autoCapitalize="none" />
           <FilterChips options={STATUS_FILTERS} value={status} onChange={setStatus} />
         </View>
@@ -206,9 +229,19 @@ function MemberForm({ projectId, plans, member, onClose, onSaved }: { projectId:
     setStatus("Active");
   };
 
+  const meta = member ? (MEMBER_META[member.status] ?? { label: member.status, tone: "neutral" as const }) : null;
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.form}>
+        {member && meta ? (
+          <View style={styles.metaRow}>
+            <Pill label={meta.label} tone={meta.tone} />
+            <Text style={styles.meta} numberOfLines={1}>
+              {timing(member)}
+            </Text>
+          </View>
+        ) : null}
         <Field label="Name">
           <Input value={name} onChangeText={setName} placeholder="Jane Doe" />
         </Field>
@@ -235,11 +268,10 @@ function MemberForm({ projectId, plans, member, onClose, onSaved }: { projectId:
             onChange={(v) => setStatus(v as MemberStatus)}
           />
         </Field>
-        <Field label="Expires" hint="YYYY-MM-DD. Leave empty for a lifetime membership.">
+        <Field label="Expires" hint={member?.startedAt ? `YYYY-MM-DD, or empty for lifetime. Member since ${fmtDate(member.startedAt)}.` : "YYYY-MM-DD. Leave empty for a lifetime membership."}>
           <Input value={expires} onChangeText={setExpires} keyboardType="numbers-and-punctuation" placeholder="2027-12-31" />
         </Field>
         {member ? <Button title="Extend a year" icon="calendar-clock" variant="secondary" onPress={extendYear} fullWidth /> : null}
-        {member?.startedAt ? <Text style={styles.muted}>{`Member since ${fmtDate(member.startedAt)}`}</Text> : null}
         <View style={styles.actions}>
           <Button title="Cancel" variant="ghost" onPress={onClose} />
           <Button title={member ? "Save" : "Add member"} onPress={() => void save()} loading={busy === "save"} disabled={busy !== null} />
@@ -262,20 +294,19 @@ function MemberForm({ projectId, plans, member, onClose, onSaved }: { projectId:
 const styles = StyleSheet.create({
   controls: {
     gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
   },
   form: {
     gap: spacing.lg,
   },
-  muted: {
-    ...type.caption,
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  meta: {
+    ...type.monoSmall,
+    flexShrink: 1,
     color: colors.textSecondary,
   },
   actions: {

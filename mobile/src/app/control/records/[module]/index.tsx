@@ -1,8 +1,10 @@
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
 
 import { FieldEditor } from "@/components/control/fields/FieldEditor";
+import { ChoicePicker } from "@/components/control/forms/ChoicePicker";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -11,6 +13,7 @@ import { FilterChips } from "@/components/ui/FilterChips";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { Screen } from "@/components/ui/Screen";
@@ -83,13 +86,13 @@ export default function RecordsListScreen() {
     );
   } else {
     body = (
-      <View style={styles.group}>
+      <ListGroup title={`${records.length} ${records.length === 1 ? mod.singular.toLowerCase() : mod.title.toLowerCase()}`}>
         {records.map((record, i) => {
           const pill = statusOf(mod, record);
           return (
             <ListRow
               key={record.id}
-              leading={<IconTile icon={iconOf(mod.icon)} size={34} />}
+              leading={record.coverUrl ? <Image source={{ uri: record.coverUrl }} contentFit="cover" transition={150} style={styles.thumb} /> : <IconTile icon={iconOf(mod.icon)} size={36} />}
               title={record.name}
               subtitle={summaryLine(mod, record) || undefined}
               trailing={pill ? <Pill label={pill.label} tone={pill.tone} variant="outline" /> : undefined}
@@ -98,7 +101,7 @@ export default function RecordsListScreen() {
             />
           );
         })}
-      </View>
+      </ListGroup>
     );
   }
 
@@ -114,6 +117,7 @@ export default function RecordsListScreen() {
     >
       {mod ? (
         <View style={styles.controls}>
+          {mod.description ? <Text style={styles.lede}>{mod.description}</Text> : null}
           <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder={`Search ${mod.title.toLowerCase()}…`} autoCapitalize="none" />
           {chips.length ? <FilterChips options={chips} value={status} onChange={setStatus} /> : null}
         </View>
@@ -173,7 +177,7 @@ function CreateForm({ module, projectId, onClose, onCreated }: { module: Control
       <View style={styles.form}>
         {(module.kinds?.length ?? 0) > 1 ? (
           <Field label="Type">
-            <FilterChips options={module.kinds ?? []} value={kind} onChange={setKind} />
+            <ChoicePicker options={module.kinds ?? []} value={kind} onChange={setKind} label="Type" />
           </Field>
         ) : null}
         {fields.map((field) => (
@@ -194,12 +198,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  thumb: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md - 2,
+    backgroundColor: colors.surfaceActive,
+  },
+  lede: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
   },
   form: {
     gap: spacing.lg,

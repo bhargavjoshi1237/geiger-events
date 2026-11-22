@@ -1,48 +1,51 @@
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
+import { Icon } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
-import { ListRow } from "@/components/ui/ListRow";
-import { Pill } from "@/components/ui/Pill";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Segmented } from "@/components/ui/Segmented";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { fmtTimeAgo } from "@/lib/format";
-import { errorFeedback, successFeedback } from "@/lib/haptics";
+import { fmtCompactTime, pluralize } from "@/lib/format";
+import { errorFeedback, successFeedback, tapFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { CommunityChannel, CommunityChannelKind } from "@/types/control_community";
 import type { ControlEvent } from "@/types/portal";
 
-const STATUS_TABS = [
-  { value: "active", label: "Active" },
-  { value: "archived", label: "Archived" },
-];
-
-const COPY: Record<CommunityChannelKind, { title: string; empty: string; emptyMessage: string }> = {
+const COPY: Record<CommunityChannelKind, { title: string; empty: string; emptyMessage: string; one: string; many: string }> = {
   event: {
     title: "Event chat",
     empty: "No event chats yet",
     emptyMessage: "An event's chat starts when you turn it on in the event's communication settings on the dashboard.",
+    one: "chat",
+    many: "chats",
   },
   qa: {
     title: "Q&A threads",
     empty: "No Q&A threads yet",
     emptyMessage: "Start a thread for an event; everyone holding a ticket can ask questions there.",
+    one: "thread",
+    many: "threads",
   },
 };
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 // Event chats and Q&A threads share one list: both are chat channels, told apart by kind.
 export function ChannelList({ kind }: { kind: CommunityChannelKind }) {
@@ -65,7 +68,12 @@ export function ChannelList({ kind }: { kind: CommunityChannelKind }) {
     });
   }, [list.data, status, query]);
 
-  const total = list.data?.channels.length ?? 0;
+  const channels = list.data?.channels ?? [];
+  const total = channels.length;
+  const active = channels.filter((c) => c.status === "active");
+  const archived = total - active.length;
+  const people = active.reduce((sum, c) => sum + c.participantCount, 0);
+  const messages = active.reduce((sum, c) => sum + c.messageCount, 0);
 
   let body: React.ReactNode;
   if (!project?.can.inbox) {
@@ -99,19 +107,18 @@ export function ChannelList({ kind }: { kind: CommunityChannelKind }) {
     );
   } else {
     body = (
-      <View style={styles.group}>
-        {shown.map((c, i) => (
-          <ListRow
-            key={c.id}
-            leading={<IconTile icon={kind === "qa" ? "message-circle-question-mark" : "messages-square"} size={38} />}
-            title={c.name}
-            subtitle={[c.eventName, c.lastPreview || "No messages yet", c.lastMessageAt ? fmtTimeAgo(c.lastMessageAt) : ""].filter(Boolean).join(" · ")}
-            trailing={<Pill label={`${c.participantCount}`} tone="neutral" variant="outline" dot={false} />}
-            onPress={() => router.push({ pathname: "/control/community/chat/[id]", params: { id: c.id } })}
-            divider={i < shown.length - 1}
-          />
-        ))}
-      </View>
+      <Animated.View entering={FadeInDown.delay(stagger(2)).springify()}>
+        <ListGroup title={`${shown.length} ${status} ${pluralize(shown.length, copy.one, copy.many)}`}>
+          {shown.map((c, i) => (
+            <ChannelRow
+              key={c.id}
+              channel={c}
+              onPress={() => router.push({ pathname: "/control/community/chat/[id]", params: { id: c.id } })}
+              divider={i < shown.length - 1}
+            />
+          ))}
+        </ListGroup>
+      </Animated.View>
     );
   }
 
@@ -129,13 +136,33 @@ export function ChannelList({ kind }: { kind: CommunityChannelKind }) {
         />
       }
     >
-      {project?.can.inbox && total ? (
-        <View style={styles.controls}>
-          <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder="Search by name or event…" autoCapitalize="none" />
-          <Segmented options={STATUS_TABS} value={status} onChange={setStatus} />
-        </View>
-      ) : null}
-      {body}
+      <View style={styles.stack}>
+        {project?.can.inbox && total ? (
+          <>
+            <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+              <Readout
+                lead={{ label: kind === "qa" ? "Open threads" : "Active chats", value: String(active.length), hint: archived ? `${archived} archived` : undefined }}
+                items={[
+                  { label: "Attendees", value: people.toLocaleString("en-US"), hint: `In active ${copy.many}` },
+                  { label: kind === "qa" ? "Posts" : "Messages", value: messages.toLocaleString("en-US"), hint: `In active ${copy.many}` },
+                ]}
+              />
+            </Animated.View>
+            <Animated.View entering={FadeInDown.delay(stagger(1)).springify()} style={styles.controls}>
+              <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder="Search by name or event…" autoCapitalize="none" />
+              <Segmented
+                options={[
+                  { value: "active", label: `Active · ${active.length}` },
+                  { value: "archived", label: `Archived · ${archived}` },
+                ]}
+                value={status}
+                onChange={setStatus}
+              />
+            </Animated.View>
+          </>
+        ) : null}
+        {body}
+      </View>
       {kind === "qa" && project ? (
         <Sheet visible={creating} onClose={() => setCreating(false)} title="Start a Q&A thread">
           <CreateThreadForm
@@ -150,6 +177,52 @@ export function ChannelList({ kind }: { kind: CommunityChannelKind }) {
         </Sheet>
       ) : null}
     </Screen>
+  );
+}
+
+// One channel: name and its last word in mono time, the event it belongs to, the latest message, and who's in it.
+function ChannelRow({ channel: c, onPress, divider }: { channel: CommunityChannel; onPress: () => void; divider: boolean }) {
+  const archived = c.status === "archived";
+  const context = [c.eventName, c.postingMode === "announce" ? "Organisers post" : ""].filter(Boolean).join(" · ");
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${c.name}, ${c.eventName}, ${c.participantCount} attendees, ${c.messageCount} messages`}
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.row, divider && styles.divided, pressed && styles.pressed]}
+    >
+      <IconTile icon={c.kind === "qa" ? "message-circle-question-mark" : c.postingMode === "announce" ? "megaphone" : "messages-square"} size={40} tone={archived ? "outline" : "neutral"} />
+      <View style={styles.rowStack}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.name, archived && styles.nameMuted]} numberOfLines={1}>
+            {c.name}
+          </Text>
+          {c.lastMessageAt ? <Text style={styles.time}>{fmtCompactTime(c.lastMessageAt)}</Text> : null}
+        </View>
+        {context ? (
+          <Text style={styles.context} numberOfLines={1}>
+            {context}
+          </Text>
+        ) : null}
+        <Text style={[styles.preview, !c.lastPreview && styles.previewEmpty]} numberOfLines={1}>
+          {c.lastPreview || "No messages yet"}
+        </Text>
+        <View style={styles.counts}>
+          <View style={styles.count}>
+            <Icon name="users" size={12} color={colors.textTertiary} />
+            <Text style={styles.countText}>{c.participantCount.toLocaleString("en-US")}</Text>
+          </View>
+          <View style={styles.count}>
+            <Icon name="message-square" size={12} color={colors.textTertiary} />
+            <Text style={styles.countText}>{c.messageCount.toLocaleString("en-US")}</Text>
+          </View>
+        </View>
+      </View>
+      <Icon name="chevron-right" size={18} color={colors.textTertiary} />
+    </Pressable>
   );
 }
 
@@ -222,16 +295,75 @@ function CreateThreadForm({ projectId, onClose, onCreated }: { projectId: string
 }
 
 const styles = StyleSheet.create({
+  stack: {
+    gap: spacing.xl,
+  },
   controls: {
     gap: spacing.md,
-    marginBottom: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md + 2,
+    paddingVertical: 14,
+  },
+  divided: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  rowStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: spacing.sm,
+  },
+  name: {
+    ...type.bodyStrong,
+    flex: 1,
+    color: colors.foreground,
+  },
+  nameMuted: {
+    color: colors.mutedForeground,
+  },
+  time: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textTertiary,
+  },
+  context: {
+    ...type.captionStrong,
+    color: colors.textSecondary,
+  },
+  preview: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.mutedForeground,
+  },
+  previewEmpty: {
+    color: colors.textTertiary,
+  },
+  counts: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: 2,
+  },
+  count: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  countText: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textSecondary,
   },
   form: {
     gap: spacing.lg,

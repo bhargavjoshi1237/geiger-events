@@ -1,24 +1,31 @@
 import React, { useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { Fact, Facts } from "@/components/control/money/Facts";
+import { localDay } from "@/components/control/money/ledger";
 import { ENQUIRY_STATUS, metaOf } from "@/components/control/money/meta";
 import { MoneyRow } from "@/components/control/money/MoneyRow";
+import { RecordHead } from "@/components/control/money/RecordHead";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterChips } from "@/components/ui/FilterChips";
 import type { IconName } from "@/components/ui/icons";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { fmtDateTime, fmtShortDay } from "@/lib/format";
+import { fmtDateTime, pluralize } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { Enquiry, EnquiryKind, EnquiryStatus } from "@/types/control_money";
 
 const FILTERS = [
@@ -35,10 +42,13 @@ const SETTABLE: Record<EnquiryKind, EnquiryStatus[]> = {
   sponsors: ["new", "contacted", "declined"],
 };
 
-const COPY: Record<EnquiryKind, { title: string; icon: IconName; empty: string }> = {
-  packages: { title: "Package enquiries", icon: "package", empty: "Enquiries from your events' packages pages show up here." },
-  sponsors: { title: "Sponsor enquiries", icon: "handshake", empty: "Interest from your sponsorship prospectus shows up here." },
+const COPY: Record<EnquiryKind, { title: string; singular: string; icon: IconName; empty: string }> = {
+  packages: { title: "Package enquiries", singular: "Package enquiry", icon: "package", empty: "Enquiries from your events' packages pages show up here." },
+  sponsors: { title: "Sponsor enquiries", singular: "Sponsor enquiry", icon: "handshake", empty: "Interest from your sponsorship prospectus shows up here." },
 };
+
+const OPEN: EnquiryStatus[] = ["new", "contacted"];
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 export function EnquiryInbox({ kind }: { kind: EnquiryKind }) {
   const { project } = useControl();
@@ -66,18 +76,47 @@ export function EnquiryInbox({ kind }: { kind: EnquiryKind }) {
         <EmptyState icon={copy.icon} title="Nothing here" message="Enquiries with this status show up here." actionLabel="Show all" onAction={() => setStatus("all")} />
       );
   } else {
+    const count = (s: EnquiryStatus) => enquiries.filter((e) => e.status === s).length;
+    const fresh = count("new");
+    const groups = [
+      { key: "open", title: "Open", rows: enquiries.filter((e) => OPEN.includes(e.status)) },
+      { key: "closed", title: "Closed", rows: enquiries.filter((e) => !OPEN.includes(e.status)) },
+    ].filter((g) => g.rows.length);
+    let step = 0;
+
     body = (
-      <View style={styles.group}>
-        {enquiries.map((e, i) => (
-          <MoneyRow
-            key={e.id}
-            icon={copy.icon}
-            title={e.title}
-            meta={[e.subtitle, e.eventName, fmtShortDay(e.createdAt)].filter(Boolean).join(" · ")}
-            status={metaOf(ENQUIRY_STATUS, e.status)}
-            onPress={() => setOpenId(e.id)}
-            divider={i < enquiries.length - 1}
-          />
+      <View style={styles.stack}>
+        {/* Status counts only add up on the unfiltered list. */}
+        {status === "all" ? (
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <Readout
+              lead={{
+                label: "New",
+                value: String(fresh),
+                hint: fresh ? "waiting for a first reply" : `${enquiries.length} ${pluralize(enquiries.length, "enquiry", "enquiries")} in all`,
+                tone: fresh ? "info" : "neutral",
+              }}
+              items={(["contacted", "converted", "declined"] as const).map((s) => ({ label: ENQUIRY_STATUS[s].label, value: String(count(s)) }))}
+            />
+          </Animated.View>
+        ) : null}
+        {groups.map((group) => (
+          <Animated.View key={group.key} entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title={group.title} action={<CountBadge value={group.rows.length} />}>
+              {group.rows.map((e, i) => (
+                <MoneyRow
+                  key={e.id}
+                  date={localDay(e.createdAt)}
+                  title={e.title}
+                  meta={[e.subtitle, e.eventName].filter(Boolean).join(" · ")}
+                  code={e.quantity != null ? `× ${e.quantity}` : undefined}
+                  status={metaOf(ENQUIRY_STATUS, e.status)}
+                  onPress={() => setOpenId(e.id)}
+                  divider={i < group.rows.length - 1}
+                />
+              ))}
+            </ListGroup>
+          </Animated.View>
         ))}
       </View>
     );
@@ -89,7 +128,7 @@ export function EnquiryInbox({ kind }: { kind: EnquiryKind }) {
         <FilterChips options={FILTERS} value={status} onChange={setStatus} />
       </View>
       {body}
-      <Sheet visible={Boolean(open)} onClose={() => setOpenId(null)} title={open?.title ?? "Enquiry"}>
+      <Sheet visible={Boolean(open)} onClose={() => setOpenId(null)} title={copy.singular}>
         {open ? <EnquiryDetail enquiry={open} onChanged={replace} /> : null}
       </Sheet>
     </Screen>
@@ -116,48 +155,59 @@ function EnquiryDetail({ enquiry, onChanged }: { enquiry: Enquiry; onChanged: (e
 
   return (
     <View style={styles.sheet}>
+      <RecordHead
+        at={enquiry.createdAt}
+        title={enquiry.title}
+        subtitle={[enquiry.email, enquiry.phone].filter(Boolean).join(" · ") || undefined}
+        status={metaOf(ENQUIRY_STATUS, enquiry.status)}
+      />
+
       <Facts>
         {enquiry.subtitle ? <Fact label={enquiry.kind === "packages" ? "Package" : "Spot"} value={enquiry.subtitle} /> : null}
         {enquiry.eventName ? <Fact label="Event" value={enquiry.eventName} /> : null}
-        {enquiry.quantity != null ? <Fact label="Quantity" value={String(enquiry.quantity)} /> : null}
-        {enquiry.message ? <Fact label="Message" value={enquiry.message} /> : null}
+        {enquiry.quantity != null ? <Fact label="Quantity" value={String(enquiry.quantity)} mono /> : null}
+        {enquiry.message ? <Fact label="Message" value={enquiry.message} block /> : null}
         {enquiry.answers.map((a, i) => (
           <Fact key={`${a.label}-${i}`} label={a.label} value={a.value || "—"} />
         ))}
-        <Fact label="Received" value={fmtDateTime(enquiry.createdAt)} />
-        <Fact label="Status" value={metaOf(ENQUIRY_STATUS, enquiry.status).label} />
+        <Fact label="Received" value={fmtDateTime(enquiry.createdAt)} mono />
       </Facts>
 
-      <View style={styles.actions}>
-        {enquiry.email ? (
-          <View style={styles.action}>
-            <Button title="Email" icon="mail" variant="secondary" onPress={() => void Linking.openURL(`mailto:${enquiry.email}`)} fullWidth />
-          </View>
-        ) : null}
-        {enquiry.phone ? (
-          <View style={styles.action}>
-            <Button title="Call" icon="smartphone" variant="secondary" onPress={() => void Linking.openURL(`tel:${enquiry.phone}`)} fullWidth />
-          </View>
-        ) : null}
-      </View>
+      {enquiry.email || enquiry.phone ? (
+        <View style={styles.actions}>
+          {enquiry.email ? (
+            <View style={styles.action}>
+              <Button title="Email" icon="mail" variant="secondary" onPress={() => void Linking.openURL(`mailto:${enquiry.email}`)} fullWidth />
+            </View>
+          ) : null}
+          {enquiry.phone ? (
+            <View style={styles.action}>
+              <Button title="Call" icon="smartphone" variant="secondary" onPress={() => void Linking.openURL(`tel:${enquiry.phone}`)} fullWidth />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {locked ? (
         <Text style={styles.note}>{"This enquiry became a sponsor. Change it on the dashboard."}</Text>
       ) : (
-        <View style={styles.statuses}>
-          {SETTABLE[enquiry.kind]
-            .filter((s) => s !== enquiry.status)
-            .map((s) => (
-              <Button
-                key={s}
-                title={`Mark ${metaOf(ENQUIRY_STATUS, s).label.toLowerCase()}`}
-                variant={s === "declined" ? "destructiveGhost" : "ghost"}
-                onPress={() => void setStatus(s)}
-                loading={busy === s}
-                disabled={busy !== null}
-                fullWidth
-              />
-            ))}
+        <View>
+          <SectionTitle variant="kicker">Change status</SectionTitle>
+          <View style={styles.statuses}>
+            {SETTABLE[enquiry.kind]
+              .filter((s) => s !== enquiry.status)
+              .map((s) => (
+                <Button
+                  key={s}
+                  title={`Mark ${metaOf(ENQUIRY_STATUS, s).label.toLowerCase()}`}
+                  variant={s === "declined" ? "destructiveGhost" : "secondary"}
+                  onPress={() => void setStatus(s)}
+                  loading={busy === s}
+                  disabled={busy !== null}
+                  fullWidth
+                />
+              ))}
+          </View>
         </View>
       )}
     </View>
@@ -168,12 +218,8 @@ const styles = StyleSheet.create({
   filters: {
     marginBottom: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   sheet: {
     gap: spacing.lg,
@@ -186,7 +232,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statuses: {
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   note: {
     ...type.caption,

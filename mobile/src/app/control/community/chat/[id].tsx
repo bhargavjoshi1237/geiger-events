@@ -4,12 +4,16 @@ import { FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text,
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChatComposer } from "@/components/ChatComposer";
+import { Byline } from "@/components/control/community/Byline";
+import { StatusButton } from "@/components/control/StatusButton";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Icon } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { Segmented } from "@/components/ui/Segmented";
@@ -17,11 +21,11 @@ import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { fmtTimeAgo } from "@/lib/format";
+import { fmtTimeAgo, pluralize } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useAppFocused } from "@/lib/use_poll";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { CommunityChannelDetail, CommunityParticipant } from "@/types/control_community";
 import type { ChatMessage } from "@/types/portal";
 
@@ -105,7 +109,7 @@ export default function CommunityChatScreen() {
     setData((prev) => (prev ? { ...prev, messages: prev.messages.map((m) => (m.id === message.id ? { ...m, deleted: true, text: "" } : m)) } : prev));
   };
 
-  const subtitle = channel ? [channel.eventName, channel.postingMode === "open" ? "Open discussion" : "Announce-only", archived ? "Archived" : ""].filter(Boolean).join(" · ") : undefined;
+  const subtitle = channel?.eventName || undefined;
 
   return (
     // Pushed Control screens have no tab bar, so the composer sits on the bottom inset.
@@ -124,6 +128,23 @@ export default function CommunityChatScreen() {
           <SkeletonList rows={5} variant="chat" />
         ) : (
           <>
+            <View style={styles.strip}>
+              <StatusButton
+                label={archived ? "Archived" : "Active"}
+                tone={archived ? "neutral" : "success"}
+                onPress={() => setSettingsOpen(true)}
+                accessibilityLabel={`${archived ? "Archived" : "Active"}. Open chat settings`}
+              />
+              <View style={styles.stripFacts}>
+                <Icon name={channel.postingMode === "open" ? "messages-square" : "megaphone"} size={13} color={colors.textSecondary} />
+                <Text style={styles.stripText} numberOfLines={1}>
+                  {channel.postingMode === "open" ? "Everyone posts" : "Organisers post"}
+                </Text>
+              </View>
+              <Text style={styles.stripCount} numberOfLines={1}>
+                {`${channel.participantCount} ${pluralize(channel.participantCount, "attendee", "attendees")}`}
+              </Text>
+            </View>
             {reversed.length ? (
               <FlatList
                 style={styles.flex}
@@ -146,7 +167,9 @@ export default function CommunityChatScreen() {
               />
             ) : (
               <View style={styles.emptyList}>
+                <Icon name="messages-square" size={22} color={colors.textTertiary} />
                 <Text style={styles.emptyText}>No messages yet.</Text>
+                {!archived ? <Text style={styles.note}>{channel.kind === "qa" ? "Post a prompt below to get questions going." : "Post below to start the conversation."}</Text> : null}
               </View>
             )}
             <ChatComposer
@@ -161,9 +184,16 @@ export default function CommunityChatScreen() {
 
       <Sheet visible={Boolean(target)} onClose={() => setTarget(null)} title="Message">
         <View style={styles.sheetBody}>
-          <Text style={styles.quote} numberOfLines={4}>
-            {target ? `${target.authorName}: ${target.text}` : ""}
-          </Text>
+          {target ? (
+            <ListGroup>
+              <View style={styles.quoteBlock}>
+                <Byline name={target.authorName} at={target.createdAt} organiser={target.senderKind === "organiser"} />
+                <Text style={styles.quote} numberOfLines={4}>
+                  {target.text}
+                </Text>
+              </View>
+            </ListGroup>
+          ) : null}
           <Text style={styles.note}>Deleting removes it for everyone in the chat.</Text>
           <View style={styles.sheetActions}>
             <Button title="Keep" variant="ghost" onPress={() => setTarget(null)} />
@@ -248,17 +278,18 @@ function ChatSettings({ detail, path, write, onChanged, onDeleted }: { detail: C
 
   return (
     <ScrollView style={styles.settings} contentContainerStyle={styles.sheetBody} keyboardShouldPersistTaps="handled">
-      <View style={styles.field}>
-        <Text style={styles.label}>Who can post</Text>
-        <Segmented
-          options={[
-            { value: "open", label: "Everyone" },
-            { value: "announce", label: "Organisers only" },
-          ]}
-          value={channel.postingMode}
-          onChange={(v) => void patch({ postingMode: v }, v === "open" ? "Attendees can post." : "Only organisers can post now.")}
-        />
-      </View>
+      <ListGroup title="Who can post" footer={channel.postingMode === "open" ? "Attendees can post and reply." : "Only organisers can post; attendees read along."}>
+        <View style={styles.segment}>
+          <Segmented
+            options={[
+              { value: "open", label: "Everyone" },
+              { value: "announce", label: "Organisers only" },
+            ]}
+            value={channel.postingMode}
+            onChange={(v) => void patch({ postingMode: v }, v === "open" ? "Attendees can post." : "Only organisers can post now.")}
+          />
+        </View>
+      </ListGroup>
 
       <Button
         title={channel.status === "archived" ? "Reopen chat" : "Archive chat"}
@@ -269,18 +300,19 @@ function ChatSettings({ detail, path, write, onChanged, onDeleted }: { detail: C
         fullWidth
       />
 
-      <View style={styles.field}>
-        <Text style={styles.label}>{people.data ? `${members.length} ${members.length === 1 ? "attendee" : "attendees"}${muted ? ` · ${muted} muted` : ""}` : "Attendees"}</Text>
+      <View>
         {people.loading ? (
           <SkeletonList rows={2} variant="divided" />
         ) : !members.length ? (
-          <Text style={styles.note}>No attendees have joined yet; they join as they buy tickets.</Text>
+          <ListGroup title="Attendees">
+            <Text style={styles.emptyGroup}>No attendees have joined yet; they join as they buy tickets.</Text>
+          </ListGroup>
         ) : (
-          <View style={styles.group}>
+          <ListGroup title={`${members.length} ${members.length === 1 ? "attendee" : "attendees"}${muted ? ` · ${muted} muted` : ""}`}>
             {members.map((p, i) => (
               <ListRow
                 key={p.id}
-                leading={<IconTile icon="users" size={30} tone={p.muted ? "outline" : "neutral"} />}
+                leading={<IconTile icon={p.muted ? "ban" : "users"} size={32} tone={p.muted ? "warning" : "neutral"} />}
                 title="Attendee"
                 subtitle={p.joinedAt ? `Joined ${fmtTimeAgo(p.joinedAt)}` : undefined}
                 trailing={
@@ -293,7 +325,7 @@ function ChatSettings({ detail, path, write, onChanged, onDeleted }: { detail: C
                 divider={i < members.length - 1}
               />
             ))}
-          </View>
+          </ListGroup>
         )}
       </View>
 
@@ -330,14 +362,40 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "flex-end",
   },
+  strip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
+  stripFacts: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs + 2,
+  },
+  stripText: {
+    ...type.captionStrong,
+    flexShrink: 1,
+    color: colors.textSecondary,
+  },
+  stripCount: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
   emptyList: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    gap: spacing.sm,
   },
   emptyText: {
-    ...type.body,
-    color: colors.textSecondary,
+    ...type.bodyStrong,
+    color: colors.mutedForeground,
   },
   settings: {
     maxHeight: 560,
@@ -350,6 +408,10 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     gap: spacing.sm,
   },
+  quoteBlock: {
+    gap: spacing.sm + 2,
+    paddingVertical: spacing.md + 2,
+  },
   quote: {
     ...type.body,
     color: colors.foreground,
@@ -358,21 +420,13 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: colors.textSecondary,
   },
-  field: {
-    gap: spacing.sm,
+  segment: {
+    paddingVertical: spacing.md,
   },
-  label: {
-    ...type.micro,
-    letterSpacing: 0.9,
-    textTransform: "uppercase",
+  emptyGroup: {
+    ...type.caption,
     color: colors.textSecondary,
-  },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
   },
   rowActions: {
     flexDirection: "row",

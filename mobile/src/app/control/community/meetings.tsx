@@ -1,29 +1,50 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
+import { Byline } from "@/components/control/community/Byline";
 import { MEETING_STATUS_META, REQUEST_STATUS_META } from "@/components/control/community/meta";
+import { DateStub } from "@/components/control/DateStub";
+import { StatusButton } from "@/components/control/StatusButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
-import { IconTile } from "@/components/ui/IconTile";
+import { Icon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/Input";
-import { ListRow } from "@/components/ui/ListRow";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Pill } from "@/components/ui/Pill";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Segmented } from "@/components/ui/Segmented";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { fmtDateTime, fmtTimeAgo } from "@/lib/format";
-import { errorFeedback, successFeedback } from "@/lib/haptics";
+import { fmtClock, fmtTimeAgo, isToday, pluralize } from "@/lib/format";
+import { errorFeedback, successFeedback, tapFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { CommunityMeeting, CommunityMeetingRequest, CommunityMeetings, MeetingStatus } from "@/types/control_community";
 import type { ControlEvent } from "@/types/portal";
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const stagger = (i: number) => Math.min(i, 8) * 50;
+
+// The meeting's calendar day on this phone, for the date stub.
+function localDay(iso: string | null): string | null {
+  const d = new Date(iso ?? "");
+  return Number.isNaN(d.getTime()) ? null : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// "09:30 – 10:00", or just the start when the end isn't known.
+function timeRange(m: CommunityMeeting): string {
+  const start = fmtClock(m.startsAt);
+  const end = fmtClock(m.endsAt);
+  return start ? (end ? `${start} – ${end}` : start) : "No time set";
+}
 
 export default function MeetingsScreen() {
   const { project } = useControl();
@@ -67,6 +88,8 @@ function EventMeetings({ eventId }: { eventId: string }) {
   const meetings = query.data?.meetings ?? [];
   const requests = query.data?.requests ?? [];
   const pending = requests.filter((r) => r.status === "pending").length;
+  const count = (status: MeetingStatus) => meetings.filter((m) => m.status === status).length;
+  const scheduled = count("scheduled");
 
   const update = async (meeting: CommunityMeeting, status: MeetingStatus) => {
     setBusy(status);
@@ -102,9 +125,21 @@ function EventMeetings({ eventId }: { eventId: string }) {
 
   return (
     <View style={styles.stack}>
+      {query.data ? (
+        <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+          <Readout
+            lead={{ label: "Scheduled", value: String(scheduled), hint: `of ${meetings.length} ${pluralize(meetings.length, "meeting", "meetings")}` }}
+            items={[
+              { label: "Completed", value: String(count("completed")) },
+              { label: "No-shows", value: String(count("no_show")), tone: count("no_show") ? "warning" : "neutral" },
+              { label: "Requests", value: String(pending), hint: "Pending", tone: pending ? "warning" : "neutral" },
+            ]}
+          />
+        </Animated.View>
+      ) : null}
       <Segmented
         options={[
-          { value: "meetings", label: `Meetings · ${meetings.filter((m) => m.status === "scheduled").length}` },
+          { value: "meetings", label: `Meetings · ${scheduled}` },
           { value: "requests", label: pending ? `Requests · ${pending}` : "Requests" },
         ]}
         value={tab}
@@ -118,52 +153,45 @@ function EventMeetings({ eventId }: { eventId: string }) {
         !meetings.length ? (
           <EmptyState icon="calendar-check" title="No meetings booked" message="Meetings attendees book with each other, or that you book on the dashboard, appear here." />
         ) : (
-          <View style={styles.group}>
-            {meetings.map((m, i) => {
-              const meta = MEETING_STATUS_META[m.status];
-              return (
-                <ListRow
+          <Animated.View entering={FadeInDown.delay(stagger(1)).springify()}>
+            <ListGroup title={`${meetings.length} ${pluralize(meetings.length, "meeting", "meetings")}`}>
+              {meetings.map((m, i) => (
+                <MeetingRow
                   key={m.id}
-                  leading={<IconTile icon="users" size={36} tone={m.status === "scheduled" ? "neutral" : "outline"} />}
-                  title={m.people.join(" & ") || "Meeting"}
-                  subtitle={[fmtDateTime(m.startsAt), m.locationName].filter(Boolean).join(" · ")}
-                  trailing={<Pill label={meta.label} tone={meta.tone} variant="outline" />}
+                  meeting={m}
                   onPress={() => {
                     setReason("");
                     setOpened({ meeting: m, future: m.startsAt ? new Date(m.startsAt).getTime() > Date.now() : false });
                   }}
                   divider={i < meetings.length - 1}
                 />
-              );
-            })}
-          </View>
+              ))}
+            </ListGroup>
+          </Animated.View>
         )
       ) : !requests.length ? (
         <EmptyState icon="mail" title="No requests yet" message="Requests attendees send each other show up here." />
       ) : (
-        <View style={styles.group}>
-          {requests.map((r, i) => {
-            const meta = REQUEST_STATUS_META[r.status] ?? { label: r.status, tone: "neutral" as const };
-            return (
-              <ListRow
-                key={r.id}
-                leading={<IconTile icon="send" size={36} />}
-                title={`${r.from} → ${r.to}`}
-                subtitle={[r.message, r.createdAt ? fmtTimeAgo(r.createdAt) : ""].filter(Boolean).join(" · ")}
-                trailing={<Pill label={meta.label} tone={meta.tone} variant="outline" />}
-                onPress={r.status === "pending" ? () => setRequest(r) : undefined}
-                divider={i < requests.length - 1}
-              />
-            );
-          })}
-        </View>
+        <Animated.View entering={FadeInDown.delay(stagger(1)).springify()}>
+          <ListGroup title={`${requests.length} ${pluralize(requests.length, "request", "requests")}`} action={pending ? <Text style={styles.pendingNote}>{`${pending} pending`}</Text> : undefined}>
+            {requests.map((r, i) => (
+              <RequestRow key={r.id} request={r} onPress={r.status === "pending" ? () => setRequest(r) : undefined} divider={i < requests.length - 1} />
+            ))}
+          </ListGroup>
+        </Animated.View>
       )}
 
       <Sheet visible={Boolean(target)} onClose={() => setOpened(null)} title="Meeting">
         {target ? (
           <View style={styles.sheetBody}>
-            <Text style={styles.heading}>{target.people.join(" & ")}</Text>
-            <Text style={styles.note}>{[fmtDateTime(target.startsAt), target.locationName].filter(Boolean).join(" · ")}</Text>
+            <View style={styles.sheetHead}>
+              <DateStub date={localDay(target.startsAt)} today={isToday(target.startsAt)} muted={target.status !== "scheduled"} />
+              <View style={styles.sheetHeadText}>
+                <Text style={styles.heading}>{target.people.join(" & ") || "Meeting"}</Text>
+                <Text style={styles.mono}>{[timeRange(target), target.locationName].filter(Boolean).join(" · ")}</Text>
+              </View>
+            </View>
+            <StatusButton label={MEETING_STATUS_META[target.status].label} tone={MEETING_STATUS_META[target.status].tone} />
             {target.notes ? <Text style={styles.note}>{target.notes}</Text> : null}
             {target.cancelReason ? <Text style={styles.note}>{`Cancelled: ${target.cancelReason}`}</Text> : null}
             {target.status === "scheduled" ? (
@@ -215,23 +243,167 @@ function EventMeetings({ eventId }: { eventId: string }) {
   );
 }
 
+// A booked meeting: date stub, who's meeting, mono times and the room, and where it stands.
+function MeetingRow({ meeting: m, onPress, divider }: { meeting: CommunityMeeting; onPress: () => void; divider: boolean }) {
+  const meta = MEETING_STATUS_META[m.status];
+  const done = m.status !== "scheduled";
+  const who = m.people.join(" & ") || "Meeting";
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${who}, ${timeRange(m)}, ${meta.label}`}
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.meeting, divider && styles.divided, pressed && styles.pressed]}
+    >
+      <DateStub date={localDay(m.startsAt)} today={!done && isToday(m.startsAt)} muted={done} />
+      <View style={styles.meetingText}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.who, done && styles.whoMuted]} numberOfLines={1}>
+            {who}
+          </Text>
+          <Pill label={meta.label} tone={meta.tone} variant="outline" />
+        </View>
+        <Text style={styles.times} numberOfLines={1}>
+          {timeRange(m)}
+        </Text>
+        {m.locationName ? (
+          <View style={styles.place}>
+            <Icon name="map-pin" size={12} color={colors.textSecondary} />
+            <Text style={styles.placeText} numberOfLines={1}>
+              {m.locationName}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      <Icon name="chevron-right" size={18} color={colors.textTertiary} />
+    </Pressable>
+  );
+}
+
+// A request between two attendees; only a pending one can be opened to cancel it.
+function RequestRow({ request: r, onPress, divider }: { request: CommunityMeetingRequest; onPress?: () => void; divider: boolean }) {
+  const meta = REQUEST_STATUS_META[r.status] ?? { label: r.status, tone: "neutral" as const };
+  const facts = [r.proposedSlots ? `${r.proposedSlots} ${pluralize(r.proposedSlots, "slot", "slots")}` : "", r.createdAt ? fmtTimeAgo(r.createdAt) : ""].filter(Boolean).join(" · ");
+  const content = (
+    <>
+      <Byline name={r.from} context={`to ${r.to}`} trailing={<Pill label={meta.label} tone={meta.tone} variant="outline" />} />
+      {r.message ? (
+        <Text style={styles.message} numberOfLines={2}>
+          {r.message}
+        </Text>
+      ) : null}
+      {facts ? <Text style={styles.requestFacts}>{facts}</Text> : null}
+    </>
+  );
+  if (!onPress) return <View style={[styles.request, divider && styles.divided]}>{content}</View>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${r.from} to ${r.to}, ${meta.label}. Cancel request`}
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.request, divider && styles.divided, pressed && styles.pressed]}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   stack: {
     gap: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  divided: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  meeting: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md + 2,
+    paddingVertical: 14,
+  },
+  meetingText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  who: {
+    ...type.bodyStrong,
+    flex: 1,
+    color: colors.foreground,
+  },
+  whoMuted: {
+    color: colors.mutedForeground,
+  },
+  times: {
+    ...type.monoSmall,
+    color: colors.foreground,
+  },
+  place: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  placeText: {
+    ...type.caption,
+    flexShrink: 1,
+    color: colors.textSecondary,
+  },
+  request: {
+    gap: spacing.sm,
+    paddingVertical: 14,
+  },
+  message: {
+    ...type.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.mutedForeground,
+    paddingLeft: 42,
+  },
+  requestFacts: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textTertiary,
+    paddingLeft: 42,
+  },
+  pendingNote: {
+    ...type.captionStrong,
+    color: colors.warning,
   },
   sheetBody: {
     gap: spacing.md,
   },
+  sheetHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  sheetHeadText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
   heading: {
     ...type.heading,
     color: colors.foreground,
+  },
+  mono: {
+    ...type.monoSmall,
+    color: colors.textSecondary,
   },
   note: {
     ...type.caption,

@@ -1,33 +1,46 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { Fact, Facts } from "@/components/control/money/Facts";
+import { localDay, totalIn } from "@/components/control/money/ledger";
 import { DISPUTE_STATUS, metaOf } from "@/components/control/money/meta";
 import { MoneyRow } from "@/components/control/money/MoneyRow";
+import { RecordHead } from "@/components/control/money/RecordHead";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { Readout, type ReadoutFigure } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { moneyIn } from "@/lib/control_meta";
-import { fmtDate, fmtShortDay } from "@/lib/format";
+import { fmtDate } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { Dispute, DisputeList, DisputeStatus } from "@/types/control_money";
 
 const STATUSES: DisputeStatus[] = ["Needs response", "Under review", "Won", "Lost"];
 const FILTERS = [{ value: "all", label: "All" }, ...STATUSES.map((s) => ({ value: s, label: s }))];
+const OPEN: DisputeStatus[] = ["Needs response", "Under review"];
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 const dueDay = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
+
+function disputed(rows: Dispute[]): string | undefined {
+  const sum = totalIn(rows, (d) => d.amount, (d) => d.currency);
+  return sum ? `${moneyIn(sum.total, sum.currency)} disputed` : undefined;
+}
 
 export default function DisputesScreen() {
   const { project } = useControl();
@@ -54,19 +67,49 @@ export default function DisputesScreen() {
         <EmptyState icon="scale" title={`Nothing ${status.toLowerCase()}`} message="Disputes with this status show up here." actionLabel="Show all" onAction={() => setStatus("all")} />
       );
   } else {
+    const focal = status === "all" ? "Needs response" : status;
+    const focalRows = disputes.filter((d) => d.status === focal);
+    const lead: ReadoutFigure = {
+      label: focal,
+      value: String(focalRows.length),
+      hint: disputed(focalRows),
+      tone: focal === "Needs response" && focalRows.length ? "warning" : "neutral",
+    };
+    const items: ReadoutFigure[] =
+      status === "all" ? (["Under review", "Won", "Lost"] as const).map((s) => ({ label: s, value: String(disputes.filter((d) => d.status === s).length) })) : [];
+    const groups = [
+      { key: "open", title: "Open", rows: disputes.filter((d) => OPEN.includes(d.status)) },
+      { key: "resolved", title: "Resolved", rows: disputes.filter((d) => !OPEN.includes(d.status)) },
+    ].filter((g) => g.rows.length);
+
     body = (
-      <View style={styles.group}>
-        {disputes.map((d, i) => (
-          <MoneyRow
-            key={d.id}
-            icon="scale"
-            title={d.name || d.email || (d.orderCode ? `Order ${d.orderCode}` : "Dispute")}
-            meta={[d.eventName, d.reason, d.evidenceDueAt ? `Evidence by ${fmtDate(d.evidenceDueAt)}` : fmtShortDay(d.createdAt)].filter(Boolean).join(" · ")}
-            amount={moneyIn(d.amount, d.currency)}
-            status={metaOf(DISPUTE_STATUS, d.status)}
-            onPress={() => setOpenId(d.id)}
-            divider={i < disputes.length - 1}
-          />
+      <View style={styles.stack}>
+        <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+          <Readout lead={lead} items={items} />
+        </Animated.View>
+        {groups.map((group, gi) => (
+          <Animated.View key={group.key} entering={FadeInDown.delay(stagger(gi + 1)).springify()}>
+            <ListGroup title={group.title} action={<CountBadge value={group.rows.length} />}>
+              {group.rows.map((d, i) => (
+                <MoneyRow
+                  key={d.id}
+                  date={localDay(d.createdAt)}
+                  title={d.name || d.email || (d.orderCode ? `Order ${d.orderCode}` : "Dispute")}
+                  meta={[d.eventName, d.reason].filter(Boolean).join(" · ") || "No reason logged"}
+                  code={d.orderCode || undefined}
+                  amount={moneyIn(d.amount, d.currency)}
+                  status={metaOf(DISPUTE_STATUS, d.status)}
+                  flag={
+                    d.evidenceDueAt && OPEN.includes(d.status)
+                      ? { label: `Evidence due ${fmtDate(d.evidenceDueAt)}`, tone: d.status === "Needs response" ? "warning" : "neutral" }
+                      : null
+                  }
+                  onPress={() => setOpenId(d.id)}
+                  divider={i < group.rows.length - 1}
+                />
+              ))}
+            </ListGroup>
+          </Animated.View>
         ))}
       </View>
     );
@@ -119,12 +162,23 @@ function DisputeDetail({ dispute, canDecide, onSaved, onClose }: { dispute: Disp
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.sheet}>
-        <Facts>
-          <Fact label="Buyer" value={[dispute.name, dispute.email].filter(Boolean).join(" · ") || "Unknown"} />
-          <Fact label="Amount" value={moneyIn(dispute.amount, dispute.currency)} />
-          {dispute.eventName ? <Fact label="Event" value={dispute.eventName} /> : null}
-          {dispute.orderCode ? <Fact label="Order" value={dispute.orderCode} mono /> : null}
-        </Facts>
+        <RecordHead
+          at={dispute.createdAt}
+          title={dispute.name || dispute.email || "Unknown buyer"}
+          subtitle={dispute.name && dispute.email ? dispute.email : undefined}
+          amount={moneyIn(dispute.amount, dispute.currency)}
+          status={metaOf(DISPUTE_STATUS, dispute.status)}
+        />
+
+        {dispute.eventName || dispute.orderCode || !canDecide ? (
+          <Facts>
+            {dispute.eventName ? <Fact label="Event" value={dispute.eventName} /> : null}
+            {dispute.orderCode ? <Fact label="Order" value={dispute.orderCode} mono /> : null}
+            {!canDecide ? <Fact label="Reason" value={dispute.reason || "—"} /> : null}
+            {!canDecide ? <Fact label="Evidence due" value={dispute.evidenceDueAt ? fmtDate(dispute.evidenceDueAt) : "—"} mono /> : null}
+            {!canDecide && dispute.note ? <Fact label="Note" value={dispute.note} block /> : null}
+          </Facts>
+        ) : null}
 
         {canDecide ? (
           <>
@@ -140,18 +194,11 @@ function DisputeDetail({ dispute, canDecide, onSaved, onClose }: { dispute: Disp
             <Field label="Private note">
               <Input value={note} onChangeText={setNote} placeholder="What you sent, who you spoke to…" multiline textAlignVertical="top" style={styles.multiline} />
             </Field>
-            <Button title="Save" onPress={() => void save()} loading={saving} disabled={!dirty || saving} fullWidth />
+            <Button title="Save changes" onPress={() => void save()} loading={saving} disabled={!dirty || saving} fullWidth />
           </>
         ) : (
-          <Facts>
-            <Fact label="Status" value={metaOf(DISPUTE_STATUS, dispute.status).label} />
-            <Fact label="Reason" value={dispute.reason || "—"} />
-            <Fact label="Evidence due" value={dispute.evidenceDueAt ? fmtDate(dispute.evidenceDueAt) : "—"} />
-            {dispute.note ? <Fact label="Note" value={dispute.note} /> : null}
-          </Facts>
+          <Text style={styles.note}>{"Your role can see disputes but not update them."}</Text>
         )}
-
-        {!canDecide ? <Text style={styles.note}>{"Your role can see disputes but not update them."}</Text> : null}
 
         {dispute.orderId ? (
           <Button
@@ -174,12 +221,8 @@ const styles = StyleSheet.create({
   filters: {
     marginBottom: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   sheet: {
     gap: spacing.lg,

@@ -27,6 +27,9 @@ export const colors = {
   scrim: "rgba(0,0,0,0.55)",
   chipScrim: "rgba(22,22,22,0.72)",
   glassScrim: "rgba(22,22,22,0.92)",
+  // The canvas colour at zero and half alpha, so backdrops fade into the page without a grey band.
+  canvasClear: "rgba(22,22,22,0)",
+  canvasHalf: "rgba(22,22,22,0.5)",
   avatarGradientStart: "#3a3a3a",
   avatarGradientEnd: "#1e1e1e",
   // The pass surface is deliberately light so a scanner reads it at any brightness.
@@ -94,6 +97,9 @@ export const type = {
   mono: { fontFamily: fonts.monoSemibold, fontSize: 13, lineHeight: 18, letterSpacing: 0.4 },
   monoSmall: { fontFamily: fonts.mono, fontSize: 12, lineHeight: 16, letterSpacing: 0.3 },
   monoLarge: { fontFamily: fonts.monoSemibold, fontSize: 18, lineHeight: 22, letterSpacing: 0.6 },
+  // Control's readouts: live counts and money read like an instrument, so they're set in mono.
+  figure: { fontFamily: fonts.monoSemibold, fontSize: 30, lineHeight: 34, letterSpacing: -0.9 },
+  figureSmall: { fontFamily: fonts.monoSemibold, fontSize: 18, lineHeight: 23, letterSpacing: -0.3 },
 } satisfies Record<string, TypeToken>;
 
 export const timing = {

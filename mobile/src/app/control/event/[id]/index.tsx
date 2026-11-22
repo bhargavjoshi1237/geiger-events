@@ -1,23 +1,33 @@
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { StatTile } from "@/components/control/StatTile";
+import { CoverWash } from "@/components/control/CoverWash";
+import { DateStub } from "@/components/control/DateStub";
+import { StatusButton } from "@/components/control/StatusButton";
+import { ToolGrid, ToolTile } from "@/components/control/ToolTile";
+import { DetailRow } from "@/components/DetailRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon, type IconName } from "@/components/ui/icons";
+import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
+import { Readout, type ReadoutFigure } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { EventDetailSkeleton } from "@/components/ui/Skeleton";
+import { TickMeter } from "@/components/ui/TickMeter";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { EVENT_STATUSES, EVENT_STATUS_META, eventStatusMeta, moneyIn, whenLabel } from "@/lib/control_meta";
+import { EVENT_STATUSES, EVENT_STATUS_META, eventDateLine, eventDayNumeral, eventStatusMeta, moneyIn } from "@/lib/control_meta";
 import { errorFeedback, selectionFeedback, successFeedback } from "@/lib/haptics";
 import { SUITE_ORIGIN } from "@/lib/team_auth";
 import { useControlQuery } from "@/lib/use_control_query";
@@ -35,13 +45,11 @@ const TOOL_ROUTES = {
   settings: "/control/event/[id]/settings",
 } as const;
 
-type Tool = {
-  key: keyof typeof TOOL_ROUTES;
-  icon: IconName;
-  title: string;
-  subtitle: string;
-  trailing?: React.ReactNode;
-};
+type ToolKey = keyof typeof TOOL_ROUTES;
+type Row = { key: ToolKey; icon: IconName; title: string; subtitle: string };
+
+const VISIBILITY_ICON: Record<string, IconName> = { Public: "globe", Unlisted: "link", Private: "lock" };
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 export default function ControlEventHubScreen() {
   const router = useRouter();
@@ -50,10 +58,12 @@ export default function ControlEventHubScreen() {
   const hub = useControlQuery<ControlEventDetail>(id ? `/api/control/events/${id}` : null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [savingStatus, setSavingStatus] = useState<ControlEventStatus | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const detail = hub.data;
+  const go = (key: ToolKey) => detail && router.push({ pathname: TOOL_ROUTES[key], params: { id: detail.event.id } });
 
   const changeStatus = async (status: ControlEventStatus) => {
     if (!detail || status === detail.event.status) {
@@ -87,108 +97,169 @@ export default function ControlEventHubScreen() {
     router.back();
   };
 
+  const openDashboard = () => {
+    setActionsOpen(false);
+    if (detail) void Linking.openURL(`${SUITE_ORIGIN}/events/project/${detail.projectId}`);
+  };
+
   let body: React.ReactNode;
   if (hub.error && !detail) {
-    body = (
-      <EmptyState icon="circle-alert" title="Couldn't open this event" message={hub.error} actionLabel="Try again" onAction={() => void hub.reload()} />
-    );
+    body = <EmptyState icon="circle-alert" title="Couldn't open this event" message={hub.error} actionLabel="Try again" onAction={() => void hub.reload()} />;
   } else if (!detail) {
-    body = <SkeletonList rows={4} variant="card" />;
+    body = <EventDetailSkeleton />;
   } else {
     const { event, details, can, counts } = detail;
     const status = eventStatusMeta(event.status);
     const showRevenue = can.analytics || can.orders;
-    const candidates: (Tool | false)[] = [
-      can.edit && { key: "edit", icon: "square-pen", title: "Edit details", subtitle: "Name, date, venue and visibility" },
-      can.events && { key: "tickets", icon: "ticket", title: "Tickets", subtitle: "Prices and quantities" },
-      can.guests && {
-        key: "guests",
-        icon: "users",
-        title: "Guests",
-        subtitle: `${counts.guests} expected`,
-        trailing: counts.pending ? <Pill label={`${counts.pending} pending`} tone="warning" variant="outline" /> : undefined,
-      },
-      can.checkIn && { key: "checkin", icon: "scan-line", title: "Check-in", subtitle: `${counts.checkedIn} of ${counts.guests} inside` },
-      can.orders && { key: "orders", icon: "shopping-bag", title: "Orders", subtitle: "Refunds, cancellations and buyer details" },
-      can.analytics && { key: "analytics", icon: "chart-column", title: "Analytics", subtitle: "Sales by day and ticket, attendance" },
-      can.inbox && { key: "announce", icon: "megaphone", title: "Announce to buyers", subtitle: "Message everyone with a ticket" },
-      can.events && { key: "settings", icon: "settings", title: "Event settings", subtitle: "FAQ, alerts, RSVP, checkout and the rest of the event editor" },
-    ];
-    const tools = candidates.filter((tool): tool is Tool => Boolean(tool));
+    const place = [event.venue, event.city].filter(Boolean).join(", ");
+    const pct = event.capacity > 0 ? Math.round((event.sold / event.capacity) * 100) : null;
 
+    const figures: ReadoutFigure[] = [
+      ...(showRevenue ? [{ label: "Revenue", value: moneyIn(details.revenue, details.currency) }] : []),
+      { label: "Inside", value: String(counts.checkedIn), hint: `of ${counts.guests} expected` },
+      ...(can.guests ? [{ label: "Pending", value: String(counts.pending), tone: counts.pending ? ("warning" as const) : ("neutral" as const) }] : []),
+    ];
+
+    const tiles = [
+      can.checkIn && (
+        <ToolTile
+          key="checkin"
+          icon="scan-line"
+          tone={event.when === "today" ? "success" : "neutral"}
+          title="Check-in"
+          detail={`${counts.checkedIn} of ${counts.guests} inside`}
+          onPress={() => go("checkin")}
+        />
+      ),
+      can.guests && (
+        <ToolTile
+          key="guests"
+          icon="users"
+          title="Guests"
+          detail={`${counts.guests} expected`}
+          badge={counts.pending ? String(counts.pending) : undefined}
+          onPress={() => go("guests")}
+        />
+      ),
+      can.orders && <ToolTile key="orders" icon="shopping-bag" title="Orders" detail="Refunds, cancellations and buyers" onPress={() => go("orders")} />,
+      can.inbox && <ToolTile key="announce" icon="megaphone" title="Announce" detail="Message everyone with a ticket" onPress={() => go("announce")} />,
+    ].filter(Boolean);
+
+    const rows = (
+      [
+        can.edit && { key: "edit", icon: "square-pen", title: "Edit details", subtitle: "Name, date, venue, capacity and visibility" },
+        can.events && { key: "tickets", icon: "ticket", title: "Tickets", subtitle: "Prices, quantities and sales windows" },
+        can.events && { key: "settings", icon: "sliders-horizontal", title: "Event settings", subtitle: "FAQ, alerts, RSVP, checkout and the rest of the editor" },
+        can.analytics && { key: "analytics", icon: "chart-column", title: "Analytics", subtitle: "Sales by day and ticket, attendance" },
+      ] as (Row | false)[]
+    ).filter((row): row is Row => Boolean(row));
+
+    const facts = [
+      { label: "Format", value: details.type, icon: "radio" as IconName },
+      { label: "Visibility", value: `${details.visibility}${details.isListable ? "" : " · not listed"}`, icon: VISIBILITY_ICON[details.visibility] ?? "globe" },
+      details.organizer ? { label: "Organiser", value: details.organizer, icon: "briefcase" as IconName } : null,
+      details.address ? { label: "Address", value: details.address, icon: "map-pin" as IconName } : null,
+      { label: "Time zone", value: event.timezone, icon: "clock" as IconName },
+    ].filter((f): f is { label: string; value: string; icon: IconName } => Boolean(f));
+
+    let step = 0;
     body = (
       <View style={styles.stack}>
-        <Card>
-          <View style={styles.headRow}>
-            <Text style={styles.name} numberOfLines={3}>
-              {event.name}
-            </Text>
-            <Pill label={status.label} tone={status.tone} />
-          </View>
-          <Text style={styles.meta}>{[whenLabel(event), event.venue, event.city].filter(Boolean).join(" · ")}</Text>
-          <View style={styles.stats}>
-            <StatTile label="Sold" value={event.capacity ? `${event.sold}/${event.capacity}` : String(event.sold)} />
-            {showRevenue ? <StatTile label="Revenue" value={moneyIn(details.revenue, details.currency)} /> : null}
-            <StatTile label="Inside" value={String(counts.checkedIn)} />
-          </View>
-        </Card>
-
-        {can.publish ? (
-          <View style={styles.group}>
-            <ListRow
-              leading={<IconTile icon="globe" size={34} tone={event.status === "On Sale" ? "success" : "neutral"} />}
-              title="Status"
-              subtitle={EVENT_STATUS_META[event.status as ControlEventStatus]?.detail ?? event.status}
-              trailing={<Pill label={status.label} tone={status.tone} variant="outline" />}
-              onPress={() => setStatusOpen(true)}
-              divider={false}
-            />
-          </View>
-        ) : null}
-
-        {tools.length ? (
-          <View>
-            <SectionTitle variant="kicker">Manage</SectionTitle>
-            <View style={styles.group}>
-              {tools.map((tool, i) => (
-                <ListRow
-                  key={tool.key}
-                  leading={<IconTile icon={tool.icon} size={34} />}
-                  title={tool.title}
-                  subtitle={tool.subtitle}
-                  trailing={tool.trailing}
-                  onPress={() => router.push({ pathname: TOOL_ROUTES[tool.key], params: { id: event.id } })}
-                  divider={i < tools.length - 1}
-                />
-              ))}
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()} style={styles.hero}>
+          <View style={styles.heroTop}>
+            {event.coverUrl ? (
+              <Image source={{ uri: event.coverUrl }} contentFit="cover" transition={200} style={styles.thumb} />
+            ) : (
+              <DateStub date={event.date} today={event.when === "today"} size="lg" />
+            )}
+            <View style={styles.heroWhen}>
+              <Text style={[styles.when, event.when === "today" && styles.whenToday]} numberOfLines={1}>
+                {eventDateLine(event)}
+              </Text>
+              {place ? (
+                <Text style={styles.place} numberOfLines={2}>
+                  {place}
+                </Text>
+              ) : null}
             </View>
           </View>
-        ) : (
+          <Text style={styles.name}>{event.name}</Text>
+          <View style={styles.chips}>
+            <StatusButton label={status.label} tone={status.tone} onPress={can.publish ? () => setStatusOpen(true) : undefined} />
+            <Pill label={details.visibility} tone="neutral" variant="outline" dot={false} />
+            <Pill label={details.type} tone="neutral" variant="outline" dot={false} />
+          </View>
+          {details.summary ? (
+            <Text style={styles.summary} numberOfLines={3}>
+              {details.summary}
+            </Text>
+          ) : null}
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+          <Readout
+            lead={{
+              label: "Sold",
+              value: String(event.sold),
+              hint: event.capacity > 0 ? `of ${event.capacity} · ${pct}%` : "no capacity set",
+            }}
+            items={figures}
+          >
+            {event.capacity > 0 ? <TickMeter value={event.sold} max={event.capacity} ticks={44} height={16} label={`${event.sold} of ${event.capacity} sold`} /> : null}
+          </Readout>
+        </Animated.View>
+
+        {tiles.length ? (
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <SectionTitle variant="kicker">Run the event</SectionTitle>
+            <ToolGrid>{tiles}</ToolGrid>
+          </Animated.View>
+        ) : null}
+
+        {rows.length ? (
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title="Set up">
+              {rows.map((row, i) => (
+                <ListRow
+                  key={row.key}
+                  leading={<IconTile icon={row.icon} size={36} />}
+                  title={row.title}
+                  subtitle={row.subtitle}
+                  onPress={() => go(row.key)}
+                  divider={i < rows.length - 1}
+                />
+              ))}
+            </ListGroup>
+          </Animated.View>
+        ) : null}
+
+        {!tiles.length && !rows.length ? (
           <Card tone="subtle">
             <Text style={styles.note}>Your role can see this event but has no tools here yet.</Text>
           </Card>
-        )}
-
-        <Button
-          title="Open in dashboard"
-          icon="external-link"
-          variant="secondary"
-          onPress={() => void Linking.openURL(`${SUITE_ORIGIN}/events/project/${detail.projectId}`)}
-          fullWidth
-        />
-        {can.delete ? (
-          <Button title="Delete event" icon="trash-2" variant="destructiveGhost" onPress={() => setConfirmDelete(true)} fullWidth />
         ) : null}
+
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+          <ListGroup title="Details">
+            {facts.map((fact, i) => (
+              <DetailRow key={fact.label} label={fact.label} value={fact.value} icon={fact.icon} divider={i < facts.length - 1} />
+            ))}
+          </ListGroup>
+        </Animated.View>
       </View>
     );
   }
 
   return (
-    <Screen scroll header={<ScreenHeader title="Event" />}>
+    <Screen
+      scroll
+      backdrop={detail ? <CoverWash uri={detail.event.coverUrl} numeral={eventDayNumeral(detail.event.date)} /> : undefined}
+      header={<ScreenHeader title="Event" right={detail ? <IconButton icon="ellipsis" label="Event actions" variant="plain" onPress={() => setActionsOpen(true)} /> : undefined} />}
+    >
       {body}
 
       <Sheet visible={statusOpen} onClose={() => setStatusOpen(false)} title="Event status">
-        <View style={styles.statusList}>
+        <View style={styles.sheetList}>
           {EVENT_STATUSES.map((value, i) => {
             const meta = EVENT_STATUS_META[value];
             const current = detail?.event.status === value;
@@ -216,12 +287,31 @@ export default function ControlEventHubScreen() {
         </View>
       </Sheet>
 
+      <Sheet visible={actionsOpen} onClose={() => setActionsOpen(false)} title={detail?.event.name ?? "Event"}>
+        <View style={styles.sheetList}>
+          <ListRow leading={<IconTile icon="external-link" size={36} />} title="Open on the dashboard" subtitle="Page design, seating and the full editor" onPress={openDashboard} divider={Boolean(detail?.can.delete)} />
+          {detail?.can.delete ? (
+            <ListRow
+              leading={<IconTile icon="trash-2" size={36} tone="danger" />}
+              title="Delete event"
+              subtitle="Removes it from every list and its public page"
+              onPress={() => {
+                setActionsOpen(false);
+                setConfirmDelete(true);
+              }}
+              chevron={false}
+              divider={false}
+            />
+          ) : null}
+        </View>
+      </Sheet>
+
       <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this event?">
         <View style={styles.sheetBody}>
           <Text style={styles.sheetText}>It disappears from every list and its public page. Orders and guests are kept.</Text>
           <View style={styles.sheetActions}>
             <Button title="Cancel" variant="ghost" onPress={() => setConfirmDelete(false)} />
-            <Button title="Delete" variant="destructive" loading={deleting} disabled={deleting} onPress={() => void deleteEvent()} />
+            <Button title="Delete event" variant="destructive" loading={deleting} disabled={deleting} onPress={() => void deleteEvent()} />
           </View>
         </View>
       </Sheet>
@@ -233,38 +323,62 @@ const styles = StyleSheet.create({
   stack: {
     gap: spacing.xl,
   },
-  headRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
+  hero: {
     gap: spacing.md,
+    paddingTop: spacing.sm,
   },
-  name: {
-    ...type.title,
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md + 2,
+  },
+  thumb: {
+    width: 62,
+    height: 62,
+    borderRadius: radius.md + 2,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceCard,
+  },
+  heroWhen: {
     flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  when: {
+    ...type.mono,
     color: colors.foreground,
   },
-  meta: {
-    ...type.body,
+  whenToday: {
+    color: colors.success,
+  },
+  place: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
   },
-  stats: {
+  name: {
+    ...type.display,
+    color: colors.foreground,
+  },
+  chips: {
     flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
     gap: spacing.sm,
-    marginTop: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  summary: {
+    ...type.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.mutedForeground,
   },
   note: {
     ...type.body,
     color: colors.textSecondary,
   },
-  statusList: {
+  sheetList: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,

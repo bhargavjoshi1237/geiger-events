@@ -61,3 +61,20 @@ export function moneyIn(amount: number, currency = "usd"): string {
     return (amount || 0).toFixed(2);
   }
 }
+
+// "Sat, Dec 6 · 19:30" from the event's own calendar date (parsed as local, never via UTC midnight).
+export function eventDateLine(event: Pick<ControlEvent, "date" | "time" | "when">): string {
+  const time = event.time ? event.time.slice(0, 5) : "";
+  if (event.when === "today") return ["Today", time].filter(Boolean).join(" · ");
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(event.date ?? "");
+  if (!m) return "No date yet";
+  const day = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const label = day.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: day.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+  return [label, time].filter(Boolean).join(" · ");
+}
+
+// The day of the month, zero-padded, for the faint numeral behind an event header.
+export function eventDayNumeral(date: string | null): string | null {
+  const m = /^\d{4}-\d{2}-(\d{2})/.exec(date ?? "");
+  return m ? m[1] : null;
+}

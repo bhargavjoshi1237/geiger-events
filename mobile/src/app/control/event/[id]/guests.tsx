@@ -5,29 +5,47 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, LinearTransition, useReducedMotion } from "react-native-reanimated";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { FilterChips, type FilterChip } from "@/components/ui/FilterChips";
 import { IconButton } from "@/components/ui/IconButton";
+import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Pill } from "@/components/ui/Pill";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { TickMeter } from "@/components/ui/TickMeter";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { GUEST_STATUS_META } from "@/lib/control_meta";
-import { errorFeedback, successFeedback } from "@/lib/haptics";
+import { errorFeedback, successFeedback, tapFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { ControlAdmitResult, ControlEventDetail, ControlGuest } from "@/types/portal";
 
 type GuestPage = { guests: ControlGuest[]; nextOffset: number | null };
 
+const block = (i: number) => Math.min(i, 8) * 50;
 const stagger = (i: number) => Math.min(i, 11) * 35;
+const count = (n: number) => n.toLocaleString("en-US");
 
 const ADMITTABLE = new Set(["Confirmed", "Checked-in"]);
+
+// What the list under each filter holds, so its title says what's inside.
+const GROUP_TITLE: Record<string, string> = {
+  all: "Everyone",
+  Pending: "Waiting for approval",
+  in: "Inside now",
+  Confirmed: "Confirmed",
+  Waitlisted: "Waitlist",
+  Declined: "Declined",
+};
 
 function guestsPath(eventId: string, filter: string, term: string, offset = 0): string {
   const parts = [`offset=${offset}`];
@@ -42,6 +60,7 @@ export default function ControlGuestsScreen() {
   const toast = useToast();
   const hub = useControlQuery<ControlEventDetail>(`/api/control/events/${id}`);
   const can = hub.data?.can;
+  const counts = hub.data?.counts;
 
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
@@ -67,8 +86,8 @@ export default function ControlGuestsScreen() {
 
   const chips: FilterChip[] = [
     { value: "all", label: "All" },
-    { value: "Pending", label: "Pending", count: hub.data?.counts.pending || null },
-    { value: "in", label: "Inside" },
+    { value: "Pending", label: "Pending", count: counts?.pending || null },
+    { value: "in", label: "Inside", count: counts?.checkedIn || null },
     { value: "Confirmed", label: "Confirmed" },
     { value: "Waitlisted", label: "Waitlisted" },
     { value: "Declined", label: "Declined" },
@@ -93,6 +112,54 @@ export default function ControlGuestsScreen() {
 
   const filtered = filter !== "all" || Boolean(term);
   const chipLabel = chips.find((c) => c.value === filter)?.label.toLowerCase() ?? "";
+  const pct = counts && counts.guests > 0 ? Math.round((counts.checkedIn / counts.guests) * 100) : 0;
+  const groupTitle = term ? `Matching “${term}”` : GROUP_TITLE[filter] ?? "Guests";
+
+  let body: React.ReactNode;
+  if (list.error && !list.data) {
+    body = <EmptyState icon="circle-alert" title="Couldn't load guests" message={list.error} actionLabel="Try again" onAction={() => void list.reload()} />;
+  } else if (list.loading || !list.data) {
+    body = <SkeletonList rows={6} variant="divided" />;
+  } else if (!guests.length) {
+    body = filtered ? (
+      <EmptyState
+        icon="search"
+        title={term ? "No matching guests" : `No ${chipLabel} guests`}
+        message={term ? "Try another name or email." : "Guests with this status will show up here."}
+        actionLabel="Show everyone"
+        onAction={() => {
+          setQuery("");
+          setTerm("");
+          setFilter("all");
+        }}
+      />
+    ) : (
+      <EmptyState
+        icon="users"
+        title="No guests yet"
+        message="People who register will appear here. Ticket buyers are under Orders."
+        actionLabel={can?.edit ? "Add a guest" : undefined}
+        onAction={can?.edit ? () => setAdding(true) : undefined}
+      />
+    );
+  } else {
+    body = (
+      <View style={styles.listBlock}>
+        <ListGroup title={groupTitle}>
+          <Animated.View layout={reduced ? undefined : LinearTransition}>
+            {guests.map((guest, i) => (
+              <Animated.View key={guest.id} entering={reduced ? FadeIn : FadeInDown.delay(stagger(i)).springify()}>
+                <GuestRow guest={guest} divided={i < guests.length - 1} onPress={() => setSelectedId(guest.id)} />
+              </Animated.View>
+            ))}
+          </Animated.View>
+        </ListGroup>
+        {list.data.nextOffset != null ? (
+          <Button title="Load more guests" variant="secondary" onPress={() => void loadMore()} loading={loadingMore} fullWidth />
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <Screen
@@ -101,69 +168,50 @@ export default function ControlGuestsScreen() {
         <ScreenHeader
           title="Guests"
           subtitle={hub.data?.event.name}
-          right={
-            can?.edit ? <IconButton icon="user-plus" label="Add a guest" variant="plain" onPress={() => setAdding(true)} /> : undefined
-          }
+          right={can?.edit ? <IconButton icon="user-plus" label="Add a guest" variant="plain" onPress={() => setAdding(true)} /> : undefined}
         />
       }
     >
-      <View style={styles.search}>
-        <Input
-          leftIcon="search"
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search names or emails"
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-        />
-      </View>
-      <View style={styles.chips}>
-        <FilterChips options={chips} value={filter} onChange={setFilter} />
-      </View>
-
-      {list.error && !list.data ? (
-        <EmptyState icon="circle-alert" title="Couldn't load guests" message={list.error} actionLabel="Try again" onAction={() => void list.reload()} />
-      ) : list.loading || !list.data ? (
-        <SkeletonList rows={6} variant="divided" />
-      ) : !guests.length ? (
-        filtered ? (
-          <EmptyState
-            icon="search"
-            title={term ? "No matching guests" : `No ${chipLabel} guests`}
-            message={term ? "Try another name or email." : "Guests with this status will show up here."}
-            actionLabel="Show everyone"
-            onAction={() => {
-              setQuery("");
-              setTerm("");
-              setFilter("all");
-            }}
-          />
-        ) : (
-          <EmptyState
-            icon="users"
-            title="No guests yet"
-            message="People who register will appear here. Ticket buyers are under Orders."
-            actionLabel={can?.edit ? "Add a guest" : undefined}
-            onAction={can?.edit ? () => setAdding(true) : undefined}
-          />
-        )
-      ) : (
-        <>
-          <Animated.View layout={reduced ? undefined : LinearTransition} style={styles.group}>
-            {guests.map((guest, i) => (
-              <Animated.View key={guest.id} entering={reduced ? FadeIn : FadeInDown.delay(stagger(i)).springify()}>
-                <GuestRow guest={guest} divided={i < guests.length - 1} onPress={() => setSelectedId(guest.id)} />
-              </Animated.View>
-            ))}
+      <View style={styles.stack}>
+        {counts ? (
+          <Animated.View entering={FadeInDown.delay(block(0)).springify()}>
+            <Readout
+              lead={{
+                label: "Inside",
+                value: count(counts.checkedIn),
+                hint: counts.guests > 0 ? `of ${count(counts.guests)} · ${pct}%` : "no guests yet",
+                tone: counts.checkedIn > 0 ? "success" : "neutral",
+              }}
+              items={[
+                { label: "Expected", value: count(counts.guests) },
+                { label: "To arrive", value: count(Math.max(0, counts.guests - counts.checkedIn)) },
+                { label: "Pending", value: count(counts.pending), tone: counts.pending ? "warning" : "neutral", hint: counts.pending ? "to approve" : undefined },
+              ]}
+            >
+              {counts.guests > 0 ? (
+                <TickMeter value={counts.checkedIn} max={counts.guests} ticks={44} height={16} label={`${counts.checkedIn} of ${counts.guests} inside`} />
+              ) : null}
+            </Readout>
           </Animated.View>
-          {list.data.nextOffset != null ? (
-            <View style={styles.more}>
-              <Button title="Load more" variant="secondary" size="sm" onPress={() => void loadMore()} loading={loadingMore} />
-            </View>
-          ) : null}
-        </>
-      )}
+        ) : !hub.error ? (
+          <Skeleton height={168} radius={radius.lg} />
+        ) : null}
+
+        <Animated.View entering={FadeInDown.delay(block(1)).springify()} style={styles.controls}>
+          <Input
+            leftIcon="search"
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search names or emails"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          <FilterChips options={chips} value={filter} onChange={setFilter} />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(block(2)).springify()}>{body}</Animated.View>
+      </View>
 
       <GuestSheet
         eventId={id}
@@ -190,28 +238,49 @@ export default function ControlGuestsScreen() {
   );
 }
 
+function statusOf(guest: ControlGuest) {
+  return GUEST_STATUS_META[guest.status] ?? { label: guest.status, tone: "neutral" as const };
+}
+
 function GuestRow({ guest, divided, onPress }: { guest: ControlGuest; divided: boolean; onPress: () => void }) {
-  const status = GUEST_STATUS_META[guest.status] ?? { label: guest.status, tone: "neutral" as const };
-  const detail = [guest.email, guest.partySize > 1 ? `party of ${guest.partySize}` : ""].filter(Boolean).join(" · ");
+  const status = statusOf(guest);
+  const party = guest.partySize > 1 ? `party of ${guest.partySize}, ` : "";
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${guest.name || "Guest"}, ${guest.checkedIn ? "inside" : status.label}`}
-      onPress={onPress}
-      style={({ pressed }) => [styles.row, divided && styles.rowDivided, pressed && styles.pressed]}
+      accessibilityLabel={`${guest.name || "Guest"}, ${party}${guest.checkedIn ? "inside" : status.label}`}
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.row, divided && styles.divided, pressed && styles.pressed]}
     >
+      <Avatar name={guest.name} email={guest.email} size={36} />
       <View style={styles.rowStack}>
         <Text style={styles.rowName} numberOfLines={1}>
           {guest.name || "Unnamed guest"}
         </Text>
-        {detail ? (
+        {guest.email ? (
           <Text style={styles.rowMeta} numberOfLines={1}>
-            {detail}
+            {guest.email}
           </Text>
         ) : null}
       </View>
+      {guest.partySize > 1 ? <CountBadge value={`×${guest.partySize}`} /> : null}
       {guest.checkedIn ? <Pill label="Inside" tone="success" /> : <Pill label={status.label} tone={status.tone} variant="outline" />}
     </Pressable>
+  );
+}
+
+// Like DetailRow, but selectable and two lines so codes, emails and phone numbers can be copied whole.
+function Fact({ label, value, mono, divider }: { label: string; value: string; mono?: boolean; divider: boolean }) {
+  return (
+    <View style={[styles.fact, divider && styles.divided]}>
+      <Text style={styles.factLabel}>{label}</Text>
+      <Text style={[styles.factValue, mono && styles.mono]} numberOfLines={2} selectable>
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -287,11 +356,12 @@ function GuestSheet({ eventId, guest, canEdit, canCheckIn, onClose, onChanged }:
 
   const pending = guest?.status === "Pending";
   const admittable = guest ? !guest.checkedIn && ADMITTABLE.has(guest.status) : false;
+  const status = guest ? statusOf(guest) : null;
   const details = guest
     ? [
         { label: "Code", value: guest.code, mono: true },
         { label: "Email", value: guest.email },
-        { label: "Phone", value: guest.phone },
+        { label: "Phone", value: guest.phone, mono: true },
         { label: "Party", value: guest.partySize > 1 ? `${guest.partySize} people` : "1 person" },
         { label: "Source", value: guest.source },
         { label: "Dietary", value: guest.dietary },
@@ -300,28 +370,34 @@ function GuestSheet({ eventId, guest, canEdit, canCheckIn, onClose, onChanged }:
     : [];
 
   return (
-    <Sheet visible={Boolean(guest)} onClose={close} title={guest?.name || "Guest"}>
-      {guest ? (
+    <Sheet visible={Boolean(guest)} onClose={close}>
+      {guest && status ? (
         <View style={styles.sheetBody}>
-          <View style={styles.sheetPills}>
-            {guest.checkedIn ? <Pill label="Inside" tone="success" /> : null}
-            <Pill label={GUEST_STATUS_META[guest.status]?.label ?? guest.status} tone={GUEST_STATUS_META[guest.status]?.tone ?? "neutral"} variant="outline" />
+          <View style={styles.head}>
+            <Avatar name={guest.name} email={guest.email} size={56} shape="square" />
+            <View style={styles.headText}>
+              <Text style={styles.headName} numberOfLines={2}>
+                {guest.name || "Guest"}
+              </Text>
+              <View style={styles.headMeta}>
+                {guest.checkedIn ? <Pill label="Inside" tone="success" /> : null}
+                <Pill label={status.label} tone={status.tone} variant="outline" />
+              </View>
+            </View>
           </View>
 
-          <View style={styles.details}>
+          <ListGroup title="Details">
             {details.map((d, i) => (
-              <View key={d.label} style={[styles.detailRow, i < details.length - 1 && styles.rowDivided]}>
-                <Text style={styles.detailLabel}>{d.label}</Text>
-                <Text style={[styles.detailValue, d.mono && styles.mono]} numberOfLines={2} selectable>
-                  {d.value}
-                </Text>
-              </View>
+              <Fact key={d.label} label={d.label} value={d.value} mono={d.mono} divider={i < details.length - 1} />
             ))}
-          </View>
+          </ListGroup>
 
           {overriding ? (
             <View style={styles.override}>
-              <Text style={styles.overrideText}>This area is at capacity. Admit anyway with a reason; it&apos;s recorded like a supervisor override.</Text>
+              <View style={styles.note}>
+                <IconTile icon="door-open" size={36} tone="warning" />
+                <Text style={styles.noteText}>This area is at capacity. Admit anyway with a reason; it&apos;s recorded like a supervisor override.</Text>
+              </View>
               <Field label="Reason">
                 <Input
                   value={override?.reason ?? ""}
@@ -341,38 +417,39 @@ function GuestSheet({ eventId, guest, canEdit, canCheckIn, onClose, onChanged }:
                 />
               </View>
             </View>
-          ) : (
-            <View style={styles.actionStack}>
-              {pending && canEdit ? (
-                <View style={styles.actions}>
-                  <Button
-                    title="Decline"
-                    variant="destructiveGhost"
-                    onPress={() => void decide(false)}
-                    loading={busy === "decline"}
-                    disabled={busy !== null}
-                  />
-                  <Button
-                    title="Approve"
-                    icon="user-check"
-                    onPress={() => void decide(true)}
-                    loading={busy === "approve"}
-                    disabled={busy !== null}
-                  />
-                </View>
-              ) : null}
-              {admittable && canCheckIn ? (
+          ) : pending && canEdit ? (
+            <View style={styles.split}>
+              <View style={styles.flex}>
                 <Button
-                  title="Check in"
-                  icon="door-open"
-                  onPress={() => void checkIn()}
-                  loading={busy === "checkin"}
+                  title="Decline"
+                  variant="destructiveGhost"
+                  onPress={() => void decide(false)}
+                  loading={busy === "decline"}
                   disabled={busy !== null}
                   fullWidth
                 />
-              ) : null}
+              </View>
+              <View style={styles.flex}>
+                <Button
+                  title="Approve"
+                  icon="user-check"
+                  onPress={() => void decide(true)}
+                  loading={busy === "approve"}
+                  disabled={busy !== null}
+                  fullWidth
+                />
+              </View>
             </View>
-          )}
+          ) : admittable && canCheckIn ? (
+            <Button
+              title="Check in"
+              icon="door-open"
+              onPress={() => void checkIn()}
+              loading={busy === "checkin"}
+              disabled={busy !== null}
+              fullWidth
+            />
+          ) : null}
         </View>
       ) : null}
     </Sheet>
@@ -425,20 +502,29 @@ function AddGuestSheet({ eventId, visible, onClose, onAdded }: AddGuestSheetProp
         <Field label="Name">
           <Input value={name} onChangeText={setName} placeholder="Full name" autoCapitalize="words" autoFocus />
         </Field>
-        <Field label="Email" hint="Optional.">
-          <Input
-            value={email}
-            onChangeText={setEmail}
-            placeholder="name@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </Field>
-        <Field label="Party size">
-          <Input value={party} onChangeText={(v) => setParty(v.replace(/[^0-9]/g, "").slice(0, 2))} keyboardType="number-pad" />
-        </Field>
-        <Text style={styles.note}>Added guests are confirmed straight away.</Text>
+        <View style={styles.pair}>
+          <View style={styles.wide}>
+            <Field label="Email" hint="Optional.">
+              <Input
+                value={email}
+                onChangeText={setEmail}
+                placeholder="name@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </Field>
+          </View>
+          <View style={styles.narrow}>
+            <Field label="Party">
+              <Input value={party} onChangeText={(v) => setParty(v.replace(/[^0-9]/g, "").slice(0, 2))} keyboardType="number-pad" style={styles.monoInput} />
+            </Field>
+          </View>
+        </View>
+        <View style={styles.note}>
+          <IconTile icon="user-check" size={36} tone="success" />
+          <Text style={styles.noteText}>Added guests are confirmed straight away.</Text>
+        </View>
         <View style={styles.actions}>
           <Button title="Cancel" variant="ghost" onPress={close} />
           <Button title="Add guest" icon="user-plus" onPress={() => void submit()} loading={busy} disabled={busy} />
@@ -449,27 +535,25 @@ function AddGuestSheet({ eventId, visible, onClose, onAdded }: AddGuestSheetProp
 }
 
 const styles = StyleSheet.create({
-  search: {
-    marginBottom: spacing.md,
+  stack: {
+    gap: spacing.xl,
   },
-  chips: {
-    marginBottom: spacing.lg,
+  controls: {
+    gap: spacing.md,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    overflow: "hidden",
+  listBlock: {
+    gap: spacing.lg,
+  },
+  flex: {
+    flex: 1,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
-  rowDivided: {
+  divided: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.surfaceActive,
   },
@@ -479,7 +563,7 @@ const styles = StyleSheet.create({
   rowStack: {
     flex: 1,
     minWidth: 0,
-    gap: 3,
+    gap: 2,
   },
   rowName: {
     ...type.label,
@@ -491,60 +575,90 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: colors.textSecondary,
   },
-  more: {
-    alignItems: "center",
-    marginTop: spacing.lg,
-  },
   sheetBody: {
-    gap: spacing.lg,
+    gap: spacing.xl,
   },
-  sheetPills: {
+  head: {
     flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md + 2,
+  },
+  headText: {
+    flex: 1,
+    minWidth: 0,
     gap: spacing.sm,
   },
-  details: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  headName: {
+    ...type.title,
+    color: colors.foreground,
   },
-  detailRow: {
+  headMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  fact: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: 13,
   },
-  detailLabel: {
-    ...type.caption,
-    width: 64,
+  factLabel: {
+    ...type.body,
+    fontSize: 14,
     color: colors.textSecondary,
   },
-  detailValue: {
+  factValue: {
     ...type.body,
-    flex: 1,
+    fontSize: 14,
+    flexShrink: 1,
+    textAlign: "right",
     color: colors.foreground,
   },
   mono: {
     ...type.mono,
   },
   override: {
+    gap: spacing.lg,
+  },
+  note: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.md,
   },
-  overrideText: {
+  noteText: {
     ...type.body,
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
     color: colors.textSecondary,
   },
-  actionStack: {
-    gap: spacing.md,
+  split: {
+    flexDirection: "row",
+    gap: spacing.sm,
   },
   actions: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: spacing.sm,
   },
-  note: {
-    ...type.caption,
-    color: colors.textSecondary,
+  pair: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  wide: {
+    flex: 3,
+    minWidth: 0,
+  },
+  narrow: {
+    flex: 1,
+    minWidth: 0,
+  },
+  monoInput: {
+    ...type.mono,
+    fontSize: 15,
+    lineHeight: 20,
   },
 });

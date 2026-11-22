@@ -1,11 +1,15 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
+import { Notice } from "@/components/control/team/Notice";
+import { DetailRow } from "@/components/DetailRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconTile } from "@/components/ui/IconTile";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
@@ -16,7 +20,7 @@ import { pluralize } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { OpsTemplate } from "@/types/control_ops";
 import type { ControlEvent } from "@/types/portal";
 
@@ -43,44 +47,50 @@ export default function TemplatesScreen() {
     router.push({ pathname: "/control/event/[id]", params: { id: res.data.event.id } });
   };
 
+  let body: React.ReactNode;
+  if (list.error && !list.data) {
+    body = <EmptyState icon="circle-alert" title="Couldn't load templates" message={list.error} actionLabel="Try again" onAction={() => void list.reload()} />;
+  } else if (!list.data) {
+    body = <SkeletonList rows={5} variant="divided" />;
+  } else if (!templates.length) {
+    body = <EmptyState icon="layers" title="No templates yet" message="Save an event's format, capacity and summary as a template on the dashboard, then start events from it here." />;
+  } else {
+    body = (
+      <ListGroup title={`${templates.length} ${pluralize(templates.length, "template", "templates")}`} footer="Tap one to see what it sets up and start a draft from it.">
+        {templates.map((t, i) => (
+          <ListRow
+            key={t.id}
+            leading={<IconTile icon="layers" size={36} />}
+            title={t.name}
+            subtitle={[t.category, t.blueprint.type, t.blueprint.capacity ? `${t.blueprint.capacity.toLocaleString("en-US")} capacity` : ""].filter(Boolean).join(" · ")}
+            trailing={<Uses count={t.uses} />}
+            onPress={() => setOpen(t)}
+            divider={i < templates.length - 1}
+          />
+        ))}
+      </ListGroup>
+    );
+  }
+
   return (
     <Screen scroll header={<ScreenHeader title="Templates" />}>
-      {list.error && !list.data ? (
-        <EmptyState icon="circle-alert" title="Couldn't load templates" message={list.error} actionLabel="Try again" onAction={() => void list.reload()} />
-      ) : !list.data ? (
-        <SkeletonList rows={5} variant="divided" />
-      ) : !templates.length ? (
-        <EmptyState icon="layers" title="No templates yet" message="Save an event's format, capacity and summary as a template on the dashboard, then start events from it here." />
-      ) : (
-        <View style={styles.group}>
-          {templates.map((t, i) => (
-            <ListRow
-              key={t.id}
-              leading={<IconTile icon="layers" size={34} />}
-              title={t.name}
-              subtitle={[t.category, `${t.uses} ${pluralize(t.uses, "use", "uses")}`, t.blueprint.type].join(" · ")}
-              onPress={() => setOpen(t)}
-              divider={i < templates.length - 1}
-            />
-          ))}
-        </View>
-      )}
+      <Animated.View entering={FadeInDown.springify()}>{body}</Animated.View>
 
       <Sheet visible={Boolean(open)} onClose={() => setOpen(null)} title={open?.name}>
         {open ? (
           <View style={styles.sheetBody}>
             {open.description ? <Text style={styles.body}>{open.description}</Text> : null}
-            <View style={styles.facts}>
-              <Fact label="Format" value={open.blueprint.type} />
-              <Fact label="Capacity" value={open.blueprint.capacity ? String(open.blueprint.capacity) : "No limit"} />
-              <Fact label="Visibility" value={open.blueprint.visibility} />
-              <Fact label="Time zone" value={open.blueprint.timezone} />
-            </View>
+            <ListGroup title="What it sets up">
+              <DetailRow icon="radio" label="Format" value={open.blueprint.type} />
+              <DetailRow icon="users" label="Capacity" value={open.blueprint.capacity ? open.blueprint.capacity.toLocaleString("en-US") : "No limit"} mono={Boolean(open.blueprint.capacity)} />
+              <DetailRow icon="globe" label="Visibility" value={open.blueprint.visibility} />
+              <DetailRow icon="clock" label="Time zone" value={open.blueprint.timezone} mono divider={false} />
+            </ListGroup>
             {open.blueprint.summary ? <Text style={styles.caption}>{open.blueprint.summary}</Text> : null}
             {list.data?.canUse ? (
               <Button title="Create a draft event" icon="plus" onPress={() => void use(open)} loading={busy} fullWidth />
             ) : (
-              <Text style={styles.caption}>Your role can see templates but not create events.</Text>
+              <Notice text="Your role can see templates but not create events." />
             )}
           </View>
         ) : null}
@@ -89,24 +99,31 @@ export default function TemplatesScreen() {
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+// How often a template has been used, as a small mono tally.
+function Uses({ count }: { count: number }) {
   return (
-    <View style={styles.fact}>
-      <Text style={styles.factLabel}>{label}</Text>
-      <Text style={styles.factValue} numberOfLines={1}>
-        {value}
-      </Text>
+    <View style={styles.uses} accessible accessibilityLabel={`Used ${count} ${pluralize(count, "time", "times")}`}>
+      <Text style={styles.usesValue}>{count}</Text>
+      <Text style={styles.usesLabel}>{pluralize(count, "use", "uses")}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  uses: {
+    alignItems: "flex-end",
+  },
+  usesValue: {
+    ...type.mono,
+    color: colors.foreground,
+  },
+  usesLabel: {
+    ...type.micro,
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+    color: colors.textTertiary,
   },
   sheetBody: {
     gap: spacing.lg,
@@ -118,27 +135,5 @@ const styles = StyleSheet.create({
   caption: {
     ...type.caption,
     color: colors.textSecondary,
-  },
-  facts: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  fact: {
-    width: "48%",
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceSubtle,
-    padding: spacing.md,
-    gap: 2,
-  },
-  factLabel: {
-    ...type.caption,
-    color: colors.textSecondary,
-  },
-  factValue: {
-    ...type.labelStrong,
-    color: colors.foreground,
   },
 });

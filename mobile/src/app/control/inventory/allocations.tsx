@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { ALLOCATION_META, ISSUANCE_LABEL, parseQty, qtyText } from "@/components/control/inventory/meta";
+import { AllocationRow } from "@/components/control/inventory/AllocationRow";
+import { ISSUANCE_LABEL, parseQty, qtyText } from "@/components/control/inventory/meta";
 import { PickerField } from "@/components/control/inventory/PickerField";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
@@ -10,25 +12,39 @@ import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { Icon } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/IconButton";
-import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
-import { ListRow } from "@/components/ui/ListRow";
-import { Pill } from "@/components/ui/Pill";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Segmented } from "@/components/ui/Segmented";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { TickMeter } from "@/components/ui/TickMeter";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { errorFeedback, selectionFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { AllocationEvent, AllocationStatus, InventoryAllocation, InventoryItem } from "@/types/control_inventory";
 
 type Payload = { allocations: InventoryAllocation[]; items: InventoryItem[]; events: AllocationEvent[] };
 
 const STATUSES: AllocationStatus[] = ["Planned", "Reserved", "Issued", "Closed"];
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
+
+// Allocations grouped under their event, keeping the server's order within each.
+function byEvent(allocations: InventoryAllocation[]): { key: string; title: string; rows: InventoryAllocation[] }[] {
+  const groups = new Map<string, { key: string; title: string; rows: InventoryAllocation[] }>();
+  for (const a of allocations) {
+    const key = a.eventId ?? "none";
+    const group = groups.get(key) ?? { key, title: a.eventName ?? "Event", rows: [] };
+    group.rows.push(a);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
 
 // Stock committed to events, and handing it out or taking it back.
 export default function EventAllocationsScreen() {
@@ -40,6 +56,9 @@ export default function EventAllocationsScreen() {
   const list = useControlQuery<Payload>(path);
   const allocations = list.data?.allocations ?? [];
   const open = allocations.find((a) => a.id === openId) ?? null;
+  const planned = allocations.reduce((sum, a) => sum + a.plannedQty, 0);
+  const issued = allocations.reduce((sum, a) => sum + a.issuedQty, 0);
+  const outstanding = allocations.reduce((sum, a) => sum + a.outstanding, 0);
 
   let body: React.ReactNode;
   if (!project) {
@@ -55,22 +74,38 @@ export default function EventAllocationsScreen() {
       <EmptyState icon="calendar-check" title="No allocations yet" message="Commit stock to an event, then issue it on the day." actionLabel="Allocate stock" onAction={() => setCreating(true)} />
     );
   } else {
+    let step = 0;
     body = (
-      <View style={styles.group}>
-        {allocations.map((a, i) => {
-          const meta = ALLOCATION_META[a.status] ?? { label: a.status, tone: "neutral" as const };
-          return (
-            <ListRow
-              key={a.id}
-              leading={<IconTile icon="box" size={34} />}
-              title={a.itemLabel ?? "Item"}
-              subtitle={`${a.eventName ?? "Event"} · ${qtyText(a.issuedQty)} of ${qtyText(a.plannedQty)} issued · ${ISSUANCE_LABEL[a.issuance] ?? a.issuance}`}
-              trailing={<Pill label={meta.label} tone={meta.tone} variant="outline" />}
-              onPress={() => setOpenId(a.id)}
-              divider={i < allocations.length - 1}
-            />
-          );
-        })}
+      <View style={styles.stack}>
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+          <Readout
+            lead={{ label: "Issued", value: qtyText(issued), hint: planned ? `of ${qtyText(planned)} planned` : "nothing planned yet" }}
+            items={[
+              { label: "Still to issue", value: qtyText(outstanding) },
+              { label: "Allocations", value: String(allocations.length) },
+            ]}
+          >
+            {planned > 0 ? <TickMeter value={issued} max={planned} ticks={44} height={16} label={`${qtyText(issued)} of ${qtyText(planned)} issued`} /> : null}
+          </Readout>
+        </Animated.View>
+        {byEvent(allocations).map((group) => (
+          <Animated.View key={group.key} entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title={group.title}>
+              {group.rows.map((a, i) => (
+                <AllocationRow
+                  key={a.id}
+                  title={a.itemLabel ?? "Item"}
+                  subtitle={[ISSUANCE_LABEL[a.issuance] ?? a.issuance, a.onHand !== undefined ? `${qtyText(a.onHand)} on hand` : null].filter(Boolean).join(" · ")}
+                  issued={a.issuedQty}
+                  planned={a.plannedQty}
+                  status={a.status}
+                  onPress={() => setOpenId(a.id)}
+                  divider={i < group.rows.length - 1}
+                />
+              ))}
+            </ListGroup>
+          </Animated.View>
+        ))}
       </View>
     );
   }
@@ -207,7 +242,7 @@ function AllocateForm({ projectId, data, initialEventId, onClose, onDone }: { pr
         {issuance === "ticket" ? (
           <Field label="Tickets that entitle it">
             {event?.tickets.length ? (
-              <View style={styles.choices}>
+              <ListGroup>
                 {event.tickets.map((t, i) => {
                   const on = ticketIds.includes(t.id);
                   return (
@@ -224,7 +259,7 @@ function AllocateForm({ projectId, data, initialEventId, onClose, onDone }: { pr
                     </Pressable>
                   );
                 })}
-              </View>
+              </ListGroup>
             ) : (
               <Text style={styles.muted}>{eventId ? "This event has no tickets yet." : "Pick an event to see its tickets."}</Text>
             )}
@@ -237,7 +272,7 @@ function AllocateForm({ projectId, data, initialEventId, onClose, onDone }: { pr
         ) : null}
         <View style={styles.actions}>
           <Button title="Cancel" variant="ghost" onPress={onClose} />
-          <Button title="Allocate" onPress={() => void submit()} loading={busy} />
+          <Button title="Allocate stock" onPress={() => void submit()} loading={busy} />
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -294,9 +329,20 @@ function AllocationActions({ projectId, allocation, onChanged, onDeleted }: { pr
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.form}>
-        <Text style={styles.muted}>
-          {`${allocation.eventName ?? "Event"} · ${qtyText(allocation.issuedQty)} of ${qtyText(allocation.plannedQty)} issued · ${qtyText(allocation.onHand ?? 0)} on hand`}
+        <Text style={styles.sheetEvent} numberOfLines={1}>
+          {[allocation.eventName ?? "Event", ISSUANCE_LABEL[allocation.issuance] ?? allocation.issuance].filter(Boolean).join(" · ")}
         </Text>
+        <Readout
+          lead={{ label: "Issued", value: qtyText(allocation.issuedQty), hint: `of ${qtyText(allocation.plannedQty)} planned` }}
+          items={[
+            { label: "To issue", value: qtyText(allocation.outstanding) },
+            { label: "On hand", value: qtyText(allocation.onHand ?? 0), tone: (allocation.onHand ?? 0) < allocation.outstanding ? "warning" : "neutral" },
+          ]}
+        >
+          {allocation.plannedQty > 0 ? (
+            <TickMeter value={allocation.issuedQty} max={allocation.plannedQty} ticks={36} height={12} label={`${qtyText(allocation.issuedQty)} of ${qtyText(allocation.plannedQty)} issued`} />
+          ) : null}
+        </Readout>
         <Field label="Status">
           <FilterChips options={STATUSES.map((s) => ({ value: s, label: s }))} value={allocation.status} onChange={(s) => void setStatus(s)} />
         </Field>
@@ -322,14 +368,10 @@ function AllocationActions({ projectId, allocation, onChanged, onDeleted }: { pr
 
 const styles = StyleSheet.create({
   controls: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   footnote: {
     ...type.caption,
@@ -343,12 +385,12 @@ const styles = StyleSheet.create({
     ...type.body,
     color: colors.textSecondary,
   },
-  choices: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg - 2,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  sheetEvent: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
+    marginBottom: -spacing.sm,
   },
   choice: {
     flexDirection: "row",

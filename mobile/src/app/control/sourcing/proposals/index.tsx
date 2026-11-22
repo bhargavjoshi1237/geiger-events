@@ -1,8 +1,8 @@
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { StatTile } from "@/components/control/StatTile";
 import { money, RFP_FILTERS, RFP_STATUS, deadlineLabel } from "@/components/control/sourcing/meta";
 import { OptionPicker } from "@/components/control/sourcing/OptionPicker";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -10,21 +10,27 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
+import { Icon } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
-import { ListRow } from "@/components/ui/ListRow";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Pill } from "@/components/ui/Pill";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { TickMeter } from "@/components/ui/TickMeter";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { errorFeedback, successFeedback } from "@/lib/haptics";
+import { pluralize } from "@/lib/format";
+import { errorFeedback, successFeedback, tapFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
-import type { Rfp, RfpList } from "@/types/control_sourcing";
+import { colors, spacing, type } from "@/theme/tokens";
+import type { Rfp, RfpList, RfpListRow } from "@/types/control_sourcing";
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 export default function ProposalsScreen() {
   const router = useRouter();
@@ -73,25 +79,18 @@ export default function ProposalsScreen() {
     );
   } else {
     body = (
-      <View style={styles.group}>
-        {shown.map((r, i) => {
-          const meta = RFP_STATUS[r.status];
-          const sub = [r.eventName, r.attendees ? `${r.attendees.toLocaleString("en-US")} pax` : "", r.invited ? `${r.responded}/${r.invited} responded` : "Not sent", r.best != null ? `Best ${money(r.best, r.currency)}` : "", r.status === "sent" ? deadlineLabel(r.responseDeadline) : ""]
-            .filter(Boolean)
-            .join(" · ");
-          return (
-            <ListRow
+      <Animated.View entering={FadeInDown.delay(stagger(2)).springify()}>
+        <ListGroup title={`${shown.length} ${pluralize(shown.length, "RFP", "RFPs")}`}>
+          {shown.map((r, i) => (
+            <RfpRow
               key={r.id}
-              leading={<IconTile icon="file-text" size={34} />}
-              title={r.title}
-              subtitle={sub}
-              trailing={<Pill label={meta.label} tone={meta.tone} variant="outline" />}
+              rfp={r}
               onPress={() => router.push({ pathname: "/control/sourcing/proposals/[id]", params: { id: r.id } })}
               divider={i < shown.length - 1}
             />
-          );
-        })}
-      </View>
+          ))}
+        </ListGroup>
+      </Animated.View>
     );
   }
 
@@ -105,24 +104,32 @@ export default function ProposalsScreen() {
         />
       }
     >
-      {stats ? (
-        <View style={styles.stats}>
-          <StatTile label="Open RFPs" value={String(stats.open)} hint={`${stats.drafts} draft${stats.drafts === 1 ? "" : "s"}`} />
-          <StatTile label="Awaiting" value={String(stats.waiting)} hint="No bid yet" />
-          <StatTile
-            label="Bids"
-            value={String(stats.received)}
-            hint={stats.avgVsBudget == null ? "No budget" : `${stats.avgVsBudget > 0 ? "+" : ""}${stats.avgVsBudget}% vs budget`}
-          />
-        </View>
-      ) : null}
-      {rfps.length ? (
-        <View style={styles.controls}>
-          <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder="Search RFPs, events, locations…" autoCapitalize="none" />
-          <FilterChips options={RFP_FILTERS} value={status} onChange={setStatus} />
-        </View>
-      ) : null}
-      {body}
+      <View style={styles.stack}>
+        {stats ? (
+          <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+            <Readout
+              lead={{ label: "Open RFPs", value: String(stats.open), hint: `${stats.drafts} ${pluralize(stats.drafts, "draft", "drafts")}` }}
+              items={[
+                { label: "Awaiting", value: String(stats.waiting), hint: "No bid yet", tone: stats.waiting ? "warning" : "neutral" },
+                { label: "Bids in", value: String(stats.received) },
+                {
+                  label: "Vs budget",
+                  value: stats.avgVsBudget == null ? "—" : `${stats.avgVsBudget > 0 ? "+" : ""}${stats.avgVsBudget}%`,
+                  hint: stats.avgVsBudget == null ? "No budget set" : "Average bid",
+                  tone: stats.avgVsBudget != null && stats.avgVsBudget > 0 ? "warning" : "neutral",
+                },
+              ]}
+            />
+          </Animated.View>
+        ) : null}
+        {rfps.length ? (
+          <Animated.View entering={FadeInDown.delay(stagger(1)).springify()} style={styles.controls}>
+            <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder="Search RFPs, events, locations…" autoCapitalize="none" />
+            <FilterChips options={RFP_FILTERS} value={status} onChange={setStatus} />
+          </Animated.View>
+        ) : null}
+        {body}
+      </View>
       {project ? (
         <Sheet visible={creating} onClose={() => setCreating(false)} title="New RFP">
           <CreateRfp
@@ -137,6 +144,66 @@ export default function ProposalsScreen() {
         </Sheet>
       ) : null}
     </Screen>
+  );
+}
+
+// An RFP in the list: venues that bid against those invited on the tick scale, then the best bid and deadline in mono.
+function RfpRow({ rfp: r, onPress, divider }: { rfp: RfpListRow; onPress: () => void; divider: boolean }) {
+  const meta = RFP_STATUS[r.status];
+  const context = [r.eventName, r.location, r.attendees ? `${r.attendees.toLocaleString("en-US")} pax` : ""].filter(Boolean).join(" · ");
+  const deadline = r.status === "sent" ? deadlineLabel(r.responseDeadline) : "";
+  const late = deadline.startsWith("Deadline passed") || deadline === "Due today";
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${r.title}, ${meta.label}${r.invited ? `, ${r.responded} of ${r.invited} responded` : ""}`}
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.row, divider && styles.divided, pressed && styles.pressed]}
+    >
+      <IconTile icon={r.status === "awarded" ? "award" : "file-text"} size={40} tone={r.status === "awarded" ? "success" : "neutral"} />
+      <View style={styles.rowStack}>
+        <View style={styles.titleRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {r.title}
+          </Text>
+          <Pill label={meta.label} tone={meta.tone} variant="outline" />
+        </View>
+        {context ? (
+          <Text style={styles.context} numberOfLines={1}>
+            {context}
+          </Text>
+        ) : null}
+        {r.invited ? (
+          <View style={styles.meterRow}>
+            <View style={styles.meter}>
+              <TickMeter value={r.responded} max={r.invited} ticks={24} height={9} tone="info" label={`${r.responded} of ${r.invited} venues responded`} />
+            </View>
+            <Text style={styles.count}>
+              {r.responded}
+              <Text style={styles.countOf}>{`/${r.invited} bids`}</Text>
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.quiet}>Not sent yet</Text>
+        )}
+        {r.best != null || deadline ? (
+          <View style={styles.figures}>
+            {r.best != null ? <Text style={styles.best}>{`Best ${money(r.best, r.currency)}`}</Text> : null}
+            {deadline ? (
+              <View style={styles.deadline}>
+                <Icon name="clock" size={12} color={late ? colors.warning : colors.textSecondary} />
+                <Text style={[styles.deadlineText, late && styles.late]}>{deadline}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+      <Icon name="chevron-right" size={18} color={colors.textTertiary} />
+    </Pressable>
   );
 }
 
@@ -177,7 +244,7 @@ function CreateRfp({ projectId, events, onClose, onCreated }: { projectId: strin
         <Field label="Event">
           <OptionPicker label="Event" options={events.map((e) => ({ value: e.id, label: e.name }))} value={eventId} onChange={setEventId} noneLabel="No event" />
         </Field>
-        <View style={styles.row}>
+        <View style={styles.pair}>
           <View style={styles.half}>
             <Field label="Start date">
               <Input value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" />
@@ -189,7 +256,7 @@ function CreateRfp({ projectId, events, onClose, onCreated }: { projectId: strin
             </Field>
           </View>
         </View>
-        <View style={styles.row}>
+        <View style={styles.pair}>
           <View style={styles.half}>
             <Field label="Attendees">
               <Input value={attendees} onChangeText={setAttendees} placeholder="0" keyboardType="number-pad" />
@@ -212,26 +279,93 @@ function CreateRfp({ projectId, events, onClose, onCreated }: { projectId: strin
 }
 
 const styles = StyleSheet.create({
-  stats: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   controls: {
     gap: spacing.md,
-    marginBottom: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md + 2,
+    paddingVertical: 14,
+  },
+  divided: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  rowStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  name: {
+    ...type.bodyStrong,
+    flex: 1,
+    color: colors.foreground,
+  },
+  context: {
+    ...type.caption,
+    color: colors.textSecondary,
+  },
+  meterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm + 2,
+    marginTop: 3,
+  },
+  meter: {
+    flex: 1,
+  },
+  count: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.foreground,
+  },
+  countOf: {
+    color: colors.textTertiary,
+  },
+  quiet: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textTertiary,
+  },
+  figures: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: spacing.md,
+  },
+  best: {
+    ...type.monoSmall,
+    color: colors.foreground,
+  },
+  deadline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  deadlineText: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  late: {
+    color: colors.warning,
   },
   form: {
     gap: spacing.lg,
   },
-  row: {
+  pair: {
     flexDirection: "row",
     gap: spacing.md,
   },

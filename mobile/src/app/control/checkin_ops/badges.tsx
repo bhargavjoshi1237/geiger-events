@@ -1,18 +1,24 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { EventPicker } from "@/components/control/checkin_ops/EventPicker";
+import { DetailRow } from "@/components/DetailRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
+import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { TickMeter } from "@/components/ui/TickMeter";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { fmtDateTime } from "@/lib/format";
@@ -20,7 +26,7 @@ import { errorFeedback, successFeedback } from "@/lib/haptics";
 import type { StatusMeta } from "@/lib/status";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { BadgeStatus, BadgesResponse, SmartBadge } from "@/types/control_checkin_ops";
 import type { ControlEvent } from "@/types/portal";
 
@@ -45,6 +51,10 @@ function targetsFor(status: BadgeStatus): Target[] {
 
 const TARGET_LABEL: Record<Target, string> = { active: "Reactivate", lost: "Mark lost", revoked: "Revoke" };
 
+// Only a badge that needs a decision tints its glyph; active and spare stay neutral.
+const tileTone = (status: BadgeStatus) => (status === "lost" ? "warning" : status === "revoked" ? "danger" : "neutral");
+const count = (n: number) => n.toLocaleString("en-US");
+
 export default function SmartBadgesScreen() {
   const { project } = useControl();
   const [eventId, setEventId] = useState<string | null>(null);
@@ -64,6 +74,8 @@ export default function SmartBadgesScreen() {
   const pick = useCallback((event: ControlEvent) => setEventId(event.id), []);
   const counts = list.data?.counts;
   const badges = list.data?.badges ?? [];
+  const all = counts ? (Object.values(counts) as number[]).reduce((sum, n) => sum + n, 0) : 0;
+  const total = list.data?.total ?? 0;
 
   const chips = [
     { value: "all", label: "All" },
@@ -94,10 +106,11 @@ export default function SmartBadgesScreen() {
       );
   } else {
     body = (
-      <View style={styles.group}>
+      <ListGroup title={total > badges.length ? `${count(badges.length)} of ${count(total)} badges` : `${count(total)} ${total === 1 ? "badge" : "badges"}`}>
         {badges.map((b, i) => (
           <ListRow
             key={b.id}
+            leading={<IconTile icon="id-card" size={36} tone={tileTone(b.status)} />}
             title={b.holderName || b.label || b.serial || "Badge"}
             subtitle={[b.serial && `#${b.serial}`, b.holderEmail, b.uid ? `UID ${b.uid}` : "UID pending"].filter(Boolean).join(" · ")}
             trailing={<Pill label={STATUS_META[b.status].label} tone={STATUS_META[b.status].tone} variant="outline" />}
@@ -105,15 +118,29 @@ export default function SmartBadgesScreen() {
             divider={i < badges.length - 1}
           />
         ))}
-      </View>
+      </ListGroup>
     );
   }
 
   return (
-    <Screen scroll header={<ScreenHeader title="Smart badges" subtitle={list.data ? `${list.data.total} shown of the event's badges` : undefined} />}>
+    <Screen scroll header={<ScreenHeader title="Smart badges" />}>
       {project ? (
         <View style={styles.controls}>
           <EventPicker projectId={project.id} value={eventId} onChange={pick} />
+          {eventId && counts && all > 0 ? (
+            <Animated.View entering={FadeInDown.springify()}>
+              <Readout
+                lead={{ label: "Active badges", value: count(counts.active), hint: `of ${count(all)} for this event` }}
+                items={[
+                  { label: "Spare", value: count(counts.unassigned) },
+                  { label: "Lost", value: count(counts.lost), tone: counts.lost ? "warning" : "neutral" },
+                  { label: "Revoked", value: count(counts.revoked), tone: counts.revoked ? "danger" : "neutral" },
+                ]}
+              >
+                <TickMeter value={counts.active} max={all} ticks={44} height={16} label={`${counts.active} of ${all} badges active`} />
+              </Readout>
+            </Animated.View>
+          ) : null}
           {eventId ? (
             <>
               <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder="Serial, UID or holder…" autoCapitalize="none" />
@@ -145,6 +172,7 @@ function BadgeDetail({ badge, onChanged }: { badge: SmartBadge; onChanged: (badg
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const targets = targetsFor(badge.status);
+  const meta = STATUS_META[badge.status];
 
   const submit = async (to: Target) => {
     setBusy(true);
@@ -159,24 +187,33 @@ function BadgeDetail({ badge, onChanged }: { badge: SmartBadge; onChanged: (badg
     onChanged(res.data.badge);
   };
 
+  const facts = [
+    { label: "Serial", value: badge.serial, mono: true },
+    { label: "NFC UID", value: badge.uid || "Not captured yet", mono: Boolean(badge.uid) },
+    { label: "Holder", value: badge.holderName, mono: false },
+    { label: "Email", value: badge.holderEmail, mono: false },
+    { label: "Issued", value: fmtDateTime(badge.issuedAt), mono: true },
+  ].filter((f) => f.value);
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.detail}>
-        <Pill label={STATUS_META[badge.status].label} tone={STATUS_META[badge.status].tone} />
-        {[
-          ["Serial", badge.serial],
-          ["NFC UID", badge.uid || "Not captured yet"],
-          ["Holder", [badge.holderName, badge.holderEmail].filter(Boolean).join(" · ")],
-          ["Issued", fmtDateTime(badge.issuedAt)],
-          ["Notes", badge.notes],
-        ]
-          .filter(([, value]) => value)
-          .map(([label, value]) => (
-            <View key={label} style={styles.detailRow}>
-              <Text style={styles.detailLabel}>{label}</Text>
-              <Text style={styles.detailValue}>{value}</Text>
-            </View>
-          ))}
+        <View style={styles.head}>
+          <Pill label={meta.label} tone={meta.tone} />
+          {badge.label && badge.label !== badge.holderName ? (
+            <Text style={styles.headMeta} numberOfLines={1}>
+              {badge.label}
+            </Text>
+          ) : null}
+        </View>
+        {facts.length ? (
+          <ListGroup>
+            {facts.map((f, i) => (
+              <DetailRow key={f.label} label={f.label} value={f.value} mono={f.mono} divider={i < facts.length - 1} />
+            ))}
+          </ListGroup>
+        ) : null}
+        {badge.notes ? <Text style={styles.notes}>{badge.notes}</Text> : null}
         {target ? (
           <>
             {target !== "active" ? (
@@ -196,7 +233,7 @@ function BadgeDetail({ badge, onChanged }: { badge: SmartBadge; onChanged: (badg
             ))}
           </View>
         ) : (
-          <Text style={styles.detailLabel}>Replaced badges can&apos;t change status.</Text>
+          <Text style={styles.notes}>Replaced badges can&apos;t change status.</Text>
         )}
       </View>
     </KeyboardAvoidingView>
@@ -206,31 +243,26 @@ function BadgeDetail({ badge, onChanged }: { badge: SmartBadge; onChanged: (badg
 const styles = StyleSheet.create({
   controls: {
     gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
   },
   detail: {
-    gap: spacing.md,
-    alignItems: "stretch",
+    gap: spacing.lg,
   },
-  detailRow: {
-    gap: 2,
+  head: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
-  detailLabel: {
-    ...type.micro,
+  headMeta: {
+    ...type.monoSmall,
+    flexShrink: 1,
     color: colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.9,
   },
-  detailValue: {
+  notes: {
     ...type.body,
-    color: colors.foreground,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
   },
   actions: {
     flexDirection: "row",

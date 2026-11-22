@@ -1,19 +1,27 @@
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { Button } from "@/components/ui/Button";
+import { CoverWash } from "@/components/control/CoverWash";
+import { DateStub } from "@/components/control/DateStub";
+import { ChoicePicker } from "@/components/control/forms/ChoicePicker";
+import { Readback, readDate } from "@/components/control/forms/DateReadback";
+import { FormField } from "@/components/control/forms/FormField";
+import { FormHeader, MetaText } from "@/components/control/forms/FormHeader";
+import { FormPanel } from "@/components/control/forms/FormPanel";
+import { FormScreen } from "@/components/control/forms/FormScreen";
+import { FormSkeleton } from "@/components/control/forms/FormSkeleton";
+import { SaveBar } from "@/components/control/forms/SaveBar";
+import { ToggleRow } from "@/components/control/forms/ToggleRow";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
-import { SectionTitle } from "@/components/ui/SectionTitle";
-import { Segmented } from "@/components/ui/Segmented";
-import { SkeletonList } from "@/components/ui/Skeleton";
-import { Switch } from "@/components/ui/Switch";
+import { Pill } from "@/components/ui/Pill";
+import { TickMeter } from "@/components/ui/TickMeter";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
+import { eventDateLine, eventDayNumeral, eventStatusMeta } from "@/lib/control_meta";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -30,6 +38,8 @@ const VISIBILITY_OPTIONS: { value: ControlVisibility; label: string }[] = [
   { value: "Unlisted", label: "Unlisted" },
   { value: "Private", label: "Private" },
 ];
+
+const SUMMARY_MAX = 5000;
 
 type Draft = {
   name: string;
@@ -48,6 +58,8 @@ type Draft = {
 };
 
 const TEXT_KEYS = ["name", "timezone", "venue", "address", "city", "organizer", "summary"] as const;
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 function toDraft({ event, details }: ControlEventDetail): Draft {
   return {
@@ -84,45 +96,29 @@ function patchOf(seed: Draft, draft: Draft): ControlEventPatch {
 
 export default function EditEventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets();
   const query = useControlQuery<ControlEventDetail>(`/api/control/events/${id}`, { refetchOnFocus: false });
-
-  const header = (
-    <View style={[styles.headerPad, { paddingTop: insets.top }]}>
-      <ScreenHeader title="Edit details" />
-    </View>
-  );
 
   if (query.error && !query.data) {
     return (
-      <View style={styles.flex}>
-        {header}
-        <View style={styles.pad}>
-          <EmptyState icon="circle-alert" title="Couldn't open this event" message={query.error} actionLabel="Try again" onAction={() => void query.reload()} />
-        </View>
-      </View>
+      <FormScreen title="Edit details">
+        <EmptyState icon="circle-alert" title="Couldn't open this event" message={query.error} actionLabel="Try again" onAction={() => void query.reload()} />
+      </FormScreen>
     );
   }
 
   if (!query.data) {
     return (
-      <View style={styles.flex}>
-        {header}
-        <View style={styles.pad}>
-          <SkeletonList rows={5} variant="divided" />
-        </View>
-      </View>
+      <FormScreen title="Edit details">
+        <FormSkeleton panels={3} />
+      </FormScreen>
     );
   }
 
   if (!query.data.can.edit) {
     return (
-      <View style={styles.flex}>
-        {header}
-        <View style={styles.pad}>
-          <EmptyState icon="lock" title="Your role can't edit this event" message="Ask a project admin for the Edit an event permission." />
-        </View>
-      </View>
+      <FormScreen title="Edit details">
+        <EmptyState icon="lock" title="Your role can't edit this event" message="Ask a project admin for the Edit an event permission." />
+      </FormScreen>
     );
   }
 
@@ -131,14 +127,14 @@ export default function EditEventScreen() {
 
 function EditForm({ id, detail }: { id: string; detail: ControlEventDetail }) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const toast = useToast();
   const seed = useMemo(() => toDraft(detail), [detail]);
   const [draft, setDraft] = useState<Draft>(seed);
   const [busy, setBusy] = useState(false);
 
   const patch = useMemo(() => patchOf(seed, draft), [seed, draft]);
-  const dirty = Object.keys(patch).length > 0;
+  const changeCount = Object.keys(patch).length;
+  const dirty = changeCount > 0;
   const set = (next: Partial<Draft>) => setDraft((d) => ({ ...d, ...next }));
 
   const save = async () => {
@@ -159,136 +155,184 @@ function EditForm({ id, detail }: { id: string; detail: ControlEventDetail }) {
     router.back();
   };
 
+  const { event } = detail;
+  const status = eventStatusMeta(event.status);
+  const reading = readDate(draft.date, draft.time);
+  const cap = Number(draft.capacity || "0");
+  const left = cap - event.sold;
+  let step = 0;
+
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <View style={[styles.headerPad, { paddingTop: insets.top }]}>
-        <ScreenHeader
-          title="Edit details"
-          right={<Button title="Save" size="sm" onPress={() => void save()} loading={busy} disabled={!dirty || busy} />}
+    <FormScreen
+      title="Edit details"
+      backdrop={<CoverWash uri={event.coverUrl} numeral={eventDayNumeral(event.date)} height={300} />}
+      footer={<SaveBar title="Save changes" changes={changeCount} onPress={() => void save()} loading={busy} disabled={!dirty || busy} />}
+    >
+      <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+        <FormHeader
+          leading={
+            event.coverUrl ? (
+              <Image source={{ uri: event.coverUrl }} contentFit="cover" transition={200} style={styles.thumb} />
+            ) : (
+              <DateStub date={event.date} today={event.when === "today"} size="lg" />
+            )
+          }
+          title={event.name}
+          meta={
+            <>
+              <Pill label={status.label} tone={status.tone} />
+              <MetaText>{eventDateLine(event)}</MetaText>
+            </>
+          }
         />
-      </View>
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xxl }]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.section}>
-          <Field label="Name">
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+        <FormPanel title="Basics">
+          <FormField label="Name" required>
             <Input value={draft.name} onChangeText={(name) => set({ name })} placeholder="Event name" maxLength={200} />
-          </Field>
-          <Field label="Format">
-            <Segmented options={TYPE_OPTIONS} value={draft.type} onChange={(v) => set({ type: v as ControlEventType })} />
-          </Field>
-        </View>
+          </FormField>
+          <FormField label="Format">
+            <ChoicePicker options={TYPE_OPTIONS} value={draft.type} onChange={(v) => set({ type: v as ControlEventType })} label="Format" />
+          </FormField>
+        </FormPanel>
+      </Animated.View>
 
-        <SectionTitle variant="kicker">When</SectionTitle>
-        <View style={styles.section}>
-          <View style={styles.pair}>
-            <View style={styles.half}>
-              <Field label="Date" hint="YYYY-MM-DD">
-                <Input
-                  value={draft.date}
-                  onChangeText={(date) => set({ date })}
-                  placeholder="2026-12-01"
-                  keyboardType="numbers-and-punctuation"
-                  autoCapitalize="none"
-                  maxLength={10}
-                />
-              </Field>
+      <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+        <FormPanel title="When">
+          <View style={styles.when}>
+            <View style={styles.pair}>
+              <View style={styles.half}>
+                <FormField label="Date">
+                  <Input
+                    value={draft.date}
+                    onChangeText={(date) => set({ date })}
+                    placeholder="2026-12-01"
+                    keyboardType="numbers-and-punctuation"
+                    autoCapitalize="none"
+                    maxLength={10}
+                    style={styles.figure}
+                  />
+                </FormField>
+              </View>
+              <View style={styles.half}>
+                <FormField label="Time">
+                  <Input
+                    value={draft.time}
+                    onChangeText={(time) => set({ time })}
+                    placeholder="19:30"
+                    keyboardType="numbers-and-punctuation"
+                    autoCapitalize="none"
+                    maxLength={5}
+                    style={styles.figure}
+                  />
+                </FormField>
+              </View>
             </View>
-            <View style={styles.half}>
-              <Field label="Time" hint="24-hour HH:MM">
-                <Input
-                  value={draft.time}
-                  onChangeText={(time) => set({ time })}
-                  placeholder="19:30"
-                  keyboardType="numbers-and-punctuation"
-                  autoCapitalize="none"
-                  maxLength={5}
-                />
-              </Field>
-            </View>
+            {reading ? <Readback reading={reading} /> : <Text style={styles.hint}>No date yet; the event stays unscheduled.</Text>}
           </View>
-          <Field label="Time zone" hint="For example Europe/London or America/New_York">
-            <Input value={draft.timezone} onChangeText={(timezone) => set({ timezone })} autoCapitalize="none" autoCorrect={false} maxLength={64} />
-          </Field>
-        </View>
+          <FormField label="Time zone" hint="For example Europe/London or America/New_York.">
+            <Input
+              leftIcon="globe"
+              value={draft.timezone}
+              onChangeText={(timezone) => set({ timezone })}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={64}
+              style={styles.figure}
+            />
+          </FormField>
+        </FormPanel>
+      </Animated.View>
 
-        <SectionTitle variant="kicker">Where</SectionTitle>
-        <View style={styles.section}>
-          <Field label="Venue">
-            <Input value={draft.venue} onChangeText={(venue) => set({ venue })} placeholder="Venue name" maxLength={200} />
-          </Field>
-          <Field label="Address">
+      <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+        <FormPanel title="Where">
+          <FormField label="Venue">
+            <Input leftIcon="map-pin" value={draft.venue} onChangeText={(venue) => set({ venue })} placeholder="Venue name" maxLength={200} />
+          </FormField>
+          <FormField label="Address">
             <Input value={draft.address} onChangeText={(address) => set({ address })} placeholder="Street address" maxLength={300} />
-          </Field>
-          <Field label="City">
+          </FormField>
+          <FormField label="City">
             <Input value={draft.city} onChangeText={(city) => set({ city })} placeholder="City" maxLength={120} />
-          </Field>
-          <Field label="Capacity" hint="0 means no cap">
-            <Input value={draft.capacity} onChangeText={(capacity) => set({ capacity: capacity.replace(/[^0-9]/g, "") })} keyboardType="number-pad" maxLength={8} />
-          </Field>
-        </View>
+          </FormField>
+        </FormPanel>
+      </Animated.View>
 
-        <SectionTitle variant="kicker">Publishing</SectionTitle>
-        <View style={styles.section}>
-          <Field label="Visibility" hint="Unlisted events open by link only; private ones are hidden from buyers.">
-            <Segmented options={VISIBILITY_OPTIONS} value={draft.visibility} onChange={(v) => set({ visibility: v as ControlVisibility })} />
-          </Field>
-          <View style={styles.switchRow}>
-            <View style={styles.switchText}>
-              <Text style={styles.switchTitle}>Show on your Event Wall</Text>
-              <Text style={styles.switchHint}>List this event on the project&apos;s public wall</Text>
-            </View>
-            <Switch value={draft.isListable} onValueChange={(isListable) => set({ isListable })} label="Show on your Event Wall" />
-          </View>
-          <Field label="Organiser">
-            <Input value={draft.organizer} onChangeText={(organizer) => set({ organizer })} placeholder="Shown on the event page" maxLength={200} />
-          </Field>
-        </View>
+      <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+        <FormPanel title="Capacity" footer="0 means no cap.">
+          <FormField
+            label="Places"
+            aside={`${event.sold} sold`}
+            status={
+              cap > 0 ? (
+                <View style={styles.meter}>
+                  <TickMeter value={event.sold} max={cap} ticks={36} height={12} label={`${event.sold} of ${cap} sold`} />
+                  <Text style={[styles.meterNote, left < 0 && styles.meterOver]}>
+                    {left < 0 ? `${-left} more sold than this allows` : left === 0 ? "At capacity" : `${left} left to sell`}
+                  </Text>
+                </View>
+              ) : null
+            }
+          >
+            <Input
+              leftIcon="users"
+              value={draft.capacity}
+              onChangeText={(capacity) => set({ capacity: capacity.replace(/[^0-9]/g, "") })}
+              keyboardType="number-pad"
+              maxLength={8}
+              style={styles.figure}
+            />
+          </FormField>
+        </FormPanel>
+      </Animated.View>
 
-        <SectionTitle variant="kicker">About</SectionTitle>
-        <View style={styles.section}>
-          <Field label="Summary">
+      <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+        <FormPanel title="Publishing">
+          <FormField label="Visibility" hint="Unlisted events open by link only; private ones are hidden from buyers.">
+            <ChoicePicker options={VISIBILITY_OPTIONS} value={draft.visibility} onChange={(v) => set({ visibility: v as ControlVisibility })} label="Visibility" />
+          </FormField>
+          <ToggleRow
+            label="Show on your Event Wall"
+            hint="List this event on the project's public wall"
+            value={draft.isListable}
+            onValueChange={(isListable) => set({ isListable })}
+          />
+          <FormField label="Organiser">
+            <Input leftIcon="briefcase" value={draft.organizer} onChangeText={(organizer) => set({ organizer })} placeholder="Shown on the event page" maxLength={200} />
+          </FormField>
+        </FormPanel>
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+        <FormPanel title="About">
+          <FormField label="Summary" aside={`${draft.summary.length} / ${SUMMARY_MAX}`}>
             <Input
               value={draft.summary}
               onChangeText={(summary) => set({ summary })}
               placeholder="What buyers should know"
               multiline
-              maxLength={5000}
+              maxLength={SUMMARY_MAX}
               style={styles.multiline}
             />
-          </Field>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </FormField>
+        </FormPanel>
+      </Animated.View>
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  headerPad: {
-    paddingHorizontal: spacing.lg,
-  },
-  pad: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  scroll: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  section: {
-    gap: spacing.lg,
+  thumb: {
+    width: 62,
+    height: 62,
+    borderRadius: radius.md + 2,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceCard,
+  },
+  when: {
+    gap: spacing.md,
   },
   pair: {
     flexDirection: "row",
@@ -298,22 +342,26 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  switchText: {
-    flex: 1,
-    gap: 2,
-  },
-  switchTitle: {
-    ...type.label,
-    color: colors.foreground,
-  },
-  switchHint: {
+  hint: {
     ...type.caption,
+    color: colors.textTertiary,
+  },
+  figure: {
+    ...type.mono,
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  meter: {
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
+  },
+  meterNote: {
+    ...type.monoSmall,
+    fontSize: 11,
     color: colors.textSecondary,
+  },
+  meterOver: {
+    color: colors.warning,
   },
   multiline: {
     minHeight: 120,

@@ -1,6 +1,13 @@
 import ArrowDown from "lucide-react-native/icons/arrow-down";
 import ArrowLeftRight from "lucide-react-native/icons/arrow-left-right";
 import ArrowRight from "lucide-react-native/icons/arrow-right";
+import SearchX from "lucide-react-native/icons/search-x";
+import SlidersHorizontal from "lucide-react-native/icons/sliders-horizontal";
+import CalendarPlus from "lucide-react-native/icons/calendar-plus";
+import Ellipsis from "lucide-react-native/icons/ellipsis";
+import LayoutGrid from "lucide-react-native/icons/layout-grid";
+import Activity from "lucide-react-native/icons/activity";
+import ArrowUpRight from "lucide-react-native/icons/arrow-up-right";
 import ArrowUp from "lucide-react-native/icons/arrow-up";
 import Award from "lucide-react-native/icons/award";
 import BadgeCheck from "lucide-react-native/icons/badge-check";
@@ -166,6 +173,13 @@ export const ICONS = {
   "arrow-down": ArrowDown,
   "arrow-left-right": ArrowLeftRight,
   "arrow-right": ArrowRight,
+  "search-x": SearchX,
+  "sliders-horizontal": SlidersHorizontal,
+  "calendar-plus": CalendarPlus,
+  ellipsis: Ellipsis,
+  "layout-grid": LayoutGrid,
+  activity: Activity,
+  "arrow-up-right": ArrowUpRight,
   "arrow-up": ArrowUp,
   award: Award,
   "badge-check": BadgeCheck,

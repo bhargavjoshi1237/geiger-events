@@ -1,26 +1,31 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AreaChips } from "@/components/control/checkin_ops/AreaChips";
+import { permSummary } from "@/components/control/checkin_ops/format";
 import { SecretCode } from "@/components/control/checkin_ops/SecretCode";
+import { SwitchRow } from "@/components/control/checkin_ops/SwitchRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
+import type { IconName } from "@/components/ui/icons";
+import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
-import { SectionTitle } from "@/components/ui/SectionTitle";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { Pill } from "@/components/ui/Pill";
 import { Segmented } from "@/components/ui/Segmented";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { NamedArea, StaffRole, StaffRolePermissions, StaffRolesResponse, StaffRoleType } from "@/types/control_checkin_ops";
 
 const TYPE_OPTIONS = [
@@ -28,14 +33,15 @@ const TYPE_OPTIONS = [
   { value: "kiosk", label: "Kiosk" },
 ];
 
-const ABILITIES: { key: "canScan" | "canSell" | "canOverride"; title: string; detail: string }[] = [
-  { key: "canScan", title: "Scan & admit", detail: "Open the scanner and check attendees in." },
-  { key: "canSell", title: "Sell at the door", detail: "Take walk-in door sales (needs Door Sales on)." },
-  { key: "canOverride", title: "Override capacity", detail: "Admit past a full area's cap, with a reason." },
+const ABILITIES: { key: "canScan" | "canSell" | "canOverride"; icon: IconName; title: string; detail: string }[] = [
+  { key: "canScan", icon: "scan-line", title: "Scan & admit", detail: "Open the scanner and check attendees in." },
+  { key: "canSell", icon: "banknote", title: "Sell at the door", detail: "Take walk-in door sales (needs Door Sales on)." },
+  { key: "canOverride", icon: "shield", title: "Override capacity", detail: "Admit past a full area's cap, with a reason." },
 ];
 
 // Six digits, like the dashboard's generator, so staff can type it on any keypad.
 const newCode = () => String(Math.floor(100000 + Math.random() * 900000));
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 export default function StaffRoleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -94,6 +100,8 @@ function RoleEditor({ role, gates, zones, onSaved }: { role: StaffRole; gates: N
   if (draft.accessCode !== role.accessCode) body.accessCode = draft.accessCode;
   if (JSON.stringify(draft.permissions) !== JSON.stringify(role.permissions)) body.permissions = draft.permissions;
   const dirty = Object.keys(body).length > 0;
+  const codeChanged = draft.accessCode !== role.accessCode;
+  const scoped = draft.permissions.gates.length + draft.permissions.zones.length;
 
   const save = async () => {
     if (!draft.name.trim()) return toast.error("Give the role a name.");
@@ -123,62 +131,91 @@ function RoleEditor({ role, gates, zones, onSaved }: { role: StaffRole; gates: N
     router.back();
   };
 
+  let step = 0;
   return (
     <KeyboardAvoidingView style={[styles.root, { paddingTop: insets.top }]} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScreenHeader title={role.name} right={<Button title="Save" size="sm" onPress={() => void save()} loading={saving} disabled={!dirty || saving} />} />
+      <ScreenHeader title="Staff role" right={<Button title="Save" size="sm" onPress={() => void save()} loading={saving} disabled={!dirty || saving} />} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xxl }]} keyboardShouldPersistTaps="handled">
         <View style={styles.stack}>
-          <View style={styles.card}>
-            <Field label="Name">
-              <Input value={draft.name} onChangeText={(name) => set({ name })} placeholder="e.g. North door" />
-            </Field>
-            <Field label="Type">
-              <Segmented options={TYPE_OPTIONS} value={draft.type} onChange={(v) => set({ type: v as StaffRoleType })} />
-            </Field>
-            <View style={styles.switchRow}>
-              <View style={styles.switchText}>
-                <Text style={styles.switchTitle}>Active</Text>
-                <Text style={styles.hint}>Off locks this code out of the scanner straight away.</Text>
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()} style={styles.head}>
+            <IconTile icon={draft.type === "kiosk" ? "monitor" : "users"} size={56} tone={draft.active ? "neutral" : "outline"} />
+            <View style={styles.headText}>
+              <Text style={styles.name} numberOfLines={2}>
+                {draft.name.trim() || role.name}
+              </Text>
+              <View style={styles.metaRow}>
+                <Pill label={draft.active ? "Active" : "Off"} tone={draft.active ? "success" : "neutral"} />
+                <Text style={styles.meta} numberOfLines={1}>
+                  {draft.type === "kiosk" ? "Kiosk" : "Door staff"}
+                </Text>
               </View>
-              <Switch value={draft.active} onValueChange={(active) => set({ active })} label="Active" />
+              <Text style={styles.summary} numberOfLines={1}>
+                {permSummary(draft.permissions)}
+              </Text>
             </View>
-          </View>
+          </Animated.View>
 
-          <View style={styles.panel}>
-            <SectionTitle variant="kicker">Access code</SectionTitle>
-            <View style={styles.card}>
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title="Role">
+              <View style={styles.fields}>
+                <Field label="Name">
+                  <Input value={draft.name} onChangeText={(name) => set({ name })} placeholder="e.g. North door" />
+                </Field>
+                <Field label="Type" hint="Kiosk codes only open the self check-in kiosk.">
+                  <Segmented options={TYPE_OPTIONS} value={draft.type} onChange={(v) => set({ type: v as StaffRoleType })} />
+                </Field>
+              </View>
+            </ListGroup>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup
+              title="Access code"
+              action={codeChanged ? <Pill label="Not saved yet" tone="warning" /> : undefined}
+              footer={codeChanged ? "The new code takes effect when you save; anyone using the old one is locked out." : "Staff type this code to open the scanner. A new code locks the old one out once you save."}
+            >
+              <SwitchRow
+                icon="key-round"
+                title="Code works"
+                detail="Off locks this code out of the scanner straight away."
+                value={draft.active}
+                onValueChange={(active) => set({ active })}
+              />
               <SecretCode code={draft.accessCode} />
-              <Button title="Generate a new code" icon="refresh-cw" variant="secondary" size="sm" onPress={() => set({ accessCode: newCode() })} />
-              <Text style={styles.hint}>A new code takes effect when you save; anyone using the old one is locked out.</Text>
-            </View>
-          </View>
+              <View style={styles.groupAction}>
+                <Button title="Generate a new code" icon="refresh-cw" variant="secondary" size="sm" onPress={() => set({ accessCode: newCode() })} fullWidth />
+              </View>
+            </ListGroup>
+          </Animated.View>
 
-          <View style={styles.panel}>
-            <SectionTitle variant="kicker">Abilities</SectionTitle>
-            <View style={styles.card}>
-              {ABILITIES.map((a) => (
-                <View key={a.key} style={styles.switchRow}>
-                  <View style={styles.switchText}>
-                    <Text style={styles.switchTitle}>{a.title}</Text>
-                    <Text style={styles.hint}>{a.detail}</Text>
-                  </View>
-                  <Switch value={draft.permissions[a.key]} onValueChange={(v) => setPerm({ [a.key]: v })} label={a.title} />
-                </View>
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title="What they can do">
+              {ABILITIES.map((a, i) => (
+                <SwitchRow
+                  key={a.key}
+                  icon={a.icon}
+                  title={a.title}
+                  detail={a.detail}
+                  value={draft.permissions[a.key]}
+                  onValueChange={(v) => setPerm({ [a.key]: v })}
+                  divider={i < ABILITIES.length - 1}
+                />
               ))}
-            </View>
-          </View>
+            </ListGroup>
+          </Animated.View>
 
-          <View style={styles.panel}>
-            <SectionTitle variant="kicker">Where they can work</SectionTitle>
-            <View style={styles.card}>
-              <Field label="Gates" hint="None picked means every gate.">
-                <AreaChips options={gates} selected={draft.permissions.gates} onChange={(next) => setPerm({ gates: next })} empty="No gates yet — add them under Multi-gate & Zones." />
-              </Field>
-              <Field label="Zones" hint="None picked means every zone.">
-                <AreaChips options={zones} selected={draft.permissions.zones} onChange={(next) => setPerm({ zones: next })} empty="No zones yet — add them under Multi-gate & Zones." />
-              </Field>
-            </View>
-          </View>
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title="Where they can work" footer={scoped ? `Limited to ${scoped} ${scoped === 1 ? "gate or zone" : "gates and zones"}.` : "None picked means every gate and every zone."}>
+              <View style={styles.fields}>
+                <Field label="Gates">
+                  <AreaChips options={gates} selected={draft.permissions.gates} onChange={(next) => setPerm({ gates: next })} empty="No gates yet — add them under Multi-gate & Zones." />
+                </Field>
+                <Field label="Zones">
+                  <AreaChips options={zones} selected={draft.permissions.zones} onChange={(next) => setPerm({ zones: next })} empty="No zones yet — add them under Multi-gate & Zones." />
+                </Field>
+              </View>
+            </ListGroup>
+          </Animated.View>
 
           <Button title="Delete role" icon="trash-2" variant="destructiveGhost" onPress={() => setConfirmDelete(true)} fullWidth />
         </View>
@@ -189,7 +226,7 @@ function RoleEditor({ role, gates, zones, onSaved }: { role: StaffRole; gates: N
           <Text style={styles.hint}>Its code stops opening the scanner immediately.</Text>
           <View style={styles.actions}>
             <Button title="Keep it" variant="ghost" onPress={() => setConfirmDelete(false)} />
-            <Button title="Delete" variant="destructive" onPress={() => void remove()} loading={deleting} />
+            <Button title="Delete role" variant="destructive" onPress={() => void remove()} loading={deleting} />
           </View>
         </View>
       </Sheet>
@@ -209,32 +246,45 @@ const styles = StyleSheet.create({
   stack: {
     gap: spacing.xl,
   },
-  panel: {
-    gap: spacing.sm,
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  switchRow: {
+  head: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.md + 2,
   },
-  switchText: {
+  headText: {
     flex: 1,
-    gap: 2,
+    minWidth: 0,
+    gap: spacing.xs + 2,
   },
-  switchTitle: {
-    ...type.label,
+  name: {
+    ...type.title,
     color: colors.foreground,
   },
-  hint: {
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  meta: {
+    ...type.monoSmall,
+    flexShrink: 1,
+    color: colors.textSecondary,
+  },
+  summary: {
     ...type.caption,
+    color: colors.textSecondary,
+  },
+  fields: {
+    gap: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  groupAction: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.surfaceActive,
+    paddingVertical: spacing.md,
+  },
+  hint: {
+    ...type.body,
     color: colors.textSecondary,
   },
   sheetBody: {

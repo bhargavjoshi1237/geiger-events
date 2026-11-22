@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Icon } from "@/components/ui/icons";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Sheet } from "@/components/ui/Sheet";
 import { selectionFeedback } from "@/lib/haptics";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -38,34 +39,36 @@ export function OptionPicker({ label, options, value, onChange, placeholder = "C
       </Pressable>
 
       <Sheet visible={open} onClose={() => setOpen(false)} title={label}>
-        <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
-          {all.map((o, i) => (
-            <Pressable
-              key={o.value || "none"}
-              accessibilityRole="button"
-              accessibilityState={{ selected: o.value === value }}
-              accessibilityLabel={o.label}
-              onPress={() => {
-                selectionFeedback();
-                onChange(o.value);
-                setOpen(false);
-              }}
-              style={({ pressed }) => [styles.row, i < all.length - 1 && styles.divided, pressed && styles.pressed]}
-            >
-              <View style={styles.rowText}>
-                <Text style={styles.rowLabel} numberOfLines={1}>
-                  {o.label}
-                </Text>
-                {"hint" in o && o.hint ? (
-                  <Text style={styles.rowHint} numberOfLines={2}>
-                    {o.hint}
+        <ListGroup>
+          <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+            {all.map((o, i) => (
+              <Pressable
+                key={o.value || "none"}
+                accessibilityRole="button"
+                accessibilityState={{ selected: o.value === value }}
+                accessibilityLabel={o.label}
+                onPress={() => {
+                  selectionFeedback();
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+                style={({ pressed }) => [styles.row, i < all.length - 1 && styles.divided, pressed && styles.pressed]}
+              >
+                <View style={styles.rowText}>
+                  <Text style={styles.rowLabel} numberOfLines={1}>
+                    {o.label}
                   </Text>
-                ) : null}
-              </View>
-              {o.value === value ? <Icon name="check" size={18} color={colors.foreground} /> : null}
-            </Pressable>
-          ))}
-        </ScrollView>
+                  {"hint" in o && o.hint ? (
+                    <Text style={styles.rowHint} numberOfLines={2}>
+                      {o.hint}
+                    </Text>
+                  ) : null}
+                </View>
+                {o.value === value ? <Icon name="check" size={18} color={colors.foreground} /> : null}
+              </Pressable>
+            ))}
+          </ScrollView>
+        </ListGroup>
       </Sheet>
     </>
   );
@@ -96,11 +99,6 @@ const styles = StyleSheet.create({
   },
   list: {
     maxHeight: 420,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
   },
   row: {
     flexDirection: "row",

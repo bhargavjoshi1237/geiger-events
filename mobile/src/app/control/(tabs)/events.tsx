@@ -1,19 +1,22 @@
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { EventRow } from "@/components/control/EventRow";
 import { ScreenTitle } from "@/components/ScreenTitle";
 import { Card } from "@/components/ui/Card";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Screen } from "@/components/ui/Screen";
 import { Segmented } from "@/components/ui/Segmented";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { ControlEvent } from "@/types/portal";
 
 type Tab = "upcoming" | "drafts" | "past";
@@ -30,10 +33,44 @@ const EMPTY: Record<Tab, { title: string; message: string }> = {
   past: { title: "No past events", message: "Finished events show up here." },
 };
 
+type Section = { key: string; title: string; footer?: string; events: ControlEvent[] };
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
+
 function inTab(event: ControlEvent, tab: Tab): boolean {
   if (tab === "drafts") return event.status === "Draft";
   if (tab === "past") return event.when === "past" && event.status !== "Draft";
   return event.when !== "past" && event.status !== "Draft";
+}
+
+// "October 2026" from the event's own calendar date, never via a UTC midnight.
+function monthOf(date: string | null): { key: string; label: string } {
+  const m = /^(\d{4})-(\d{2})/.exec(date ?? "");
+  if (!m) return { key: "none", label: "Earlier" };
+  const label = new Date(Number(m[1]), Number(m[2]) - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return { key: `${m[1]}-${m[2]}`, label };
+}
+
+// Splits a tab into titled groups: upcoming by how soon, past by month, drafts as one group.
+function sectionsFor(tab: Tab, events: ControlEvent[]): Section[] {
+  if (tab === "drafts") {
+    return [{ key: "drafts", title: "Not published", footer: "Only your team can see drafts until you publish them.", events }];
+  }
+  if (tab === "upcoming") {
+    return [
+      { key: "today", title: "On today", events: events.filter((e) => e.when === "today") },
+      { key: "upcoming", title: "Coming up", events: events.filter((e) => e.when === "upcoming") },
+      { key: "unscheduled", title: "No date yet", events: events.filter((e) => e.when === "unscheduled") },
+    ].filter((s) => s.events.length);
+  }
+  const months = new Map<string, Section>();
+  for (const event of events) {
+    const month = monthOf(event.date);
+    const section = months.get(month.key);
+    if (section) section.events.push(event);
+    else months.set(month.key, { key: month.key, title: month.label, events: [event] });
+  }
+  return [...months.values()];
 }
 
 export default function ControlEventsScreen() {
@@ -48,12 +85,22 @@ export default function ControlEventsScreen() {
   );
 
   const events = useMemo(() => list.data?.events ?? [], [list.data]);
-  const inCurrentTab = useMemo(() => events.filter((e) => inTab(e, tab)), [events, tab]);
-  const filtered = useMemo(() => {
+  // Search narrows every tab at once, so the counts on the switcher show where the matches are.
+  const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return inCurrentTab;
-    return inCurrentTab.filter((e) => `${e.name} ${e.venue ?? ""} ${e.city ?? ""}`.toLowerCase().includes(q));
-  }, [inCurrentTab, query]);
+    if (!q) return events;
+    return events.filter((e) => `${e.name} ${e.venue ?? ""} ${e.city ?? ""}`.toLowerCase().includes(q));
+  }, [events, query]);
+  const filtered = useMemo(() => matches.filter((e) => inTab(e, tab)), [matches, tab]);
+  const sections = useMemo(() => sectionsFor(tab, filtered), [tab, filtered]);
+  const tabOptions = useMemo(
+    () =>
+      TABS.map((t) => {
+        const count = matches.filter((e) => inTab(e, t.value)).length;
+        return { value: t.value, label: count ? `${t.label} · ${count}` : t.label };
+      }),
+    [matches],
+  );
 
   const newEvent = () => router.push("/control/event/new");
 
@@ -91,8 +138,8 @@ export default function ControlEventsScreen() {
   } else {
     body = (
       <>
-        {searching ? (
-          <View style={styles.search}>
+        <View style={styles.toolbar}>
+          {searching ? (
             <Input
               leftIcon="search"
               value={query}
@@ -101,10 +148,8 @@ export default function ControlEventsScreen() {
               autoCapitalize="none"
               autoFocus
             />
-          </View>
-        ) : null}
-        <View style={styles.segment}>
-          <Segmented options={TABS} value={tab} onChange={(next) => setTab(next as Tab)} />
+          ) : null}
+          <Segmented options={tabOptions} value={tab} onChange={(next) => setTab(next as Tab)} />
         </View>
         {!filtered.length ? (
           query.trim() ? (
@@ -125,14 +170,24 @@ export default function ControlEventsScreen() {
             />
           )
         ) : (
-          <View style={styles.group}>
-            {filtered.map((event, i) => (
-              <EventRow
-                key={event.id}
-                event={event}
-                onPress={() => router.push({ pathname: "/control/event/[id]", params: { id: event.id } })}
-                divider={i < filtered.length - 1}
-              />
+          <View style={styles.stack}>
+            {sections.map((section, si) => (
+              <Animated.View key={`${tab}:${section.key}`} entering={FadeInDown.delay(stagger(si)).springify()}>
+                <ListGroup
+                  title={section.title}
+                  action={<CountBadge value={section.events.length} tone={section.key === "today" ? "success" : "neutral"} />}
+                  footer={section.footer}
+                >
+                  {section.events.map((event, i) => (
+                    <EventRow
+                      key={event.id}
+                      event={event}
+                      onPress={() => router.push({ pathname: "/control/event/[id]", params: { id: event.id } })}
+                      divider={i < section.events.length - 1}
+                    />
+                  ))}
+                </ListGroup>
+              </Animated.View>
             ))}
           </View>
         )}
@@ -144,6 +199,7 @@ export default function ControlEventsScreen() {
     <Screen scroll>
       <ScreenTitle
         title="Events"
+        eyebrow={project?.name}
         right={
           <View style={styles.actions}>
             {events.length ? (
@@ -172,19 +228,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs,
   },
-  search: {
-    marginBottom: spacing.md,
+  toolbar: {
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
-  segment: {
-    marginBottom: spacing.lg + 4,
-  },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   note: {
     ...type.body,

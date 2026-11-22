@@ -1,27 +1,33 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { Fact, Facts } from "@/components/control/money/Facts";
+import { localDay, totalIn } from "@/components/control/money/ledger";
 import { metaOf, REQUEST_STATUS } from "@/components/control/money/meta";
 import { MoneyRow } from "@/components/control/money/MoneyRow";
+import { RecordHead } from "@/components/control/money/RecordHead";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { Readout, type ReadoutFigure } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { moneyIn } from "@/lib/control_meta";
-import { fmtDateTime, fmtShortDay } from "@/lib/format";
+import { fmtDateTime } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { RefundRequest, RefundRequestList, RefundRequestStatus } from "@/types/control_money";
 
 const FILTERS = [
@@ -31,6 +37,15 @@ const FILTERS = [
   { value: "Denied", label: "Denied" },
   { value: "Refunded", label: "Refunded" },
 ];
+
+// Approved requests still need the refund recorded, so they stay open with the new ones.
+const OPEN: RefundRequestStatus[] = ["Requested", "Approved"];
+const stagger = (i: number) => Math.min(i, 8) * 50;
+
+function askedFor(rows: RefundRequest[]): string | undefined {
+  const sum = totalIn(rows, (r) => r.amount, (r) => r.currency);
+  return sum ? `${moneyIn(sum.total, sum.currency)} asked` : undefined;
+}
 
 export default function RefundRequestsScreen() {
   const { project } = useControl();
@@ -57,19 +72,46 @@ export default function RefundRequestsScreen() {
         <EmptyState icon="undo-2" title={`Nothing ${status.toLowerCase()}`} message="Requests with this status show up here." actionLabel="Show all" onAction={() => setStatus("all")} />
       );
   } else {
+    const focal = status === "all" ? "Requested" : status;
+    const focalRows = requests.filter((r) => r.status === focal);
+    const lead: ReadoutFigure = {
+      label: status === "all" ? "Waiting on you" : metaOf(REQUEST_STATUS, status).label,
+      value: String(focalRows.length),
+      hint: askedFor(focalRows),
+      tone: focal === "Requested" && focalRows.length ? "warning" : "neutral",
+    };
+    const items: ReadoutFigure[] =
+      status === "all"
+        ? (["Approved", "Refunded", "Denied"] as const).map((s) => ({ label: REQUEST_STATUS[s].label, value: String(requests.filter((r) => r.status === s).length) }))
+        : [];
+    const groups = [
+      { key: "open", title: "Open", rows: requests.filter((r) => OPEN.includes(r.status)) },
+      { key: "closed", title: "Closed", rows: requests.filter((r) => !OPEN.includes(r.status)) },
+    ].filter((g) => g.rows.length);
+
     body = (
-      <View style={styles.group}>
-        {requests.map((r, i) => (
-          <MoneyRow
-            key={r.id}
-            icon="undo-2"
-            title={r.name || r.email || "Unknown buyer"}
-            meta={[r.eventName, r.reason || "No reason given", fmtShortDay(r.createdAt)].filter(Boolean).join(" · ")}
-            amount={moneyIn(r.amount, r.currency)}
-            status={metaOf(REQUEST_STATUS, r.status)}
-            onPress={() => setOpenId(r.id)}
-            divider={i < requests.length - 1}
-          />
+      <View style={styles.stack}>
+        <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+          <Readout lead={lead} items={items} />
+        </Animated.View>
+        {groups.map((group, gi) => (
+          <Animated.View key={group.key} entering={FadeInDown.delay(stagger(gi + 1)).springify()}>
+            <ListGroup title={group.title} action={<CountBadge value={group.rows.length} />}>
+              {group.rows.map((r, i) => (
+                <MoneyRow
+                  key={r.id}
+                  date={localDay(r.createdAt)}
+                  title={r.name || r.email || "Unknown buyer"}
+                  meta={[r.eventName, r.reason || "No reason given"].filter(Boolean).join(" · ")}
+                  code={r.orderCode || undefined}
+                  amount={moneyIn(r.amount, r.currency)}
+                  status={metaOf(REQUEST_STATUS, r.status)}
+                  onPress={() => setOpenId(r.id)}
+                  divider={i < group.rows.length - 1}
+                />
+              ))}
+            </ListGroup>
+          </Animated.View>
         ))}
       </View>
     );
@@ -130,14 +172,19 @@ function RequestDetail({ request, canDecide, onChanged, onClose }: { request: Re
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.sheet}>
+        <RecordHead
+          at={request.createdAt}
+          title={request.name || request.email || "Unknown buyer"}
+          subtitle={request.name && request.email ? request.email : undefined}
+          amount={moneyIn(request.amount, request.currency)}
+          status={metaOf(REQUEST_STATUS, request.status)}
+        />
+
         <Facts>
-          <Fact label="Buyer" value={[request.name, request.email].filter(Boolean).join(" · ") || "Unknown"} />
-          <Fact label="Asked for" value={moneyIn(request.amount, request.currency)} />
           {request.eventName ? <Fact label="Event" value={request.eventName} /> : null}
           {request.orderCode ? <Fact label="Order" value={request.orderCode} mono /> : null}
-          <Fact label="Received" value={fmtDateTime(request.createdAt)} />
+          <Fact label="Received" value={fmtDateTime(request.createdAt)} mono />
           <Fact label="Reason" value={request.reason || "No reason given"} />
-          <Fact label="Status" value={metaOf(REQUEST_STATUS, request.status).label} />
         </Facts>
 
         {canDecide && !done && request.orderId ? (
@@ -191,12 +238,8 @@ const styles = StyleSheet.create({
   filters: {
     marginBottom: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   sheet: {
     gap: spacing.lg,

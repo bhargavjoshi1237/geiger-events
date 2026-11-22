@@ -3,9 +3,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Icon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Sheet } from "@/components/ui/Sheet";
 import { selectionFeedback } from "@/lib/haptics";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 
 export type PickerOption = { value: string; label: string; detail?: string };
 
@@ -32,35 +33,38 @@ export function PickerSheet({ visible, title, options, value, onPick, onClose, e
         {!shown.length ? (
           <Text style={styles.empty}>{options.length ? "Nothing matches." : emptyText}</Text>
         ) : (
-          <ScrollView style={styles.group} keyboardShouldPersistTaps="handled">
-            {shown.map((o, i) => (
-              <Pressable
-                key={o.value}
-                accessibilityRole="button"
-                accessibilityState={{ selected: o.value === value }}
-                accessibilityLabel={o.detail ? `${o.label}, ${o.detail}` : o.label}
-                onPress={() => {
-                  selectionFeedback();
-                  onPick(o.value);
-                  setQuery("");
-                  onClose();
-                }}
-                style={({ pressed }) => [styles.row, i < shown.length - 1 && styles.divided, pressed && styles.pressed]}
-              >
-                <View style={styles.text}>
-                  <Text style={styles.label} numberOfLines={1}>
-                    {o.label}
-                  </Text>
-                  {o.detail ? (
-                    <Text style={styles.detail} numberOfLines={1}>
-                      {o.detail}
+          <ListGroup>
+            <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+              {shown.map((o, i) => {
+                const current = o.value === value;
+                return (
+                  <Pressable
+                    key={o.value}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: current }}
+                    accessibilityLabel={o.detail ? `${o.label}, ${o.detail}` : o.label}
+                    onPress={() => {
+                      selectionFeedback();
+                      onPick(o.value);
+                      setQuery("");
+                      onClose();
+                    }}
+                    style={({ pressed }) => [styles.row, i < shown.length - 1 && styles.divided, pressed && styles.pressed]}
+                  >
+                    <Text style={[styles.label, current && styles.labelOn]} numberOfLines={1}>
+                      {o.label}
                     </Text>
-                  ) : null}
-                </View>
-                {o.value === value ? <Icon name="check" size={18} color={colors.foreground} /> : null}
-              </Pressable>
-            ))}
-          </ScrollView>
+                    {o.detail ? (
+                      <Text style={styles.detail} numberOfLines={1}>
+                        {o.detail}
+                      </Text>
+                    ) : null}
+                    {current ? <Icon name="check" size={18} color={colors.foreground} /> : <View style={styles.checkSpace} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </ListGroup>
         )}
       </View>
     </Sheet>
@@ -71,19 +75,15 @@ const styles = StyleSheet.create({
   body: {
     gap: spacing.md,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  list: {
     maxHeight: 380,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    paddingVertical: 13,
+    minHeight: 48,
+    paddingVertical: 12,
   },
   divided: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -92,17 +92,23 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.6,
   },
-  text: {
-    flex: 1,
-    gap: 2,
-  },
   label: {
     ...type.body,
+    flex: 1,
     color: colors.foreground,
   },
+  labelOn: {
+    ...type.bodyStrong,
+  },
   detail: {
-    ...type.caption,
+    ...type.monoSmall,
+    fontSize: 11,
+    flexShrink: 0,
+    maxWidth: "40%",
     color: colors.textSecondary,
+  },
+  checkSpace: {
+    width: 18,
   },
   empty: {
     ...type.body,

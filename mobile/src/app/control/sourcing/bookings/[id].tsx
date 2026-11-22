@@ -1,31 +1,42 @@
 import { useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
+import { CoverWash } from "@/components/control/CoverWash";
+import { DateStub } from "@/components/control/DateStub";
+import { LedgerRow, LedgerTotal } from "@/components/control/sourcing/Ledger";
 import { BOOKING_STATUS } from "@/components/control/sourcing/meta";
+import { venueDate } from "@/components/control/sourcing/when";
+import { StatusButton } from "@/components/control/StatusButton";
+import { DetailRow } from "@/components/DetailRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
+import { Icon, type IconName } from "@/components/ui/icons";
 import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
-import { Pill } from "@/components/ui/Pill";
 import { Screen } from "@/components/ui/Screen";
-import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { fmtDateTime } from "@/lib/format";
+import { eventDayNumeral } from "@/lib/control_meta";
+import { capitalize, fmtDateTime } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { BookingEmailResult, VenueBooking } from "@/types/control_sourcing";
 
 type Result = { booking: VenueBooking; email: BookingEmailResult };
+type Fact = { label: string; value: string; icon: IconName; mono?: boolean };
+type Tool = { key: string; icon: IconName; title: string; subtitle: string; onPress: () => void };
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 export default function BookingScreen() {
   const toast = useToast();
@@ -77,92 +88,165 @@ export default function BookingScreen() {
 
   const meta = BOOKING_STATUS[booking.displayStatus];
   const open = booking.status !== "cancelled" && booking.displayStatus !== "Completed";
+  const date = venueDate(booking.startsAt, booking.timezone);
+  const place = [booking.spaceName, booking.venueName].filter(Boolean).join(" · ");
+  const resendTitle = booking.status === "hold" ? "Resend hold notice" : "Resend confirmation";
+
+  const allFacts: (Fact | null)[] = [
+    booking.eventName ? { label: "Event", value: booking.eventName, icon: "calendar" } : null,
+    booking.setupStyle ? { label: "Setup", value: booking.setupStyle, icon: "layout-grid" } : null,
+    booking.attendees ? { label: "Attendees", value: booking.attendees.toLocaleString("en-US"), icon: "users", mono: true } : null,
+    { label: "Time zone", value: booking.timezone, icon: "globe", mono: true },
+    booking.reference ? { label: "Reference", value: booking.reference, icon: "tag", mono: true } : null,
+    booking.cancelReason ? { label: "Cancelled because", value: booking.cancelReason, icon: "ban" } : null,
+  ];
+  const facts = allFacts.filter((f): f is Fact => f !== null);
+
+  const tools: Tool[] = [];
+  if (open) {
+    tools.push({
+      key: "notify",
+      icon: "mail",
+      title: resendTitle,
+      subtitle: "Emails the venue and the booker again",
+      onPress: () => void act("notify", `${path}/notify`, { kind: booking.status === "hold" ? "hold" : "confirmation" }, "Email sent."),
+    });
+  }
+  if (booking.calendarUrl) {
+    tools.push({ key: "calendar", icon: "calendar-plus", title: "Add to calendar", subtitle: "Opens it in Google Calendar", onPress: () => void Linking.openURL(booking.calendarUrl) });
+  }
+  tools.push({ key: "edit", icon: "pencil", title: "Edit details", subtitle: "Title, contact and notes", onPress: () => setEditing(true) });
+
+  let step = 0;
 
   return (
-    <Screen scroll header={<ScreenHeader title={booking.reference || "Booking"} subtitle={meta.label} />}>
+    <Screen scroll backdrop={<CoverWash numeral={eventDayNumeral(date)} />} header={<ScreenHeader title="Booking" />}>
       <View style={styles.stack}>
-        <Card>
-          <View style={styles.head}>
-            <Text style={styles.title}>{booking.title || booking.spaceName}</Text>
-            <Pill label={meta.label} tone={meta.tone} />
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()} style={styles.hero}>
+          <View style={styles.heroTop}>
+            <DateStub date={date} size="lg" muted={!open} />
+            <View style={styles.heroWhen}>
+              <Text style={styles.when} numberOfLines={2}>
+                {booking.when}
+              </Text>
+              {place ? (
+                <Text style={styles.place} numberOfLines={2}>
+                  {place}
+                </Text>
+              ) : null}
+            </View>
           </View>
-          <Text style={styles.meta}>{booking.when}</Text>
-          <Text style={styles.meta}>{[booking.spaceName, booking.venueName].filter(Boolean).join(", ")}</Text>
-          {booking.eventName ? <Text style={styles.meta}>{`For ${booking.eventName}`}</Text> : null}
-          {booking.setupStyle || booking.attendees ? (
-            <Text style={styles.meta}>{[booking.setupStyle, booking.attendees ? `${booking.attendees} people` : ""].filter(Boolean).join(" · ")}</Text>
+          <Text style={styles.name}>{booking.title || booking.spaceName}</Text>
+          <View style={styles.metaRow}>
+            <StatusButton label={meta.label} tone={meta.tone} />
+            {booking.reference ? <Text style={styles.ref}>{booking.reference}</Text> : null}
+            <Text style={styles.ref}>{booking.totalLabel}</Text>
+          </View>
+          {booking.liveHold && booking.holdExpiresAt ? (
+            <View style={styles.notice}>
+              <Icon name="timer" size={15} color={colors.warning} />
+              <Text style={styles.noticeText}>{`Hold expires ${fmtDateTime(booking.holdExpiresAt)}. Confirm it to keep the slot.`}</Text>
+            </View>
           ) : null}
-          {booking.liveHold && booking.holdExpiresAt ? <Text style={styles.warn}>{`Hold expires ${fmtDateTime(booking.holdExpiresAt)}`}</Text> : null}
-          {booking.cancelReason ? <Text style={styles.meta}>{`Cancelled: ${booking.cancelReason}`}</Text> : null}
-        </Card>
+        </Animated.View>
 
-        <View style={styles.actions}>
-          {booking.liveHold ? (
+        {booking.liveHold ? (
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
             <Button
               title="Confirm booking"
               icon="circle-check"
               loading={busy === "confirm"}
               onPress={() => void act("confirm", `${path}/confirm`, {}, `${booking.reference} confirmed.`)}
+              fullWidth
             />
-          ) : null}
-          {open ? (
-            <Button
-              title={booking.status === "hold" ? "Resend hold notice" : "Resend confirmation"}
-              icon="mail"
-              variant="secondary"
-              loading={busy === "notify"}
-              onPress={() => void act("notify", `${path}/notify`, { kind: booking.status === "hold" ? "hold" : "confirmation" }, "Email sent.")}
+          </Animated.View>
+        ) : null}
+
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+          <ListGroup title="Manage">
+            {tools.map((tool, i) => {
+              const sending = tool.key === "notify" && busy === "notify";
+              return (
+                <ListRow
+                  key={tool.key}
+                  leading={<IconTile icon={tool.icon} size={36} />}
+                  title={tool.title}
+                  subtitle={tool.subtitle}
+                  trailing={sending ? <ActivityIndicator size="small" color={colors.mutedForeground} /> : undefined}
+                  onPress={sending ? undefined : tool.onPress}
+                  divider={i < tools.length - 1}
+                />
+              );
+            })}
+          </ListGroup>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+          <ListGroup title="Price" footer="Priced from the space's published rates when it was booked.">
+            {booking.priceLines.map((line, i) => (
+              <LedgerRow key={line.date} label={line.date} detail={line.detail} amount={line.amount} divider={i < booking.priceLines.length - 1} />
+            ))}
+            <LedgerTotal
+              label={booking.priceLines.length ? "Total" : "No charge"}
+              amount={booking.totalLabel}
+              hint={booking.currency ? booking.currency.toUpperCase() : undefined}
+              ruled={booking.priceLines.length > 0}
             />
-          ) : null}
-          {booking.calendarUrl ? (
-            <Button title="Add to calendar" icon="calendar" variant="ghost" onPress={() => void Linking.openURL(booking.calendarUrl)} />
-          ) : null}
-          <Button title="Edit details" icon="pencil" variant="ghost" onPress={() => setEditing(true)} />
-        </View>
+          </ListGroup>
+        </Animated.View>
 
-        <View>
-          <SectionTitle>{`Price · ${booking.totalLabel}`}</SectionTitle>
-          <View style={styles.group}>
-            {booking.priceLines.length ? (
-              booking.priceLines.map((line, i) => (
-                <ListRow key={line.date} title={`${line.date} · ${line.amount}`} subtitle={line.detail} divider={i < booking.priceLines.length - 1} />
-              ))
-            ) : (
-              <ListRow title="No charge" divider={false} />
-            )}
-          </View>
-        </View>
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+          <ListGroup title="Details">
+            {facts.map((fact, i) => (
+              <DetailRow key={fact.label} label={fact.label} value={fact.value} icon={fact.icon} mono={fact.mono} divider={i < facts.length - 1} />
+            ))}
+          </ListGroup>
+        </Animated.View>
 
-        <View>
-          <SectionTitle>Contact</SectionTitle>
-          <View style={styles.group}>
-            <ListRow leading={<IconTile icon="users" size={34} />} title={booking.contactName || "No contact name"} subtitle="Name" />
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+          <ListGroup title="Contact">
+            <ListRow leading={<IconTile icon="users" size={36} />} title={booking.contactName || "No contact name"} subtitle="Name" />
             <ListRow
-              leading={<IconTile icon="mail" size={34} />}
+              leading={<IconTile icon="mail" size={36} />}
               title={booking.contactEmail || "No email"}
               subtitle="Email"
               onPress={booking.contactEmail ? () => void Linking.openURL(`mailto:${booking.contactEmail}`) : undefined}
             />
             <ListRow
-              leading={<IconTile icon="smartphone" size={34} />}
+              leading={<IconTile icon="smartphone" size={36} />}
               title={booking.contactPhone || "No phone"}
               subtitle="Phone"
               onPress={booking.contactPhone ? () => void Linking.openURL(`tel:${booking.contactPhone}`) : undefined}
               divider={false}
             />
-          </View>
-          {booking.notes ? <Text style={styles.notes}>{booking.notes}</Text> : null}
-        </View>
+          </ListGroup>
+        </Animated.View>
+
+        {booking.notes ? (
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title="Notes">
+              <Text style={styles.notes}>{booking.notes}</Text>
+            </ListGroup>
+          </Animated.View>
+        ) : null}
 
         {booking.emails.length ? (
-          <View>
-            <SectionTitle>Emails</SectionTitle>
-            <View style={styles.group}>
-              {booking.emails.map((e, i) => (
-                <ListRow key={`${e.at}-${e.to}-${i}`} title={`${e.kind} · ${e.to}`} subtitle={`${e.status} · ${fmtDateTime(e.at)}`} divider={i < booking.emails.length - 1} />
-              ))}
-            </View>
-          </View>
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title="Email log">
+              {booking.emails.map((e, i) => {
+                const sent = e.status === "sent";
+                return (
+                  <ListRow
+                    key={`${e.at}-${e.to}-${i}`}
+                    leading={<IconTile icon={sent ? "mail-check" : "circle-alert"} size={36} tone={sent ? "success" : "warning"} />}
+                    title={e.to}
+                    subtitle={`${capitalize(e.kind)} · ${e.status} · ${fmtDateTime(e.at)}`}
+                    divider={i < booking.emails.length - 1}
+                  />
+                );
+              })}
+            </ListGroup>
+          </Animated.View>
         ) : null}
 
         {open ? <Button title="Cancel booking" icon="ban" variant="destructiveGhost" onPress={() => setCancelling(true)} fullWidth /> : null}
@@ -274,43 +358,66 @@ const styles = StyleSheet.create({
   stack: {
     gap: spacing.xl,
   },
-  head: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
+  hero: {
     gap: spacing.md,
+    paddingTop: spacing.sm,
   },
-  title: {
-    ...type.title,
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md + 2,
+  },
+  heroWhen: {
     flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  when: {
+    ...type.mono,
     color: colors.foreground,
   },
-  meta: {
-    ...type.body,
+  place: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
   },
-  warn: {
-    ...type.label,
-    color: colors.warning,
-    marginTop: spacing.sm,
+  name: {
+    ...type.display,
+    color: colors.foreground,
   },
-  actions: {
+  metaRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    alignItems: "center",
+    gap: spacing.md,
   },
-  group: {
+  ref: {
+    ...type.monoSmall,
+    color: colors.textSecondary,
+  },
+  notice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+    borderColor: `${colors.warning}40`,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.warning}12`,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+  },
+  noticeText: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
+    color: colors.warning,
   },
   notes: {
     ...type.body,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
+    color: colors.mutedForeground,
+    paddingVertical: spacing.md + 2,
   },
   form: {
     gap: spacing.lg,

@@ -1,29 +1,33 @@
 import * as Clipboard from "expo-clipboard";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
+import { SwitchRow } from "@/components/control/checkin_ops/SwitchRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { DeskRole } from "@/types/control_inventory";
 
 const mask = (code: string) => (code ? `${"•".repeat(Math.max(0, code.length - 2))}${code.slice(-2)}` : "No code");
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 function abilities(role: DeskRole): string {
   const list = [role.canIssue && "Issue", role.canReturn && "Undo", role.canOverride && "Override"].filter(Boolean);
@@ -71,18 +75,29 @@ export default function IssuingStaffScreen() {
   } else if (!roles.length) {
     body = <EmptyState icon="key-round" title="No desk roles yet" message="Create a role to give staff a code for the issuing desk." actionLabel="Create a role" onAction={() => setCreating(true)} />;
   } else {
+    // Live codes first; switched-off roles sit apart so a locked-out code is obvious.
+    const groups = [
+      { title: "Codes that work", rows: roles.filter((r) => r.active), tone: "success" as const },
+      { title: "Switched off", rows: roles.filter((r) => !r.active), tone: "neutral" as const },
+    ].filter((g) => g.rows.length);
     body = (
-      <View style={styles.group}>
-        {roles.map((role, i) => (
-          <ListRow
-            key={role.id}
-            leading={<IconTile icon="key-round" size={34} tone={role.active ? "neutral" : "outline"} />}
-            title={role.name}
-            subtitle={`${mask(role.accessCode)} · ${abilities(role)}`}
-            trailing={<Pill label={role.active ? "Active" : "Off"} tone={role.active ? "success" : "neutral"} variant="outline" />}
-            onPress={() => setOpenId(role.id)}
-            divider={i < roles.length - 1}
-          />
+      <View style={styles.stack}>
+        {groups.map((g, gi) => (
+          <Animated.View key={g.title} entering={FadeInDown.delay(stagger(gi)).springify()}>
+            <ListGroup title={g.title} action={<CountBadge value={g.rows.length} tone={g.tone} />}>
+              {g.rows.map((role, i) => (
+                <ListRow
+                  key={role.id}
+                  leading={<IconTile icon="key-round" size={36} tone={role.active ? "neutral" : "outline"} />}
+                  title={role.name}
+                  subtitle={`${mask(role.accessCode)} · ${abilities(role)}`}
+                  trailing={<Pill label={role.active ? "Active" : "Off"} tone={role.active ? "success" : "neutral"} variant="outline" />}
+                  onPress={() => setOpenId(role.id)}
+                  divider={i < g.rows.length - 1}
+                />
+              ))}
+            </ListGroup>
+          </Animated.View>
         ))}
       </View>
     );
@@ -101,7 +116,7 @@ export default function IssuingStaffScreen() {
             </Field>
             <View style={styles.actions}>
               <Button title="Cancel" variant="ghost" onPress={() => setCreating(false)} />
-              <Button title="Create" onPress={() => void create()} loading={busy} />
+              <Button title="Create role" onPress={() => void create()} loading={busy} />
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -167,18 +182,32 @@ function RoleEditor({ projectId, role, onChanged, onDeleted }: { projectId: stri
 
   return (
     <View style={styles.form}>
-      <View style={styles.codeRow}>
-        <Text style={styles.code} accessibilityLabel={revealed ? `Code ${role.accessCode.split("").join(" ")}` : "Code hidden"}>
-          {revealed ? role.accessCode : mask(role.accessCode)}
-        </Text>
-        <IconButton icon="eye" label={revealed ? "Hide code" : "Show code"} variant="plain" onPress={() => setRevealed((r) => !r)} />
-        <IconButton icon="copy" label="Copy code" variant="plain" onPress={() => void copy()} />
-      </View>
-      <ToggleRow label="Active" hint="An inactive code stops opening the desk." value={role.active} disabled={busy} onChange={(v) => void patch({ active: v })} />
-      <ToggleRow label="Issue items" hint="Look up an attendee and hand over what they're entitled to." value={role.canIssue} disabled={busy} onChange={(v) => void patch({ canIssue: v })} />
-      <ToggleRow label="Undo a hand-out" hint="Reverse a mistake, writing a return movement back into stock." value={role.canReturn} disabled={busy} onChange={(v) => void patch({ canReturn: v })} />
-      <ToggleRow label="Override & walk-up" hint="Issue again, outside a window, or with no attendee. Every override is logged." value={role.canOverride} disabled={busy} onChange={(v) => void patch({ canOverride: v })} />
-      <Button title="New code" icon="refresh-cw" variant="secondary" onPress={() => void patch({ regenerate: true }, "New code issued. The old one stops working.")} disabled={busy} fullWidth />
+      <ListGroup>
+        <View style={styles.codeRow}>
+          <View style={styles.codeText}>
+            <Text style={styles.codeLabel}>Desk code</Text>
+            <Text style={styles.code} numberOfLines={1} accessibilityLabel={revealed ? `Code ${role.accessCode.split("").join(" ")}` : "Code hidden"}>
+              {revealed ? role.accessCode : mask(role.accessCode)}
+            </Text>
+          </View>
+          <IconButton icon={revealed ? "lock" : "eye"} label={revealed ? "Hide code" : "Show code"} variant="plain" onPress={() => setRevealed((r) => !r)} />
+          <IconButton icon="copy" label="Copy code" variant="plain" onPress={() => void copy()} />
+        </View>
+      </ListGroup>
+      <ListGroup>
+        <SwitchRow title="Code works" detail="An inactive code stops opening the desk." value={role.active} disabled={busy} onValueChange={(v) => void patch({ active: v })} />
+        <SwitchRow title="Issue items" detail="Look up an attendee and hand over what they're entitled to." value={role.canIssue} disabled={busy} onValueChange={(v) => void patch({ canIssue: v })} />
+        <SwitchRow title="Undo a hand-out" detail="Reverse a mistake, writing a return movement back into stock." value={role.canReturn} disabled={busy} onValueChange={(v) => void patch({ canReturn: v })} />
+        <SwitchRow
+          title="Override & walk-up"
+          detail="Issue again, outside a window, or with no attendee. Every override is logged."
+          value={role.canOverride}
+          disabled={busy}
+          onValueChange={(v) => void patch({ canOverride: v })}
+          divider={false}
+        />
+      </ListGroup>
+      <Button title="Issue a new code" icon="refresh-cw" variant="secondary" onPress={() => void patch({ regenerate: true }, "New code issued. The old one stops working.")} disabled={busy} fullWidth />
       {confirmDelete ? (
         <View style={styles.actions}>
           <Button title="Keep it" variant="ghost" onPress={() => setConfirmDelete(false)} />
@@ -191,33 +220,19 @@ function RoleEditor({ projectId, role, onChanged, onDeleted }: { projectId: stri
   );
 }
 
-function ToggleRow({ label, hint, value, onChange, disabled }: { label: string; hint: string; value: boolean; onChange: (v: boolean) => void; disabled: boolean }) {
-  return (
-    <View style={styles.toggle}>
-      <View style={styles.toggleText}>
-        <Text style={styles.toggleLabel}>{label}</Text>
-        <Text style={styles.hint}>{hint}</Text>
-      </View>
-      <Switch value={value} onValueChange={onChange} label={label} disabled={disabled} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   lede: {
-    ...type.body,
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   form: {
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   actions: {
     flexDirection: "row",
@@ -227,33 +242,27 @@ const styles = StyleSheet.create({
   codeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg - 2,
-    backgroundColor: colors.surfaceSubtle,
-    paddingLeft: spacing.lg,
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
   },
-  code: {
-    ...type.monoLarge,
+  codeText: {
     flex: 1,
-    color: colors.foreground,
-  },
-  toggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  toggleText: {
-    flex: 1,
+    minWidth: 0,
     gap: 2,
   },
-  toggleLabel: {
-    ...type.label,
-    color: colors.foreground,
-  },
-  hint: {
-    ...type.caption,
+  codeLabel: {
+    ...type.micro,
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
     color: colors.textTertiary,
+  },
+  code: {
+    ...type.figureSmall,
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: 3,
+    color: colors.foreground,
   },
 });

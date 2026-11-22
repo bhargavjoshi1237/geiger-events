@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { DateStub } from "@/components/control/DateStub";
 import { Icon } from "@/components/ui/icons";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Sheet } from "@/components/ui/Sheet";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { whenLabel } from "@/lib/control_meta";
-import { selectionFeedback } from "@/lib/haptics";
+import { eventDateLine } from "@/lib/control_meta";
+import { selectionFeedback, tapFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { ControlEvent } from "@/types/portal";
@@ -24,52 +26,67 @@ export function EventPicker({ projectId, value, onChange }: Props) {
     if (!value && first) onChange(first);
   }, [value, first, onChange]);
 
-  if (list.loading && !list.data) return <Skeleton height={52} radius={radius.lg} />;
+  if (list.loading && !list.data) return <Skeleton height={74} radius={radius.lg} />;
   if (!events.length) return null;
 
   return (
     <>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Event: ${selected?.name ?? "choose one"}`}
-        onPress={() => setOpen(true)}
+        accessibilityLabel={`Event: ${selected?.name ?? "choose one"}. Change event`}
+        onPress={() => {
+          tapFeedback();
+          setOpen(true);
+        }}
         style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}
       >
-        <Icon name="calendar" size={16} color={colors.textSecondary} />
-        <View style={styles.triggerStack}>
-          <Text style={styles.triggerName} numberOfLines={1}>
+        <DateStub date={selected?.date ?? null} today={selected?.when === "today"} muted={selected?.when === "past"} />
+        <View style={styles.stack}>
+          <Text style={styles.name} numberOfLines={1}>
             {selected?.name ?? "Choose an event"}
           </Text>
-          {selected ? <Text style={styles.triggerMeta}>{whenLabel(selected)}</Text> : null}
+          {selected ? (
+            <Text style={[styles.when, selected.when === "today" && styles.whenToday]} numberOfLines={1}>
+              {eventDateLine(selected)}
+            </Text>
+          ) : null}
         </View>
         <Icon name="chevrons-up-down" size={16} color={colors.textTertiary} />
       </Pressable>
 
-      <Sheet visible={open} onClose={() => setOpen(false)} title="Event">
-        <ScrollView style={styles.list}>
-          {events.map((event, i) => (
-            <Pressable
-              key={event.id}
-              accessibilityRole="button"
-              accessibilityState={{ selected: event.id === value }}
-              accessibilityLabel={event.name}
-              onPress={() => {
-                selectionFeedback();
-                onChange(event);
-                setOpen(false);
-              }}
-              style={({ pressed }) => [styles.row, i < events.length - 1 && styles.divided, pressed && styles.pressed]}
-            >
-              <View style={styles.triggerStack}>
-                <Text style={styles.rowName} numberOfLines={1}>
-                  {event.name}
-                </Text>
-                <Text style={styles.triggerMeta}>{whenLabel(event)}</Text>
-              </View>
-              {event.id === value ? <Icon name="check" size={18} color={colors.foreground} /> : null}
-            </Pressable>
-          ))}
-        </ScrollView>
+      <Sheet visible={open} onClose={() => setOpen(false)} title="Choose an event">
+        <ListGroup>
+          <ScrollView style={styles.list}>
+            {events.map((event, i) => {
+              const place = [event.venue, event.city].filter(Boolean).join(", ");
+              return (
+                <Pressable
+                  key={event.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: event.id === value }}
+                  accessibilityLabel={event.name}
+                  onPress={() => {
+                    selectionFeedback();
+                    onChange(event);
+                    setOpen(false);
+                  }}
+                  style={({ pressed }) => [styles.row, i < events.length - 1 && styles.divided, pressed && styles.pressed]}
+                >
+                  <DateStub date={event.date} today={event.when === "today"} muted={event.when === "past"} />
+                  <View style={styles.stack}>
+                    <Text style={styles.rowName} numberOfLines={1}>
+                      {event.name}
+                    </Text>
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {[eventDateLine(event), place].filter(Boolean).join(" · ")}
+                    </Text>
+                  </View>
+                  {event.id === value ? <Icon name="check" size={18} color={colors.foreground} /> : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </ListGroup>
       </Sheet>
     </>
   );
@@ -77,7 +94,6 @@ export function EventPicker({ projectId, value, onChange }: Props) {
 
 const styles = StyleSheet.create({
   trigger: {
-    minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
@@ -85,38 +101,37 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.lg,
     backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.lg,
+    paddingVertical: spacing.md,
   },
   pressed: {
     opacity: 0.6,
   },
-  triggerStack: {
+  stack: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
+    gap: 3,
   },
-  triggerName: {
-    ...type.label,
+  name: {
+    ...type.bodyStrong,
     color: colors.foreground,
   },
-  triggerMeta: {
-    ...type.caption,
+  when: {
+    ...type.monoSmall,
     color: colors.textSecondary,
+  },
+  whenToday: {
+    color: colors.success,
   },
   list: {
     maxHeight: 420,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    paddingVertical: 14,
+    paddingVertical: 12,
   },
   divided: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -125,6 +140,12 @@ const styles = StyleSheet.create({
   rowName: {
     ...type.label,
     fontSize: 15,
+    lineHeight: 20,
     color: colors.foreground,
+  },
+  meta: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textSecondary,
   },
 });

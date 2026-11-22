@@ -1,14 +1,18 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
@@ -18,8 +22,11 @@ import { pluralize } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { GuestTag } from "@/types/control_guests";
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
+const n = (value: number) => value.toLocaleString("en-US");
 
 export default function TagsScreen() {
   const router = useRouter();
@@ -28,28 +35,50 @@ export default function TagsScreen() {
   const [selected, setSelected] = useState<GuestTag | null>(null);
   const tags = list.data?.tags ?? [];
 
+  let body: React.ReactNode;
+  if (list.error && !list.data) {
+    body = <EmptyState icon="circle-alert" title="Couldn't load tags" message={list.error} actionLabel="Try again" onAction={() => void list.reload()} />;
+  } else if (!list.data) {
+    body = <SkeletonList rows={6} variant="divided" />;
+  } else if (!tags.length) {
+    body = <EmptyState icon="tag" title="No tags yet" message="Tag contacts from their page in the Contact Book." />;
+  } else {
+    // The server sorts by use, so the first tag is the most used.
+    const top = tags[0];
+    const unused = tags.filter((t) => !t.count).length;
+    body = (
+      <View style={styles.stack}>
+        <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+          <Readout
+            items={[
+              { label: "Tags", value: String(tags.length) },
+              { label: "Most used", value: n(top.count), hint: top.name },
+              { label: "Unused", value: String(unused), hint: "On no contact" },
+            ]}
+          />
+        </Animated.View>
+        <Animated.View entering={FadeInDown.delay(stagger(1)).springify()}>
+          <ListGroup title="All tags" footer="Tap a tag to rename it, delete it or see who has it.">
+            {tags.map((t, i) => (
+              <ListRow
+                key={t.id ?? t.name}
+                leading={<IconTile icon="tag" size={36} />}
+                title={t.name}
+                subtitle={t.description || undefined}
+                trailing={<CountBadge value={n(t.count)} />}
+                onPress={() => setSelected(t)}
+                divider={i < tags.length - 1}
+              />
+            ))}
+          </ListGroup>
+        </Animated.View>
+      </View>
+    );
+  }
+
   return (
     <Screen scroll header={<ScreenHeader title="Tags" />}>
-      {list.error && !list.data ? (
-        <EmptyState icon="circle-alert" title="Couldn't load tags" message={list.error} actionLabel="Try again" onAction={() => void list.reload()} />
-      ) : !list.data ? (
-        <SkeletonList rows={6} variant="divided" />
-      ) : !tags.length ? (
-        <EmptyState icon="tag" title="No tags yet" message="Tag contacts from their page in the Contact Book." />
-      ) : (
-        <View style={styles.group}>
-          {tags.map((t, i) => (
-            <ListRow
-              key={t.id ?? t.name}
-              leading={<IconTile icon="tag" size={34} />}
-              title={t.name}
-              subtitle={`${t.count.toLocaleString("en-US")} ${pluralize(t.count, "contact", "contacts")}`}
-              onPress={() => setSelected(t)}
-              divider={i < tags.length - 1}
-            />
-          ))}
-        </View>
-      )}
+      {body}
       {project ? (
         <Sheet visible={selected !== null} onClose={() => setSelected(null)} title={selected?.name ?? "Tag"}>
           {selected ? (
@@ -95,13 +124,24 @@ function TagForm({ projectId, tag, onDone, onViewContacts }: { projectId: string
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.form}>
+        <View style={styles.head}>
+          <IconTile icon="tag" size={44} />
+          <View style={styles.headText}>
+            <Text style={styles.headCount}>{`${n(tag.count)} ${pluralize(tag.count, "contact", "contacts")}`}</Text>
+            {tag.description ? (
+              <Text style={styles.headDescription} numberOfLines={2}>
+                {tag.description}
+              </Text>
+            ) : null}
+          </View>
+          <Button title="See contacts" size="sm" variant="secondary" icon="users" onPress={onViewContacts} />
+        </View>
         <Field label="Name" hint="Renaming changes it on every contact that has it.">
           <Input value={name} onChangeText={setName} autoCapitalize="none" />
         </Field>
         <View style={styles.actions}>
-          <Button title="See contacts" variant="ghost" icon="users" onPress={onViewContacts} />
           <Button
-            title="Rename"
+            title="Rename tag"
             onPress={() => void send("rename", { from: tag.name, to: name, catalogId: tag.id })}
             loading={busy === "rename"}
             disabled={busy !== null || !name.trim() || name.trim() === tag.name}
@@ -124,15 +164,29 @@ function TagForm({ projectId, tag, onDone, onViewContacts }: { projectId: string
 }
 
 const styles = StyleSheet.create({
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   form: {
     gap: spacing.lg,
+  },
+  head: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  headText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  headCount: {
+    ...type.mono,
+    color: colors.foreground,
+  },
+  headDescription: {
+    ...type.caption,
+    color: colors.textSecondary,
   },
   actions: {
     flexDirection: "row",

@@ -1,52 +1,83 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { DateStub } from "@/components/control/DateStub";
+import { todayKey } from "@/components/control/money/ledger";
 import { TONE_COLOR } from "@/components/control/money/meta";
-import type { IconName } from "@/components/ui/icons";
+import { Icon, type IconName } from "@/components/ui/icons";
 import { IconTile } from "@/components/ui/IconTile";
+import { Pill } from "@/components/ui/Pill";
 import { tapFeedback } from "@/lib/haptics";
-import type { StatusMeta } from "@/lib/status";
+import type { StatusMeta, Tone } from "@/lib/status";
 import { colors, spacing, type } from "@/theme/tokens";
 
 type Props = {
-  icon: IconName;
   title: string;
-  meta: string;
+  meta?: string;
+  // The leading column: a mono time in day-grouped ledgers, a date stub in dated queues, otherwise an icon tile.
+  time?: string;
+  date?: string | null;
+  icon?: IconName;
+  // A reference code, set in mono at the end of the meta line.
+  code?: string;
   amount?: string;
-  amountTone?: "default" | "negative";
+  amountTone?: "default" | "negative" | "void";
   status?: StatusMeta | null;
+  // A deadline or alert under the meta line, e.g. when dispute evidence is due.
+  flag?: { label: string; tone: Tone; icon?: IconName } | null;
   onPress?: () => void;
   divider: boolean;
 };
 
-// A money line: who, what, how much and where it stands — the shape of the attendee app's order rows.
-export function MoneyRow({ icon, title, meta, amount, amountTone = "default", status, onPress, divider }: Props) {
+// A ledger line: who and what on the left, the amount in a right-aligned mono column with its status under it.
+export function MoneyRow({ title, meta, time, date, icon, code, amount, amountTone = "default", status, flag, onPress, divider }: Props) {
+  const timed = time !== undefined;
+  const leading = timed ? (
+    <Text style={styles.time}>{time || "–"}</Text>
+  ) : date !== undefined ? (
+    <DateStub date={date} today={Boolean(date) && date === todayKey()} />
+  ) : icon ? (
+    <IconTile icon={icon} size={36} />
+  ) : null;
+
   const body = (
     <>
-      <IconTile icon={icon} size={40} />
+      {leading}
       <View style={styles.stack}>
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
-        <Text style={styles.meta} numberOfLines={1}>
-          {meta}
-        </Text>
-      </View>
-      <View style={styles.trailing}>
-        {amount ? <Text style={[styles.amount, amountTone === "negative" && styles.negative]}>{amount}</Text> : null}
-        {status ? (
-          <View style={styles.statusRow}>
-            <View style={[styles.dot, { backgroundColor: TONE_COLOR[status.tone] }]} />
-            <Text style={[styles.statusText, { color: TONE_COLOR[status.tone] }]} numberOfLines={1}>
-              {status.label}
+        {meta || code ? (
+          <Text style={styles.meta} numberOfLines={1}>
+            {meta}
+            {meta && code ? " · " : ""}
+            {code ? <Text style={styles.code}>{code}</Text> : null}
+          </Text>
+        ) : null}
+        {flag ? (
+          <View style={styles.flag}>
+            <Icon name={flag.icon ?? "clock"} size={12} color={TONE_COLOR[flag.tone]} />
+            <Text style={[styles.flagText, { color: TONE_COLOR[flag.tone] }]} numberOfLines={1}>
+              {flag.label}
             </Text>
           </View>
         ) : null}
       </View>
+      {amount || status ? (
+        <View style={styles.trailing}>
+          {amount ? (
+            <Text style={[styles.amount, amountTone === "negative" && styles.negative, amountTone === "void" && styles.void]} numberOfLines={1}>
+              {amount}
+            </Text>
+          ) : null}
+          {status ? <Pill label={status.label} tone={status.tone} variant="outline" /> : null}
+        </View>
+      ) : null}
     </>
   );
 
-  if (!onPress) return <View style={[styles.row, divider && styles.divided]}>{body}</View>;
+  const frame = [styles.row, timed ? styles.top : styles.center, divider && styles.divided];
+  if (!onPress) return <View style={frame}>{body}</View>;
   return (
     <Pressable
       accessibilityRole="button"
@@ -55,7 +86,7 @@ export function MoneyRow({ icon, title, meta, amount, amountTone = "default", st
         tapFeedback();
         onPress();
       }}
-      style={({ pressed }) => [styles.row, divider && styles.divided, pressed && styles.pressed]}
+      style={({ pressed }) => [...frame, pressed && styles.pressed]}
     >
       {body}
     </Pressable>
@@ -65,16 +96,29 @@ export function MoneyRow({ icon, title, meta, amount, amountTone = "default", st
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    alignItems: "center",
     gap: spacing.md + 2,
     paddingVertical: 14,
+  },
+  top: {
+    alignItems: "flex-start",
+  },
+  center: {
+    alignItems: "center",
   },
   divided: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.surfaceActive,
   },
   pressed: {
-    opacity: 0.7,
+    opacity: 0.6,
+  },
+  time: {
+    ...type.monoSmall,
+    width: 40,
+    // Sits on the title's first line: 20pt title line against a 16pt mono line.
+    paddingTop: 2,
+    color: colors.textSecondary,
+    fontVariant: ["tabular-nums"],
   },
   stack: {
     flex: 1,
@@ -91,31 +135,38 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: colors.textSecondary,
   },
+  code: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.mutedForeground,
+  },
+  flag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 1,
+  },
+  flagText: {
+    ...type.captionStrong,
+    flexShrink: 1,
+  },
   trailing: {
     alignItems: "flex-end",
-    gap: 5,
-    maxWidth: 140,
+    gap: 6,
+    maxWidth: 150,
   },
   amount: {
-    ...type.bodyStrong,
+    ...type.mono,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.foreground,
     fontVariant: ["tabular-nums"],
   },
   negative: {
-    color: colors.danger,
+    color: colors.info,
   },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    ...type.micro,
-    fontSize: 11,
+  void: {
+    color: colors.textTertiary,
+    textDecorationLine: "line-through",
   },
 });

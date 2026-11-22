@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { Group } from "@/components/control/team/Group";
+import { MemberRow } from "@/components/control/team/MemberRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -10,25 +11,28 @@ import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
-import { ListRow } from "@/components/ui/ListRow";
-import { Pill } from "@/components/ui/Pill";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { Segmented } from "@/components/ui/Segmented";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { TickMeter } from "@/components/ui/TickMeter";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, pluralize } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, spacing, type } from "@/theme/tokens";
+import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { TeamMember, TeamRoster } from "@/types/control_team";
 
 const TABS = [
   { value: "members", label: "Members" },
   { value: "invites", label: "Invites" },
 ];
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 export default function TeamMembersScreen() {
   const { project } = useControl();
@@ -39,7 +43,10 @@ export default function TeamMembersScreen() {
   const [selected, setSelected] = useState<TeamMember | null>(null);
 
   const data = roster.data;
-  const members = (data?.members ?? []).filter((m) => (tab === "invites" ? m.status === "invited" : m.status !== "invited"));
+  const all = data?.members ?? [];
+  const members = all.filter((m) => (tab === "invites" ? m.status === "invited" : m.status !== "invited"));
+  const invitedCount = all.filter((m) => m.status === "invited").length;
+  let step = 0;
 
   let body: React.ReactNode;
   if (roster.error && !data) {
@@ -61,24 +68,20 @@ export default function TeamMembersScreen() {
       );
   } else {
     body = (
-      <Group>
+      <ListGroup
+        title={tab === "invites" ? `${members.length} pending ${pluralize(members.length, "invitation", "invitations")}` : `${members.length} ${pluralize(members.length, "member", "members")}`}
+        footer={data.can.assign ? "Tap someone to change their role or remove them." : undefined}
+      >
         {members.map((m, i) => (
-          <ListRow
+          <MemberRow
             key={m.id}
-            leading={<Avatar name={m.name} email={m.email} size={36} />}
-            title={m.name || m.email}
-            subtitle={m.status === "invited" ? `Invited ${fmtDate(m.invitedAt)}` : m.name ? m.email : undefined}
-            trailing={
-              <View style={styles.trailing}>
-                {m.status === "suspended" ? <Pill label="Suspended" tone="warning" variant="outline" /> : null}
-                <Pill label={m.roleName ?? "No role"} tone={m.roleName ? "neutral" : "warning"} variant="outline" dot={false} />
-              </View>
-            }
+            member={m}
+            isMe={Boolean(m.userId) && m.userId === data.me}
             onPress={data.can.assign ? () => setSelected(m) : undefined}
             divider={i < members.length - 1}
           />
         ))}
-      </Group>
+      </ListGroup>
     );
   }
 
@@ -88,15 +91,21 @@ export default function TeamMembersScreen() {
       header={
         <ScreenHeader
           title="Team & Members"
-          subtitle={data ? `${data.seats.used} of ${data.seats.limit} seats` : undefined}
           right={data?.can.invite ? <IconButton icon="user-plus" label="Invite people" variant="plain" onPress={() => setInviting(true)} /> : undefined}
         />
       }
     >
-      <View style={styles.tabs}>
-        <Segmented options={TABS} value={tab} onChange={setTab} />
+      <View style={styles.stack}>
+        {data ? (
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <SeatsReadout data={data} invited={invitedCount} />
+          </Animated.View>
+        ) : null}
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+          <Segmented options={TABS} value={tab} onChange={setTab} />
+        </Animated.View>
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>{body}</Animated.View>
       </View>
-      {body}
       {data && project ? (
         <>
           <Sheet visible={inviting} onClose={() => setInviting(false)} title="Invite people">
@@ -130,6 +139,26 @@ export default function TeamMembersScreen() {
   );
 }
 
+// Seats are the plan's hard limit, so they lead; the meter warns once the team is full.
+function SeatsReadout({ data, invited }: { data: TeamRoster; invited: number }) {
+  const { used, limit } = data.seats;
+  const left = Math.max(0, limit - used);
+  return (
+    <Readout
+      lead={{ label: "Seats used", value: String(used), hint: limit > 0 ? `of ${limit}` : undefined }}
+      items={[
+        { label: "Members", value: String(data.members.length - invited) },
+        { label: "Invited", value: String(invited) },
+        { label: "Seats left", value: String(left), tone: limit > 0 && left === 0 ? "warning" : "neutral" },
+      ]}
+    >
+      {limit > 0 ? (
+        <TickMeter value={used} max={limit} ticks={44} height={16} tone={used >= limit ? "warning" : "success"} label={`${used} of ${limit} seats used`} />
+      ) : null}
+    </Readout>
+  );
+}
+
 // Rendered inside the sheet body, which remounts on each open, so the form always starts blank.
 function InviteForm({ data, path, onClose, onDone }: { data: TeamRoster; path: string; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
@@ -137,6 +166,7 @@ function InviteForm({ data, path, onClose, onDone }: { data: TeamRoster; path: s
   const [emails, setEmails] = useState("");
   const [roleId, setRoleId] = useState(fallback?.id ?? "");
   const [busy, setBusy] = useState(false);
+  const left = data.seats.limit - data.seats.used;
 
   const send = async () => {
     if (!emails.trim()) return toast.error("Enter at least one email.");
@@ -171,7 +201,10 @@ function InviteForm({ data, path, onClose, onDone }: { data: TeamRoster; path: s
         <Field label="Role">
           <FilterChips options={data.roles.map((r) => ({ value: r.id, label: r.name }))} value={roleId} onChange={setRoleId} />
         </Field>
-        <Text style={styles.note}>{`${data.seats.limit - data.seats.used} seats left.`}</Text>
+        <View style={styles.seatLine}>
+          <Text style={styles.seatLabel}>Seats left</Text>
+          <Text style={[styles.seatValue, left <= 0 && styles.seatValueOut]}>{left}</Text>
+        </View>
         <View style={styles.actions}>
           <Button title="Cancel" variant="ghost" onPress={onClose} />
           <Button title="Invite" onPress={() => void send()} loading={busy} />
@@ -187,6 +220,7 @@ function MemberForm({ member, data, path, onDone }: { member: TeamMember; data: 
   const [busy, setBusy] = useState<"role" | "remove" | null>(null);
   const [confirm, setConfirm] = useState(false);
   const invited = member.status === "invited";
+  const since = invited ? (member.invitedAt ? `Invited ${fmtDate(member.invitedAt)}` : "Invited") : member.joinedAt ? `Joined ${fmtDate(member.joinedAt)}` : "";
 
   const saveRole = async () => {
     setBusy("role");
@@ -216,16 +250,22 @@ function MemberForm({ member, data, path, onDone }: { member: TeamMember; data: 
 
   return (
     <View style={styles.form}>
-      <Text style={styles.note}>{member.email}</Text>
+      <View style={styles.identity}>
+        <Avatar name={member.name} email={member.email} size={44} />
+        <View style={styles.identityText}>
+          <Text style={styles.identityEmail} numberOfLines={1}>
+            {member.email}
+          </Text>
+          {since ? <Text style={styles.identityMeta}>{since}</Text> : null}
+        </View>
+      </View>
       <Field label="Role" hint={member.userId === data.me ? "This is you — changing it changes what you can do." : undefined}>
         <FilterChips options={data.roles.map((r) => ({ value: r.id, label: r.name }))} value={roleId} onChange={setRoleId} />
       </Field>
       <Button title="Save role" onPress={() => void saveRole()} loading={busy === "role"} disabled={busy !== null || roleId === member.roleId} fullWidth />
       {confirm ? (
         <View style={styles.confirm}>
-          <Text style={styles.note}>
-            {invited ? "Withdraw this invitation?" : "They lose access to this project straight away."}
-          </Text>
+          <Text style={styles.note}>{invited ? "Withdraw this invitation?" : "They lose access to this project straight away."}</Text>
           <View style={styles.actions}>
             <Button title="Keep" variant="ghost" onPress={() => setConfirm(false)} />
             <Button title={invited ? "Withdraw" : "Remove"} variant="destructive" onPress={() => void remove()} loading={busy === "remove"} />
@@ -239,13 +279,8 @@ function MemberForm({ member, data, path, onDone }: { member: TeamMember; data: 
 }
 
 const styles = StyleSheet.create({
-  tabs: {
-    marginBottom: spacing.lg,
-  },
-  trailing: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
+  stack: {
+    gap: spacing.xl,
   },
   form: {
     gap: spacing.lg,
@@ -253,6 +288,52 @@ const styles = StyleSheet.create({
   multiline: {
     minHeight: 90,
     paddingTop: spacing.md,
+  },
+  seatLine: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderStrong,
+    paddingTop: spacing.md,
+  },
+  seatLabel: {
+    ...type.micro,
+    fontSize: 10,
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+    color: colors.textTertiary,
+  },
+  seatValue: {
+    ...type.figureSmall,
+    color: colors.foreground,
+  },
+  seatValueOut: {
+    color: colors.warning,
+  },
+  identity: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    padding: spacing.md,
+  },
+  identityText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  identityEmail: {
+    ...type.label,
+    color: colors.foreground,
+  },
+  identityMeta: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textTertiary,
   },
   note: {
     ...type.caption,

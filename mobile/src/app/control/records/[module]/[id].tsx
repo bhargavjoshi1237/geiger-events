@@ -1,19 +1,23 @@
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet, Text, View } from "react-native";
 
+import { CoverWash } from "@/components/control/CoverWash";
 import { FieldEditor } from "@/components/control/fields/FieldEditor";
-import { ScreenHeader } from "@/components/ScreenHeader";
+import { FormPanel } from "@/components/control/forms/FormPanel";
+import { FormScreen } from "@/components/control/forms/FormScreen";
+import { FormSkeleton } from "@/components/control/forms/FormSkeleton";
+import { SaveBar } from "@/components/control/forms/SaveBar";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { IconTile } from "@/components/ui/IconTile";
 import { Pill } from "@/components/ui/Pill";
-import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
-import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { appliesTo, changesFrom, draftFrom, draftValue, statusOf, withValue, type Draft } from "@/lib/control_records";
+import { appliesTo, changesFrom, draftFrom, draftValue, iconOf, statusOf, summaryLine, withValue, type Draft } from "@/lib/control_records";
+import { fmtDate, fmtDateTime } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlCatalog } from "@/lib/use_control_catalog";
 import { useControlQuery } from "@/lib/use_control_query";
@@ -36,21 +40,17 @@ export default function RecordScreen() {
   if (query.error && !record) {
     return <Frame title={mod?.singular ?? "Manage"} body={<EmptyState icon="circle-alert" title="Couldn't open this" message={query.error} actionLabel="Try again" onAction={() => void query.reload()} />} />;
   }
-  if (!mod || !record || !catalog.projectId) return <Frame title={mod?.singular ?? "Manage"} body={<SkeletonList rows={5} variant="card" />} />;
+  if (!mod || !record || !catalog.projectId) return <Frame title={mod?.singular ?? "Manage"} body={<FormSkeleton panels={2} />} />;
 
   // Keyed by record id so a reload after saving re-seeds the form from the server.
   return <Editor key={`${record.id}:${JSON.stringify(record)}`} module={mod} record={record} projectId={catalog.projectId} onSaved={(next) => query.setData({ record: next })} />;
 }
 
-function Frame({ title, body, right }: { title: string; body: React.ReactNode; right?: React.ReactNode }) {
-  const insets = useSafeAreaInsets();
+function Frame({ title, body, backdrop, footer }: { title: string; body: React.ReactNode; backdrop?: React.ReactNode; footer?: React.ReactNode }) {
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <ScreenHeader title={title} right={right} />
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xxl }]} keyboardShouldPersistTaps="handled">
-        {body}
-      </ScrollView>
-    </View>
+    <FormScreen title={title} backdrop={backdrop} footer={footer}>
+      {body}
+    </FormScreen>
   );
 }
 
@@ -64,6 +64,7 @@ function Editor({ module, record, projectId, onSaved }: { module: ControlModule;
   const changes = changesFrom(module, record, draft);
   const dirty = Object.keys(changes).length > 0;
   const pill = statusOf(module, record);
+  const meta = [summaryLine(module, record), record.startsAt ? fmtDateTime(record.startsAt) : record.createdAt ? `Added ${fmtDate(record.createdAt)}` : ""].filter(Boolean).join(" · ");
 
   const save = async () => {
     if (!dirty) return;
@@ -94,35 +95,46 @@ function Editor({ module, record, projectId, onSaved }: { module: ControlModule;
   };
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <>
       <Frame
         title={module.singular}
-        right={<Button title="Save" size="sm" onPress={() => void save()} loading={saving} disabled={!dirty || saving} />}
+        backdrop={record.coverUrl ? <CoverWash uri={record.coverUrl} height={300} /> : undefined}
+        footer={<SaveBar title="Save changes" icon="check" onPress={() => void save()} loading={saving} disabled={!dirty || saving} changes={Object.keys(changes).length} />}
         body={
           <View style={styles.stack}>
             <View style={styles.head}>
-              <Text style={styles.name} numberOfLines={2}>
-                {record.name}
-              </Text>
-              {pill ? <Pill label={pill.label} tone={pill.tone} /> : null}
-            </View>
-            {module.panels.map((panel) => ({ ...panel, fields: panel.fields.filter((f) => appliesTo(f, record.kind)) })).filter((panel) => panel.fields.length).map((panel) => (
-              <View key={panel.title} style={styles.panel}>
-                <SectionTitle variant="kicker">{panel.title}</SectionTitle>
-                {panel.description ? <Text style={styles.description}>{panel.description}</Text> : null}
-                <View style={styles.card}>
-                  {panel.fields.map((field) => (
-                    <FieldEditor
-                      key={`${field.scope}:${field.key}`}
-                      field={field}
-                      statuses={module.statuses}
-                      projectId={projectId}
-                      value={draftValue(draft, field)}
-                      onChange={(v) => setDraft((d) => withValue(d, field, v))}
-                    />
-                  ))}
+              {record.coverUrl ? (
+                <Image source={{ uri: record.coverUrl }} contentFit="cover" transition={150} style={styles.thumb} />
+              ) : (
+                <IconTile icon={iconOf(module.icon)} size={52} />
+              )}
+              <View style={styles.headText}>
+                <Text style={styles.name} numberOfLines={3}>
+                  {record.name}
+                </Text>
+                <View style={styles.metaRow}>
+                  {pill ? <Pill label={pill.label} tone={pill.tone} /> : null}
+                  {meta ? (
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {meta}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
+            </View>
+            {module.panels.map((panel) => ({ ...panel, fields: panel.fields.filter((f) => appliesTo(f, record.kind)) })).filter((panel) => panel.fields.length).map((panel) => (
+              <FormPanel key={panel.title} title={panel.title} footer={panel.description}>
+                {panel.fields.map((field) => (
+                  <FieldEditor
+                    key={`${field.scope}:${field.key}`}
+                    field={field}
+                    statuses={module.statuses}
+                    projectId={projectId}
+                    value={draftValue(draft, field)}
+                    onChange={(v) => setDraft((d) => withValue(d, field, v))}
+                  />
+                ))}
+              </FormPanel>
             ))}
             <Button title={`Delete ${module.singular.toLowerCase()}`} icon="trash-2" variant="destructiveGhost" onPress={() => setConfirmDelete(true)} fullWidth />
           </View>
@@ -137,50 +149,50 @@ function Editor({ module, record, projectId, onSaved }: { module: ControlModule;
           </View>
         </View>
       </Sheet>
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  root: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scroll: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
   stack: {
     gap: spacing.xl,
   },
   head: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.md,
+    alignItems: "center",
+    gap: spacing.md + 2,
+  },
+  thumb: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.md + 2,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceCard,
+  },
+  headText: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing.sm,
   },
   name: {
     ...type.title,
-    flex: 1,
     color: colors.foreground,
   },
-  panel: {
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: spacing.sm,
+  },
+  meta: {
+    ...type.monoSmall,
+    flexShrink: 1,
+    color: colors.textSecondary,
   },
   description: {
     ...type.caption,
     color: colors.textSecondary,
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    padding: spacing.lg,
-    gap: spacing.lg,
   },
   sheetBody: {
     gap: spacing.lg,

@@ -7,17 +7,20 @@ import Animated, { FadeIn, FadeInDown, FadeOut, useReducedMotion } from "react-n
 
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
-import { Meter } from "@/components/ui/Meter";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
-import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { TickMeter } from "@/components/ui/TickMeter";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { fmtClock } from "@/lib/format";
@@ -30,18 +33,30 @@ import type { ControlAdmitResult, ControlCheckinStats, ControlEventDetail } from
 const STATS_POLL_MS = 10_000;
 const SAME_CODE_MS = 3_000;
 const RESULT_MS = 3_500;
+const RECENT_LIMIT = 8;
 
 type Method = "qr" | "manual";
 type Shown = { key: number; outcome: ControlAdmitResult; code: string; method: Method };
+type OutcomeTone = "success" | "warning" | "danger";
 
-const OUTCOME_STYLE: Record<ControlAdmitResult["status"], { color: string; icon: IconName }> = {
-  admitted: { color: colors.success, icon: "circle-check" },
-  already: { color: colors.warning, icon: "circle-alert" },
-  blocked: { color: colors.danger, icon: "circle-x" },
-  capacity: { color: colors.warning, icon: "door-open" },
+const OUTCOME: Record<ControlAdmitResult["status"], { tone: OutcomeTone; icon: IconName; label: string }> = {
+  admitted: { tone: "success", icon: "circle-check", label: "Admitted" },
+  already: { tone: "warning", icon: "circle-alert", label: "Already inside" },
+  blocked: { tone: "danger", icon: "circle-x", label: "Not admitted" },
+  capacity: { tone: "warning", icon: "door-open", label: "At capacity" },
+};
+
+const TONE_COLOR: Record<OutcomeTone, string> = {
+  success: colors.success,
+  warning: colors.warning,
+  danger: colors.danger,
 };
 
 const METHOD_LABEL: Record<string, string> = { qr: "Scanned", manual: "Typed", api: "API", door: "Door", kiosk: "Kiosk", self: "Self" };
+const METHOD_ICON: Record<string, IconName> = { qr: "qr-code", manual: "keyboard" };
+
+const count = (n: number) => n.toLocaleString("en-US");
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 export default function ControlCheckinScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -133,123 +148,170 @@ export default function ControlCheckinScreen() {
   const cameraLive = focused && permission?.granted;
   const admitted = stats?.admitted ?? 0;
   const expected = stats?.expected ?? 0;
+  const pct = expected > 0 ? Math.round((admitted / expected) * 100) : 0;
+  const lastIn = stats?.recent[0];
+  const outcome = shown ? OUTCOME[shown.outcome.status] : null;
+  // The viewfinder and frame take the last result's colour so the door can read it at a glance.
+  const tint = outcome ? TONE_COLOR[outcome.tone] : colors.primary;
+  const recent = stats?.recent.slice(0, RECENT_LIMIT) ?? [];
 
   return (
     <Screen scroll header={<ScreenHeader title="Check-in" subtitle={hub.data?.event.name} />}>
-      <View style={styles.counts}>
-        {stats ? (
-          <>
-            <View style={styles.countsRow}>
-              <Text style={styles.countsValue}>
-                {admitted.toLocaleString("en-US")}
-                <Text style={styles.countsOf}>{` of ${expected.toLocaleString("en-US")}`}</Text>
-              </Text>
-              <Text style={styles.countsLabel}>Inside</Text>
-            </View>
-            <Meter value={admitted} max={expected} label={`${admitted} of ${expected} inside`} />
-          </>
-        ) : (
-          <Skeleton height={44} radius={radius.md} />
-        )}
-      </View>
+      <View style={styles.stack}>
+        <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+          {stats ? (
+            <Readout
+              lead={{
+                label: "Inside",
+                value: count(admitted),
+                hint: expected > 0 ? `of ${count(expected)} · ${pct}%` : "no one expected yet",
+                tone: admitted > 0 ? "success" : "neutral",
+              }}
+              items={[
+                { label: "Expected", value: count(expected) },
+                { label: "To arrive", value: count(Math.max(0, expected - admitted)) },
+                { label: "Last in", value: lastIn ? fmtClock(lastIn.at) : "–" },
+              ]}
+            >
+              {expected > 0 ? <TickMeter value={admitted} max={expected} ticks={44} height={16} label={`${admitted} of ${expected} inside`} /> : null}
+            </Readout>
+          ) : (
+            <Skeleton height={168} radius={radius.lg} />
+          )}
+        </Animated.View>
 
-      <View style={styles.viewport}>
-        {!permission ? (
-          <Skeleton height={320} radius={radius.xl} />
-        ) : permission.granted ? (
-          <>
-            {cameraLive ? (
-              <CameraView
-                style={StyleSheet.absoluteFill}
-                facing="back"
-                enableTorch={torch}
-                barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                onBarcodeScanned={paused ? undefined : onScanned}
-              />
-            ) : null}
-            <View style={styles.viewfinder} pointerEvents="none" />
-            <IconButton
-              icon="flashlight"
-              label={torch ? "Turn the torch off" : "Turn the torch on"}
-              variant={torch ? "primary" : "solid"}
-              onPress={() => setTorch((on) => !on)}
-              style={styles.torch}
-            />
-            <View style={styles.hint} pointerEvents="none">
-              <Text style={styles.hintText}>{busy ? "Checking…" : "Point at a ticket QR"}</Text>
-            </View>
-          </>
-        ) : (
-          <View style={styles.permission}>
-            <IconTile icon={permission.canAskAgain ? "camera" : "camera-off"} size={48} />
-            <Text style={styles.permissionTitle}>{permission.canAskAgain ? "Scan tickets with your camera" : "Camera access is off"}</Text>
-            <Text style={styles.permissionText}>
-              {permission.canAskAgain
-                ? "Allow the camera to scan ticket QR codes at the door."
-                : "Turn the camera on for Geiger Events in Settings, or type ticket codes instead."}
-            </Text>
-            <Button
-              title={permission.canAskAgain ? "Allow camera" : "Open Settings"}
-              icon={permission.canAskAgain ? "camera" : "settings"}
-              size="sm"
-              onPress={() => void (permission.canAskAgain ? requestPermission() : Linking.openSettings())}
-            />
-          </View>
-        )}
-      </View>
-
-      {shown ? (
-        <Animated.View
-          key={shown.key}
-          entering={reduced ? FadeIn : FadeInDown.springify()}
-          exiting={FadeOut}
-          style={[styles.result, { borderColor: OUTCOME_STYLE[shown.outcome.status].color }]}
-          accessibilityLiveRegion="polite"
-        >
-          <Icon name={OUTCOME_STYLE[shown.outcome.status].icon} size={28} color={OUTCOME_STYLE[shown.outcome.status].color} />
-          <View style={styles.resultStack}>
-            <Text style={[styles.resultTitle, { color: OUTCOME_STYLE[shown.outcome.status].color }]}>{shown.outcome.message}</Text>
-            {shown.outcome.name || shown.outcome.code ? (
-              <Text style={styles.resultMeta} numberOfLines={1}>
-                {[shown.outcome.name, shown.outcome.code].filter(Boolean).join(" · ")}
-              </Text>
-            ) : null}
-            {shown.outcome.status === "capacity" && shown.outcome.canOverride ? (
-              <View style={styles.resultActions}>
-                <Button title="Dismiss" variant="ghost" size="sm" onPress={() => setShown(null)} />
+        <Animated.View entering={FadeInDown.delay(stagger(1)).springify()} style={styles.scanner}>
+          <View style={[styles.viewport, shown ? { borderColor: tint } : null]}>
+            {!permission ? (
+              <Skeleton height={320} radius={radius.xl} />
+            ) : permission.granted ? (
+              <>
+                {cameraLive ? (
+                  <CameraView
+                    style={StyleSheet.absoluteFill}
+                    facing="back"
+                    enableTorch={torch}
+                    barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                    onBarcodeScanned={paused ? undefined : onScanned}
+                  />
+                ) : null}
+                <View style={styles.viewfinder} pointerEvents="none">
+                  <View style={[styles.corner, styles.cornerTopLeft, { borderColor: tint }]} />
+                  <View style={[styles.corner, styles.cornerTopRight, { borderColor: tint }]} />
+                  <View style={[styles.corner, styles.cornerBottomLeft, { borderColor: tint }]} />
+                  <View style={[styles.corner, styles.cornerBottomRight, { borderColor: tint }]} />
+                </View>
+                <IconButton
+                  icon="flashlight"
+                  label={torch ? "Turn the torch off" : "Turn the torch on"}
+                  variant={torch ? "primary" : "solid"}
+                  onPress={() => setTorch((on) => !on)}
+                  style={styles.torch}
+                />
+                <View style={styles.hint} pointerEvents="none">
+                  <Icon name="scan-line" size={14} color={colors.foreground} />
+                  <Text style={styles.hintText}>{busy ? "Checking…" : "Point at a ticket QR"}</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.permission}>
+                <IconTile icon={permission.canAskAgain ? "camera" : "camera-off"} size={52} tone={permission.canAskAgain ? "neutral" : "warning"} />
+                <Text style={styles.permissionTitle}>{permission.canAskAgain ? "Scan tickets with your camera" : "Camera access is off"}</Text>
+                <Text style={styles.permissionText}>
+                  {permission.canAskAgain
+                    ? "Allow the camera to scan ticket QR codes at the door."
+                    : "Turn the camera on for Geiger Events in Settings, or type ticket codes instead."}
+                </Text>
                 <Button
-                  title="Override"
-                  icon="door-open"
+                  title={permission.canAskAgain ? "Allow camera" : "Open Settings"}
+                  icon={permission.canAskAgain ? "camera" : "settings"}
                   size="sm"
-                  onPress={() => setOverride({ code: shown.code, method: shown.method, reason: "" })}
+                  onPress={() => void (permission.canAskAgain ? requestPermission() : Linking.openSettings())}
                 />
               </View>
-            ) : null}
+            )}
           </View>
+
+          {shown && outcome ? (
+            <Animated.View
+              key={shown.key}
+              entering={reduced ? FadeIn : FadeInDown.springify()}
+              exiting={FadeOut}
+              style={[styles.result, { borderColor: `${tint}59`, backgroundColor: `${tint}14` }]}
+              accessibilityLiveRegion="polite"
+            >
+              <View style={styles.resultTop}>
+                <IconTile icon={outcome.icon} size={52} tone={outcome.tone} />
+                <View style={styles.resultStack}>
+                  <Text style={[styles.resultKicker, { color: tint }]}>{outcome.label}</Text>
+                  <Text style={styles.resultTitle}>{shown.outcome.message}</Text>
+                </View>
+              </View>
+              {shown.outcome.name || shown.outcome.code || shown.outcome.party > 1 ? (
+                <View style={styles.resultFacts}>
+                  {shown.outcome.name ? (
+                    <Text style={styles.resultName} numberOfLines={1}>
+                      {shown.outcome.name}
+                    </Text>
+                  ) : null}
+                  {shown.outcome.code ? <Text style={styles.resultCode}>{shown.outcome.code}</Text> : null}
+                  {shown.outcome.party > 1 ? <CountBadge value={`×${shown.outcome.party}`} tone={outcome.tone} /> : null}
+                </View>
+              ) : null}
+              {shown.outcome.status === "capacity" && shown.outcome.canOverride ? (
+                <View style={styles.resultActions}>
+                  <View style={styles.flex}>
+                    <Button title="Dismiss" variant="secondary" size="sm" onPress={() => setShown(null)} fullWidth />
+                  </View>
+                  <View style={styles.flex}>
+                    <Button
+                      title="Override"
+                      icon="door-open"
+                      size="sm"
+                      onPress={() => setOverride({ code: shown.code, method: shown.method, reason: "" })}
+                      fullWidth
+                    />
+                  </View>
+                </View>
+              ) : null}
+            </Animated.View>
+          ) : null}
+
+          <Button title="Type a code" icon="keyboard" variant="secondary" onPress={() => setTyping(true)} fullWidth />
         </Animated.View>
-      ) : null}
 
-      <View style={styles.manual}>
-        <Button title="Type a code" icon="keyboard" variant="secondary" onPress={() => setTyping(true)} fullWidth />
-      </View>
-
-      <SectionTitle variant="kicker">Recent</SectionTitle>
-      {stats?.recent.length ? (
-        <View style={styles.group}>
-          {stats.recent.slice(0, 8).map((entry, i, list) => (
-            <ListRow
-              key={entry.id}
-              leading={<IconTile icon={entry.method === "qr" ? "qr-code" : "user-check"} size={34} />}
-              title={entry.name}
-              subtitle={[entry.code, METHOD_LABEL[entry.method] ?? entry.method, entry.gate].filter(Boolean).join(" · ")}
-              trailing={<Text style={styles.time}>{fmtClock(entry.at)}</Text>}
-              divider={i < list.length - 1}
+        <Animated.View entering={FadeInDown.delay(stagger(2)).springify()}>
+          {!stats ? (
+            <SkeletonList rows={3} variant="divided" />
+          ) : recent.length ? (
+            <ListGroup title="Recent check-ins" footer="Counts and this list refresh every 10 seconds.">
+              {recent.map((entry, i) => (
+                <ListRow
+                  key={entry.id}
+                  leading={<IconTile icon={METHOD_ICON[entry.method] ?? "user-check"} size={36} />}
+                  title={entry.name}
+                  subtitle={[METHOD_LABEL[entry.method] ?? entry.method, entry.gate].filter(Boolean).join(" · ")}
+                  trailing={
+                    <View style={styles.stamp}>
+                      <Text style={styles.stampTime}>{fmtClock(entry.at)}</Text>
+                      {entry.code ? <Text style={styles.stampCode}>{entry.code}</Text> : null}
+                    </View>
+                  }
+                  divider={i < recent.length - 1}
+                />
+              ))}
+            </ListGroup>
+          ) : (
+            <EmptyState
+              icon="door-open"
+              title="No one is in yet"
+              message="Scans and typed codes show up here, newest first."
+              actionLabel="Type a code"
+              onAction={() => setTyping(true)}
             />
-          ))}
-        </View>
-      ) : (
-        <Text style={styles.empty}>{stats ? "No one has been checked in yet." : "Loading…"}</Text>
-      )}
+          )}
+        </Animated.View>
+      </View>
 
       <Sheet
         visible={typing}
@@ -280,7 +342,10 @@ export default function ControlCheckinScreen() {
 
       <Sheet visible={Boolean(override)} onClose={() => setOverride(null)} title="Admit over capacity?">
         <View style={styles.sheetBody}>
-          <Text style={styles.sheetText}>The area is full. The reason is recorded like a supervisor override at the gate.</Text>
+          <View style={styles.sheetNote}>
+            <IconTile icon="door-open" size={36} tone="warning" />
+            <Text style={styles.sheetText}>The area is full. The reason is recorded like a supervisor override at the gate.</Text>
+          </View>
           <Field label="Reason">
             <Input
               value={override?.reason ?? ""}
@@ -299,28 +364,18 @@ export default function ControlCheckinScreen() {
   );
 }
 
+const CORNER = 30;
+const CORNER_WIDTH = 3;
+
 const styles = StyleSheet.create({
-  counts: {
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
+  stack: {
+    gap: spacing.xl,
   },
-  countsRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
+  flex: {
+    flex: 1,
   },
-  countsValue: {
-    ...type.display,
-    color: colors.foreground,
-    fontVariant: ["tabular-nums"],
-  },
-  countsOf: {
-    ...type.heading,
-    color: colors.textSecondary,
-  },
-  countsLabel: {
-    ...type.label,
-    color: colors.textSecondary,
+  scanner: {
+    gap: spacing.md,
   },
   viewport: {
     width: "100%",
@@ -334,14 +389,43 @@ const styles = StyleSheet.create({
   },
   viewfinder: {
     position: "absolute",
-    top: "18%",
-    left: "18%",
-    right: "18%",
-    bottom: "18%",
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: radius.lg,
-    opacity: 0.6,
+    top: "20%",
+    left: "20%",
+    right: "20%",
+    bottom: "20%",
+  },
+  corner: {
+    position: "absolute",
+    width: CORNER,
+    height: CORNER,
+  },
+  cornerTopLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: CORNER_WIDTH,
+    borderLeftWidth: CORNER_WIDTH,
+    borderTopLeftRadius: radius.lg,
+  },
+  cornerTopRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: CORNER_WIDTH,
+    borderRightWidth: CORNER_WIDTH,
+    borderTopRightRadius: radius.lg,
+  },
+  cornerBottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: CORNER_WIDTH,
+    borderLeftWidth: CORNER_WIDTH,
+    borderBottomLeftRadius: radius.lg,
+  },
+  cornerBottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: CORNER_WIDTH,
+    borderRightWidth: CORNER_WIDTH,
+    borderBottomRightRadius: radius.lg,
   },
   torch: {
     position: "absolute",
@@ -352,6 +436,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: spacing.md,
     alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs + 2,
     borderRadius: radius.pill,
     backgroundColor: colors.chipScrim,
     paddingHorizontal: spacing.md,
@@ -377,58 +464,75 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   result: {
-    flexDirection: "row",
-    alignItems: "flex-start",
     gap: spacing.md,
-    marginTop: spacing.lg,
     borderWidth: 1,
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceCard,
     padding: spacing.lg,
+  },
+  resultTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md + 2,
   },
   resultStack: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 3,
+  },
+  resultKicker: {
+    ...type.kicker,
+    textTransform: "uppercase",
   },
   resultTitle: {
-    ...type.bodyStrong,
+    ...type.heading,
+    color: colors.foreground,
   },
-  resultMeta: {
-    ...type.caption,
-    color: colors.textSecondary,
+  resultFacts: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm + 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderStrong,
+    paddingTop: spacing.md,
+  },
+  resultName: {
+    ...type.labelStrong,
+    flexShrink: 1,
+    color: colors.foreground,
+  },
+  resultCode: {
+    ...type.mono,
+    color: colors.mutedForeground,
   },
   resultActions: {
     flexDirection: "row",
-    justifyContent: "flex-end",
     gap: spacing.sm,
-    marginTop: spacing.sm,
   },
-  manual: {
-    marginTop: spacing.lg,
-    marginBottom: spacing.xl,
+  stamp: {
+    alignItems: "flex-end",
+    gap: 2,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  stampTime: {
+    ...type.monoSmall,
+    color: colors.foreground,
   },
-  time: {
-    ...type.caption,
-    color: colors.textSecondary,
-    fontVariant: ["tabular-nums"],
-  },
-  empty: {
-    ...type.body,
-    color: colors.textSecondary,
+  stampCode: {
+    ...type.monoSmall,
+    fontSize: 11,
+    lineHeight: 14,
+    color: colors.textTertiary,
   },
   sheetBody: {
     gap: spacing.lg,
   },
+  sheetNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
   sheetText: {
     ...type.body,
+    flex: 1,
     color: colors.textSecondary,
   },
   sheetActions: {

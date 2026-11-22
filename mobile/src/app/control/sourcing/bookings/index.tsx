@@ -1,23 +1,30 @@
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { StatTile } from "@/components/control/StatTile";
+import { DateStub } from "@/components/control/DateStub";
 import { BOOKING_FILTERS, BOOKING_STATUS } from "@/components/control/sourcing/meta";
+import { venueDate, whenTimes } from "@/components/control/sourcing/when";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterChips } from "@/components/ui/FilterChips";
+import { Icon } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/IconButton";
-import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
-import { ListRow } from "@/components/ui/ListRow";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Pill } from "@/components/ui/Pill";
+import { Readout } from "@/components/ui/Readout";
 import { Screen } from "@/components/ui/Screen";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { fmtDateTime, isToday, pluralize } from "@/lib/format";
+import { tapFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { BookingStats, VenueBooking } from "@/types/control_sourcing";
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 export default function BookingsScreen() {
   const router = useRouter();
@@ -39,6 +46,7 @@ export default function BookingsScreen() {
   const bookings = list.data?.bookings ?? [];
   const stats = list.data?.stats;
   const filtered = filter !== "upcoming" || Boolean(term);
+  const filterLabel = BOOKING_FILTERS.find((f) => f.value === filter)?.label ?? "Bookings";
 
   let body: React.ReactNode;
   if (!project) {
@@ -70,22 +78,18 @@ export default function BookingsScreen() {
     );
   } else {
     body = (
-      <View style={styles.group}>
-        {bookings.map((b, i) => {
-          const meta = BOOKING_STATUS[b.displayStatus];
-          return (
-            <ListRow
+      <Animated.View entering={FadeInDown.delay(stagger(2)).springify()}>
+        <ListGroup title={`${bookings.length} ${filter === "all" ? pluralize(bookings.length, "booking", "bookings") : filterLabel.toLowerCase()}`}>
+          {bookings.map((b, i) => (
+            <BookingRow
               key={b.id}
-              leading={<IconTile icon="calendar-check" size={34} tone={b.displayStatus === "Confirmed" ? "success" : "neutral"} />}
-              title={b.title || b.spaceName}
-              subtitle={[b.when, [b.spaceName, b.venueName].filter(Boolean).join(", "), b.totalLabel].filter(Boolean).join(" · ")}
-              trailing={<Pill label={meta.label} tone={meta.tone} variant="outline" />}
+              booking={b}
               onPress={() => router.push({ pathname: "/control/sourcing/bookings/[id]", params: { id: b.id } })}
               divider={i < bookings.length - 1}
             />
-          );
-        })}
-      </View>
+          ))}
+        </ListGroup>
+      </Animated.View>
     );
   }
 
@@ -99,39 +103,152 @@ export default function BookingsScreen() {
         />
       }
     >
-      {stats ? (
-        <View style={styles.stats}>
-          <StatTile label="Upcoming" value={String(stats.upcoming)} hint="Confirmed" />
-          <StatTile label="Active holds" value={String(stats.holds)} hint={stats.holdsExpiringSoon ? `${stats.holdsExpiringSoon} expire in 24 h` : "Provisional"} />
-          <StatTile label="Booked value" value={stats.bookedValue} hint={stats.otherCurrencies ? `+${stats.otherCurrencies} currencies` : `${stats.hoursThisMonth} h this month`} />
-        </View>
-      ) : null}
-      {project ? (
-        <View style={styles.controls}>
-          <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder="Search reference, space, contact…" autoCapitalize="none" />
-          <FilterChips options={BOOKING_FILTERS} value={filter} onChange={setFilter} />
-        </View>
-      ) : null}
-      {body}
+      <View style={styles.stack}>
+        {stats ? (
+          <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+            <Readout
+              lead={{ label: "Booked value", value: stats.bookedValue, hint: stats.otherCurrencies ? `+${stats.otherCurrencies} more ${pluralize(stats.otherCurrencies, "currency", "currencies")}` : "confirmed" }}
+              items={[
+                { label: "Upcoming", value: String(stats.upcoming), hint: "Confirmed" },
+                {
+                  label: "Active holds",
+                  value: String(stats.holds),
+                  tone: stats.holdsExpiringSoon ? "warning" : "neutral",
+                  hint: stats.holdsExpiringSoon ? `${stats.holdsExpiringSoon} expire in 24 h` : "Provisional",
+                },
+                { label: "This month", value: `${stats.hoursThisMonth} h`, hint: "Booked time" },
+              ]}
+            />
+          </Animated.View>
+        ) : null}
+        {project ? (
+          <Animated.View entering={FadeInDown.delay(stagger(1)).springify()} style={styles.controls}>
+            <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder="Search reference, space, contact…" autoCapitalize="none" />
+            <FilterChips options={BOOKING_FILTERS} value={filter} onChange={setFilter} />
+          </Animated.View>
+        ) : null}
+        {body}
+      </View>
     </Screen>
   );
 }
 
+// A booking in the list: date stub on the venue's calendar, mono times and total, the space and its status.
+function BookingRow({ booking: b, onPress, divider }: { booking: VenueBooking; onPress: () => void; divider: boolean }) {
+  const meta = BOOKING_STATUS[b.displayStatus];
+  const date = venueDate(b.startsAt, b.timezone);
+  const done = b.displayStatus === "Completed" || b.displayStatus === "Cancelled" || b.displayStatus === "Hold expired";
+  const place = [b.spaceName, b.venueName].filter(Boolean).join(", ");
+  const name = b.title || b.spaceName || "Booking";
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, ${b.when}, ${meta.label}, ${b.totalLabel}`}
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.row, divider && styles.divided, pressed && styles.pressed]}
+    >
+      <DateStub date={date} today={!done && isToday(b.startsAt)} muted={done} />
+      <View style={styles.rowStack}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.name, done && styles.nameMuted]} numberOfLines={1}>
+            {name}
+          </Text>
+          <Pill label={meta.label} tone={meta.tone} variant="outline" />
+        </View>
+        <View style={styles.figures}>
+          <Text style={styles.times} numberOfLines={1}>
+            {whenTimes(b.when)}
+          </Text>
+          <Text style={[styles.total, done && styles.nameMuted]} numberOfLines={1}>
+            {b.totalLabel}
+          </Text>
+        </View>
+        {place ? (
+          <Text style={styles.place} numberOfLines={1}>
+            {place}
+          </Text>
+        ) : null}
+        {b.liveHold && b.holdExpiresAt ? (
+          <View style={styles.expiry}>
+            <Icon name="timer" size={12} color={colors.warning} />
+            <Text style={styles.expiryText} numberOfLines={1}>{`Hold until ${fmtDateTime(b.holdExpiresAt)}`}</Text>
+          </View>
+        ) : null}
+      </View>
+      <Icon name="chevron-right" size={18} color={colors.textTertiary} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  stats: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   controls: {
     gap: spacing.md,
-    marginBottom: spacing.lg,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md + 2,
+    paddingVertical: 14,
+  },
+  divided: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  rowStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  name: {
+    ...type.bodyStrong,
+    flex: 1,
+    color: colors.foreground,
+  },
+  nameMuted: {
+    color: colors.mutedForeground,
+  },
+  figures: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: spacing.sm,
+  },
+  times: {
+    ...type.monoSmall,
+    flex: 1,
+    color: colors.foreground,
+  },
+  total: {
+    ...type.mono,
+    color: colors.foreground,
+    fontVariant: ["tabular-nums"],
+  },
+  place: {
+    ...type.caption,
+    color: colors.textSecondary,
+  },
+  expiry: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  expiryText: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.warning,
   },
 });

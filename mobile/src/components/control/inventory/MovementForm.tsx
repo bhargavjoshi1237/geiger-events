@@ -34,6 +34,17 @@ export function MovementForm({ projectId, items, itemId: fixedItem, onClose, onR
   const [busy, setBusy] = useState(false);
   const item = items.find((i) => i.id === itemId);
   const meta = MOVEMENT_KINDS.find((k) => k.value === kind);
+  const amount = parseQty(qty);
+  // A preview of the ledger line before it's written; the server still signs it and refuses to go below zero.
+  const goesOut = meta?.direction === "out" || (meta?.direction === "either" && direction === "out");
+  const after = item && amount != null && amount > 0 ? item.onHand + (goesOut ? -amount : amount) : null;
+  const qtyHint = !item
+    ? undefined
+    : after === null
+      ? `${qtyText(item.onHand)} on hand now`
+      : after < 0
+        ? `Only ${qtyText(item.onHand)} on hand, so this would go below zero.`
+        : `${qtyText(item.onHand)} on hand now, ${qtyText(after)} after this.`;
 
   const submit = async () => {
     if (!itemId) return toast.error("Pick an item.");
@@ -83,7 +94,7 @@ export function MovementForm({ projectId, items, itemId: fixedItem, onClose, onR
             onChange={(v) => setDirection(v === "out" ? "out" : "in")}
           />
         ) : null}
-        <Field label="Quantity" hint={item ? `${qtyText(item.onHand)} on hand now` : undefined}>
+        <Field label="Quantity" hint={qtyHint}>
           <Input value={qty} onChangeText={setQty} keyboardType="decimal-pad" placeholder="0" />
         </Field>
         <Field label="Reason (optional)">
@@ -94,7 +105,7 @@ export function MovementForm({ projectId, items, itemId: fixedItem, onClose, onR
         </Field>
         <View style={styles.actions}>
           <Button title="Cancel" variant="ghost" onPress={onClose} />
-          <Button title="Record" onPress={() => void submit()} loading={busy} />
+          <Button title="Record movement" onPress={() => void submit()} loading={busy} />
         </View>
       </View>
     </KeyboardAvoidingView>

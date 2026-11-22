@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { colors, radius } from "@/theme/tokens";
 
-type IconTileTone = "neutral" | "success" | "danger" | "outline";
+type IconTileTone = "neutral" | "success" | "danger" | "warning" | "info" | "outline";
 
 type IconTileProps = {
   icon: IconName;
@@ -16,6 +16,8 @@ const TINTS: Record<IconTileTone, string> = {
   neutral: colors.mutedForeground,
   success: colors.success,
   danger: colors.danger,
+  warning: colors.warning,
+  info: colors.info,
   outline: colors.textTertiary,
 };
 
@@ -28,6 +30,8 @@ export function IconTile({ icon, size = 40, tone = "neutral" }: IconTileProps) {
         { width: size, height: size, borderRadius: size >= 40 ? radius.md : radius.sm + 2 },
         tone === "success" && styles.success,
         tone === "danger" && styles.danger,
+        tone === "warning" && styles.warning,
+        tone === "info" && styles.info,
         tone === "outline" && styles.outline,
       ]}
     >
@@ -47,6 +51,12 @@ const styles = StyleSheet.create({
   },
   danger: {
     backgroundColor: `${colors.danger}1A`,
+  },
+  warning: {
+    backgroundColor: `${colors.warning}1F`,
+  },
+  info: {
+    backgroundColor: `${colors.info}1F`,
   },
   outline: {
     backgroundColor: colors.surfaceSubtle,

@@ -1,26 +1,53 @@
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
+import { ContactRow } from "@/components/control/guests/ContactRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
-import { Icon } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { fmtTimeAgo } from "@/lib/format";
-import { errorFeedback, selectionFeedback, successFeedback } from "@/lib/haptics";
+import { fmtClock, fmtDate, fmtShortDay, isToday, pluralize } from "@/lib/format";
+import { errorFeedback, successFeedback, tapFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { GuestContact, GuestFeedNote } from "@/types/control_guests";
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
+
+// The day heading a note files under: Today, Yesterday, a weekday date this year, a full date before that.
+function dayOf(d: string | null): string {
+  const date = d ? new Date(d) : null;
+  if (!date || Number.isNaN(date.getTime())) return "Undated";
+  if (isToday(d)) return "Today";
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.getFullYear() === new Date().getFullYear() ? fmtShortDay(d) : fmtDate(d);
+}
+
+// The feed arrives newest first, so consecutive notes on the same day share a heading.
+function byDay(notes: GuestFeedNote[]): { day: string; items: GuestFeedNote[] }[] {
+  const groups: { day: string; items: GuestFeedNote[] }[] = [];
+  for (const note of notes) {
+    const day = dayOf(note.createdAt);
+    const last = groups[groups.length - 1];
+    if (last && last.day === day) last.items.push(note);
+    else groups.push({ day, items: [note] });
+  }
+  return groups;
+}
 
 export default function NotesScreen() {
   const router = useRouter();
@@ -42,19 +69,23 @@ export default function NotesScreen() {
   } else if (!shown.length) {
     body = <EmptyState icon="search" title="No matching notes" message="Try another word or name." actionLabel="Clear search" onAction={() => setQuery("")} />;
   } else {
+    const days = byDay(shown);
     body = (
       <View style={styles.stack}>
-        {shown.map((n) => (
-          <Pressable
-            key={`${n.contactId}-${n.id}`}
-            accessibilityRole="button"
-            accessibilityLabel={`Note on ${n.contactName || n.contactEmail}`}
-            onPress={() => router.push({ pathname: "/control/guests/contacts/[id]", params: { id: n.contactId } })}
-            style={({ pressed }) => [styles.note, pressed && styles.pressed]}
-          >
-            <Text style={styles.body}>{n.body}</Text>
-            <Text style={styles.meta}>{[n.contactName || n.contactEmail, fmtTimeAgo(n.createdAt)].filter(Boolean).join(" · ")}</Text>
-          </Pressable>
+        <Text style={styles.total}>{`${shown.length} ${pluralize(shown.length, "note", "notes")}${q ? " found" : ""}`}</Text>
+        {days.map((group, g) => (
+          <Animated.View key={`${group.day}-${g}`} entering={FadeInDown.delay(stagger(g)).springify()}>
+            <ListGroup title={group.day} footer={g === days.length - 1 ? "Tap a note to open the contact it's on." : undefined}>
+              {group.items.map((n, i) => (
+                <NoteRow
+                  key={`${n.contactId}-${n.id}`}
+                  note={n}
+                  onPress={() => router.push({ pathname: "/control/guests/contacts/[id]", params: { id: n.contactId } })}
+                  divider={i < group.items.length - 1}
+                />
+              ))}
+            </ListGroup>
+          </Animated.View>
         ))}
       </View>
     );
@@ -84,6 +115,33 @@ export default function NotesScreen() {
         </Sheet>
       ) : null}
     </Screen>
+  );
+}
+
+// A note as a line in the feed: who it's on, the mono time it was left, then the note in full.
+function NoteRow({ note, onPress, divider }: { note: GuestFeedNote; onPress: () => void; divider: boolean }) {
+  const who = note.contactName || note.contactEmail || "Contact";
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Note on ${who}. Open contact`}
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.note, divider && styles.divided, pressed && styles.pressed]}
+    >
+      <Avatar name={note.contactName} email={note.contactEmail} size={32} />
+      <View style={styles.noteStack}>
+        <View style={styles.noteHead}>
+          <Text style={styles.noteWho} numberOfLines={1}>
+            {who}
+          </Text>
+          {note.createdAt ? <Text style={styles.noteTime}>{fmtClock(note.createdAt)}</Text> : null}
+        </View>
+        <Text style={styles.noteBody}>{note.body}</Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -122,38 +180,30 @@ function AddNoteForm({ projectId, onClose, onAdded }: { projectId: string; onClo
   };
 
   if (!contact) {
+    const found = (results.data?.contacts ?? []).slice(0, 30);
     return (
       <View style={styles.form}>
         <Input leftIcon="search" value={query} onChangeText={setQuery} placeholder="Find a contact…" autoCapitalize="none" autoFocus />
         {term && results.loading ? (
           <SkeletonList rows={3} variant="divided" />
-        ) : term ? (
-          <ScrollView style={styles.results} keyboardShouldPersistTaps="handled">
-            {(results.data?.contacts ?? []).slice(0, 30).map((c) => (
-              <Pressable
-                key={c.id}
-                accessibilityRole="button"
-                accessibilityLabel={c.name || c.email}
-                onPress={() => {
-                  selectionFeedback();
-                  setContact(c);
-                }}
-                style={({ pressed }) => [styles.result, pressed && styles.pressed]}
-              >
-                <Avatar name={c.name} email={c.email} size={32} />
-                <View style={styles.resultText}>
-                  <Text style={styles.resultName} numberOfLines={1}>
-                    {c.name || c.email}
-                  </Text>
-                  {c.email ? <Text style={styles.meta}>{c.email}</Text> : null}
-                </View>
-                <Icon name="chevron-right" size={16} color={colors.textTertiary} />
-              </Pressable>
-            ))}
-            {results.data && !results.data.contacts.length ? <Text style={styles.meta}>Nobody matches that.</Text> : null}
-          </ScrollView>
+        ) : term && results.data && !found.length ? (
+          <Text style={styles.hint}>Nobody matches that. Try a name, email or company.</Text>
+        ) : term && found.length ? (
+          <ListGroup title="Who is it about?">
+            <ScrollView style={styles.results} keyboardShouldPersistTaps="handled">
+              {found.map((c, i) => (
+                <ContactRow
+                  key={c.id}
+                  contact={c}
+                  showTags={false}
+                  onPress={() => setContact(c)}
+                  divider={i < found.length - 1}
+                />
+              ))}
+            </ScrollView>
+          </ListGroup>
         ) : (
-          <Text style={styles.meta}>Search by name, email or company.</Text>
+          <Text style={styles.hint}>Search by name, email or company.</Text>
         )}
       </View>
     );
@@ -162,20 +212,28 @@ function AddNoteForm({ projectId, onClose, onAdded }: { projectId: string; onClo
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.form}>
-        <View style={styles.result}>
-          <Avatar name={contact.name} email={contact.email} size={32} />
-          <View style={styles.resultText}>
-            <Text style={styles.resultName}>{contact.name || contact.email}</Text>
-            {contact.email ? <Text style={styles.meta}>{contact.email}</Text> : null}
+        <ListGroup title="Note on">
+          <View style={styles.picked}>
+            <Avatar name={contact.name} email={contact.email} size={36} />
+            <View style={styles.pickedText}>
+              <Text style={styles.pickedName} numberOfLines={1}>
+                {contact.name || contact.email}
+              </Text>
+              {contact.name && contact.email ? (
+                <Text style={styles.hint} numberOfLines={1}>
+                  {contact.email}
+                </Text>
+              ) : null}
+            </View>
+            <Button title="Change" size="sm" variant="ghost" onPress={() => setContact(null)} />
           </View>
-          <Button title="Change" size="sm" variant="ghost" onPress={() => setContact(null)} />
-        </View>
+        </ListGroup>
         <Field label="Note">
           <Input value={text} onChangeText={setText} placeholder="What should the team know?" multiline textAlignVertical="top" style={styles.multiline} autoFocus />
         </Field>
         <View style={styles.actions}>
           <Button title="Cancel" variant="ghost" onPress={onClose} />
-          <Button title="Add note" onPress={() => void save()} loading={busy} />
+          <Button title="Add note" icon="plus" onPress={() => void save()} loading={busy} />
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -187,46 +245,75 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   stack: {
-    gap: spacing.sm,
+    gap: spacing.lg,
+  },
+  total: {
+    ...type.monoSmall,
+    color: colors.textSecondary,
+    marginBottom: -spacing.xs,
   },
   note: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    padding: spacing.lg,
-    gap: spacing.xs,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    paddingVertical: 14,
+  },
+  divided: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
   },
   pressed: {
     opacity: 0.6,
   },
-  body: {
-    ...type.body,
+  noteStack: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  noteHead: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: spacing.sm,
+  },
+  noteWho: {
+    ...type.labelStrong,
+    flex: 1,
     color: colors.foreground,
   },
-  meta: {
-    ...type.caption,
+  noteTime: {
+    ...type.monoSmall,
+    fontSize: 11,
     color: colors.textSecondary,
+  },
+  noteBody: {
+    ...type.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.mutedForeground,
   },
   form: {
     gap: spacing.lg,
   },
+  hint: {
+    ...type.caption,
+    color: colors.textSecondary,
+  },
   results: {
     maxHeight: 320,
   },
-  result: {
+  picked: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
   },
-  resultText: {
+  pickedText: {
     flex: 1,
     minWidth: 0,
     gap: 2,
   },
-  resultName: {
-    ...type.label,
+  pickedName: {
+    ...type.labelStrong,
     color: colors.foreground,
   },
   multiline: {

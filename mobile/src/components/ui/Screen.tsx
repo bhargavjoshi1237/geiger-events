@@ -13,6 +13,8 @@ type ScreenProps = {
   header?: React.ReactNode;
   padded?: boolean;
   onScroll?: (y: number) => void;
+  // Drawn full-bleed behind the top of the content and scrolls with it (cover washes on detail screens).
+  backdrop?: React.ReactNode;
 };
 
 export function Screen({
@@ -21,6 +23,7 @@ export function Screen({
   header,
   padded = true,
   onScroll,
+  backdrop,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const padStyle = padded ? styles.padded : null;
@@ -40,6 +43,11 @@ export function Screen({
               : undefined
           }
         >
+          {backdrop ? (
+            <View pointerEvents="none" style={styles.backdrop}>
+              {backdrop}
+            </View>
+          ) : null}
           {header}
           {children}
         </ScrollView>
@@ -62,5 +70,11 @@ const styles = StyleSheet.create({
   },
   padded: {
     paddingHorizontal: spacing.lg,
+  },
+  backdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
   },
 });

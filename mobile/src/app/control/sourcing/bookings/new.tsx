@@ -1,17 +1,21 @@
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LedgerRow, LedgerTotal } from "@/components/control/sourcing/Ledger";
 import { OptionPicker } from "@/components/control/sourcing/OptionPicker";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { FilterChips } from "@/components/ui/FilterChips";
+import { Icon } from "@/components/ui/icons";
+import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
-import { SectionTitle } from "@/components/ui/SectionTitle";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { ListRow } from "@/components/ui/ListRow";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
@@ -19,10 +23,11 @@ import { controlApi } from "@/lib/control_api";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { Bookables, BookingEmailResult, BookingQuote, VenueBooking } from "@/types/control_sourcing";
 
 const pad = (n: number) => String(n).padStart(2, "0");
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 // Tomorrow on the phone's calendar, the dashboard's default starting point.
 function tomorrow(): string {
@@ -133,133 +138,176 @@ export default function NewBookingScreen() {
       />
     );
   } else {
+    const rates = space ? [space.rates || "No published rate", space.minHours ? `${space.minHours} h minimum` : ""].filter(Boolean).join(" · ") : "";
     body = (
       <View style={styles.stack}>
-        <SectionTitle variant="kicker">Space</SectionTitle>
-        <View style={styles.card}>
-          <Field label="Venue">
-            <OptionPicker
-              label="Venue"
-              options={venues.map((v) => ({ value: v.id, label: v.name, hint: [v.city, v.timezone].filter(Boolean).join(" · ") }))}
-              value={venue?.id ?? ""}
-              onChange={edit((v: string) => {
-                setVenueId(v);
-                setSpaceId("");
-              })}
-            />
-          </Field>
-          <Field label="Space" hint={space ? [space.rates || "No published rate", space.minHours ? `${space.minHours} h minimum` : ""].filter(Boolean).join(" · ") : undefined}>
-            <FilterChips options={spaces.map((s) => ({ value: s.id, label: s.name }))} value={space?.id ?? ""} onChange={edit(setSpaceId)} />
-          </Field>
-        </View>
-
-        <SectionTitle variant="kicker">{`When · ${venue?.timezone ?? ""} time`}</SectionTitle>
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <Field label="Start date">
-                <Input value={date} onChangeText={edit((v: string) => {
-                  setDate(v);
-                  if (!endDate || endDate < v) setEndDate(v);
-                })} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" />
-              </Field>
-            </View>
-            <View style={styles.half}>
-              <Field label="Start time">
-                <Input value={startTime} onChangeText={edit(setStartTime)} placeholder="HH:MM" keyboardType="numbers-and-punctuation" />
-              </Field>
-            </View>
-          </View>
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <Field label="End date">
-                <Input value={endDate} onChangeText={edit(setEndDate)} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" />
-              </Field>
-            </View>
-            <View style={styles.half}>
-              <Field label="End time">
-                <Input value={endTime} onChangeText={edit(setEndTime)} placeholder="HH:MM" keyboardType="numbers-and-punctuation" />
-              </Field>
-            </View>
-          </View>
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <Field label="Setup">
+        <Animated.View entering={FadeInDown.delay(stagger(0)).springify()}>
+          <ListGroup title="Space">
+            <View style={styles.panel}>
+              <Field label="Venue">
                 <OptionPicker
-                  label="Setup"
-                  options={(space?.capacities.length ? space.capacities.map((c) => ({ value: c.key, label: c.label, hint: `Holds ${c.capacity}` })) : data.data.setupStyles)}
-                  value={setupStyle}
-                  onChange={edit(setSetupStyle)}
-                  noneLabel="Any setup"
+                  label="Venue"
+                  options={venues.map((v) => ({ value: v.id, label: v.name, hint: [v.city, v.timezone].filter(Boolean).join(" · ") }))}
+                  value={venue?.id ?? ""}
+                  onChange={edit((v: string) => {
+                    setVenueId(v);
+                    setSpaceId("");
+                  })}
                 />
               </Field>
+              <Field label="Space">
+                <FilterChips options={spaces.map((s) => ({ value: s.id, label: s.name }))} value={space?.id ?? ""} onChange={edit(setSpaceId)} />
+              </Field>
+              {rates ? (
+                <View style={styles.rates}>
+                  <Icon name="tag" size={13} color={colors.textSecondary} />
+                  <Text style={styles.ratesText}>{rates}</Text>
+                </View>
+              ) : null}
             </View>
-            <View style={styles.half}>
-              <Field label="Attendees">
-                <Input value={attendees} onChangeText={edit(setAttendees)} keyboardType="number-pad" placeholder="0" />
+          </ListGroup>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(stagger(1)).springify()}>
+          <ListGroup title={venue?.timezone ? `When · ${venue.timezone} time` : "When"}>
+            <View style={styles.panel}>
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <Field label="Start date">
+                    <Input
+                      value={date}
+                      onChangeText={edit((v: string) => {
+                        setDate(v);
+                        if (!endDate || endDate < v) setEndDate(v);
+                      })}
+                      placeholder="YYYY-MM-DD"
+                      keyboardType="numbers-and-punctuation"
+                    />
+                  </Field>
+                </View>
+                <View style={styles.half}>
+                  <Field label="Start time">
+                    <Input value={startTime} onChangeText={edit(setStartTime)} placeholder="HH:MM" keyboardType="numbers-and-punctuation" />
+                  </Field>
+                </View>
+              </View>
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <Field label="End date">
+                    <Input value={endDate} onChangeText={edit(setEndDate)} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" />
+                  </Field>
+                </View>
+                <View style={styles.half}>
+                  <Field label="End time">
+                    <Input value={endTime} onChangeText={edit(setEndTime)} placeholder="HH:MM" keyboardType="numbers-and-punctuation" />
+                  </Field>
+                </View>
+              </View>
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <Field label="Setup">
+                    <OptionPicker
+                      label="Setup"
+                      options={space?.capacities.length ? space.capacities.map((c) => ({ value: c.key, label: c.label, hint: `Holds ${c.capacity}` })) : data.data.setupStyles}
+                      value={setupStyle}
+                      onChange={edit(setSetupStyle)}
+                      noneLabel="Any setup"
+                    />
+                  </Field>
+                </View>
+                <View style={styles.half}>
+                  <Field label="Attendees">
+                    <Input value={attendees} onChangeText={edit(setAttendees)} keyboardType="number-pad" placeholder="0" />
+                  </Field>
+                </View>
+              </View>
+              <Button title="Check availability" icon="calendar-check" variant="secondary" loading={busy === "quote"} disabled={!space} onPress={() => void check()} fullWidth />
+            </View>
+          </ListGroup>
+        </Animated.View>
+
+        {quote ? (
+          <Animated.View entering={FadeInDown.springify()}>
+            {quote.ok && quote.quote ? (
+              <ListGroup title="Quote" footer={quote.quote.priced ? undefined : "This space has no published rate, so it books at no charge."}>
+                <View style={styles.verdict}>
+                  <Icon name="circle-check" size={16} color={colors.success} />
+                  <Text style={styles.ok}>Available</Text>
+                </View>
+                {quote.quote.lines.map((line) => (
+                  <LedgerRow key={line.date} label={line.date} detail={line.detail} amount={line.amount} />
+                ))}
+                <LedgerTotal amount={quote.quote.total} hint={quote.quote.currency ? quote.quote.currency.toUpperCase() : undefined} ruled={false} />
+              </ListGroup>
+            ) : (
+              <ListGroup title="Quote">
+                <View style={[styles.verdict, styles.verdictAlone]}>
+                  <Icon name="circle-x" size={16} color={colors.danger} />
+                  <Text style={styles.bad}>{quote.message || "That slot can't be booked."}</Text>
+                </View>
+              </ListGroup>
+            )}
+          </Animated.View>
+        ) : null}
+
+        <Animated.View entering={FadeInDown.delay(stagger(2)).springify()}>
+          <ListGroup title="Details">
+            <View style={styles.panel}>
+              <Field label="Title" hint="Defaults to the event or space name.">
+                <Input value={title} onChangeText={setTitle} />
+              </Field>
+              <Field label="Event">
+                <OptionPicker label="Event" options={(data.data.events ?? []).map((e) => ({ value: e.id, label: e.name }))} value={eventId} onChange={setEventId} noneLabel="No event" />
+              </Field>
+              <Field label="Contact name">
+                <Input value={contactName} onChangeText={setContactName} />
+              </Field>
+              <Field label="Contact email">
+                <Input value={contactEmail} onChangeText={setContactEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+              </Field>
+              <Field label="Contact phone">
+                <Input value={contactPhone} onChangeText={setContactPhone} keyboardType="phone-pad" />
+              </Field>
+              <Field label="Notes">
+                <Input value={notes} onChangeText={setNotes} multiline textAlignVertical="top" style={styles.multiline} />
               </Field>
             </View>
-          </View>
-          <Button title="Check availability" icon="calendar-check" variant="secondary" loading={busy === "quote"} disabled={!space} onPress={() => void check()} fullWidth />
-          {quote ? (
-            quote.ok && quote.quote ? (
-              <Card tone="subtle">
-                <Text style={styles.ok}>Available</Text>
-                {quote.quote.lines.map((line) => (
-                  <Text key={line.date} style={styles.meta}>{`${line.date} · ${line.detail} · ${line.amount}`}</Text>
-                ))}
-                <Text style={styles.total}>{`Total ${quote.quote.total}`}</Text>
-                {!quote.quote.priced ? <Text style={styles.meta}>This space has no published rate, so it books at no charge.</Text> : null}
-              </Card>
-            ) : (
-              <Card tone="subtle">
-                <Text style={styles.bad}>{quote.message || "That slot can't be booked."}</Text>
-              </Card>
-            )
-          ) : null}
-        </View>
+          </ListGroup>
+        </Animated.View>
 
-        <SectionTitle variant="kicker">Details</SectionTitle>
-        <View style={styles.card}>
-          <Field label="Title" hint="Defaults to the event or space name.">
-            <Input value={title} onChangeText={setTitle} />
-          </Field>
-          <Field label="Event">
-            <OptionPicker label="Event" options={(data.data.events ?? []).map((e) => ({ value: e.id, label: e.name }))} value={eventId} onChange={setEventId} noneLabel="No event" />
-          </Field>
-          <Field label="Contact name">
-            <Input value={contactName} onChangeText={setContactName} />
-          </Field>
-          <Field label="Contact email">
-            <Input value={contactEmail} onChangeText={setContactEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
-          </Field>
-          <Field label="Contact phone">
-            <Input value={contactPhone} onChangeText={setContactPhone} keyboardType="phone-pad" />
-          </Field>
-          <Field label="Notes">
-            <Input value={notes} onChangeText={setNotes} multiline textAlignVertical="top" style={styles.multiline} />
-          </Field>
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Hold instead of confirming</Text>
-            <Switch value={hold} onValueChange={setHold} label="Hold instead of confirming" />
-          </View>
-          {hold ? (
-            <Field label="Hold for">
-              <FilterChips
-                options={(data.data.holdHours ?? []).map((h) => ({ value: String(h), label: h >= 168 ? "7 days" : h >= 72 ? "3 days" : `${h} hours` }))}
-                value={holdHours}
-                onChange={setHoldHours}
-              />
-            </Field>
-          ) : null}
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Email the venue and the booker</Text>
-            <Switch value={notify} onValueChange={setNotify} label="Email the venue and the booker" />
-          </View>
-        </View>
+        <Animated.View entering={FadeInDown.delay(stagger(3)).springify()}>
+          <ListGroup title="Options">
+            <ListRow
+              leading={<IconTile icon="timer" size={36} tone={hold ? "warning" : "neutral"} />}
+              title="Hold instead of confirming"
+              subtitle="Keeps the slot provisionally until the hold runs out"
+              trailing={<Switch value={hold} onValueChange={setHold} label="Hold instead of confirming" />}
+            />
+            {hold ? (
+              <View style={styles.holdFor}>
+                <Field label="Hold for">
+                  <FilterChips
+                    options={(data.data.holdHours ?? []).map((h) => ({ value: String(h), label: h >= 168 ? "7 days" : h >= 72 ? "3 days" : `${h} hours` }))}
+                    value={holdHours}
+                    onChange={setHoldHours}
+                  />
+                </Field>
+              </View>
+            ) : null}
+            <ListRow
+              leading={<IconTile icon="mail" size={36} />}
+              title="Email the venue and the booker"
+              subtitle="Sends the confirmation or hold notice"
+              trailing={<Switch value={notify} onValueChange={setNotify} label="Email the venue and the booker" />}
+              divider={false}
+            />
+          </ListGroup>
+        </Animated.View>
 
-        <Button title={hold ? "Place hold" : "Book"} icon="calendar-check" loading={busy === "book"} disabled={!space || busy !== null} onPress={() => void book()} fullWidth />
-        <Text style={styles.meta}>The server re-checks the slot and prices it from the space&apos;s rates when you book.</Text>
+        <View style={styles.submit}>
+          <Button title={hold ? "Place hold" : "Book"} icon="calendar-check" loading={busy === "book"} disabled={!space || busy !== null} onPress={() => void book()} fullWidth />
+          <Text style={styles.meta}>The server re-checks the slot and prices it from the space&apos;s rates when you book.</Text>
+        </View>
       </View>
     );
   }
@@ -284,16 +332,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   stack: {
-    gap: spacing.md,
+    gap: spacing.xl,
   },
-  card: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    padding: spacing.lg,
+  panel: {
     gap: spacing.lg,
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.lg,
   },
   row: {
     flexDirection: "row",
@@ -302,19 +345,31 @@ const styles = StyleSheet.create({
   half: {
     flex: 1,
   },
-  switchRow: {
+  rates: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.xs + 2,
+    marginTop: -spacing.xs,
   },
-  switchLabel: {
-    ...type.label,
+  ratesText: {
+    ...type.monoSmall,
     flex: 1,
-    color: colors.foreground,
+    color: colors.textSecondary,
   },
   multiline: {
     minHeight: 90,
     paddingTop: spacing.md,
+  },
+  verdict: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.md + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
+  verdictAlone: {
+    borderBottomWidth: 0,
   },
   ok: {
     ...type.labelStrong,
@@ -322,16 +377,19 @@ const styles = StyleSheet.create({
   },
   bad: {
     ...type.labelStrong,
+    flex: 1,
     color: colors.danger,
   },
-  total: {
-    ...type.bodyStrong,
-    color: colors.foreground,
-    marginTop: spacing.sm,
+  holdFor: {
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
+  submit: {
+    gap: spacing.sm,
   },
   meta: {
     ...type.caption,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
   },
 });

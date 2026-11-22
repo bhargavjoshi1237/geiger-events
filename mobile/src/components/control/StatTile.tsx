@@ -9,11 +9,11 @@ type Props = { label: string; value: string; hint?: string };
 export function StatTile({ label, value, hint }: Props) {
   return (
     <View style={styles.tile} accessible accessibilityLabel={`${label}: ${value}${hint ? `, ${hint}` : ""}`}>
-      <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </Text>
       <Text style={styles.label} numberOfLines={1}>
         {label}
+      </Text>
+      <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
       </Text>
       {hint ? (
         <Text style={styles.hint} numberOfLines={1}>
@@ -32,20 +32,27 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceSubtle,
-    padding: spacing.md,
-    gap: 2,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md + 2,
+    gap: 4,
+  },
+  label: {
+    ...type.micro,
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+    color: colors.textTertiary,
   },
   value: {
-    ...type.heading,
+    ...type.figureSmall,
     color: colors.foreground,
     fontVariant: ["tabular-nums"],
   },
-  label: {
-    ...type.caption,
-    color: colors.textSecondary,
-  },
   hint: {
-    ...type.micro,
-    color: colors.textTertiary,
+    ...type.caption,
+    fontSize: 11,
+    lineHeight: 14,
+    color: colors.textSecondary,
   },
 });

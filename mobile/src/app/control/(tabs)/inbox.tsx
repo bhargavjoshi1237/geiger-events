@@ -5,11 +5,14 @@ import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated"
 
 import { ScreenTitle } from "@/components/ScreenTitle";
 import { Avatar } from "@/components/ui/Avatar";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Screen } from "@/components/ui/Screen";
 import { Segmented } from "@/components/ui/Segmented";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { fmtCompactTime } from "@/lib/format";
+import { tapFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useAppFocused } from "@/lib/use_poll";
 import { useControl } from "@/state/control";
@@ -22,7 +25,9 @@ const STATUS_TABS = [
   { value: "closed", label: "Closed" },
 ];
 
-const stagger = (i: number) => Math.min(i, 11) * 40;
+const stagger = (i: number) => Math.min(i, 8) * 50;
+
+type Section = { key: string; title: string; tone: "info" | "neutral"; threads: ControlThread[] };
 
 export default function ControlInboxScreen() {
   const router = useRouter();
@@ -41,6 +46,15 @@ export default function ControlInboxScreen() {
   }, [focused, path, reload]);
 
   const threads = data?.threads ?? [];
+  const unread = threads.filter((t) => t.unread);
+  const grouped: Section[] =
+    status === "open"
+      ? [
+          { key: "unread", title: "Unread", tone: "info", threads: unread },
+          { key: "read", title: unread.length ? "Read" : "Open conversations", tone: "neutral", threads: threads.filter((t) => !t.unread) },
+        ]
+      : [{ key: "closed", title: "Closed conversations", tone: "neutral", threads }];
+  const sections = grouped.filter((s) => s.threads.length > 0);
 
   return (
     <Screen scroll>
@@ -77,14 +91,20 @@ export default function ControlInboxScreen() {
               />
             )
           ) : (
-            <Animated.View layout={LinearTransition}>
-              {threads.map((thread, idx) => (
-                <Animated.View key={thread.id} entering={FadeInDown.delay(stagger(idx)).springify()} layout={LinearTransition}>
-                  <ThreadRow
-                    thread={thread}
-                    last={idx === threads.length - 1}
-                    onPress={() => router.push({ pathname: "/control/thread/[id]", params: { id: thread.id } })}
-                  />
+            <Animated.View layout={LinearTransition} style={styles.list}>
+              {sections.map((section, si) => (
+                <Animated.View key={section.key} entering={FadeInDown.delay(stagger(si)).springify()} layout={LinearTransition}>
+                  <ListGroup title={section.title} action={<CountBadge value={section.threads.length} tone={section.tone} />}>
+                    {section.threads.map((thread, idx) => (
+                      <Animated.View key={thread.id} layout={LinearTransition}>
+                        <ThreadRow
+                          thread={thread}
+                          last={idx === section.threads.length - 1}
+                          onPress={() => router.push({ pathname: "/control/thread/[id]", params: { id: thread.id } })}
+                        />
+                      </Animated.View>
+                    ))}
+                  </ListGroup>
                 </Animated.View>
               ))}
             </Animated.View>
@@ -102,7 +122,10 @@ function ThreadRow({ thread, last, onPress }: { thread: ControlThread; last: boo
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${who}, ${thread.subject}${thread.unread ? ", unread" : ""}`}
-      onPress={onPress}
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
       style={({ pressed }) => [styles.row, !last && styles.rowDivided, pressed && styles.pressed]}
     >
       <Avatar name={thread.name} email={thread.email} size={44} shape="square" />
@@ -111,7 +134,8 @@ function ThreadRow({ thread, last, onPress }: { thread: ControlThread; last: boo
           <Text style={[styles.title, thread.unread && styles.titleUnread]} numberOfLines={1}>
             {who}
           </Text>
-          <Text style={styles.time}>{fmtCompactTime(thread.lastMessageAt)}</Text>
+          {thread.unread ? <View style={styles.dot} /> : null}
+          <Text style={[styles.time, thread.unread && styles.timeUnread]}>{fmtCompactTime(thread.lastMessageAt)}</Text>
         </View>
         {context ? (
           <Text style={styles.context} numberOfLines={1}>
@@ -119,41 +143,43 @@ function ThreadRow({ thread, last, onPress }: { thread: ControlThread; last: boo
           </Text>
         ) : null}
         {thread.preview ? (
-          <Text style={styles.preview} numberOfLines={1}>
+          <Text style={[styles.preview, thread.unread && styles.previewUnread]} numberOfLines={2}>
             {thread.preview}
           </Text>
         ) : null}
       </View>
-      {thread.unread ? <View style={styles.dot} /> : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   segment: {
-    marginBottom: spacing.md + 2,
+    marginBottom: spacing.xl,
   },
-  pressed: {
-    opacity: 0.65,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.md,
-    paddingVertical: 14,
-  },
-  rowDivided: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.surfaceActive,
+  list: {
+    gap: spacing.xl,
   },
   stack: {
     flex: 1,
     minWidth: 0,
     gap: 4,
   },
+  pressed: {
+    opacity: 0.6,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md + 2,
+    paddingVertical: 14,
+  },
+  rowDivided: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
   titleRow: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "center",
     gap: spacing.sm,
   },
   title: {
@@ -168,10 +194,20 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.foreground,
   },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.info,
+  },
   time: {
-    ...type.caption,
+    ...type.monoSmall,
     fontSize: 11,
+    lineHeight: 15,
     color: colors.textTertiary,
+  },
+  timeUnread: {
+    color: colors.info,
   },
   context: {
     ...type.captionStrong,
@@ -181,13 +217,9 @@ const styles = StyleSheet.create({
     ...type.caption,
     fontSize: 13,
     lineHeight: 18,
-    color: colors.mutedForeground,
+    color: colors.textSecondary,
   },
-  dot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: colors.primary,
-    marginTop: 5,
+  previewUnread: {
+    color: colors.mutedForeground,
   },
 });

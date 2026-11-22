@@ -1,18 +1,24 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ListEditor } from "@/components/control/fields/ListEditor";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { Pill } from "@/components/ui/Pill";
+import { Readout } from "@/components/ui/Readout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { fmtDateTime } from "@/lib/format";
@@ -32,6 +38,15 @@ const FIELDS: { key: TextKey; label: string; keyboard?: "email-address" | "phone
   { key: "location", label: "Location" },
 ];
 
+const stagger = (i: number) => Math.min(i, 8) * 50;
+
+// "Mar 2026": short enough to sit in a readout cell.
+function monthYear(d: string | null): string {
+  if (!d) return "—";
+  const date = new Date(d);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
 export default function ContactScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -49,7 +64,17 @@ export default function ContactScreen() {
         {query.error ? (
           <EmptyState icon="circle-alert" title="Couldn't open this contact" message={query.error} actionLabel="Try again" onAction={() => void query.reload()} />
         ) : (
-          <SkeletonList rows={5} variant="card" />
+          <View style={styles.stack}>
+            <View style={styles.heroTop}>
+              <Skeleton width={64} height={64} circle />
+              <View style={styles.heroText}>
+                <Skeleton width="70%" height={22} />
+                <Skeleton width="50%" height={14} />
+              </View>
+            </View>
+            <Skeleton height={78} radius={radius.lg} />
+            <SkeletonList rows={3} variant="card" />
+          </View>
         )}
       </ScrollView>
     </View>
@@ -76,7 +101,9 @@ function ContactEditor({ contact, onSaved }: { contact: GuestContact; onSaved: (
   const changes: GuestContactPatch = {};
   for (const { key } of FIELDS) if (draft[key].trim() !== contact[key]) changes[key] = draft[key];
 
-  if (JSON.stringify(draft.tags) !== JSON.stringify(contact.tags)) changes.tags = draft.tags;
+  const fieldsDirty = Object.keys(changes).length > 0;
+  const tagsDirty = JSON.stringify(draft.tags) !== JSON.stringify(contact.tags);
+  if (tagsDirty) changes.tags = draft.tags;
   const dirty = Object.keys(changes).length > 0;
 
   const call = async (kind: "save" | "note" | "delete", path: string, method: string, body?: unknown) => {
@@ -124,59 +151,102 @@ function ContactEditor({ contact, onSaved }: { contact: GuestContact; onSaved: (
     }
   };
 
+  const role = [contact.title, contact.company, contact.location].filter(Boolean).join(" · ");
+  let step = 0;
+
   return (
     <KeyboardAvoidingView style={[styles.root, { paddingTop: insets.top }]} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScreenHeader
-        title={contact.name || "Contact"}
-        subtitle={contact.email || undefined}
-        right={<Button title="Save" size="sm" onPress={() => void save()} loading={busy === "save"} disabled={!dirty || busy !== null} />}
-      />
+      <ScreenHeader title="Contact" right={<Button title="Save" size="sm" onPress={() => void save()} loading={busy === "save"} disabled={!dirty || busy !== null} />} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xxl }]} keyboardShouldPersistTaps="handled">
         <View style={styles.stack}>
-          <View style={styles.panel}>
-            <SectionTitle variant="kicker">Details</SectionTitle>
-            <View style={styles.card}>
-              {FIELDS.map((f) => (
-                <Field key={f.key} label={f.label}>
-                  <Input
-                    value={draft[f.key]}
-                    onChangeText={(v) => setDraft((d) => ({ ...d, [f.key]: v }))}
-                    keyboardType={f.keyboard}
-                    autoCapitalize={f.caps ?? "sentences"}
-                    autoCorrect={f.key !== "email"}
-                  />
-                </Field>
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()} style={styles.hero}>
+            <View style={styles.heroTop}>
+              <Avatar name={contact.name} email={contact.email} size={64} />
+              <View style={styles.heroText}>
+                <Text style={styles.name} numberOfLines={2}>
+                  {contact.name || contact.email || "Unnamed"}
+                </Text>
+                {contact.name && contact.email ? (
+                  <Text style={styles.email} numberOfLines={1}>
+                    {contact.email}
+                  </Text>
+                ) : null}
+                {role ? (
+                  <Text style={styles.role} numberOfLines={2}>
+                    {role}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            <View style={styles.chips}>
+              {contact.blocked ? <Pill label="Blocked" tone="danger" /> : null}
+              {contact.status ? <Pill label={contact.status} tone="neutral" /> : null}
+              {contact.tags.map((tag) => (
+                <Pill key={tag} label={tag} tone="neutral" variant="outline" dot={false} />
               ))}
             </View>
-          </View>
+          </Animated.View>
 
-          <View style={styles.panel}>
-            <SectionTitle variant="kicker">Tags</SectionTitle>
-            <View style={styles.card}>
-              <ListEditor value={draft.tags} onChange={(tags) => setDraft((d) => ({ ...d, tags }))} placeholder="Add a tag…" />
-            </View>
-          </View>
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <Readout
+              items={[
+                { label: "Notes", value: String(contact.notes.length) },
+                { label: "Tags", value: String(contact.tags.length) },
+                { label: "In book since", value: monthYear(contact.createdAt) },
+              ]}
+            />
+          </Animated.View>
 
-          <View style={styles.panel}>
-            <SectionTitle variant="kicker">Notes</SectionTitle>
-            <View style={styles.card}>
-              <Input value={note} onChangeText={setNote} placeholder="Add a note your team can see…" multiline textAlignVertical="top" style={styles.multiline} />
-              <Button title="Add note" size="sm" variant="secondary" icon="plus" onPress={() => void addNote()} loading={busy === "note"} disabled={busy !== null} />
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title="Details" footer={fieldsDirty ? "Unsaved changes. Tap Save to keep them." : undefined}>
+              <View style={styles.panel}>
+                {FIELDS.map((f) => (
+                  <Field key={f.key} label={f.label}>
+                    <Input
+                      value={draft[f.key]}
+                      onChangeText={(v) => setDraft((d) => ({ ...d, [f.key]: v }))}
+                      keyboardType={f.keyboard}
+                      autoCapitalize={f.caps ?? "sentences"}
+                      autoCorrect={f.key !== "email"}
+                    />
+                  </Field>
+                ))}
+              </View>
+            </ListGroup>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            {/* ListEditor draws its own grouped list, so the section only needs the kicker. */}
+            <SectionTitle variant="kicker" action={<CountBadge value={draft.tags.length} />}>
+              Tags
+            </SectionTitle>
+            <ListEditor value={draft.tags} onChange={(tags) => setDraft((d) => ({ ...d, tags }))} placeholder="Add a tag…" />
+            {tagsDirty ? <Text style={styles.unsaved}>Tag changes save with the contact. Tap Save to keep them.</Text> : null}
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <ListGroup title="Notes" action={<CountBadge value={contact.notes.length} />} footer="Only your team sees notes.">
+              <View style={[styles.panel, styles.composer]}>
+                <Input value={note} onChangeText={setNote} placeholder="Add a note your team can see…" multiline textAlignVertical="top" style={styles.multiline} />
+                <View style={styles.composerActions}>
+                  <Button title="Add note" size="sm" variant="secondary" icon="plus" onPress={() => void addNote()} loading={busy === "note"} disabled={busy !== null} />
+                </View>
+              </View>
               {contact.notes.length ? (
                 contact.notes.map((n) => (
                   <View key={n.id} style={styles.note}>
                     <View style={styles.noteText}>
                       <Text style={styles.noteBody}>{n.body}</Text>
-                      <Text style={styles.noteMeta}>{fmtDateTime(n.createdAt)}</Text>
+                      {n.createdAt ? <Text style={styles.noteMeta}>{fmtDateTime(n.createdAt)}</Text> : null}
                     </View>
                     <IconButton icon="trash-2" label="Delete note" variant="plain" size={32} iconSize={16} onPress={() => void removeNote(n.id)} />
                   </View>
                 ))
               ) : (
-                <Text style={styles.noteMeta}>No notes yet.</Text>
+                <Text style={styles.noNotes}>No notes yet.</Text>
               )}
-            </View>
-          </View>
+            </ListGroup>
+          </Animated.View>
 
           <Button title="Delete contact" icon="trash-2" variant="destructiveGhost" onPress={() => setConfirmDelete(true)} fullWidth />
         </View>
@@ -184,10 +254,10 @@ function ContactEditor({ contact, onSaved }: { contact: GuestContact; onSaved: (
 
       <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this contact?">
         <View style={styles.sheetBody}>
-          <Text style={styles.noteMeta}>They leave the Contact Book. Their registrations and orders stay as they are.</Text>
+          <Text style={styles.sheetText}>They leave the Contact Book. Their registrations and orders stay as they are.</Text>
           <View style={styles.sheetActions}>
             <Button title="Keep" variant="ghost" onPress={() => setConfirmDelete(false)} />
-            <Button title="Delete" variant="destructive" onPress={() => void remove()} loading={busy === "delete"} />
+            <Button title="Delete contact" variant="destructive" onPress={() => void remove()} loading={busy === "delete"} />
           </View>
         </View>
       </Sheet>
@@ -207,16 +277,52 @@ const styles = StyleSheet.create({
   stack: {
     gap: spacing.xl,
   },
-  panel: {
-    gap: spacing.sm,
+  hero: {
+    gap: spacing.md + 2,
+    paddingTop: spacing.sm,
   },
-  card: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    padding: spacing.lg,
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md + 2,
+  },
+  heroText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  name: {
+    ...type.title,
+    color: colors.foreground,
+  },
+  email: {
+    ...type.body,
+    fontSize: 14,
+    lineHeight: 19,
+    color: colors.mutedForeground,
+  },
+  role: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
+  },
+  chips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacing.xs + 2,
+  },
+  panel: {
+    paddingVertical: spacing.lg,
     gap: spacing.lg,
+  },
+  composer: {
+    gap: spacing.md,
+  },
+  composerActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
   },
   multiline: {
     minHeight: 80,
@@ -228,22 +334,40 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.surfaceActive,
-    paddingTop: spacing.md,
+    paddingVertical: spacing.md,
   },
   noteText: {
     flex: 1,
-    gap: 2,
+    gap: 4,
   },
   noteBody: {
     ...type.body,
     color: colors.foreground,
   },
   noteMeta: {
+    ...type.monoSmall,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  unsaved: {
+    ...type.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  noNotes: {
     ...type.caption,
     color: colors.textSecondary,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.surfaceActive,
+    paddingVertical: spacing.md,
   },
   sheetBody: {
     gap: spacing.lg,
+  },
+  sheetText: {
+    ...type.body,
+    color: colors.textSecondary,
   },
   sheetActions: {
     flexDirection: "row",

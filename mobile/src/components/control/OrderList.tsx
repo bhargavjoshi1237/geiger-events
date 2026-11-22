@@ -1,23 +1,23 @@
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 
+import { byDay, clock } from "@/components/control/money/ledger";
+import { MoneyRow } from "@/components/control/money/MoneyRow";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconButton } from "@/components/ui/IconButton";
-import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
-import { SectionTitle } from "@/components/ui/SectionTitle";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Segmented } from "@/components/ui/Segmented";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
 import { moneyIn, ORDER_STATUS_META } from "@/lib/control_meta";
-import { fmtShortDay, isToday } from "@/lib/format";
-import type { Tone } from "@/lib/status";
 import { useControlQuery } from "@/lib/use_control_query";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { spacing } from "@/theme/tokens";
 import type { ControlOrder, ControlOrderPage } from "@/types/portal";
 
 const STATUS_TABS = [
@@ -27,16 +27,10 @@ const STATUS_TABS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-const TONE_COLORS: Record<Tone, string> = {
-  success: colors.success,
-  danger: colors.danger,
-  info: colors.info,
-  warning: colors.warning,
-  neutral: colors.mutedForeground,
-};
-
 const SEARCH_DELAY_MS = 300;
-const stagger = (i: number) => Math.min(i, 11) * 40;
+// The segmented track is 36pt segments plus 3pt padding, so the search button matches it at 42.
+const TOOLBAR_HEIGHT = 42;
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 type Props = {
   basePath: string;
@@ -74,16 +68,7 @@ export function OrderList({ basePath, showEvent = false }: Props) {
   }, [data, more]);
   const nextBefore = more ? more.nextBefore : data?.nextBefore ?? null;
 
-  const groups = useMemo(() => {
-    const out: { day: string; items: ControlOrder[] }[] = [];
-    for (const o of orders) {
-      const day = isToday(o.createdAt) ? "Today" : fmtShortDay(o.createdAt) || "Earlier";
-      const last = out[out.length - 1];
-      if (last && last.day === day) last.items.push(o);
-      else out.push({ day, items: [o] });
-    }
-    return out;
-  }, [orders]);
+  const groups = useMemo(() => byDay(orders, (o) => o.createdAt), [orders]);
 
   const loadMore = async () => {
     if (!data || !nextBefore || loadingMore) return;
@@ -113,6 +98,8 @@ export function OrderList({ basePath, showEvent = false }: Props) {
         <IconButton
           icon={searching ? "x" : "search"}
           label={searching ? "Close search" : "Search orders"}
+          shape="square"
+          size={TOOLBAR_HEIGHT}
           onPress={() => {
             setSearching((s) => !s);
             clearSearch();
@@ -161,58 +148,27 @@ export function OrderList({ basePath, showEvent = false }: Props) {
       ) : (
         <Animated.View layout={LinearTransition} style={styles.stack}>
           {groups.map((group, gi) => (
-            <View key={group.day}>
-              <SectionTitle variant="kicker">{group.day}</SectionTitle>
-              <View style={styles.group}>
-                {group.items.map((o, idx) => {
-                  const meta = ORDER_STATUS_META[o.status];
-                  const tint = TONE_COLORS[meta.tone];
-                  const detail = [
-                    showEvent ? o.eventName : "",
-                    `${o.ticket || "Admission"}${o.quantity > 1 ? ` × ${o.quantity}` : ""}`,
-                    o.code,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ");
-                  return (
-                    <Animated.View key={o.id} entering={FadeInDown.delay(stagger(gi + idx)).springify()}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`${o.name || o.email}, ${moneyIn(o.total, o.currency)}, ${meta.label}`}
-                        onPress={() => router.push({ pathname: "/control/order/[id]", params: { id: o.id } })}
-                        style={({ pressed }) => [
-                          styles.row,
-                          idx < group.items.length - 1 && styles.rowDivided,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <IconTile icon={o.cancelled ? "ban" : o.refunded > 0 ? "undo-2" : "receipt"} size={44} />
-                        <View style={styles.rowStack}>
-                          <Text style={styles.rowName} numberOfLines={1}>
-                            {o.name || o.email || "Buyer"}
-                          </Text>
-                          <Text style={styles.rowMeta} numberOfLines={1}>
-                            {detail}
-                          </Text>
-                        </View>
-                        <View style={styles.rowTrailing}>
-                          <Text style={styles.rowTotal}>{moneyIn(o.total, o.currency)}</Text>
-                          <View style={styles.statusRow}>
-                            <View style={[styles.statusDot, { backgroundColor: tint }]} />
-                            <Text style={[styles.statusText, { color: tint }]} numberOfLines={1}>
-                              {meta.label}
-                            </Text>
-                          </View>
-                        </View>
-                      </Pressable>
-                    </Animated.View>
-                  );
-                })}
-              </View>
-            </View>
+            <Animated.View key={group.key} entering={FadeInDown.delay(stagger(gi)).springify()}>
+              <ListGroup title={group.label} action={<CountBadge value={group.items.length} />}>
+                {group.items.map((o, idx) => (
+                  <MoneyRow
+                    key={o.id}
+                    time={clock(o.createdAt)}
+                    title={o.name || o.email || "Buyer"}
+                    meta={[showEvent ? o.eventName : "", `${o.ticket || "Admission"}${o.quantity > 1 ? ` × ${o.quantity}` : ""}`].filter(Boolean).join(" · ")}
+                    code={o.code}
+                    amount={moneyIn(o.total, o.currency)}
+                    amountTone={o.cancelled ? "void" : "default"}
+                    status={ORDER_STATUS_META[o.status]}
+                    onPress={() => router.push({ pathname: "/control/order/[id]", params: { id: o.id } })}
+                    divider={idx < group.items.length - 1}
+                  />
+                ))}
+              </ListGroup>
+            </Animated.View>
           ))}
           {nextBefore ? (
-            <Button title="Load more" variant="secondary" onPress={() => void loadMore()} loading={loadingMore} fullWidth />
+            <Button title="Load older orders" variant="secondary" onPress={() => void loadMore()} loading={loadingMore} fullWidth />
           ) : null}
         </Animated.View>
       )}
@@ -234,65 +190,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   stack: {
-    gap: spacing.xl - 4,
-  },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xl - 2,
-    backgroundColor: colors.surfaceSubtle,
-    overflow: "hidden",
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    padding: spacing.lg,
-  },
-  rowDivided: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.surfaceActive,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  rowStack: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
-  },
-  rowName: {
-    ...type.label,
-    fontSize: 15,
-    lineHeight: 20,
-    color: colors.foreground,
-  },
-  rowMeta: {
-    ...type.caption,
-    color: colors.textSecondary,
-  },
-  rowTrailing: {
-    alignItems: "flex-end",
-    gap: 5,
-  },
-  rowTotal: {
-    ...type.bodyStrong,
-    color: colors.foreground,
-    fontVariant: ["tabular-nums"],
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    ...type.micro,
-    fontSize: 11,
-    maxWidth: 110,
+    gap: spacing.xl,
   },
 });

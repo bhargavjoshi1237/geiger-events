@@ -1,24 +1,46 @@
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { MOVEMENT_KINDS, MOVEMENT_META, signedQty } from "@/components/control/inventory/meta";
+import { LedgerRow } from "@/components/control/inventory/LedgerRow";
+import { MOVEMENT_KINDS, MOVEMENT_META } from "@/components/control/inventory/meta";
 import { MovementForm } from "@/components/control/inventory/MovementForm";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { IconButton } from "@/components/ui/IconButton";
-import { ListRow } from "@/components/ui/ListRow";
-import { Pill } from "@/components/ui/Pill";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { fmtDateTime } from "@/lib/format";
+import { fmtClock, fmtShortDay, isToday } from "@/lib/format";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { InventoryItem, InventoryMovement } from "@/types/control_inventory";
 
 const FILTERS = [{ value: "all", label: "All" }, ...MOVEMENT_KINDS.map((k) => ({ value: k.value, label: MOVEMENT_META[k.value].label }))];
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
+
+function dayOf(iso: string | null): { key: string; title: string } {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return { key: "undated", title: "Undated" };
+  return { key: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`, title: isToday(iso) ? "Today" : fmtShortDay(iso) };
+}
+
+// The server sends newest first, so consecutive runs of the same day become one ledger page each.
+function byDay(movements: InventoryMovement[]): { key: string; title: string; rows: InventoryMovement[] }[] {
+  const days: { key: string; title: string; rows: InventoryMovement[] }[] = [];
+  for (const m of movements) {
+    const day = dayOf(m.createdAt);
+    const last = days[days.length - 1];
+    if (last && last.key === day.key) last.rows.push(m);
+    else days.push({ ...day, rows: [m] });
+  }
+  return days;
+}
 
 // The append-only stock ledger: every receive, adjustment, hand-out and write-off.
 export default function StockMovementsScreen() {
@@ -45,19 +67,27 @@ export default function StockMovementsScreen() {
       );
   } else {
     body = (
-      <View style={styles.group}>
-        {movements.map((m, i) => {
-          const meta = MOVEMENT_META[m.kind] ?? { label: m.kind, tone: "neutral" as const };
-          return (
-            <ListRow
-              key={m.id}
-              title={`${signedQty(m.qty)} · ${m.itemLabel ?? "Item"}`}
-              subtitle={[m.reason, m.reference, fmtDateTime(m.createdAt)].filter(Boolean).join(" · ")}
-              trailing={<Pill label={meta.label} tone={meta.tone} variant="outline" />}
-              divider={i < movements.length - 1}
-            />
-          );
-        })}
+      <View style={styles.days}>
+        {byDay(movements).map((day, d) => (
+          <Animated.View key={day.key} entering={FadeInDown.delay(stagger(d)).springify()}>
+            <ListGroup title={day.title} action={<CountBadge value={day.rows.length} />}>
+              {day.rows.map((m, i) => {
+                const meta = MOVEMENT_META[m.kind] ?? { label: m.kind, tone: "neutral" as const };
+                return (
+                  <LedgerRow
+                    key={m.id}
+                    qty={m.qty}
+                    kind={m.kind}
+                    title={m.itemLabel ?? "Item"}
+                    detail={[meta.label, m.reason, m.reference].filter(Boolean).join(" · ")}
+                    when={fmtClock(m.createdAt)}
+                    divider={i < day.rows.length - 1}
+                  />
+                );
+              })}
+            </ListGroup>
+          </Animated.View>
+        ))}
       </View>
     );
   }
@@ -98,18 +128,16 @@ export default function StockMovementsScreen() {
 
 const styles = StyleSheet.create({
   lede: {
-    ...type.body,
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
   controls: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  days: {
+    gap: spacing.xl,
   },
 });

@@ -5,25 +5,28 @@ import { StyleSheet, Text, View } from "react-native";
 import { IconButton } from "@/components/ui/IconButton";
 import { useToast } from "@/components/ui/Toast";
 import { selectionFeedback } from "@/lib/haptics";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 
 type Props = { code: string; label?: string };
 
-// An access code opens the scanner for anyone holding it, so it stays masked until asked for.
+// An access code opens the scanner for anyone holding it, so it stays masked until asked for; sits as a row in a ListGroup.
 export function SecretCode({ code, label = "Access code" }: Props) {
   const [shown, setShown] = useState(false);
   const toast = useToast();
 
   return (
     <View style={styles.row}>
-      <Text style={styles.code} accessibilityLabel={shown ? `${label} ${code.split("").join(" ")}` : `${label} hidden`}>
-        {shown ? code : "•".repeat(Math.max(code.length, 6))}
-      </Text>
+      <View style={styles.text}>
+        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.code} numberOfLines={1} accessibilityLabel={shown ? `${label} ${code.split("").join(" ")}` : `${label} hidden`}>
+          {shown ? code : "•".repeat(Math.max(code.length, 6))}
+        </Text>
+      </View>
       <IconButton
         icon={shown ? "lock" : "eye"}
         label={shown ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
         variant="plain"
-        size={36}
+        size={40}
         iconSize={18}
         onPress={() => {
           selectionFeedback();
@@ -34,7 +37,7 @@ export function SecretCode({ code, label = "Access code" }: Props) {
         icon="copy"
         label={`Copy ${label.toLowerCase()}`}
         variant="plain"
-        size={36}
+        size={40}
         iconSize={18}
         onPress={() => {
           void Clipboard.setStringAsync(code).then(() => toast.success("Code copied."));
@@ -49,17 +52,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg - 2,
-    backgroundColor: colors.surfaceSubtle,
-    paddingLeft: spacing.lg,
-    paddingRight: spacing.xs,
-    minHeight: 48,
+    paddingVertical: spacing.md,
+  },
+  text: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  label: {
+    ...type.micro,
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+    color: colors.textTertiary,
   },
   code: {
-    ...type.monoLarge,
-    flex: 1,
+    ...type.figureSmall,
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: 3,
     color: colors.foreground,
   },
 });

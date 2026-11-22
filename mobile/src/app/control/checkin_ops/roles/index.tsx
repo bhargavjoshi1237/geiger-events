@@ -1,15 +1,18 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { permSummary } from "@/components/control/checkin_ops/format";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { Screen } from "@/components/ui/Screen";
@@ -21,7 +24,7 @@ import { controlApi } from "@/lib/control_api";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { useControl } from "@/state/control";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { StaffRole, StaffRolesResponse, StaffRoleType } from "@/types/control_checkin_ops";
 
 const TYPE_TABS = [
@@ -34,6 +37,8 @@ const TYPE_OPTIONS = [
   { value: "staff", label: "Door staff" },
   { value: "kiosk", label: "Kiosk" },
 ];
+
+const stagger = (i: number) => Math.min(i, 8) * 50;
 
 export default function StaffRolesScreen() {
   const router = useRouter();
@@ -63,18 +68,29 @@ export default function StaffRolesScreen() {
   } else if (!roles.length) {
     body = <EmptyState icon="search" title="No roles of this type" message="Roles of this type will show here." actionLabel="Show all" onAction={() => setTab("all")} />;
   } else {
+    // Live codes first; switched-off roles sit apart so a locked-out code is obvious.
+    const groups = [
+      { title: "Codes that work", rows: roles.filter((r) => r.active), tone: "success" as const },
+      { title: "Switched off", rows: roles.filter((r) => !r.active), tone: "neutral" as const },
+    ].filter((g) => g.rows.length);
     body = (
-      <View style={styles.group}>
-        {roles.map((role, i) => (
-          <ListRow
-            key={role.id}
-            leading={<IconTile icon={role.type === "kiosk" ? "monitor" : "users"} size={34} tone={role.active ? "neutral" : "outline"} />}
-            title={role.name}
-            subtitle={permSummary(role.permissions)}
-            trailing={<Pill label={role.active ? "Active" : "Off"} tone={role.active ? "success" : "neutral"} variant="outline" />}
-            onPress={() => open(role)}
-            divider={i < roles.length - 1}
-          />
+      <View style={styles.stack}>
+        {groups.map((g, gi) => (
+          <Animated.View key={g.title} entering={FadeInDown.delay(stagger(gi)).springify()}>
+            <ListGroup title={g.title} action={<CountBadge value={g.rows.length} tone={g.tone} />}>
+              {g.rows.map((role, i) => (
+                <ListRow
+                  key={role.id}
+                  leading={<IconTile icon={role.type === "kiosk" ? "monitor" : "users"} size={36} tone={role.active ? "neutral" : "outline"} />}
+                  title={role.name}
+                  subtitle={`${role.type === "kiosk" ? "Kiosk" : "Door staff"} · ${permSummary(role.permissions)}`}
+                  trailing={<Pill label={role.active ? "Active" : "Off"} tone={role.active ? "success" : "neutral"} variant="outline" />}
+                  onPress={() => open(role)}
+                  divider={i < g.rows.length - 1}
+                />
+              ))}
+            </ListGroup>
+          </Animated.View>
         ))}
       </View>
     );
@@ -144,9 +160,10 @@ function CreateRole({ projectId, onClose, onCreated }: { projectId: string; onCl
         <Field label="Type" hint="Kiosk codes only open the self check-in kiosk.">
           <Segmented options={TYPE_OPTIONS} value={type} onChange={(v) => setType(v as StaffRoleType)} />
         </Field>
+        <Text style={styles.note}>It gets its own access code, which you can share with the team once it&apos;s created.</Text>
         <View style={styles.actions}>
           <Button title="Cancel" variant="ghost" onPress={onClose} />
-          <Button title="Create" onPress={() => void submit()} loading={busy} />
+          <Button title="Create role" onPress={() => void submit()} loading={busy} />
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -155,22 +172,24 @@ function CreateRole({ projectId, onClose, onCreated }: { projectId: string; onCl
 
 const styles = StyleSheet.create({
   lede: {
-    ...type.body,
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
   tabs: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: spacing.lg,
+  stack: {
+    gap: spacing.xl,
   },
   form: {
     gap: spacing.lg,
+  },
+  note: {
+    ...type.caption,
+    color: colors.textSecondary,
   },
   actions: {
     flexDirection: "row",

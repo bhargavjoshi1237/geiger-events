@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Icon, type IconName } from "@/components/ui/icons";
+import { ModeSwitch } from "@/components/ModeSwitch";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { IconTile } from "@/components/ui/IconTile";
@@ -182,31 +183,29 @@ function TeamEntry() {
   const signedIn = teamStatus === "signedIn";
 
   return (
-    <>
-      <SectionTitle variant="kicker">Event team</SectionTitle>
-      <View style={styles.group}>
-        {signedIn ? (
-          <ListRow
-            leading={<IconTile icon="shield" size={34} tone="success" />}
-            title="Switch to Control"
-            subtitle={count ? `Run ${count} ${pluralize(count, "project", "projects")} from your phone` : "Run your events from here"}
-            onPress={() => void toControl()}
-            divider={Boolean(hint?.team.invited)}
-          />
-        ) : (
-          <ListRow
-            leading={<IconTile icon="shield" size={34} />}
-            title="Sign in to Control"
-            subtitle={
-              hint?.team.available
-                ? `You're on the team at ${teamOrgsLabel(hint)}`
-                : "For organisers and event staff — use your dashboard account"
-            }
-            onPress={() => router.push("/team-sign-in")}
-            divider={Boolean(hint?.team.invited)}
-          />
-        )}
-        {hint?.team.invited ? (
+    <View style={styles.teamBlock}>
+      <SectionTitle variant="kicker">Mode</SectionTitle>
+      <ModeSwitch
+        active="attendee"
+        attendee={{ icon: "ticket", title: "My tickets", detail: "Passes, orders and chats" }}
+        control={
+          signedIn
+            ? {
+                icon: "shield",
+                title: "Control",
+                detail: count ? `Run ${count} ${pluralize(count, "project", "projects")}` : "Run your events",
+                onPress: () => void toControl(),
+              }
+            : {
+                icon: "shield",
+                title: "Control",
+                detail: hint?.team.available ? `On the team at ${teamOrgsLabel(hint)}` : "For organisers and staff",
+                onPress: () => router.push("/team-sign-in"),
+              }
+        }
+      />
+      {hint?.team.invited ? (
+        <View style={styles.group}>
           <ListRow
             leading={<IconTile icon="mail" size={34} />}
             title="Team invitation waiting"
@@ -214,9 +213,9 @@ function TeamEntry() {
             onPress={() => void Linking.openURL(SUITE_ORIGIN)}
             divider={false}
           />
-        ) : null}
-      </View>
-    </>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -256,6 +255,10 @@ function Badge({ value }: { value: number }) {
 }
 
 const styles = StyleSheet.create({
+  teamBlock: {
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
   profile: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,23 +1,26 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { TOPIC_STATUS_META } from "@/components/control/community/meta";
 import { ChatComposer } from "@/components/ChatComposer";
+import { Byline } from "@/components/control/community/Byline";
+import { TOPIC_STATUS_META } from "@/components/control/community/meta";
+import { StatusButton } from "@/components/control/StatusButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Icon } from "@/components/ui/icons";
+import { Icon, type IconName } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/IconButton";
+import { ListGroup } from "@/components/ui/ListGroup";
 import { Pill } from "@/components/ui/Pill";
-import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { fmtTimeAgo } from "@/lib/format";
+import { fmtTimeAgo, pluralize } from "@/lib/format";
 import { errorFeedback, successFeedback, tapFeedback } from "@/lib/haptics";
 import { useControlQuery } from "@/lib/use_control_query";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -111,30 +114,37 @@ export default function TopicScreen() {
     return true;
   };
 
-  const renderPost = (post: CommunityPost, nested = false) => {
+  const renderPost = (post: CommunityPost, nested = false, divider = false) => {
     const accepted = topic?.acceptedPostId === post.id;
+    const replies = nested ? [] : childrenOf(post.id);
     return (
-      <View key={post.id} style={nested ? styles.nested : undefined}>
+      <View key={post.id} style={[nested ? styles.nested : styles.thread, divider && styles.divided]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Reply by ${post.authorName}. Open actions`}
+          accessibilityLabel={`Reply by ${post.authorName}${accepted ? ", marked as the answer" : ""}. Open actions`}
           onPress={() => {
             tapFeedback();
             setTarget(post);
           }}
           style={({ pressed }) => [styles.post, post.status === "hidden" && styles.dimmed, pressed && styles.pressed]}
         >
-          <View style={styles.postHead}>
-            <Text style={styles.author} numberOfLines={1}>
-              {post.authorKind === "organiser" ? `${post.authorName} · Organiser` : post.authorName}
-            </Text>
-            {accepted ? <Pill label="Answer" tone="success" /> : null}
-            {post.status !== "published" ? <Pill label={TOPIC_STATUS_META[post.status].label} tone={TOPIC_STATUS_META[post.status].tone} variant="outline" /> : null}
-            <Text style={styles.time}>{post.createdAt ? fmtTimeAgo(post.createdAt) : ""}</Text>
-          </View>
-          <Text style={styles.postBody}>{post.body}</Text>
+          <Byline
+            name={post.authorName}
+            at={post.createdAt}
+            organiser={post.authorKind === "organiser"}
+            size={nested ? 26 : 32}
+            trailing={
+              accepted || post.status !== "published" ? (
+                <View style={styles.postPills}>
+                  {accepted ? <Pill label="Answer" tone="success" /> : null}
+                  {post.status !== "published" ? <Pill label={TOPIC_STATUS_META[post.status].label} tone={TOPIC_STATUS_META[post.status].tone} variant="outline" /> : null}
+                </View>
+              ) : undefined
+            }
+          />
+          <Text style={[styles.postBody, nested ? styles.nestedBody : styles.postIndent]}>{post.body}</Text>
         </Pressable>
-        {!nested ? childrenOf(post.id).map((child) => renderPost(child, true)) : null}
+        {replies.length ? <View style={styles.replies}>{replies.map((child) => renderPost(child, true))}</View> : null}
       </View>
     );
   };
@@ -158,24 +168,46 @@ export default function TopicScreen() {
         ) : (
           <>
             <ScrollView style={styles.flex} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-              <Card>
-                <View style={styles.badges}>
-                  {topic.pinned ? <Pill label="Pinned" tone="info" variant="outline" dot={false} /> : null}
-                  {topic.locked ? <Pill label="Locked" tone="neutral" variant="outline" dot={false} /> : null}
-                  {topic.status !== "published" ? <Pill label={meta.label} tone={meta.tone} /> : null}
+              <Animated.View entering={FadeInDown.springify()} style={styles.hero}>
+                <View style={styles.heroTop}>
+                  <Avatar name={topic.authorName} size={52} inverted={topic.authorKind === "organiser"} />
+                  <View style={styles.heroText}>
+                    <Text style={styles.author} numberOfLines={1}>
+                      {topic.authorKind === "organiser" ? `${topic.authorName} · Organiser` : topic.authorName}
+                    </Text>
+                    <Text style={styles.stamp} numberOfLines={1}>
+                      {[data.board?.name, topic.createdAt ? fmtTimeAgo(topic.createdAt) : ""].filter(Boolean).join(" · ")}
+                    </Text>
+                  </View>
                 </View>
                 <Text style={styles.title}>{topic.title}</Text>
-                <Text style={styles.time}>{[topic.authorName, topic.createdAt ? fmtTimeAgo(topic.createdAt) : ""].filter(Boolean).join(" · ")}</Text>
+                <View style={styles.metaRow}>
+                  <StatusButton label={meta.label} tone={meta.tone} onPress={() => setActionsOpen(true)} accessibilityLabel={`Status: ${meta.label}. Open topic actions`} />
+                  {topic.pinned ? <Flag icon="star" label="Pinned" /> : null}
+                  {topic.locked ? <Flag icon="lock" label="Locked" /> : null}
+                  {isQa ? <Flag icon={topic.acceptedPostId ? "circle-check" : "message-circle-question-mark"} label={topic.acceptedPostId ? "Answered" : "Unanswered"} /> : null}
+                </View>
                 {topic.body ? <Text style={styles.topicBody}>{topic.body}</Text> : null}
                 {topic.status === "pending" ? (
-                  <View style={styles.approve}>
+                  <View style={styles.notice}>
+                    <View style={styles.noticeHead}>
+                      <Icon name="circle-alert" size={15} color={colors.warning} />
+                      <Text style={styles.noticeText}>{"Members can't see this topic until it's approved."}</Text>
+                    </View>
                     <Button title="Approve topic" icon="circle-check" loading={busy} onPress={() => void changeTopic({ status: "published" }, "Topic approved.")} fullWidth />
                   </View>
                 ) : null}
-              </Card>
+              </Animated.View>
 
-              <SectionTitle variant="kicker">Replies</SectionTitle>
-              {top.length ? <View style={styles.posts}>{top.map((p) => renderPost(p))}</View> : <Text style={styles.time}>No replies yet.</Text>}
+              <Animated.View entering={FadeInDown.delay(50).springify()}>
+                <ListGroup title={`${topic.replyCount} ${pluralize(topic.replyCount, "reply", "replies")}`}>
+                  {top.length ? (
+                    top.map((p, i) => renderPost(p, false, i < top.length - 1))
+                  ) : (
+                    <Text style={styles.empty}>No replies yet. Reply below as the organiser.</Text>
+                  )}
+                </ListGroup>
+              </Animated.View>
             </ScrollView>
 
             {replyTo ? (
@@ -244,9 +276,14 @@ export default function TopicScreen() {
       <Sheet visible={Boolean(target)} onClose={() => setTarget(null)} title="Reply">
         {target ? (
           <View style={styles.sheetBody}>
-            <Text style={styles.postBody} numberOfLines={5}>
-              {target.body}
-            </Text>
+            <ListGroup>
+              <View style={styles.quote}>
+                <Byline name={target.authorName} at={target.createdAt} organiser={target.authorKind === "organiser"} />
+                <Text style={styles.postBody} numberOfLines={5}>
+                  {target.body}
+                </Text>
+              </View>
+            </ListGroup>
             {target.status === "published" && !target.parentPostId ? (
               <Button
                 title="Reply to this"
@@ -275,6 +312,15 @@ export default function TopicScreen() {
   );
 }
 
+function Flag({ icon, label }: { icon: IconName; label: string }) {
+  return (
+    <View style={styles.flag}>
+      <Icon name={icon} size={13} color={colors.textSecondary} />
+      <Text style={styles.flagText}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -285,65 +331,126 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scroll: {
-    gap: spacing.lg,
+    gap: spacing.xl,
     paddingVertical: spacing.md,
   },
-  badges: {
+  hero: {
+    gap: spacing.md,
+  },
+  heroTop: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  heroText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  author: {
+    ...type.labelStrong,
+    color: colors.foreground,
+  },
+  stamp: {
+    ...type.monoSmall,
+    color: colors.textSecondary,
   },
   title: {
     ...type.title,
     color: colors.foreground,
-    marginTop: spacing.sm,
+  },
+  metaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  flag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  flagText: {
+    ...type.captionStrong,
+    color: colors.textSecondary,
   },
   topicBody: {
     ...type.body,
     color: colors.mutedForeground,
-    marginTop: spacing.md,
   },
-  approve: {
-    marginTop: spacing.lg,
+  notice: {
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: `${colors.warning}40`,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.warning}12`,
+    padding: spacing.md,
   },
-  posts: {
+  noticeHead: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: spacing.sm,
   },
+  noticeText: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
+    color: colors.warning,
+  },
+  thread: {
+    paddingVertical: spacing.md + 2,
+    gap: spacing.md,
+  },
+  divided: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceActive,
+  },
   post: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg - 2,
-    backgroundColor: colors.surfaceSubtle,
-    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  postPills: {
+    flexDirection: "row",
     gap: spacing.xs,
   },
+  replies: {
+    gap: spacing.md,
+    marginLeft: 15,
+    paddingLeft: spacing.md + 2,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
+  },
   nested: {
-    marginLeft: spacing.xl,
-    marginTop: spacing.sm,
+    gap: spacing.sm,
   },
   dimmed: {
-    opacity: 0.6,
+    opacity: 0.55,
   },
   pressed: {
     opacity: 0.7,
   },
-  postHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  author: {
-    ...type.labelStrong,
-    flexShrink: 1,
-    color: colors.foreground,
-  },
-  time: {
-    ...type.caption,
-    color: colors.textSecondary,
-  },
   postBody: {
     ...type.body,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.foreground,
+  },
+  postIndent: {
+    paddingLeft: 42,
+  },
+  nestedBody: {
+    paddingLeft: 36,
+  },
+  empty: {
+    ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
+    paddingVertical: spacing.lg,
+  },
+  quote: {
+    gap: spacing.sm + 2,
+    paddingVertical: spacing.md + 2,
   },
   replying: {
     flexDirection: "row",

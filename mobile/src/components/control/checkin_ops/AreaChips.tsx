@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Icon } from "@/components/ui/icons";
 import { selectionFeedback } from "@/lib/haptics";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { NamedArea } from "@/types/control_checkin_ops";
@@ -27,6 +28,7 @@ export function AreaChips({ options, selected, onChange, empty }: Props) {
             }}
             style={({ pressed }) => [styles.chip, on && styles.chipOn, pressed && styles.pressed]}
           >
+            {on ? <Icon name="check" size={13} color={colors.foreground} /> : null}
             <Text style={[styles.label, on && styles.labelOn]}>{o.name}</Text>
           </Pressable>
         );
@@ -42,6 +44,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.pill,

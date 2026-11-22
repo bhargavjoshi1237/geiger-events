@@ -1,17 +1,22 @@
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { FieldEditor } from "@/components/control/fields/FieldEditor";
+import { FormHeader, MetaText } from "@/components/control/forms/FormHeader";
+import { FormPanel } from "@/components/control/forms/FormPanel";
+import { FormScreen } from "@/components/control/forms/FormScreen";
+import { SaveBar } from "@/components/control/forms/SaveBar";
 import { ListSettingsForm } from "@/components/control/ListSettingsForm";
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { Button } from "@/components/ui/Button";
-import { SectionTitle } from "@/components/ui/SectionTitle";
+import { IconTile } from "@/components/ui/IconTile";
+import { ListGroup } from "@/components/ui/ListGroup";
+import { Pill } from "@/components/ui/Pill";
 import { useToast } from "@/components/ui/Toast";
 import { controlApi } from "@/lib/control_api";
-import { READ_ONLY_TYPES } from "@/lib/control_records";
+import { iconOf, READ_ONLY_TYPES } from "@/lib/control_records";
+import { pluralize } from "@/lib/format";
 import { errorFeedback, successFeedback } from "@/lib/haptics";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 import type { ControlSetting } from "@/types/portal";
 
 export type SettingValues = Record<string, unknown>;
@@ -25,6 +30,8 @@ type Props = {
   onSaved: (values: SettingValues) => void;
 };
 
+const stagger = (i: number) => Math.min(i, 8) * 50;
+
 // One settings page drawn from its catalog fields; list-shaped pages (FAQ, alerts…) get the item editor instead.
 export function SettingsForm(props: Props) {
   if (props.setting.shape === "list") {
@@ -36,7 +43,6 @@ export function SettingsForm(props: Props) {
 
 // Save sends only what changed, and the server merges it into what's stored.
 function ObjectSettingsForm({ setting, values, path, projectId, canEdit = true, onSaved }: Props) {
-  const insets = useSafeAreaInsets();
   const toast = useToast();
   const [draft, setDraft] = useState<SettingValues>(values);
   const [saving, setSaving] = useState(false);
@@ -48,7 +54,9 @@ function ObjectSettingsForm({ setting, values, path, projectId, canEdit = true, 
       if (JSON.stringify(draft[field.key] ?? null) !== JSON.stringify(values[field.key] ?? null)) changes[field.key] = draft[field.key];
     }
   }
-  const dirty = Object.keys(changes).length > 0;
+  const changeCount = Object.keys(changes).length;
+  const dirty = changeCount > 0;
+  const fieldCount = setting.panels.reduce((n, panel) => n + panel.fields.length, 0);
 
   const save = async () => {
     setSaving(true);
@@ -63,64 +71,73 @@ function ObjectSettingsForm({ setting, values, path, projectId, canEdit = true, 
     onSaved(res.data.values);
   };
 
+  let step = 0;
   return (
-    <KeyboardAvoidingView style={[styles.root, { paddingTop: insets.top }]} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScreenHeader
-        title={setting.title}
-        right={canEdit ? <Button title="Save" size="sm" onPress={() => void save()} loading={saving} disabled={!dirty || saving} /> : undefined}
-      />
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xxl }]} keyboardShouldPersistTaps="handled">
-        <View style={styles.stack} pointerEvents={canEdit ? "auto" : "none"}>
-          {setting.description ? <Text style={styles.description}>{setting.description}</Text> : null}
-          {!canEdit ? <Text style={styles.description}>Your role can see these settings but not change them.</Text> : null}
-          {setting.panels.map((panel) => (
-            <View key={panel.title} style={styles.panel}>
-              <SectionTitle variant="kicker">{panel.title}</SectionTitle>
-              {panel.description ? <Text style={styles.description}>{panel.description}</Text> : null}
-              <View style={styles.card}>
-                {panel.fields.map((field) => (
-                  <FieldEditor
-                    key={field.key}
-                    field={field}
-                    projectId={projectId}
-                    value={draft[field.key]}
-                    onChange={(v) => setDraft((d) => ({ ...d, [field.key]: v }))}
-                  />
-                ))}
-              </View>
+    <FormScreen
+      title={setting.title}
+      footer={canEdit ? <SaveBar title="Save changes" changes={changeCount} onPress={() => void save()} loading={saving} disabled={!dirty || saving} /> : undefined}
+    >
+      <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+        <FormHeader
+          leading={<IconTile icon={iconOf(setting.icon, "settings")} size={52} />}
+          title={setting.title}
+          description={setting.description}
+          meta={
+            <>
+              {!canEdit ? <Pill label="View only" tone="neutral" variant="outline" dot={false} /> : null}
+              <MetaText>{`${fieldCount} ${pluralize(fieldCount, "setting", "settings")}`}</MetaText>
+            </>
+          }
+        />
+      </Animated.View>
+
+      {!canEdit ? (
+        <Animated.View entering={FadeInDown.delay(stagger(step++)).springify()}>
+          <ListGroup>
+            <View style={styles.notice}>
+              <IconTile icon="lock" size={32} />
+              <Text style={styles.noticeText}>Your role can see these settings but not change them.</Text>
             </View>
-          ))}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </ListGroup>
+        </Animated.View>
+      ) : null}
+
+      <View style={styles.panels} pointerEvents={canEdit ? "auto" : "none"}>
+        {setting.panels.map((panel, i) => (
+          <Animated.View key={`${i}:${panel.title}`} entering={FadeInDown.delay(stagger(step++)).springify()}>
+            <FormPanel title={panel.title} footer={panel.description}>
+              {panel.fields.map((field) => (
+                <FieldEditor
+                  key={field.key}
+                  field={field}
+                  projectId={projectId}
+                  value={draft[field.key]}
+                  onChange={(v) => setDraft((d) => ({ ...d, [field.key]: v }))}
+                />
+              ))}
+            </FormPanel>
+          </Animated.View>
+        ))}
+      </View>
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scroll: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  stack: {
+  panels: {
     gap: spacing.xl,
   },
-  panel: {
-    gap: spacing.sm,
+  notice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md + 2,
   },
-  description: {
+  noticeText: {
     ...type.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
     color: colors.textSecondary,
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-    padding: spacing.lg,
-    gap: spacing.lg,
   },
 });

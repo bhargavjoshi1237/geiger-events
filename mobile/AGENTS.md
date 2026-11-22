@@ -111,3 +111,33 @@ physics for anything a finger controls. Every meaningful action fires
 
 Respect `useReducedMotion()` from Reanimated: when it is on, cross-fade instead
 of translating, and skip the splash draw-in.
+
+## Control design language
+
+Control is an instrument panel for running a live event, inside the suite's neutral dark palette.
+Colour only ever encodes state (success = live / on sale / inside, warning = needs a decision,
+info = messages, danger = destructive); everything else is neutral.
+
+- **Figures are mono.** Live counts, money, dates, times and codes use `type.figure` (lead
+  figure), `type.figureSmall` (secondary figures) or `type.mono*`. Labels above figures are the
+  10pt uppercase micro label.
+- **`Readout`** (`ui/Readout`) is the figures panel: one `lead` figure, a row of `items` split by
+  hairlines, and optional children under the lead (usually a `TickMeter`). Prefer it over a row of
+  `StatTile`s whenever one number matters most.
+- **`TickMeter`** (`ui/TickMeter`) is the signature: a ruler of ticks that fills for
+  value/max (sold/capacity, inside/expected, used/limit). Use it wherever there's a capacity.
+- **`ListGroup`** (`ui/ListGroup`) is the inset grouped list (kicker `title`, `action`,
+  `footer`). Never re-declare a local `group` style; wrap rows in `ListGroup`.
+- **`ToolTile` + `ToolGrid`** (`control/ToolTile`) lay out an area's main tools two to a row,
+  with a live `detail` line and a `badge` count. Use a grid for 2–6 primary actions, a
+  `ListGroup` of `ListRow`s for the rest.
+- **`DateStub`** leads anything dated (events, sessions, bookings); **`StatusButton`** is a
+  status you can change; `CountBadge` is a count in a row; `IconTile` tones follow the state rule.
+- **Detail screens** open with a header block, not a bare form: a 52–64pt thumb/`IconTile`/
+  `DateStub`, the name in `type.title`/`display`, then a meta row (status + mono facts). Pass
+  `backdrop={<CoverWash uri=… numeral=… />}` to `Screen` when the record has a cover or a date.
+- **Sections are titled.** Group content under kicker titles that say what's inside ("Run the
+  event", "Set up", "Details"); show read-only facts with `DetailRow` inside a `ListGroup`.
+- **Motion:** stagger a screen's top-level blocks in with `FadeInDown.delay(i * 50).springify()`
+  (cap the index); no other decorative motion. No glows, no decorative gradients — the only
+  gradient is `CoverWash` fading real cover art into the canvas.
