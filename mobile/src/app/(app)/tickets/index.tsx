@@ -88,14 +88,16 @@ export default function TicketsScreen() {
         </View>
       ) : null}
 
-      <Segmented
-        options={[
-          { value: "upcoming", label: `Upcoming${upcoming.length ? ` ${upcoming.length}` : ""}` },
-          { value: "past", label: `Past${past.length ? ` ${past.length}` : ""}` },
-        ]}
-        value={segment}
-        onChange={(v) => setSegment(v as "upcoming" | "past")}
-      />
+      <View style={styles.segment}>
+        <Segmented
+          options={[
+            { value: "upcoming", label: `Upcoming${upcoming.length ? ` ${upcoming.length}` : ""}` },
+            { value: "past", label: `Past${past.length ? ` ${past.length}` : ""}` },
+          ]}
+          value={segment}
+          onChange={(v) => setSegment(v as "upcoming" | "past")}
+        />
+      </View>
 
       {loading ? (
         <View style={styles.list}>
@@ -164,8 +166,10 @@ const styles = StyleSheet.create({
   search: {
     marginBottom: spacing.md,
   },
+  segment: {
+    marginBottom: spacing.lg + 4,
+  },
   list: {
     gap: 14,
-    marginTop: spacing.lg + 4,
   },
 });
