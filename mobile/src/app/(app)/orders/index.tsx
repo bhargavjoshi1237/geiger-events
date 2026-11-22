@@ -5,12 +5,12 @@ import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated"
 
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { FilterChips } from "@/components/ui/FilterChips";
 import { IconButton } from "@/components/ui/IconButton";
 import { IconTile } from "@/components/ui/IconTile";
 import { Input } from "@/components/ui/Input";
 import { Screen } from "@/components/ui/Screen";
 import { SectionTitle } from "@/components/ui/SectionTitle";
+import { Segmented } from "@/components/ui/Segmented";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { fmtMonthYear, money } from "@/lib/format";
 import { ORDER_STATUS, REFUND_STATUS, statusPill } from "@/lib/status";
@@ -21,7 +21,7 @@ import type { Order } from "@/types/portal";
 
 const stagger = (i: number) => Math.min(i, 11) * 40;
 
-const STATUS_FILTERS = [
+const STATUS_TABS = [
   { value: "all", label: "All" },
   { value: "confirmed", label: "Confirmed" },
   { value: "refunded", label: "Refunded" },
@@ -76,7 +76,8 @@ export default function OrdersScreen() {
     return out;
   }, [filtered]);
 
-  const hasFilters = Boolean(query.trim()) || status !== "all";
+  const searched = Boolean(query.trim());
+  const tabLabel = STATUS_TABS.find((t) => t.value === status)?.label.toLowerCase() || "";
 
   return (
     <Screen scroll>
@@ -118,25 +119,28 @@ export default function OrdersScreen() {
             </View>
           ) : null}
 
-          <View style={styles.filters}>
-            <FilterChips options={STATUS_FILTERS} value={status} onChange={setStatus} />
+          <View style={styles.segment}>
+            <Segmented options={STATUS_TABS} value={status} onChange={setStatus} />
           </View>
 
           {!filtered.length ? (
-            <EmptyState
-              icon="funnel"
-              title="No matching orders"
-              message="Try a different search or clear the status filter."
-              actionLabel={hasFilters ? "Clear filters" : undefined}
-              onAction={
-                hasFilters
-                  ? () => {
-                      setQuery("");
-                      setStatus("all");
-                    }
-                  : undefined
-              }
-            />
+            searched ? (
+              <EmptyState
+                icon="search"
+                title="No matching orders"
+                message="Try a different event, order code or ticket name."
+                actionLabel="Clear search"
+                onAction={() => setQuery("")}
+              />
+            ) : (
+              <EmptyState
+                icon="shopping-bag"
+                title={`No ${tabLabel} orders`}
+                message="Orders with this status will show up here."
+                actionLabel="Show all orders"
+                onAction={() => setStatus("all")}
+              />
+            )
           ) : (
             <Animated.View layout={LinearTransition} style={styles.stack}>
               {groups.map((group, gi) => (
@@ -209,8 +213,8 @@ const styles = StyleSheet.create({
   search: {
     marginBottom: spacing.md,
   },
-  filters: {
-    marginBottom: spacing.lg + 2,
+  segment: {
+    marginBottom: spacing.lg + 4,
   },
   stack: {
     gap: spacing.xl - 4,
