@@ -53,6 +53,6 @@ export async function DELETE(request) {
   const sb = adminClient();
   if (!sb) return NextResponse.json({ error: "Unavailable." }, { status: 503 });
   const body = await request.json().catch(() => ({}));
-  await unregisterDevice(body.pushToken);
+  await unregisterDevice(body.pushToken, member.id);
   return NextResponse.json({ ok: true });
 }

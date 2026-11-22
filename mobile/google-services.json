@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "654980618175",
+    "project_id": "geiger-events",
+    "storage_bucket": "geiger-events.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:654980618175:android:6d07b91827bcc8eb38730a",
+        "android_client_info": {
+          "package_name": "studio.geiger.events"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXfp_9AmKU3SYtdm2pZdaZhf1ZuHJOdSE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

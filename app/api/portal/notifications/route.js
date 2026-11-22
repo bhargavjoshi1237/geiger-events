@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
   const seenAt = member.metadata?.notificationsSeenAt || null;
-  const feed = await listMemberNotifications(member.email, seenAt);
+  const feed = await listMemberNotifications(member.email, seenAt, member.id);
   return NextResponse.json(feed);
 }
 

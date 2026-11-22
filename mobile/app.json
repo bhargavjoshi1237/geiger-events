@@ -3,6 +3,14 @@
     "name": "Geiger Events",
     "slug": "bhargav-joshi",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/79fe52bd-cac4-4dc9-956c-c5bed0896f14",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "geigerevents",
@@ -19,6 +27,7 @@
     },
     "android": {
       "package": "studio.geiger.events",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#161616",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -46,7 +55,8 @@
       [
         "expo-notifications",
         {
-          "color": "#161616"
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#9A9A9A"
         }
       ],
       "expo-font",

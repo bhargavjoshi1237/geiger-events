@@ -14,6 +14,19 @@ export type PortalDevice = {
   current: boolean;
 };
 
+export type PushCategoryKey =
+  | "tickets"
+  | "reminders"
+  | "updates"
+  | "messages"
+  | "community"
+  | "meetings";
+
+// GET / PUT /api/portal/push/preferences.
+export type PushPreferencesResponse = {
+  categories: Record<PushCategoryKey, boolean>;
+};
+
 export type RefundInfo = {
   id: string;
   status: string;
@@ -186,6 +199,10 @@ export type NotificationItem = {
   channel: string;
   createdAt: string | null;
   unread: boolean;
+  // A push type key (order_confirmed, …) or announcement | meeting | board.
+  kind: string;
+  // An expo-router path, or null when the item opens nothing.
+  route: string | null;
 };
 
 export type Channel = {

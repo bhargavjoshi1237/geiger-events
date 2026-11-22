@@ -18,13 +18,15 @@ type SessionStatus = "loading" | "authed" | "guest";
 // "unsupported" is a simulator or Expo Go build that can never register.
 type PushStatus = "on" | "off" | "unsupported";
 
+export type PushToggleResult = "ok" | "denied" | "unsupported" | "failed";
+
 type SessionState = {
   member: Member | null;
   token: string | null;
   status: SessionStatus;
   pushStatus: PushStatus;
   pushToken: string | null;
-  setPushEnabled: (next: boolean) => Promise<boolean>;
+  setPushEnabled: (next: boolean) => Promise<PushToggleResult>;
   signIn: (token: string) => Promise<void>;
   signOut: () => Promise<void>;
   signOutEverywhere: () => Promise<void>;
@@ -101,40 +103,45 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setToken(sessionToken);
     setMember(me.member);
     setStatus("authed");
-    void push.registerForPush(sessionToken).then((t) => {
-      if (t) rememberPushToken(t);
+    void push.registerForPush(sessionToken).then((r) => {
+      if (r.ok) rememberPushToken(r.pushToken);
     });
   }, [rememberPushToken]);
 
+  useEffect(() => {
+    if (status !== "authed" || !token) return;
+    return push.addPushTokenChangeHandler(token, rememberPushToken);
+  }, [status, token, rememberPushToken]);
+
   const setPushEnabled = useCallback(
-    async (next: boolean) => {
+    async (next: boolean): Promise<PushToggleResult> => {
       const sessionToken = token;
-      if (!sessionToken) return false;
+      if (!sessionToken) return "failed";
       if (!next) {
         const current = pushTokenRef.current;
         rememberPushToken(null);
         await push.unregisterPush(sessionToken, current);
-        return true;
+        return "ok";
       }
       const registered = await push.registerForPush(sessionToken);
-      if (!registered) {
-        setPushStatus("unsupported");
-        return false;
+      if (!registered.ok) {
+        // Only a build that can never register locks the switch; a denial can be fixed in Settings.
+        if (registered.reason === "unsupported") setPushStatus("unsupported");
+        return registered.reason;
       }
-      rememberPushToken(registered);
-      return true;
+      rememberPushToken(registered.pushToken);
+      return "ok";
     },
     [token, rememberPushToken],
   );
 
+  // The logout routes retire this device (or every device) server-side, so only the local token is cleared here.
   const signOut = useCallback(async () => {
     const sessionToken = token;
-    const current = pushTokenRef.current;
+    const current = pushTokenRef.current ?? (await push.getStoredPushToken());
     rememberPushToken(null);
-    if (sessionToken) {
-      void push.unregisterPush(sessionToken, current);
-      void auth.logout(sessionToken);
-    }
+    void push.clearStoredPushToken();
+    if (sessionToken) void auth.logout(sessionToken, current);
     await auth.clearStoredToken();
     setToken(null);
     setMember(null);
@@ -143,12 +150,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const signOutEverywhere = useCallback(async () => {
     const sessionToken = token;
-    const current = pushTokenRef.current;
     rememberPushToken(null);
-    if (sessionToken) {
-      void push.unregisterPush(sessionToken, current);
-      void auth.logoutAll(sessionToken);
-    }
+    void push.clearStoredPushToken();
+    if (sessionToken) void auth.logoutAll(sessionToken);
     await auth.clearStoredToken();
     setToken(null);
     setMember(null);

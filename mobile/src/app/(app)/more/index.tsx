@@ -11,10 +11,10 @@ import { ListRow } from "@/components/ui/ListRow";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
 import { Switch } from "@/components/ui/Switch";
-import { useToast } from "@/components/ui/Toast";
 import { teamOrgsLabel } from "@/lib/control_hint";
 import { firstName, pluralize } from "@/lib/format";
 import { SUITE_ORIGIN } from "@/lib/team_auth";
+import { usePushToggle } from "@/lib/use_push_settings";
 import { useControl } from "@/state/control";
 import { useAppConfig } from "@/state/app_config";
 import { usePortalData } from "@/state/data";
@@ -29,24 +29,11 @@ export default function MoreScreen() {
   const router = useRouter();
   const { counts, data } = usePortalData();
   const { isOn } = useAppConfig();
-  const { member, signOut, pushStatus, setPushEnabled } = useSession();
-  const { success, error } = useToast();
+  const { member, signOut } = useSession();
+  const push = usePushToggle();
   const [confirmOut, setConfirmOut] = useState(false);
-  const [pushBusy, setPushBusy] = useState(false);
 
   const activePlan = (data?.memberships || []).find((m) => m.status === "Active");
-  const pushOn = pushStatus === "on";
-
-  const togglePush = async (next: boolean) => {
-    setPushBusy(true);
-    const ok = await setPushEnabled(next);
-    setPushBusy(false);
-    if (!ok) {
-      error("This device can't register for push notifications.");
-      return;
-    }
-    success(next ? "Push notifications on." : "Push notifications off.");
-  };
 
   const library: MoreRow[] = [
     ...when(isOn("memberships"), {
@@ -90,7 +77,7 @@ export default function MoreScreen() {
     }),
     ...when(isOn("notifications"), {
       key: "notifications",
-      icon: "bell",
+      icon: "geiger",
       title: "Updates",
       trailing: counts.notifications ? <Badge value={counts.notifications} /> : null,
       href: "/notifications",
@@ -123,21 +110,27 @@ export default function MoreScreen() {
 
       <View style={styles.group}>
         <ListRow
-          leading={<IconTile icon={pushOn ? "bell" : "bell-off"} size={34} />}
+          leading={<IconTile icon="geiger" size={34} tone={push.pushOn ? "neutral" : "outline"} />}
           title="Push notifications"
           subtitle={
-            pushStatus === "unsupported"
+            push.unsupported
               ? "Not available on this device or build"
               : "Gate changes, refunds and going-live alerts"
           }
           trailing={
             <Switch
-              value={pushOn}
-              onValueChange={(next) => void togglePush(next)}
+              value={push.pushOn}
+              onValueChange={(next) => void push.toggle(next)}
               label="Push notifications"
-              disabled={pushBusy || pushStatus === "unsupported"}
+              disabled={push.busy || push.unsupported}
             />
           }
+        />
+        <ListRow
+          leading={<IconTile icon="settings" size={34} />}
+          title="Notification settings"
+          subtitle="Choose what you're notified about"
+          onPress={() => router.push("/account/notifications" as Href)}
           divider={false}
         />
       </View>

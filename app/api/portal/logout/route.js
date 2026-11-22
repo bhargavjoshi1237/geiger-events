@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/supabase/admin";
-import { SESSION_COOKIE, sha256, sessionTokenFromRequest } from "@/lib/portal/session";
+import { unregisterDevice } from "@/lib/portal/push";
+import { SESSION_COOKIE, getSessionMember, sha256, sessionTokenFromRequest } from "@/lib/portal/session";
 
-export async function POST() {
+// Body { pushToken? }: the signing-out device stops receiving this member's pushes.
+export async function POST(request) {
+  const body = await request.json().catch(() => ({}));
   const raw = await sessionTokenFromRequest();
   if (raw) {
+    const member = body?.pushToken ? await getSessionMember() : null;
+    if (member) await unregisterDevice(body.pushToken, member.id);
     const sb = adminClient();
     if (sb) await sb.from("portal_sessions").delete().eq("token_hash", sha256(raw));
   }

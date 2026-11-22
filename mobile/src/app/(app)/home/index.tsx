@@ -87,7 +87,7 @@ export default function HomeScreen() {
           right={
             <>
               <IconButton
-                icon="bell"
+                icon="geiger"
                 label="Notifications"
                 badge={Boolean(counts.notifications)}
                 onPress={() => router.push("/notifications")}

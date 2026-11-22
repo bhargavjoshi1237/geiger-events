@@ -1,5 +1,4 @@
-import { Stack, router } from "expo-router";
-import type { Href } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
@@ -10,11 +9,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { Splash } from "@/components/Splash";
 import { ToastProvider } from "@/components/ui/Toast";
-import {
-  addNotificationResponseHandler,
-  configureNotificationHandler,
-  notificationRoute,
-} from "@/lib/push";
+import { configureNotificationHandler } from "@/lib/push";
+import { useOtaUpdates } from "@/lib/updates";
+import { useNotificationRouting } from "@/lib/use_notification_routing";
 import { PortalDataProvider } from "@/state/data";
 import { AppConfigProvider } from "@/state/app_config";
 import { ControlProvider, useControl } from "@/state/control";
@@ -55,21 +52,14 @@ function RootNavigator() {
   const fontsReady = useAppFonts();
   const sessionsReady = status !== "loading" && teamStatus !== "loading" && modeReady;
   const [splashDone, setSplashDone] = useState(false);
+  useNotificationRouting();
+  useOtaUpdates();
 
   useEffect(() => {
     void SplashScreen.hideAsync();
     // Paint the Android system bars the app canvas colour instead of black.
     void SystemUI.setBackgroundColorAsync(colors.background).catch(() => undefined);
   }, []);
-
-  useEffect(
-    () =>
-      addNotificationResponseHandler((data) => {
-        const route = notificationRoute(data);
-        if (route) router.push(route as Href);
-      }),
-    [],
-  );
 
   return (
     <>

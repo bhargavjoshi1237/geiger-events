@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   FadeInUp,
@@ -27,16 +27,29 @@ const MAX_TOASTS = 3;
 
 type ToastKind = "success" | "error" | "info";
 
+type ToastAction = {
+  label: string;
+  onPress: () => void;
+};
+
+// persistent: stays until acted on or dismissed, and is the last to be pushed out by newer toasts.
+export type ToastOptions = {
+  action?: ToastAction;
+  persistent?: boolean;
+};
+
 type Toast = {
   id: number;
   kind: ToastKind;
   message: string;
+  action?: ToastAction;
+  persistent: boolean;
 };
 
 type ToastContextValue = {
-  success: (message: string) => void;
-  error: (message: string) => void;
-  info: (message: string) => void;
+  success: (message: string, options?: ToastOptions) => void;
+  error: (message: string, options?: ToastOptions) => void;
+  info: (message: string, options?: ToastOptions) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -52,6 +65,16 @@ const KIND_COLOR: Record<ToastKind, string> = {
   error: colors.danger,
   info: colors.info,
 };
+
+// Over the cap, the oldest transient toast goes first so a pending action survives a burst.
+function capToasts(list: Toast[]): Toast[] {
+  const next = [...list];
+  while (next.length > MAX_TOASTS) {
+    const transient = next.map((t) => t.persistent).lastIndexOf(false);
+    next.splice(transient === -1 ? next.length - 1 : transient, 1);
+  }
+  return next;
+}
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -69,10 +92,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const push = useCallback(
-    (kind: ToastKind, message: string) => {
+    (kind: ToastKind, message: string, options: ToastOptions = {}) => {
       const id = ++nextId.current;
-      setToasts((list) => [{ id, kind, message }, ...list].slice(0, MAX_TOASTS));
-      timers.current.set(id, setTimeout(() => dismiss(id), TOAST_DURATION));
+      const persistent = Boolean(options.persistent);
+      setToasts((list) =>
+        capToasts([{ id, kind, message, action: options.action, persistent }, ...list]),
+      );
+      if (!persistent) timers.current.set(id, setTimeout(() => dismiss(id), TOAST_DURATION));
       if (kind === "success") successFeedback();
       else if (kind === "error") errorFeedback();
       else tapFeedback();
@@ -82,9 +108,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(
     () => ({
-      success: (m: string) => push("success", m),
-      error: (m: string) => push("error", m),
-      info: (m: string) => push("info", m),
+      success: (m: string, o?: ToastOptions) => push("success", m, o),
+      error: (m: string, o?: ToastOptions) => push("error", m, o),
+      info: (m: string, o?: ToastOptions) => push("info", m, o),
     }),
     [push],
   );
@@ -135,6 +161,35 @@ function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: () => void })
         <Text style={styles.message} numberOfLines={3}>
           {toast.message}
         </Text>
+        {toast.action ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={toast.action.label}
+            hitSlop={12}
+            onPress={() => {
+              tapFeedback();
+              onDismiss();
+              toast.action?.onPress();
+            }}
+            style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+          >
+            <Text style={styles.actionText}>{toast.action.label}</Text>
+          </Pressable>
+        ) : null}
+        {toast.persistent ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            hitSlop={12}
+            onPress={() => {
+              tapFeedback();
+              onDismiss();
+            }}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Icon name="x" size={16} color={colors.textSecondary} />
+          </Pressable>
+        ) : null}
       </Animated.View>
     </GestureDetector>
   );
@@ -172,5 +227,18 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     ...type.label,
     color: colors.foreground,
+  },
+  action: {
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  actionText: {
+    ...type.labelStrong,
+    color: colors.primaryForeground,
+  },
+  pressed: {
+    opacity: 0.6,
   },
 });

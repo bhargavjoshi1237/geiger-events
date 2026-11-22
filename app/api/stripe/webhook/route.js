@@ -1,5 +1,7 @@
 import { after, NextResponse } from "next/server";
 
+import { kickDispatch } from "@/lib/push/server/kick";
+import { enqueueEmails } from "@/lib/push/server/store";
 import { fulfillCheckoutSession } from "@/lib/stripe/fulfill-checkout";
 import {
   demoWebhookSecret,
@@ -48,6 +50,23 @@ export async function POST(request) {
   }
   if (!event) {
     return NextResponse.json({ error: "Invalid Stripe signature." }, { status: 400 });
+  }
+
+  // A delayed (bank/async) payment that fails leaves no order; tell the buyer so they can try again.
+  if (event.type === "checkout.session.async_payment_failed") {
+    const session = event.data.object;
+    const email = session.metadata?.email || session.customer_details?.email || "";
+    const eventId = session.metadata?.eventId || null;
+    after(async () => {
+      const queued = await enqueueEmails({
+        eventId,
+        type: "payment_failed",
+        emails: [email],
+        ref: { eventId, sessionId: session.id },
+        dedupe: `payment_failed:${session.id}`,
+      });
+      if (queued) await kickDispatch();
+    });
   }
 
   if (FULFILLMENT_EVENTS.has(event.type)) {

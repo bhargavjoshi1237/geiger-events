@@ -30,7 +30,7 @@ const INTRO_TOP_RATIO = 0.1;
 
 const PROMISES = [
   { icon: "qr-code" as const, label: "Scan To Get In At The Door" },
-  { icon: "bell" as const, label: "Push For Gate Changes & Refunds" },
+  { icon: "geiger" as const, label: "Push For Gate Changes & Refunds" },
   { icon: "wifi-off" as const, label: "Passes Work With No Signal" },
 ];
 

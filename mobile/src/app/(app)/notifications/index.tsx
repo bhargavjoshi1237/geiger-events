@@ -1,6 +1,7 @@
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import type { Href } from "expo-router";
 import React, { useCallback } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -9,6 +10,9 @@ import { IconTile } from "@/components/ui/IconTile";
 import { Screen } from "@/components/ui/Screen";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { fmtCompactTime } from "@/lib/format";
+import { tapFeedback } from "@/lib/haptics";
+import { appRoute } from "@/lib/push";
+import { notificationIcon } from "@/lib/push_catalog";
 import { usePortalData } from "@/state/data";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { NotificationItem } from "@/types/portal";
@@ -16,6 +20,7 @@ import type { NotificationItem } from "@/types/portal";
 const stagger = (i: number) => Math.min(i, 11) * 40;
 
 export default function NotificationsScreen() {
+  const router = useRouter();
   const { notifications, loading, markNotificationsRead } = usePortalData();
 
   useFocusEffect(
@@ -26,7 +31,7 @@ export default function NotificationsScreen() {
 
   return (
     <Screen scroll>
-      <ScreenHeader title="Updates" subtitle="Announcements from your organisers" />
+      <ScreenHeader title="Updates" subtitle="Tickets, reminders, messages and announcements" />
 
       {loading.notifications && !notifications.items.length ? (
         <SkeletonList rows={4} />
@@ -38,25 +43,36 @@ export default function NotificationsScreen() {
               entering={FadeInDown.delay(stagger(idx)).springify()}
               layout={LinearTransition}
             >
-              <NotificationCard n={n} />
+              <NotificationCard n={n} onOpen={(route) => router.push(route as Href)} />
             </Animated.View>
           ))}
         </Animated.View>
       ) : (
         <EmptyState
-          icon="bell"
+          icon="geiger"
           title="Nothing yet"
-          message="Gate changes, schedule updates and refund news will show up here."
+          message="Order news, event changes and organiser messages will show up here."
+          actionLabel="Notification settings"
+          onAction={() => router.push("/account/notifications" as Href)}
         />
       )}
     </Screen>
   );
 }
 
-function NotificationCard({ n }: { n: NotificationItem }) {
-  return (
-    <View style={[styles.card, n.unread && styles.cardUnread]}>
-      <IconTile icon="volume-2" size={44} />
+function NotificationCard({
+  n,
+  onOpen,
+}: {
+  n: NotificationItem;
+  onOpen: (route: string) => void;
+}) {
+  const linked = appRoute(n.route);
+  // Announcements and meetings point back at this feed, so they stay plain cards.
+  const route = linked && linked.split(/[?#]/)[0] !== "/notifications" ? linked : null;
+  const body = (
+    <>
+      <IconTile icon={notificationIcon(n.kind)} size={44} />
       <View style={styles.stack}>
         <View style={styles.titleRow}>
           <Text style={styles.title} numberOfLines={2}>
@@ -72,7 +88,23 @@ function NotificationCard({ n }: { n: NotificationItem }) {
         {n.channel ? <Text style={styles.channel}>{n.channel}</Text> : null}
       </View>
       {n.unread ? <View style={styles.dot} /> : null}
-    </View>
+    </>
+  );
+
+  if (!route) return <View style={[styles.card, n.unread && styles.cardUnread]}>{body}</View>;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={n.unread ? `${n.title}, unread` : n.title}
+      onPress={() => {
+        tapFeedback();
+        onOpen(route);
+      }}
+      style={({ pressed }) => [styles.card, n.unread && styles.cardUnread, pressed && styles.pressed]}
+    >
+      {body}
+    </Pressable>
   );
 }
 
@@ -94,6 +126,9 @@ const styles = StyleSheet.create({
   },
   cardUnread: {
     backgroundColor: colors.surfaceCard,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   stack: {
     flex: 1,

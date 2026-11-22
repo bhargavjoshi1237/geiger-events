@@ -1,25 +1,38 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   BadgeCheck,
   Building2,
   ClipboardList,
+  FolderOpen,
+  Loader2,
   Mail,
   Megaphone,
   Mic,
   ScanLine,
+  Send,
+  ShieldCheck,
   Ticket,
   UserCog,
   Users,
 } from "lucide-react";
 
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { EditorSections } from "@/components/internal/shared/editor_shell";
 import {
+  EmptyState,
+  ScreenHeader,
   SettingsList,
   SettingRow,
 } from "@/components/internal/shared/screen_kit";
+import { LoadingArea } from "@geiger/ui";
 import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
 import { Switch } from "@geiger/ui/switch";
+import { useProject } from "@/context/project-context";
+import { useCan } from "@/context/rbac-context";
 import { cn } from "@/lib/utils";
 import {
   EMAIL_GROUPS,
@@ -28,14 +41,18 @@ import {
   defaultNotificationConfig,
   notificationsInGroup,
 } from "@/lib/email/catalog";
+import { retryPush, sendTestPush } from "@/lib/push/client";
+import { getSetting, upsertSetting } from "@/lib/supabase/ticketing_settings";
 
-import { SettingsScreen } from "../tickets/settings_kit";
+import PushTab from "./push/push_tab";
+import DeliveryTab from "./push/delivery_tab";
+import SchedulerTab from "./push/scheduler_tab";
+import { LoadError } from "./push/shared";
+import { usePushSettings } from "./push/use_push_settings";
+import { usePushLog } from "./push/use_push_log";
+import { usePushScheduler } from "./push/use_push_scheduler";
 
-// Settings -> Notifications. One switch per transactional email in
-// lib/email/catalog.js, grouped the way the catalog groups them. The config bag
-// is stored per project in events.ticketing_settings (module 'notifications')
-// and enforced server-side by lib/email/notifications.js, so a switch turned off
-// here suppresses the real send.
+// Settings -> Notifications: per-project email switches (lib/email/catalog.js, enforced by lib/email/notifications.js) and member push (lib/push/types.js).
 
 const GROUP_ICONS = {
   registrations: ClipboardList,
@@ -49,8 +66,7 @@ const GROUP_ICONS = {
   marketing: Megaphone,
 };
 
-// A type is on unless it was explicitly switched off, matching the catalog's
-// default-on contract (a key absent from the bag means "never touched").
+// A type is on unless explicitly switched off; a key absent from the bag means "never touched".
 function isOn(config, key) {
   return config?.types?.[key] !== false;
 }
@@ -59,8 +75,7 @@ function setType(config, key, value) {
   return { types: { ...(config.types || {}), [key]: value } };
 }
 
-// "Live" = a send site exists today; "Planned" = the type is declared and the
-// preference is stored, but nothing fires it yet.
+// "Live" = a send site exists today; "Planned" = declared and stored, but nothing fires it yet.
 function StatusBadge({ live }) {
   return (
     <Badge
@@ -202,15 +217,217 @@ const SECTIONS = [
   })),
 ];
 
+const TABS = [
+  { key: "email", label: "Email" },
+  { key: "push", label: "Push" },
+  { key: "delivery", label: "Delivery" },
+  { key: "scheduler", label: "Scheduler" },
+];
+
+const POLL_MS = 15_000;
+
+// The email config, loaded and saved the way SettingsScreen does it so the bag can sit under the shared tabs.
+function useEmailNotifications(projectId) {
+  const [config, setConfig] = useState(defaultNotificationConfig);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    getSetting(projectId, NOTIFICATIONS_MODULE).then((res) => {
+      if (!alive) return;
+      // Merge saved config over defaults so new keys always have a value.
+      setConfig({ ...defaultNotificationConfig(), ...(res?.config || {}) });
+      setLoading(false);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [projectId]);
+
+  const set = useCallback((patch) => setConfig((c) => ({ ...c, ...patch })), []);
+
+  const save = async (next) => {
+    const payload = next === undefined ? config : next;
+    if (next !== undefined) setConfig(next);
+    setSaving(true);
+    const res = await upsertSetting(projectId, NOTIFICATIONS_MODULE, payload);
+    setSaving(false);
+    // null means not configured; only a hard failure (false) is an error.
+    if (res === false) {
+      toast.error("Couldn't save your settings to the server.");
+      return false;
+    }
+    toast.success("Settings saved.");
+    return true;
+  };
+
+  return { config, loading, saving, set, save };
+}
+
 export function NotificationsSettingsScreen() {
+  const { projectId, loading: projectLoading } = useProject();
+  const canManage = useCan("events.settings.manage");
+  const [tab, setTab] = useState("email");
+  const [pushSection, setPushSection] = useState("delivery");
+  const [testing, setTesting] = useState(false);
+
+  // Every push route needs Manage settings, so the push tabs only read when the viewer has it.
+  const pushAllowed = Boolean(projectId) && canManage;
+  const email = useEmailNotifications(projectId);
+  const push = usePushSettings(projectId, pushAllowed && tab !== "email");
+  const log = usePushLog(projectId, pushAllowed && tab === "delivery");
+  const scheduler = usePushScheduler(projectId, pushAllowed && tab === "scheduler");
+  const { refresh: refreshLog, replaceItem, extended: logExtended } = log;
+  const { refresh: refreshScheduler } = scheduler;
+
+  // The log and the scheduler are live: re-read them while on screen (the log only while it's a single page).
+  useEffect(() => {
+    const live = tab === "scheduler" || (tab === "delivery" && !logExtended);
+    if (!live || !pushAllowed) return undefined;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      if (tab === "scheduler") refreshScheduler();
+      else refreshLog();
+    }, POLL_MS);
+    return () => clearInterval(timer);
+  }, [tab, logExtended, pushAllowed, refreshLog, refreshScheduler]);
+
+  async function handleTest() {
+    setTesting(true);
+    const result = await sendTestPush(projectId);
+    setTesting(false);
+    if (result.error) toast.error(result.error.message);
+    else if (result.ok) toast.success(result.message || "Test push sent.");
+    else toast.error(result.message || "The test push didn't go out.");
+    refreshLog();
+  }
+
+  async function handleRetry(item) {
+    const result = await retryPush(projectId, item.id);
+    if (result.error) {
+      toast.error(result.error.message);
+      return false;
+    }
+    replaceItem(result.item);
+    toast.success("Push queued to send again");
+    return true;
+  }
+
+  let headerAction = null;
+  if (tab === "email") {
+    headerAction = (
+      <Button
+        className="bg-primary text-primary-foreground hover:bg-primary/90"
+        disabled={email.saving || email.loading}
+        onClick={() => email.save()}
+      >
+        {email.saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        {email.saving ? "Saving…" : "Save Changes"}
+      </Button>
+    );
+  } else if (tab === "delivery" && pushAllowed) {
+    headerAction = (
+      <Button className="bg-primary text-primary-foreground" onClick={handleTest} disabled={testing}>
+        {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        Send test push
+      </Button>
+    );
+  }
+
+  let body;
+  if (tab === "email") {
+    body = email.loading ? (
+      <LoadingArea panel />
+    ) : (
+      <EditorSections nav={SECTIONS} defaultSection={SECTIONS[0].key}>
+        {({ activeItem }) => {
+          // Rendered as an element, not called — sections own their own hooks.
+          const Body = activeItem.render;
+          return <Body config={email.config} set={email.set} save={email.save} saving={email.saving} />;
+        }}
+      </EditorSections>
+    );
+  } else if (!projectId) {
+    body = projectLoading ? (
+      <LoadingArea size={48} panel label="Loading push settings" />
+    ) : (
+      <EmptyState
+        icon={FolderOpen}
+        title="Open a project"
+        description="Push notifications belong to a project. Choose one to manage them."
+      />
+    );
+  } else if (!canManage) {
+    body = (
+      <div className="rounded-xl border border-border bg-surface-subtle">
+        <EmptyState
+          icon={ShieldCheck}
+          title="Push needs the Manage settings permission"
+          description="Ask a project owner for it to change push settings, read the delivery log or check the scheduler."
+        />
+      </div>
+    );
+  } else if (tab === "delivery") {
+    body = (
+      <DeliveryTab
+        log={log}
+        paused={Boolean(push.settings?.paused)}
+        canManage={canManage}
+        testing={testing}
+        onTest={handleTest}
+        onRetry={handleRetry}
+      />
+    );
+  } else if (push.loading || (tab === "scheduler" && scheduler.loading)) {
+    body = <LoadingArea size={48} panel label="Loading push settings" />;
+  } else if (tab === "push") {
+    body = push.settings ? (
+      <PushTab settings={push.settings} update={push.update} section={pushSection} onSectionChange={setPushSection} />
+    ) : (
+      <LoadError title="Couldn't load push settings" error={push.error} onRetry={push.refresh} />
+    );
+  } else {
+    body = scheduler.data ? (
+      <SchedulerTab
+        data={scheduler.data}
+        paused={push.settings ? push.settings.paused : scheduler.data.paused}
+        pauseDisabled={!push.settings}
+        onPause={(paused) => push.update({ paused })}
+        onRefresh={refreshScheduler}
+      />
+    ) : (
+      <LoadError title="Couldn't load the scheduler" error={scheduler.error} onRetry={refreshScheduler} />
+    );
+  }
+
   return (
-    <SettingsScreen
-      module={NOTIFICATIONS_MODULE}
-      title="Notifications"
-      description="Choose which automated emails this project sends, and to whom. Switching a type off stops it for every event in the project."
-      defaultConfig={defaultNotificationConfig}
-      sections={SECTIONS}
-    />
+    <MainScreenWrapper>
+      <ScreenHeader
+        title="Notifications"
+        description="Choose which automated emails and app push notifications this project sends. Switching a type off stops it for every event in the project."
+        actions={headerAction}
+      />
+
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-border">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={cn(
+              "relative shrink-0 px-3 py-2 text-sm font-medium transition-colors",
+              tab === t.key ? "text-foreground" : "text-text-secondary hover:text-foreground",
+            )}
+          >
+            {t.label}
+            {tab === t.key ? <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary" /> : null}
+          </button>
+        ))}
+      </div>
+
+      {body}
+    </MainScreenWrapper>
   );
 }
 

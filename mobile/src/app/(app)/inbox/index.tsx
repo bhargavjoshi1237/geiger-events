@@ -15,6 +15,7 @@ import { Screen } from "@/components/ui/Screen";
 import { InboxSkeleton } from "@/components/ui/Skeleton";
 import { fmtCompactTime } from "@/lib/format";
 import { tapFeedback } from "@/lib/haptics";
+import { notificationIcon } from "@/lib/push_catalog";
 import { usePoll } from "@/lib/use_poll";
 import { useAppConfig } from "@/state/app_config";
 import { usePortalData } from "@/state/data";
@@ -90,7 +91,7 @@ export default function InboxScreen() {
       unread: n.unread ? 1 : 0,
       dot: n.unread,
       href: "/notifications" as Href,
-      icon: "volume-2",
+      icon: notificationIcon(n.kind),
     }));
 
     const fromChannels: InboxItem[] = [

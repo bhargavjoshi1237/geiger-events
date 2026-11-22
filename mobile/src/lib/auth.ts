@@ -63,8 +63,13 @@ export async function fetchMe(token: string): Promise<{ member: Member } | null>
   return res.ok ? res.data : null;
 }
 
-export function logout(token: string): Promise<boolean> {
-  return api("/api/portal/logout", { method: "POST", token }).then((r) => r.ok);
+// The push token lets the server retire this device along with the session.
+export function logout(token: string, pushToken: string | null): Promise<boolean> {
+  return api("/api/portal/logout", {
+    method: "POST",
+    token,
+    body: pushToken ? { pushToken } : {},
+  }).then((r) => r.ok);
 }
 
 export function logoutAll(token: string): Promise<boolean> {

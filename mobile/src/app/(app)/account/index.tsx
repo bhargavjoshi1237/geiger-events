@@ -1,5 +1,5 @@
-import Constants from "expo-constants";
 import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -17,14 +17,16 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
 import { api, API_BASE } from "@/lib/api";
-import { pluralize } from "@/lib/format";
+import { fmtDateTime, pluralize } from "@/lib/format";
+import { buildInfo } from "@/lib/updates";
 import { useSession } from "@/state/session";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 import type { PortalDevice } from "@/types/portal";
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { member, token, pushToken, refreshMember, signOut, signOutEverywhere } = useSession();
+  const { member, token, pushToken, pushStatus, refreshMember, signOut, signOutEverywhere } =
+    useSession();
   const { success, error } = useToast();
 
   const storedPhone = typeof member?.metadata?.phone === "string" ? member.metadata.phone : "";
@@ -36,6 +38,7 @@ export default function AccountScreen() {
   const [devices, setDevices] = useState<PortalDevice[] | null>(null);
 
   const dirty = name !== (member?.name || "") || phone !== storedPhone;
+  const build = buildInfo();
 
   useEffect(() => {
     if (!token) return;
@@ -132,6 +135,25 @@ export default function AccountScreen() {
         />
       </View>
 
+      <SectionTitle variant="kicker">Notifications</SectionTitle>
+      <View style={styles.card}>
+        <ListRow
+          leading={
+            <IconTile icon="geiger" size={34} tone={pushStatus === "on" ? "neutral" : "outline"} />
+          }
+          title="Notifications"
+          subtitle={
+            pushStatus === "on"
+              ? "Push is on for this device"
+              : pushStatus === "unsupported"
+                ? "Push isn't available on this build"
+                : "Push is off for this device"
+          }
+          onPress={() => router.push("/account/notifications" as Href)}
+          divider={false}
+        />
+      </View>
+
       <SectionTitle variant="kicker">About</SectionTitle>
       <View style={styles.card}>
         <ListRow
@@ -143,7 +165,22 @@ export default function AccountScreen() {
         <ListRow
           leading={<IconTile icon="info" size={34} />}
           title="Version"
-          subtitle={Constants.expoConfig?.version || "1.0.0"}
+          subtitle={build.channel ? `${build.version} · ${build.channel} channel` : build.version}
+          chevron={false}
+        />
+        <ListRow
+          leading={<IconTile icon="package" size={34} />}
+          title="Update"
+          subtitle={
+            build.embedded || !build.updateId
+              ? "Built-in"
+              : [
+                  build.updateId.slice(0, 8),
+                  build.updateCreatedAt ? fmtDateTime(build.updateCreatedAt.toISOString()) : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+          }
           chevron={false}
           divider={false}
         />
