@@ -22,7 +22,7 @@ the only Supabase use is **Auth** for the team sign-in (`src/lib/team_auth.ts`).
 - **StyleSheet, not inline objects.** `StyleSheet.create` at the bottom of each
   file. Inline styles only for values computed at render (animated, measured).
 - **Shared primitives before bespoke layout.** Build from `src/components/ui/*`
-  (`Screen`, `Card`, `Button`, `Input`, `Field`, `Pill`, `PulseDot`,
+  (`Screen`, `Card`, `Button`, `Input`, `Field`, `Pill`, `PulseDot`, `Meter`,
   `SectionTitle`, `EmptyState`, `Skeleton`, `ListRow`, `Segmented`, `Sheet`,
   `FilterChips`, `IconButton`, `IconTile`, `Perforation`). If one is *almost*
   right, extend it — do not fork layout into a screen.
@@ -53,6 +53,21 @@ chips; the per-source screens still exist as pushed routes for deep links.
 Live stays reachable from Home's live strip and deep links. Orders, Memberships,
 Watch and Account hang off More. `/pass/[id]` lives outside
 the tabs so the QR fills the screen with no chrome.
+
+**Control** (`src/app/control/`) is the organiser mode, with its own five tabs in
+`control/(tabs)/`: **Today, Events, Orders, Inbox, More**. Orders and Inbox only show
+when the active project's role grants them. Detail screens (`event/[id]/*`,
+`order/[id]`, `thread/[id]`, `event/new`) push over the tabs on the Control stack.
+Every tab reads the active project from `useControl().project`; switch it with
+`ProjectSwitcher`. Switching modes lives in **More** in both modes and always goes
+through `useModeSwitch()`, so neither mode is a dead end. Hide any action whose
+`can` flag is false — the server re-checks every call anyway.
+
+**Manage** (`control/manage`) lists every dashboard area the role opens, from the server catalog
+(`../lib/control/catalog`): generic record modules (`control/records/[module]`), settings pages
+(`control/settings/[setting]`, event-level ones under `control/event/[id]/settings`) and hand-built
+screens registered in `catalog/screens/*.js`. Control areas may keep their view models in
+`src/types/control_<area>.ts` instead of `portal.ts`.
 
 ## Layout
 

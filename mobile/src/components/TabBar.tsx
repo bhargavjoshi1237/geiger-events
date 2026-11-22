@@ -53,24 +53,31 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   };
 
   return (
-    <View style={[styles.bar, { paddingBottom: insets.bottom }]}>
+    <TabBarFrame bottomInset={insets.bottom}>
+      {visible.map(({ tab, route }) => {
+        const meta = TAB_META[tab];
+        return (
+          <TabButton
+            key={route.key}
+            label={meta.label}
+            icon={meta.icon}
+            focused={tab === activeTab}
+            badge={tab === "inbox" ? counts.inbox || 0 : 0}
+            onPress={() => onTabPress(route.name)}
+          />
+        );
+      })}
+    </TabBarFrame>
+  );
+}
+
+// The blurred bar both modes share; Control fills it with its own tabs.
+export function TabBarFrame({ bottomInset, children }: { bottomInset: number; children: React.ReactNode }) {
+  return (
+    <View style={[styles.bar, { paddingBottom: bottomInset }]}>
       <BlurView tint="dark" intensity={40} style={StyleSheet.absoluteFill} />
       <View style={styles.scrim} />
-      <View style={styles.row}>
-        {visible.map(({ tab, route }) => {
-          const meta = TAB_META[tab];
-          return (
-            <TabButton
-              key={route.key}
-              label={meta.label}
-              icon={meta.icon}
-              focused={tab === activeTab}
-              badge={tab === "inbox" ? counts.inbox || 0 : 0}
-              onPress={() => onTabPress(route.name)}
-            />
-          );
-        })}
-      </View>
+      <View style={styles.row}>{children}</View>
     </View>
   );
 }
@@ -83,7 +90,7 @@ type TabButtonProps = {
   onPress: () => void;
 };
 
-function TabButton({ label, icon, focused, badge, onPress }: TabButtonProps) {
+export function TabButton({ label, icon, focused, badge, onPress }: TabButtonProps) {
   const scale = useSharedValue(1);
   useEffect(() => {
     scale.value = withSpring(focused ? 1.1 : 1, spring);

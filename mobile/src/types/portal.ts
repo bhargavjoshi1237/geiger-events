@@ -291,14 +291,26 @@ export type RolesHint = {
   crew: { eventId: string; eventName: string; eventDate: string | null; roles: string[] }[];
 };
 
-export type ControlCapability = "events" | "checkIn" | "guests" | "orders" | "analytics" | "workspace";
+export type ControlCapability =
+  | "events"
+  | "checkIn"
+  | "guests"
+  | "orders"
+  | "analytics"
+  | "workspace"
+  | "inbox"
+  | "edit"
+  | "publish"
+  | "delete"
+  | "refund";
 
 export type ControlProject = {
   id: string;
   name: string;
   organizationName: string | null;
   role: { key: string; name: string } | null;
-  can: Record<ControlCapability, boolean>;
+  // create: project-wide "Edit an event" — an editor scoped to some events can edit them but not add new ones.
+  can: Record<ControlCapability, boolean> & { create: boolean };
 };
 
 export type ControlProfile = { projects: ControlProject[] };
@@ -318,8 +330,251 @@ export type ControlEvent = {
   when: "today" | "upcoming" | "unscheduled" | "past";
 };
 
+export type ControlEventStatus = "Draft" | "Scheduled" | "On Sale" | "Sold out" | "Ended";
+export type ControlEventType = "In-person" | "Online" | "Hybrid";
+export type ControlVisibility = "Public" | "Unlisted" | "Private";
+
 export type ControlEventDetail = {
   event: ControlEvent;
+  details: {
+    type: ControlEventType;
+    address: string;
+    revenue: number;
+    visibility: ControlVisibility;
+    organizer: string;
+    summary: string;
+    isListable: boolean;
+    currency: string;
+  };
   projectId: string;
   can: Record<ControlCapability, boolean>;
+  counts: { guests: number; pending: number; checkedIn: number };
+};
+
+// The editable subset PATCH /api/control/events/[id] accepts; every key is optional there.
+export type ControlEventPatch = Partial<{
+  name: string;
+  type: ControlEventType;
+  date: string | null;
+  time: string | null;
+  timezone: string;
+  venue: string;
+  address: string;
+  city: string;
+  capacity: number;
+  visibility: ControlVisibility;
+  organizer: string;
+  summary: string;
+  isListable: boolean;
+  status: ControlEventStatus;
+}>;
+
+export type ControlTotals = { orders: number; sold: number; revenue: number };
+
+export type ControlSummary = {
+  today: ControlEvent[];
+  upcoming: ControlEvent[];
+  drafts: number;
+  sales: { today: ControlTotals; week: ControlTotals } | null;
+  pendingApprovals: number;
+  unreadThreads: number | null;
+};
+
+export type ControlTicket = {
+  id: string;
+  name: string;
+  price: number;
+  qty: number;
+  description: string;
+  hasType: boolean;
+  releases: number;
+};
+
+export type ControlGuestStatus = "Confirmed" | "Pending" | "Waitlisted" | "Declined" | "Checked-in" | "Cancelled";
+
+export type ControlGuest = {
+  id: string;
+  code: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: ControlGuestStatus;
+  source: string;
+  partySize: number;
+  dietary: string;
+  accessibility: string;
+  checkedIn: boolean;
+  createdAt: string | null;
+};
+
+export type ControlAdmitResult = {
+  status: "admitted" | "already" | "blocked" | "capacity";
+  name: string;
+  party: number;
+  message: string;
+  code: string;
+  canOverride?: boolean;
+};
+
+export type ControlCheckinStats = {
+  admitted: number;
+  expected: number;
+  recent: { id: string; name: string; code: string; method: string; gate: string; by: string; at: string }[];
+};
+
+export type ControlOrderStatus = "Paid" | "Partially refunded" | "Refunded" | "Cancelled";
+
+export type ControlOrder = {
+  id: string;
+  code: string;
+  eventId: string | null;
+  eventName: string;
+  currency: string;
+  name: string;
+  email: string;
+  ticket: string;
+  unitPrice: number;
+  quantity: number;
+  total: number;
+  refunded: number;
+  refundable: number;
+  status: ControlOrderStatus;
+  cancelled: boolean;
+  note: string;
+  createdAt: string | null;
+};
+
+export type ControlOrderPage = { orders: ControlOrder[]; nextBefore: string | null };
+
+export type ControlOrderDetail = {
+  order: ControlOrder;
+  refunds: { id: string; amount: number; reason: string; reasonCode: string; status: string; createdAt: string | null }[];
+  timeline: { id: string; type: string; summary: string; amount: number | null; actor: string; createdAt: string | null }[];
+  can: { refund: boolean; checkIn: boolean };
+};
+
+export type ControlThread = {
+  id: string;
+  subject: string;
+  status: "open" | "closed";
+  name: string;
+  email: string;
+  eventId: string | null;
+  orderId: string | null;
+  unread: boolean;
+  lastMessageAt: string | null;
+  preview: string;
+  eventName: string;
+};
+
+export type ControlConversation = {
+  thread: ControlThread;
+  messages: { id: string; sender: "organiser" | "member"; body: string; createdAt: string | null }[];
+};
+
+export type ControlAnalytics = {
+  totals: ControlTotals & { refunded: number };
+  byDay: { date: string; sold: number; revenue: number }[];
+  byTicket: { name: string; sold: number; revenue: number }[];
+  attendance: { admitted: number; expected: number };
+};
+
+export type ControlFieldType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "email"
+  | "url"
+  | "select"
+  | "tabs"
+  | "switch"
+  | "list"
+  | "ref"
+  | "date"
+  | "time"
+  | "datetime"
+  | "image"
+  | "status"
+  | "audience"
+  | "access"
+  | "readonly";
+
+export type ControlOption = { value: string; label: string };
+
+export type ControlField = {
+  key: string;
+  label: string;
+  type: ControlFieldType;
+  scope: "root" | "config";
+  options?: ControlOption[];
+  placeholder?: string;
+  hint?: string;
+  refModule?: string;
+  min?: number;
+  max?: number;
+  required?: boolean;
+  // Shown only for these ticketing kinds (a coupon's fields, not an affiliate's).
+  forKinds?: string[];
+};
+
+export type ControlStatusOption = ControlOption & { tone: "success" | "danger" | "info" | "warning" | "neutral" };
+
+export type ControlModule = {
+  id: string;
+  store: string;
+  module: string;
+  section: string;
+  shape: "record" | "ticketing";
+  title: string;
+  singular: string;
+  icon: string;
+  description?: string;
+  createLabel?: string;
+  statuses?: ControlStatusOption[];
+  kinds?: { value: string; label: string }[];
+  summary?: string[];
+  create?: string[];
+  panels: { title: string; description?: string; fields: ControlField[] }[];
+};
+
+export type ControlSetting = {
+  id: string;
+  store: string;
+  key: string;
+  section: string;
+  title: string;
+  icon: string;
+  description?: string;
+  // "list" pages edit an array of items (FAQ, alerts…); "value" pages one stored value; "object" a bag of keys.
+  shape?: "object" | "value" | "list";
+  itemLabel?: string;
+  itemTitle?: string;
+  panels: { title: string; description?: string; fields: ControlField[] }[];
+};
+
+// A hand-built Control screen listed under a Manage section; route is an app path under /control/.
+export type ControlScreenLink = { id: string; section: string; title: string; icon: string; description?: string; route: string };
+
+export type ControlSection = {
+  key: string;
+  title: string;
+  icon: string;
+  screens: ControlScreenLink[];
+  modules: ControlModule[];
+  settings: ControlSetting[];
+};
+
+export type ControlCatalog = { sections: ControlSection[] };
+
+export type ControlRecord = {
+  id: string;
+  name: string;
+  config: Record<string, unknown>;
+  createdAt: string | null;
+  status?: string | null;
+  coverUrl?: string;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  kind?: string | null;
+  active?: boolean;
 };

@@ -16,10 +16,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/ui/icons";
 import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import * as auth from "@/lib/auth";
+import { useControl } from "@/state/control";
 import { useSession } from "@/state/session";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
@@ -39,6 +39,7 @@ export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const session = useSession();
+  const { setMode } = useControl();
   const { error } = useToast();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -62,6 +63,9 @@ export default function SignInScreen() {
     setBusy(false);
     if (!res.ok) return error(res.error);
     await session.signIn(res.data.token);
+    // Signing in to tickets (even from Control's More tab) makes the attendee app the one that reopens.
+    await setMode("attendee");
+    if (router.canDismiss()) router.dismissAll();
     router.replace("/(app)/home");
   };
 

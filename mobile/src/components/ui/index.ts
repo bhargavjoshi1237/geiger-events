@@ -9,6 +9,7 @@ export { IconButton } from "@/components/ui/IconButton";
 export { IconTile } from "@/components/ui/IconTile";
 export { Input } from "@/components/ui/Input";
 export { ListRow } from "@/components/ui/ListRow";
+export { Meter } from "@/components/ui/Meter";
 export { Perforation } from "@/components/ui/Perforation";
 export { Pill } from "@/components/ui/Pill";
 export { ProgressBar } from "@/components/ui/ProgressBar";

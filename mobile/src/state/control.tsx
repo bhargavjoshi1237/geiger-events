@@ -6,12 +6,13 @@ import { api } from "@/lib/api";
 import { controlApi } from "@/lib/control_api";
 import * as team from "@/lib/team_auth";
 import { useSession } from "@/state/session";
-import type { ControlProfile, RolesHint } from "@/types/portal";
+import type { ControlProfile, ControlProject, RolesHint } from "@/types/portal";
 
 export type AppMode = "attendee" | "control";
 type TeamStatus = "loading" | "signedIn" | "signedOut";
 
 const MODE_KEY = "geiger.app.mode";
+const PROJECT_KEY = "geiger.control.project";
 
 type ControlState = {
   teamStatus: TeamStatus;
@@ -22,6 +23,8 @@ type ControlState = {
   mode: AppMode;
   modeReady: boolean;
   setMode: (next: AppMode) => Promise<void>;
+  project: ControlProject | null;
+  setProjectId: (id: string) => void;
   signInWithPassword: (email: string, password: string) => Promise<team.TeamAuthResult>;
   signInWithBrowser: () => Promise<team.TeamAuthResult>;
   signOutTeam: () => Promise<void>;
@@ -39,6 +42,7 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
   const [profileState, setProfileState] = useState<{ userId: string; profile: ControlProfile | null; error: string | null } | null>(null);
   const teamUserIdRef = useRef<string | null>(null);
   const [storedMode, setStoredMode] = useState<AppMode | null>(null);
+  const [storedProjectId, setStoredProjectId] = useState<string | null>(null);
 
   // Mirror the Supabase Auth session; it persists and refreshes itself.
   useEffect(() => {
@@ -92,6 +96,9 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
     void SecureStore.getItemAsync(MODE_KEY)
       .catch(() => null)
       .then((stored) => setStoredMode(stored === "control" ? "control" : "attendee"));
+    void SecureStore.getItemAsync(PROJECT_KEY)
+      .catch(() => null)
+      .then((stored) => setStoredProjectId((current) => current ?? stored));
   }, []);
 
   // Detection rides on the attendee session: it can only suggest Control, never open it.
@@ -117,7 +124,11 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
     const res = await controlApi<ControlProfile>("/api/control/me");
     // Drop responses for a user who is no longer signed in.
     if (teamUserIdRef.current !== userId) return;
-    setProfileState(res.ok ? { userId, profile: res.data, error: null } : { userId, profile: null, error: res.error });
+    setProfileState((prev) =>
+      res.ok
+        ? { userId, profile: res.data, error: null }
+        : { userId, profile: prev?.userId === userId ? prev.profile : null, error: res.error },
+    );
   }, []);
 
   useEffect(() => {
@@ -127,6 +138,11 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
   const setMode = useCallback(async (next: AppMode) => {
     setStoredMode(next);
     await SecureStore.setItemAsync(MODE_KEY, next).catch(() => undefined);
+  }, []);
+
+  const setProjectId = useCallback((id: string) => {
+    setStoredProjectId(id);
+    void SecureStore.setItemAsync(PROJECT_KEY, id).catch(() => undefined);
   }, []);
 
   const signOutTeam = useCallback(async () => {
@@ -142,6 +158,10 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
   const owned = teamStatus === "signedIn" && teamUserId && profileState?.userId === teamUserId ? profileState : null;
   const visibleProfile = owned?.profile ?? null;
   const visibleError = owned?.error ?? null;
+  // The remembered project while it's still reachable, else the first one with a role, else the first.
+  const projects = visibleProfile?.projects ?? [];
+  const project =
+    projects.find((p) => p.id === storedProjectId) ?? projects.find((p) => p.role && p.can.events) ?? projects[0] ?? null;
 
   const value = useMemo<ControlState>(
     () => ({
@@ -153,12 +173,14 @@ export function ControlProvider({ children }: { children: React.ReactNode }) {
       mode: storedMode ?? "attendee",
       modeReady: storedMode !== null,
       setMode,
+      project,
+      setProjectId,
       signInWithPassword: team.signInWithPassword,
       signInWithBrowser: team.signInWithBrowser,
       signOutTeam,
       refreshProfile,
     }),
-    [teamStatus, teamEmail, hint, visibleProfile, visibleError, storedMode, setMode, signOutTeam, refreshProfile],
+    [teamStatus, teamEmail, hint, visibleProfile, visibleError, storedMode, setMode, project, setProjectId, signOutTeam, refreshProfile],
   );
 
   return <ControlContext.Provider value={value}>{children}</ControlContext.Provider>;

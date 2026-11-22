@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/Button";
 import { IconTile } from "@/components/ui/IconTile";
 import { ListRow } from "@/components/ui/ListRow";
 import { Screen } from "@/components/ui/Screen";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Sheet } from "@/components/ui/Sheet";
 import { Switch } from "@/components/ui/Switch";
 import { teamOrgsLabel } from "@/lib/control_hint";
 import { firstName, pluralize } from "@/lib/format";
 import { SUITE_ORIGIN } from "@/lib/team_auth";
+import { useModeSwitch } from "@/lib/use_mode_switch";
 import { usePushToggle } from "@/lib/use_push_settings";
 import { useControl } from "@/state/control";
 import { useAppConfig } from "@/state/app_config";
@@ -170,49 +172,51 @@ export default function MoreScreen() {
   );
 }
 
-// Only a hint until the team account signs in; tapping it never unlocks Control on the attendee session alone.
+// Always present so an organiser can reach Control even when detection misses them (a different dashboard email, a failed check).
 function TeamEntry() {
   const router = useRouter();
-  const { teamStatus, hint, profile, setMode } = useControl();
+  const { teamStatus, hint, profile } = useControl();
+  const { toControl } = useModeSwitch();
 
-  let row: { title: string; subtitle: string; onPress: () => void } | null = null;
-  if (teamStatus === "signedIn") {
-    const count = profile?.projects.length ?? 0;
-    row = {
-      title: "Switch to Control",
-      subtitle: count ? `${count} ${pluralize(count, "project", "projects")}` : "Run your events from here",
-      onPress: () => {
-        void setMode("control").then(() => {
-          if (router.canDismiss()) router.dismissAll();
-          router.replace("/control");
-        });
-      },
-    };
-  } else if (hint?.team.available) {
-    row = {
-      title: "Sign in to Control",
-      subtitle: `You're on the team at ${teamOrgsLabel(hint)}`,
-      onPress: () => router.push("/team-sign-in"),
-    };
-  } else if (hint?.team.invited) {
-    row = {
-      title: "Team invitation waiting",
-      subtitle: "Accept it on geiger.studio, then sign in to Control here",
-      onPress: () => void Linking.openURL(SUITE_ORIGIN),
-    };
-  }
-  if (!row) return null;
+  const count = profile?.projects.length ?? 0;
+  const signedIn = teamStatus === "signedIn";
 
   return (
-    <View style={styles.group}>
-      <ListRow
-        leading={<IconTile icon="briefcase" size={34} />}
-        title={row.title}
-        subtitle={row.subtitle}
-        onPress={row.onPress}
-        divider={false}
-      />
-    </View>
+    <>
+      <SectionTitle variant="kicker">Event team</SectionTitle>
+      <View style={styles.group}>
+        {signedIn ? (
+          <ListRow
+            leading={<IconTile icon="shield" size={34} tone="success" />}
+            title="Switch to Control"
+            subtitle={count ? `Run ${count} ${pluralize(count, "project", "projects")} from your phone` : "Run your events from here"}
+            onPress={() => void toControl()}
+            divider={Boolean(hint?.team.invited)}
+          />
+        ) : (
+          <ListRow
+            leading={<IconTile icon="shield" size={34} />}
+            title="Sign in to Control"
+            subtitle={
+              hint?.team.available
+                ? `You're on the team at ${teamOrgsLabel(hint)}`
+                : "For organisers and event staff — use your dashboard account"
+            }
+            onPress={() => router.push("/team-sign-in")}
+            divider={Boolean(hint?.team.invited)}
+          />
+        )}
+        {hint?.team.invited ? (
+          <ListRow
+            leading={<IconTile icon="mail" size={34} />}
+            title="Team invitation waiting"
+            subtitle="Accept it on geiger.studio, then sign in to Control here"
+            onPress={() => void Linking.openURL(SUITE_ORIGIN)}
+            divider={false}
+          />
+        ) : null}
+      </View>
+    </>
   );
 }
 

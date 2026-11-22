@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,15 +9,16 @@ import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { teamOrgsLabel } from "@/lib/control_hint";
 import type { TeamAuthResult } from "@/lib/team_auth";
+import { useModeSwitch } from "@/lib/use_mode_switch";
 import { useControl } from "@/state/control";
 import { useSession } from "@/state/session";
 import { colors, spacing, type } from "@/theme/tokens";
 
 export default function TeamSignInScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { member } = useSession();
   const control = useControl();
+  const { toControl } = useModeSwitch();
   const { error } = useToast();
   const [email, setEmail] = useState(member?.email ?? "");
   const [password, setPassword] = useState("");
@@ -31,9 +31,7 @@ export default function TeamSignInScreen() {
       if (result.error) error(result.error);
       return;
     }
-    await control.setMode("control");
-    if (router.canDismiss()) router.dismissAll();
-    router.replace("/control");
+    await toControl();
   };
 
   const submitPassword = async () => {
